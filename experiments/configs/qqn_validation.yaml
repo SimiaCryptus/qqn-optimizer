@@ -1,0 +1,155 @@
+name: "QQN Algorithm Validation"
+description: "Comprehensive benchmarking of QQN vs baseline optimizers"
+
+problems:
+  - name: "rosenbrock_10d"
+    problem_type:
+      type: "Rosenbrock"
+      dimension: 10
+
+  - name: "rosenbrock_100d"
+    problem_type:
+      type: "Rosenbrock"
+      dimension: 100
+
+  - name: "rastrigin_10d"
+    problem_type:
+      type: "Rastrigin"
+      dimension: 10
+
+  - name: "rastrigin_50d"
+    problem_type:
+      type: "Rastrigin"
+      dimension: 50
+
+  - name: "sphere_20d"
+    problem_type:
+      type: "Sphere"
+      dimension: 20
+
+  - name: "beale_2d"
+    problem_type:
+      type: "Beale"
+
+  - name: "mnist_logistic"
+    problem_type:
+      type: "LogisticRegression"
+      dataset: "mnist"
+
+  - name: "cifar10_mlp"
+    problem_type:
+      type: "NeuralNetwork"
+      architecture:
+        layers: [3072, 256, 128, 10]
+        activation: "relu"
+        loss: "cross_entropy"
+
+optimizers:
+  - name: "qqn_default"
+    optimizer_type:
+      type: "QQN"
+      threshold: 0.01
+      lbfgs_history: 10
+      line_search:
+        method: "StrongWolfe"
+        c1: 0.0001
+        c2: 0.9
+        max_iterations: 20
+        initial_step: 1.0
+      epsilon: 0.00000001
+
+  - name: "qqn_conservative"
+    optimizer_type:
+      type: "QQN"
+      threshold: 0.001
+      lbfgs_history: 15
+      line_search:
+        method: "StrongWolfe"
+        c1: 0.0001
+        c2: 0.9
+        max_iterations: 20
+        initial_step: 1.0
+
+  - name: "qqn_aggressive"
+    optimizer_type:
+      type: "QQN"
+      threshold: 0.1
+      lbfgs_history: 5
+      line_search:
+        method: "StrongWolfe"
+        c1: 0.0001
+        c2: 0.9
+        max_iterations: 20
+        initial_step: 1.0
+
+  - name: "lbfgs_baseline"
+    optimizer_type:
+      type: "LBFGS"
+      history: 10
+      line_search:
+        method: "StrongWolfe"
+        c1: 0.0001
+        c2: 0.9
+        max_iterations: 20
+        initial_step: 1.0
+
+  - name: "lbfgs_large_history"
+    optimizer_type:
+      type: "LBFGS"
+      history: 20
+      line_search:
+        method: "StrongWolfe"
+        c1: 0.0001
+        c2: 0.9
+        max_iterations: 20
+        initial_step: 1.0
+
+  - name: "adam_default"
+    optimizer_type:
+      type: "Adam"
+      learning_rate: 0.001
+      beta1: 0.9
+      beta2: 0.999
+      epsilon: 0.00000001
+
+  - name: "adam_fast"
+    optimizer_type:
+      type: "Adam"
+      learning_rate: 0.01
+      beta1: 0.9
+      beta2: 0.999
+
+  - name: "sgd_momentum"
+    optimizer_type:
+      type: "SGD"
+      learning_rate: 0.01
+      momentum: 0.9
+
+  - name: "sgd_vanilla"
+    optimizer_type:
+      type: "SGD"
+      learning_rate: 0.01
+
+benchmark_settings:
+  max_iterations: 1000
+  tolerance: 0.000001
+  max_function_evaluations: 10000
+  time_limit: "10m"
+  random_seed: 42
+  num_runs: 10
+  parallel_runs: true
+
+analysis_settings:
+  statistical_tests: ["TTest", "MannWhitney"]
+  confidence_level: 0.95
+  performance_profiles: true
+  convergence_analysis: true
+  robustness_analysis: true
+
+output_settings:
+  results_dir: "results/qqn_validation"
+  generate_plots: true
+  export_csv: true
+  export_json: true
+  latex_tables: true
+  plot_formats: ["PNG", "PDF", "SVG"]
