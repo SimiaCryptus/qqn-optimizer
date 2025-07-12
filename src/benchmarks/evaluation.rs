@@ -318,6 +318,9 @@ impl BenchmarkRunner {
         trace: &mut OptimizationTrace,
         start_time: Instant,
     ) -> Result<ConvergenceReason, BenchmarkError> {
+        let mut previous_f_val = None;
+        let mut stagnation_count = 0;
+
         while *iteration < self.config.max_iterations {
             // Evaluate function and gradient
             let f_val = problem
@@ -346,6 +349,7 @@ impl BenchmarkRunner {
             if gradient_norm < tolerance {
                 return Ok(ConvergenceReason::GradientTolerance);
             }
+
             // Check function value convergence if optimal value is known
             if let Some(optimal_value) = problem.optimal_value() {
                 let function_tolerance = (f_val - optimal_value).abs();
@@ -353,6 +357,20 @@ impl BenchmarkRunner {
                     return Ok(ConvergenceReason::FunctionTolerance);
                 }
             }
+            // Check for stagnation
+            if let Some(prev_f) = previous_f_val {
+                let x1: f64 = f_val - prev_f;
+                if (x1).abs() < (tolerance * 0.1_f64) {
+                    stagnation_count += 1;
+                    if stagnation_count > 10 {
+                        // Consider it converged if function value hasn't changed much
+                        return Ok(ConvergenceReason::FunctionTolerance);
+                    }
+                } else {
+                    stagnation_count = 0;
+                }
+            }
+            previous_f_val = Some(f_val);
 
             // Check function evaluation limit
             if *function_evaluations >= self.config.max_function_evaluations {
