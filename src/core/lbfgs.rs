@@ -338,16 +338,16 @@ impl Optimizer for LBFGSOptimizer {
         // More conservative step size calculation for L-BFGS
         let base_step = if self.state.iteration() == 0 {
             // First iteration: use 1/grad_norm as initial step
-            1.0 / (1.0 + grad_norm)
+            0.01 / (1.0 + grad_norm)
         } else if self.state.gamma() > 0.0 {
             // Use the L-BFGS scaling factor as a guide
-            self.state.gamma().min(1.0).max(0.001)
+            self.state.gamma().min(0.01).max(0.00001)
         } else {
-            0.1
+            0.001
         };
         
         // Apply gentler decay for stability
-        let step_size = base_step;
+        let step_size = base_step * (0.99_f64).powi(self.state.iteration() as i32);
 
         let line_search_result = crate::core::line_search::LineSearchResult {
             step_size,

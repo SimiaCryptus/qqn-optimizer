@@ -223,8 +223,10 @@ impl Optimizer for QQNOptimizer {
             .zip(gradients.iter())
             .map(|(d, g)| {
                 // Handle multi-dimensional tensors properly
-                let d_vec = d.to_vec1::<f64>().unwrap_or_else(|_| vec![0.0]);
-                let g_vec = g.to_vec1::<f64>().unwrap_or_else(|_| vec![0.0]);
+                let d_flat = d.flatten_all().unwrap();
+                let g_flat = g.flatten_all().unwrap();
+                let d_vec = d_flat.to_vec1::<f64>().unwrap();
+                let g_vec = g_flat.to_vec1::<f64>().unwrap();
                 d_vec.iter().zip(g_vec.iter()).map(|(di, gi)| di * gi).sum::<f64>()
             })
             .sum::<f64>();
@@ -245,15 +247,15 @@ impl Optimizer for QQNOptimizer {
         // Convert tensors to f64 vectors for line search
         let current_point: Vec<f64> = params
             .iter()
-            .flat_map(|p| p.to_vec1::<f64>().unwrap_or_else(|_| vec![0.0]))
+            .flat_map(|p| p.flatten_all().unwrap().to_vec1::<f64>().unwrap())
             .collect();
         let direction_vec: Vec<f64> = final_direction
             .iter()
-            .flat_map(|d| d.to_vec1::<f64>().unwrap_or_else(|_| vec![0.0]))
+            .flat_map(|d| d.flatten_all().unwrap().to_vec1::<f64>().unwrap())
             .collect();
         let gradient_vec: Vec<f64> = gradients
             .iter()
-            .flat_map(|g| g.to_vec1::<f64>().unwrap_or_else(|_| vec![0.0]))
+            .flat_map(|g| g.flatten_all().unwrap().to_vec1::<f64>().unwrap())
             .collect();
         
         // Use a fixed step size for now since we don't have access to the objective function
@@ -264,19 +266,19 @@ impl Optimizer for QQNOptimizer {
         // More conservative step size calculation
         let base_step = if self.state.iteration == 0 {
             // First iteration: use 1/grad_norm as initial step
-            1.0 / (1.0 + grad_norm)
+            0.01 / (1.0 + grad_norm)
         } else if self.state.lbfgs_state.gamma() > 0.0 && !used_quadratic {
             // Use the L-BFGS scaling factor when using pure L-BFGS
-            self.state.lbfgs_state.gamma().min(1.0).max(0.001)
+            self.state.lbfgs_state.gamma().min(0.01).max(0.00001)
         } else if used_quadratic {
             // More conservative step for quadratic path
-            0.5 / (1.0 + grad_norm.sqrt())
+            0.001 / (1.0 + grad_norm.sqrt())
         } else {
-            0.1
+            0.001
         };
         
         // Apply gentler decay based on iteration count
-        let step_size = base_step;
+        let step_size = base_step * (0.99_f64).powi(self.state.iteration as i32);
 
         let line_search_result = crate::core::line_search::LineSearchResult {
             step_size,
