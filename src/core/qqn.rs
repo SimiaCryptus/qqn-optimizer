@@ -5,14 +5,19 @@ use crate::utils::math::{
     combine_tensors, compute_magnitude, magnitude_relative_difference, scale_tensors,
 };
 use candle_core::{Device, Result as CandleResult, Tensor};
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+
 /// QQN trace information for analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QQNTrace {
     pub magnitude_ratios: Vec<f64>,
     pub quadratic_path_usage: Vec<bool>,
     pub step_sizes: Vec<f64>,
+    pub gradient_norms: Vec<f64>,
+    pub direction_norms: Vec<f64>,
+    pub descent_dot_products: Vec<f64>,
 }
 impl QQNTrace {
     pub fn new() -> Self {
@@ -20,6 +25,9 @@ impl QQNTrace {
             magnitude_ratios: Vec::new(),
             quadratic_path_usage: Vec::new(),
             step_sizes: Vec::new(),
+            gradient_norms: Vec::new(),
+            direction_norms: Vec::new(),
+            descent_dot_products: Vec::new(),
         }
     }
 }
@@ -126,10 +134,24 @@ impl QQNOptimizer {
         gradient: &[Tensor],
         lbfgs_direction: &[Tensor],
     ) -> CandleResult<QuadraticPath> {
+        // Validate inputs
+        if gradient.is_empty() || lbfgs_direction.is_empty() {
+            return Err(candle_core::Error::Msg("Empty gradient or direction vectors".into()));
+        }
+        if gradient.len() != lbfgs_direction.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Gradient and direction dimension mismatch: {} vs {}",
+                        gradient.len(), lbfgs_direction.len())
+            ));
+        }
+
         // Always ensure we have a proper descent direction for L-BFGS
         let grad_dot_lbfgs = crate::utils::math::dot_product(gradient, lbfgs_direction)?;
+        debug!("QQN: grad_dot_lbfgs = {}", grad_dot_lbfgs);
+
         let corrected_lbfgs_direction = if grad_dot_lbfgs > -self.config.epsilon {
-           // L-BFGS direction is not descent, use negative gradient instead
+            // L-BFGS direction is not descent, use negative gradient instead
+            warn!("QQN: L-BFGS direction is not descent (dot product: {}), using negative gradient", grad_dot_lbfgs);
             crate::utils::math::scale_tensors(gradient, -1.0)?
         } else {
             lbfgs_direction.to_vec()
@@ -138,17 +160,34 @@ impl QQNOptimizer {
         // Scale gradient to match L-BFGS magnitude
         let grad_magnitude = compute_magnitude(gradient)?;
         let lbfgs_magnitude = compute_magnitude(&corrected_lbfgs_direction)?;
-        
+        debug!("QQN: grad_magnitude = {}, lbfgs_magnitude = {}", grad_magnitude, lbfgs_magnitude);
+        // Check for numerical issues
+        if !grad_magnitude.is_finite() || !lbfgs_magnitude.is_finite() {
+            return Err(candle_core::Error::Msg(
+                format!("Non-finite magnitudes detected: grad={}, lbfgs={}",
+                        grad_magnitude, lbfgs_magnitude)
+            ));
+        }
+
+
         // More robust scaling that avoids extreme values
         let scale_factor = if grad_magnitude < self.config.epsilon || lbfgs_magnitude < self.config.epsilon {
+            debug!("QQN: Using unit scale factor due to small magnitudes");
             1.0 // Avoid division by very small numbers
         } else {
             // Limit the scale factor to prevent numerical issues
-            (lbfgs_magnitude / grad_magnitude).min(100.0).max(0.01)
+            let raw_scale = lbfgs_magnitude / grad_magnitude;
+            let clamped_scale = raw_scale.min(100.0).max(0.01);
+            if (raw_scale - clamped_scale).abs() > 1e-6 {
+                warn!("QQN: Scale factor clamped from {} to {}", raw_scale, clamped_scale);
+            }
+            clamped_scale
         };
 
         // Create negative gradient (descent direction) scaled to match L-BFGS magnitude
         let scaled_gradient = scale_tensors(gradient, -scale_factor)?;
+        debug!("QQN: Created quadratic path with scale_factor = {}", scale_factor);
+
 
         Ok(QuadraticPath::new(
             scaled_gradient,
@@ -191,6 +230,26 @@ impl Optimizer for QQNOptimizer {
     }
 
     fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> CandleResult<StepResult> {
+        // Input validation
+        if params.is_empty() || gradients.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+        }
+        if params.len() != gradients.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Parameter and gradient dimension mismatch: {} vs {}",
+                        params.len(), gradients.len())
+            ));
+        }
+        // Check for NaN/Inf in inputs
+        for (i, grad) in gradients.iter().enumerate() {
+            let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
+            if grad_vec.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    format!("Non-finite gradient detected at index {}", i)
+                ));
+            }
+        }
+
         // 1. Compute L-BFGS direction
         let lbfgs_direction = self.state.lbfgs_state.compute_direction(gradients)?;
 
@@ -198,18 +257,28 @@ impl Optimizer for QQNOptimizer {
         let grad_magnitude = compute_magnitude(gradients)?;
         let lbfgs_magnitude = compute_magnitude(&lbfgs_direction)?;
         let relative_diff = magnitude_relative_difference(lbfgs_magnitude, grad_magnitude);
+        debug!("QQN step {}: grad_norm={:.6e}, lbfgs_norm={:.6e}, relative_diff={:.6}", 
+               self.state.iteration, grad_magnitude, lbfgs_magnitude, relative_diff);
+
 
         // Store magnitude ratio for analysis
         self.state.magnitude_ratios.push(relative_diff);
+        // Warn if magnitude ratio is extreme
+        if relative_diff > 10.0 {
+            warn!("QQN: Large magnitude ratio detected: {}", relative_diff);
+        }
 
         // Choose optimization path
         let (search_direction, used_quadratic) = if relative_diff <= self.config.threshold {
             // Use standard L-BFGS
             self.state.lbfgs_count += 1;
+            debug!("QQN: Using standard L-BFGS direction");
             (lbfgs_direction, false)
         } else {
             // Create hybrid quadratic path
             self.state.quadratic_path_count += 1;
+            debug!("QQN: Using quadratic path (relative_diff {} > threshold {})", 
+                   relative_diff, self.config.threshold);
             let quadratic_path = self.create_quadratic_path(gradients, &lbfgs_direction)?;
             // Use t=0.5 for a balanced blend between gradient and L-BFGS directions
             // This provides better convergence properties
@@ -230,9 +299,12 @@ impl Optimizer for QQNOptimizer {
                 d_vec.iter().zip(g_vec.iter()).map(|(di, gi)| di * gi).sum::<f64>()
             })
             .sum::<f64>();
+        debug!("QQN: direction_dot_grad = {:.6e}", direction_dot_grad);
+
 
         // If not a descent direction, fall back to negative gradient
         let final_direction = if direction_dot_grad >= 0.0 {
+            warn!("QQN: Search direction is not descent, falling back to negative gradient");
             gradients
                 .iter()
                 .map(|g| g.neg())
@@ -246,52 +318,134 @@ impl Optimizer for QQNOptimizer {
         
         // Use adaptive step size based on gradient magnitude and iteration count
         let grad_norm = compute_magnitude(gradients)?;
+        let direction_norm = compute_magnitude(&final_direction)?;
+        // Check for numerical issues
+        if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
+            return Err(candle_core::Error::Msg(
+                format!("Invalid direction norm: {}", direction_norm)
+            ));
+        }
+        // Handle very small direction norms more gracefully
+        if direction_norm < 1e-12 {
+            debug!("QQN: Very small direction norm {:.6e}, using scaled negative gradient", direction_norm);
+            let grad_norm = compute_magnitude(gradients)?;
+            let final_direction = if grad_norm > self.config.epsilon {
+                // Use negative gradient scaled to reasonable magnitude
+                let scale = 1e-6 / grad_norm;
+                gradients
+                    .iter()
+                    .map(|g| g.neg()?.broadcast_mul(&Tensor::new(scale, g.device())?))
+                    .collect::<CandleResult<Vec<_>>>()?
+            } else {
+                // Both gradient and direction are tiny, use minimal step
+                gradients
+                    .iter()
+                    .map(|g| Tensor::zeros_like(g)?.add(&Tensor::new(-1e-12, g.device())?))
+                    .collect::<CandleResult<Vec<_>>>()?
+            };
+            let step_size = 1e-12;
+            // Update parameters with minimal step
+            for (param, direction) in params.iter_mut().zip(final_direction.iter()) {
+                let step_size_tensor = Tensor::new(step_size, param.device())?;
+                let update = direction.broadcast_mul(&step_size_tensor)?;
+                *param = param.add(&update)?;
+            }
+            // Don't update L-BFGS state for numerical edge cases
+            self.state.iteration += 1;
+            let convergence_info = ConvergenceInfo {
+                converged: true, // Consider converged if gradients are this small
+                gradient_norm: grad_norm,
+                function_change: None,
+                parameter_change: Some(step_size),
+                convergence_criterion: None,
+                qqn_mode_active: false,
+            };
+            let mut metadata = OptimizationMetadata::default();
+            metadata.optimizer_data.insert("numerical_edge_case".to_string(), 1.0);
+            return Ok(StepResult {
+                step_size,
+                function_evaluations: 0,
+                gradient_evaluations: 0,
+                convergence_info,
+                metadata,
+            });
+        }
 
         // Adaptive step size with backtracking line search
         let mut step_size = if self.state.iteration == 0 {
             // First iteration: start with larger step
             // For Rosenbrock-like functions, we need more conservative initial steps
-            0.1 / grad_norm.max(1.0).sqrt()
+            let initial_step = if grad_norm > 1.0 {
+                0.01 / grad_norm.sqrt()
+            } else {
+                0.1
+            };
+            debug!("QQN: Initial step size = {:.6e}", initial_step);
+            initial_step
         } else {
             // Use previous successful step size as starting point
             // Adapt based on history
             let base_step = self.state.lbfgs_state.gamma();
             if used_quadratic {
                 // If using quadratic path, be more conservative
-                base_step.max(0.001).min(0.5)
+                base_step.max(0.0001).min(0.1)
             } else {
                 // For L-BFGS, allow larger steps
-                base_step.max(0.01).min(1.0)
+                base_step.max(0.001).min(0.5)
             }
         };
 
         // Simple backtracking line search
         let mut success = false;
         let backtrack_factor = 0.5;
-        let max_backtracks = 30;
+        let max_backtracks = 50;
+        let mut backtrack_count = 0;
 
         for _ in 0..max_backtracks {
             // Check if step size is reasonable
             let step_norm = step_size * compute_magnitude(&final_direction)?;
 
             // If step is very small relative to parameters, accept it
-            if step_norm < 1e-8 {
+            if step_norm < 1e-10 {
+                debug!("QQN: Accepting small step (norm={:.6e})", step_norm);
                 success = true;
                 break;
             }
 
-            // For testing/benchmarking, we accept steps that aren't too large
-            if step_size <= 2.0 && step_norm <= 5.0 {
+            // Accept reasonable steps based on problem scale
+            let param_norm = params.iter()
+                .map(|p| p.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+                .flatten()
+                .map(|x| x * x)
+                .sum::<f64>()
+                .sqrt();
+
+            let relative_step = if param_norm > 1e-10 {
+                step_norm / param_norm
+            } else {
+                step_norm
+            };
+
+            // Accept if step is reasonable relative to current parameters
+            if relative_step <= 0.5 || step_norm <= 1.0 {
                 success = true;
                 break;
             }
 
             // Backtrack
             step_size *= backtrack_factor;
+            backtrack_count += 1;
         }
+        if backtrack_count > 0 {
+            debug!("QQN: Backtracked {} times to step_size={:.6e}", backtrack_count, step_size);
+        }
+
 
         // Ensure minimum step size
         step_size = step_size.max(1e-16);
+        if !success {
+            warn!("QQN: Line search failed to find acceptable step size");
+        }
 
         let line_search_result = crate::core::line_search::LineSearchResult {
             step_size,
@@ -306,6 +460,13 @@ impl Optimizer for QQNOptimizer {
             let step_size_tensor = Tensor::new(line_search_result.step_size, param.device())?;
             let update = direction.broadcast_mul(&step_size_tensor)?;
             *param = param.add(&update)?;
+            // Check for NaN/Inf in updated parameters
+            let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
+            if param_vec.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    "Non-finite parameter detected after update".into()
+                ));
+            }
         }
 
         // Update L-BFGS state
@@ -314,7 +475,8 @@ impl Optimizer for QQNOptimizer {
             &final_direction,
             line_search_result.step_size,
         )?;
-       // Increment iteration counter AFTER all operations complete successfully
+
+        // Increment iteration counter AFTER all operations complete successfully
         self.state.iteration += 1;
 
         // 7. Create convergence info
@@ -328,9 +490,14 @@ impl Optimizer for QQNOptimizer {
             convergence_criterion: None,
             qqn_mode_active: used_quadratic,
         };
+
         let mut metadata = OptimizationMetadata::default();
         metadata.optimizer_data.insert("magnitude_ratio".to_string(), relative_diff);
         metadata.optimizer_data.insert("used_quadratic".to_string(), if used_quadratic { 1.0 } else { 0.0 });
+        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_magnitude);
+        metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
+        metadata.optimizer_data.insert("step_size".to_string(), step_size);
+        metadata.optimizer_data.insert("descent_dot_product".to_string(), direction_dot_grad);
 
         Ok(StepResult {
             step_size: line_search_result.step_size,

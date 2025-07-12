@@ -12,6 +12,7 @@ use crate::utils::math::{
     compute_magnitude, dot_product, vector_add, vector_scale, vector_subtract,
 };
 use candle_core::{Device, Result as CandleResult, Tensor};
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::Instant;
@@ -27,6 +28,10 @@ pub struct LBFGSConfig {
     pub epsilon: f64,
     /// Maximum number of iterations for two-loop recursion
     pub max_correction_pairs: usize,
+    /// Maximum allowed step size
+    pub max_step_size: f64,
+    /// Minimum allowed step size
+    pub min_step_size: f64,
 }
 
 impl Default for LBFGSConfig {
@@ -36,6 +41,8 @@ impl Default for LBFGSConfig {
             line_search: LineSearchConfig::default(),
             epsilon: 1e-8,
             max_correction_pairs: 10,
+            max_step_size: 1e3,
+            min_step_size: 1e-16,
         }
     }
 }
@@ -85,8 +92,23 @@ impl LBFGSState {
 
 /// Compute the L-BFGS search direction using the two-loop recursion
     pub fn compute_direction(&self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-       if self.s_history.is_empty() {
+    // Validate input
+    if gradient.is_empty() {
+        return Err(candle_core::Error::Msg("Empty gradient vector".into()));
+    }
+    // Check for NaN/Inf in gradient
+    for (i, grad) in gradient.iter().enumerate() {
+        let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
+        if grad_vec.iter().any(|&x| !x.is_finite()) {
+            return Err(candle_core::Error::Msg(
+                format!("Non-finite gradient detected at index {}", i)
+            ));
+        }
+    }
+
+    if self.s_history.is_empty() {
             // No history available, use steepest descent
+            debug!("L-BFGS: No history, using steepest descent");
             return Ok(gradient
                 .iter()
                 .map(|g| g.neg())
@@ -100,8 +122,18 @@ impl LBFGSState {
         for i in (0..self.s_history.len()).rev() {
             let s_i = &self.s_history[i];
             let rho_i = self.rho_history[i];
+            // Check for numerical issues
+            if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
+                warn!("L-BFGS: Skipping history pair {} due to numerical issues (rho={})", i, rho_i);
+                continue;
+            }
 
             let alpha_i = rho_i * dot_product(s_i, &q)?;
+            if !alpha_i.is_finite() {
+                warn!("L-BFGS: Non-finite alpha detected at iteration {}", i);
+                continue;
+            }
+
             alpha.push(alpha_i);
 
             // q = q - alpha_i * y_i
@@ -114,17 +146,28 @@ impl LBFGSState {
         alpha.reverse();
 
         // Apply initial Hessian approximation scaling
-        let mut r = vector_scale(&q, self.gamma)?;
+        debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
+    // Clamp gamma to prevent numerical issues
+    let safe_gamma = self.gamma.max(1e-6).min(1e6);
+    let mut r = vector_scale(&q, safe_gamma)?;
 
         // Second loop: compute final direction
         for i in 0..self.s_history.len() {
             let s_i = &self.s_history[i];
             let y_i = &self.y_history[i];
             let rho_i = self.rho_history[i];
+            if i >= alpha.len() {
+                continue; // Skip if we didn't compute alpha for this iteration
+            }
+
             let alpha_i = alpha[i];
 
             let beta = rho_i * dot_product(y_i, &r)?;
             let correction_factor = alpha_i - beta;
+            if !correction_factor.is_finite() {
+                warn!("L-BFGS: Non-finite correction factor at iteration {}", i);
+                continue;
+            }
 
             // r = r + (alpha_i - beta) * s_i
             let correction = vector_scale(s_i, correction_factor)?;
@@ -134,12 +177,21 @@ impl LBFGSState {
         // r is now the search direction (should already be a descent direction)
         // Verify it's a descent direction
         let grad_dot_r = dot_product(gradient, &r)?;
-        
-        if grad_dot_r >= 0.0 {
+    debug!("L-BFGS: grad_dot_r = {:.6e}", grad_dot_r);
+
+    if grad_dot_r >= -1e-12 {
             // Not a descent direction, use negative gradient
+            warn!("L-BFGS: Computed direction is not descent (dot product: {}), using negative gradient", grad_dot_r);
+        // Scale negative gradient to have reasonable magnitude
+        let grad_norm = compute_magnitude(gradient)?;
+        let scale = if grad_norm > 1e-10 {
+            1.0 / grad_norm.sqrt()
+        } else {
+            1.0
+        };
             Ok(gradient
                 .iter()
-                .map(|g| g.neg())
+                .map(|g| g.neg()?.broadcast_mul(&Tensor::new(scale, g.device())?))
                 .collect::<CandleResult<Vec<_>>>()?)
         } else {
             // r is already a descent direction (negative curvature)
@@ -154,6 +206,21 @@ impl LBFGSState {
         step_direction: &[Tensor],
         step_size: f64,
     ) -> CandleResult<()> {
+        // Validate inputs
+        if new_gradient.is_empty() || step_direction.is_empty() {
+            return Err(candle_core::Error::Msg("Empty gradient or direction vectors".into()));
+        }
+        if new_gradient.len() != step_direction.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Gradient and direction dimension mismatch: {} vs {}",
+                        new_gradient.len(), step_direction.len())
+            ));
+        }
+        if !step_size.is_finite() || step_size <= 0.0 {
+            warn!("L-BFGS: Invalid step size: {}", step_size);
+            return Ok(()); // Skip update but don't fail
+        }
+
         // Compute parameter difference: s_k = step_size * step_direction
         let s_k = vector_scale(step_direction, step_size)?;
 
@@ -163,10 +230,15 @@ impl LBFGSState {
 
             // Compute curvature condition: s_k^T y_k
             let s_dot_y = dot_product(&s_k, &y_k)?;
+            debug!("L-BFGS: s_dot_y = {:.6e}", s_dot_y);
 
             // Only update if curvature condition is satisfied (positive definiteness)
-            if s_dot_y > self.epsilon() {
+            if s_dot_y > self.epsilon() * 10.0 { // Be more strict about curvature condition
                 let rho_k = 1.0 / s_dot_y;
+                if !rho_k.is_finite() {
+                    warn!("L-BFGS: Non-finite rho_k, skipping update");
+                    return Ok(());
+                }
 
                 // Add to history (maintain limited size)
                 if self.s_history.len() >= self.s_history.capacity() {
@@ -183,8 +255,15 @@ impl LBFGSState {
                 // gamma = (s_k^T y_k) / (y_k^T y_k)
                 let y_dot_y = dot_product(&y_k, &y_k)?;
                 if y_dot_y > self.epsilon() {
-                    self.gamma = s_dot_y / y_dot_y;
+                    let new_gamma = s_dot_y / y_dot_y;
+                    // Clamp gamma to reasonable range
+                    self.gamma = new_gamma.max(1e-3).min(1e3);
+                    if (new_gamma - self.gamma).abs() > 1e-10 {
+                        debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
+                    }
                 }
+            } else {
+                debug!("L-BFGS: Curvature condition not satisfied (s_dot_y = {}), skipping update", s_dot_y);
             }
         }
 
@@ -297,27 +376,50 @@ impl Optimizer for LBFGSOptimizer {
 
     fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> CandleResult<StepResult> {
         let start_time = Instant::now();
+        // Input validation
+        if params.is_empty() || gradients.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+        }
+        if params.len() != gradients.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Parameter and gradient dimension mismatch: {} vs {}",
+                        params.len(), gradients.len())
+            ));
+        }
 
         // Compute L-BFGS search direction
         let search_direction = self.state.compute_direction(gradients)?;
+        // Validate search direction
+        let direction_norm = compute_magnitude(&search_direction)?;
+        if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
+            return Err(candle_core::Error::Msg(
+                format!("Invalid search direction norm: {}", direction_norm)
+            ));
+        }
 
         // Use adaptive step size based on gradient magnitude
         let grad_norm = compute_magnitude(gradients)?;
+        debug!("L-BFGS step {}: grad_norm={:.6e}", self.state.iteration(), grad_norm);
 
         // Adaptive step size with backtracking line search
         let mut step_size = if self.state.iteration() == 0 {
             // First iteration: start with larger step
             // More conservative initial step for better stability
-            0.1 / grad_norm.max(1.0).sqrt()
+            let initial_step = 0.1 / grad_norm.max(1.0).sqrt();
+            initial_step.min(self.config.max_step_size)
         } else {
             // Use L-BFGS scaling factor as starting point
-            self.state.gamma().max(0.01).min(1.0)
+            self.state.gamma()
+                .max(self.config.min_step_size)
+                .min(self.config.max_step_size)
         };
+        debug!("L-BFGS: Initial step size = {:.6e}", step_size);
 
         // Simple backtracking line search
         let mut success = false;
         let backtrack_factor = 0.5;
         let max_backtracks = 30;
+        let mut backtrack_count = 0;
 
         for _ in 0..max_backtracks {
             // Check if step size is reasonable
@@ -325,6 +427,7 @@ impl Optimizer for LBFGSOptimizer {
 
             // If step is very small relative to parameters, accept it
             if step_norm < 1e-8 {
+                debug!("L-BFGS: Accepting small step (norm={:.6e})", step_norm);
                 success = true;
                 break;
             }
@@ -337,10 +440,19 @@ impl Optimizer for LBFGSOptimizer {
 
             // Backtrack
             step_size *= backtrack_factor;
+            backtrack_count += 1;
+        }
+        if backtrack_count > 0 {
+            debug!("L-BFGS: Backtracked {} times to step_size={:.6e}", backtrack_count, step_size);
         }
 
+
         // Ensure minimum step size
-        step_size = step_size.max(1e-16);
+        step_size = step_size.max(self.config.min_step_size);
+
+        if !success {
+            warn!("L-BFGS: Line search failed to find acceptable step size");
+        }
 
         let line_search_result = crate::core::line_search::LineSearchResult {
             step_size,
@@ -355,6 +467,13 @@ impl Optimizer for LBFGSOptimizer {
             let step_size_tensor = Tensor::new(line_search_result.step_size, param.device())?;
             let step = direction.broadcast_mul(&step_size_tensor)?;
             *param = param.add(&step)?;
+            // Check for NaN/Inf in updated parameters
+            let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
+            if param_vec.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    "Non-finite parameter detected after update".into()
+                ));
+            }
         }
 
         // Update L-BFGS state with new information
@@ -366,6 +485,11 @@ impl Optimizer for LBFGSOptimizer {
         let step_duration = start_time.elapsed();
         let mut metadata = OptimizationMetadata::default();
         metadata.timing_info.step_duration = step_duration;
+        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+        metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
+        metadata.optimizer_data.insert("step_size".to_string(), step_size);
+        metadata.optimizer_data.insert("gamma".to_string(), self.state.gamma());
+        metadata.optimizer_data.insert("history_size".to_string(), self.state.history_length() as f64);
 
         Ok(StepResult {
             step_size: line_search_result.step_size,
