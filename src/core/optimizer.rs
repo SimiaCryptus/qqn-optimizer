@@ -9,6 +9,7 @@ use std::fmt::Debug;
  use candle_core::{Result, Tensor};
  use serde::{Deserialize, Serialize};
 use std::any::Any;
+use std::error::Error;
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +28,21 @@ impl Default for OptimizationMetadata {
             timing_info: TimingInfo::default(),
             memory_info: MemoryInfo::default(),
         }
+    }
+}
+/// Trait object-safe version of Optimizer for dynamic dispatch
+pub trait OptimizerBox: Send + Sync + std::fmt::Debug {
+    /// Perform a single optimization step with slice-based interface
+    fn step_slice(&mut self, params: &mut [f64], gradients: &[f64]) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>>;
+    /// Reset the optimizer state
+    fn reset(&mut self);
+    /// Get the name of this optimizer
+    fn name(&self) -> &str;
+    /// Create a boxed clone of this optimizer
+    fn clone_box(&self) -> Box<dyn OptimizerBox>;
+    /// Check if the optimizer has converged
+    fn has_converged(&self) -> bool {
+        false
     }
 }
  /// Core trait that all optimization algorithms must implement.
@@ -60,13 +76,59 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
 
     /// Get the name of this optimizer (for reporting and analysis)
     fn name(&self) -> &str;
-    /// Create a boxed clone of this optimizer
-    fn clone_box(&self) -> Box<dyn Optimizer<Config = Self::Config, State = Self::State>>;
 
 
     /// Check if the optimizer has converged based on its internal criteria
     fn has_converged(&self) -> bool {
         false // Default implementation - most optimizers don't track convergence internally
+    }
+    /// Create a boxed clone of this optimizer
+    fn clone_box(&self) -> Box<dyn OptimizerBox>
+    where
+        Self: Clone + 'static,
+    {
+        Box::new(self.clone())
+    }
+}
+/// Blanket implementation to make any Optimizer work as OptimizerBox
+impl<T> OptimizerBox for T 
+where 
+    T: Optimizer + Clone + 'static,
+{
+    fn step_slice(&mut self, params: &mut [f64], gradients: &[f64]) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>> {
+        // Convert slices to tensors
+        let device = candle_core::Device::Cpu;
+        let param_tensor = candle_core::Tensor::from_slice(params, params.len(), &device)
+            .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+        let grad_tensor = candle_core::Tensor::from_slice(gradients, gradients.len(), &device)
+            .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+        
+        let mut param_tensors = vec![param_tensor];
+        let grad_tensors = vec![grad_tensor];
+        
+        // Call the tensor-based step method
+        let result = self.step(&mut param_tensors, &grad_tensors)
+            .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+        
+        // Copy results back to slice
+        if let Some(tensor) = param_tensors.first() {
+            let data = tensor.to_vec1::<f64>().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            params.copy_from_slice(&data);
+        }
+        
+        Ok(result)
+    }
+    fn reset(&mut self) {
+        Optimizer::reset(self);
+    }
+    fn name(&self) -> &str {
+        Optimizer::name(self)
+    }
+    fn clone_box(&self) -> Box<dyn OptimizerBox> {
+        Box::new(self.clone())
+    }
+    fn has_converged(&self) -> bool {
+        Optimizer::has_converged(self)
     }
 }
 

@@ -1,105 +1,3 @@
-//! Logging and debugging utilities.
-
-use std::time::Instant;
-use tracing::{info, debug};
-
-/// Setup tracing for the application
-pub fn setup_tracing() -> anyhow::Result<()> {
-    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "qqn_optimizer=info".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .try_init()
-        .map_err(|e| anyhow::anyhow!("Failed to initialize logging: {}", e))?;
-
-    Ok(())
-}
-
-/// Log an optimization step
-pub fn log_optimization_step(iteration: usize, function_value: f64, gradient_norm: f64, step_size: f64) {
-    debug!(
-        "Step {}: f={:.6e}, |∇f|={:.6e}, α={:.6e}",
-        iteration, function_value, gradient_norm, step_size
-    );
-}
-
-/// Log convergence information
-pub fn log_convergence_info(converged: bool, criterion: &str, final_value: f64, iterations: usize) {
-    if converged {
-        info!(
-            "Converged after {} iterations ({}): f={:.6e}",
-            iterations, criterion, final_value
-        );
-    } else {
-        info!(
-            "Did not converge after {} iterations: f={:.6e}",
-            iterations, final_value
-        );
-    }
-}
-
-/// Performance timer utility
-pub struct PerformanceTimer {
-    start: Instant,
-    name: String,
-}
-
-impl PerformanceTimer {
-    pub fn new(name: &str) -> Self {
-        Self {
-            start: Instant::now(),
-            name: name.to_string(),
-        }
-    }
-    
-    pub fn elapsed(&self) -> std::time::Duration {
-        self.start.elapsed()
-    }
-    
-    pub fn log_elapsed(&self) {
-        info!("{} took {:?}", self.name, self.elapsed());
-    }
-}
-
-impl Drop for PerformanceTimer {
-    fn drop(&mut self) {
-        self.log_elapsed();
-    }
-}
-
-/// Optimization logger for detailed tracking
-pub struct OptimizationLogger {
-    start_time: Instant,
-    last_log_time: Instant,
-    log_interval: std::time::Duration,
-}
-
-impl OptimizationLogger {
-    pub fn new(log_interval: std::time::Duration) -> Self {
-        let now = Instant::now();
-        Self {
-            start_time: now,
-            last_log_time: now,
-            log_interval,
-        }
-    }
-    
-    pub fn maybe_log(&mut self, iteration: usize, function_value: f64, gradient_norm: f64) {
-        let now = Instant::now();
-        if now.duration_since(self.last_log_time) >= self.log_interval {
-            let total_time = now.duration_since(self.start_time);
-            info!(
-                "Iteration {}: f={:.6e}, |∇f|={:.6e}, time={:?}",
-                iteration, function_value, gradient_norm, total_time
-            );
-            self.last_log_time = now;
-        }
-    }
-}
 //! Logging and performance monitoring utilities
 use std::time::{Duration, Instant};
 use tracing::{info, debug, warn};
@@ -130,7 +28,7 @@ pub fn log_optimization_step(
     );
 }
 /// Log convergence information
-pub fn l    og_convergence_info(converged: bool, reason: &str, iterations: usize) {
+pub fn log_convergence_info(converged: bool, reason: &str, iterations: usize) {
     if converged {
         info!("Converged after {} iterations: {}", iterations, reason);
     } else {

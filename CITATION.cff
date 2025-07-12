@@ -10,7 +10,7 @@ abstract: >
   A comprehensive Rust-based implementation of the Quadratic Quasi-Newton (QQN) 
   optimization algorithm for academic research and publication. The framework 
   provides complete optimization toolkit with benchmarking capabilities, designed 
-  to validate QQN's theoretical contributions and enable reproducible research results.
+  to validate QQN theoretical contributions and enable reproducible research results.
 
 authors:
   - family-names: "Doe"

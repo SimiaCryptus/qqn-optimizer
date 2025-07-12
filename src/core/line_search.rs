@@ -1,4 +1,4 @@
-use crate::utils::math::{compute_magnitude, dot_product};
+use crate::utils::math::{compute_magnitude, dot_product_f64};
 use anyhow::{Result, anyhow};
 use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
@@ -54,16 +54,18 @@ pub trait LineSearch: Send + Sync + Debug {
     /// Perform line search along given direction
     fn search(
         &mut self,
-        current_point: &[f64],
-        direction: &[f64],
-        current_value: f64,
-        current_gradient: &[f64],
-        objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
-        gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
+       current_point: &[f64],
+       direction: &[f64],
+       current_value: f64,
+       current_gradient: &[f64],
+       objective_fn: &dyn Fn(&[f64]) -> anyhow::Result<f64>,
+       gradient_fn: &dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>>,
     ) -> Result<LineSearchResult>;
 
     /// Reset internal state
     fn reset(&mut self);
+    /// Clone the line search algorithm
+    fn clone_box(&self) -> Box<dyn LineSearch>;
 }
 
 /// Configuration for Strong Wolfe line search
@@ -162,7 +164,7 @@ impl StrongWolfeLineSearch {
             let grad_alpha_j = gradient_fn(&trial_point)?;
             g_evals += 1;
 
-            let grad_alpha_j_dot_p = dot_product(&grad_alpha_j, direction)?;
+            let grad_alpha_j_dot_p = dot_product_f64(&grad_alpha_j, direction)?;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_j_dot_p, directional_derivative) {
@@ -192,7 +194,7 @@ impl LineSearch for StrongWolfeLineSearch {
         gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<LineSearchResult> {
         // Check that direction is a descent direction
-        let directional_derivative = dot_product(current_gradient, direction)?;
+        let directional_derivative = dot_product_f64(current_gradient, direction)?;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
@@ -242,7 +244,7 @@ impl LineSearch for StrongWolfeLineSearch {
             let grad_alpha = gradient_fn(&trial_point)?;
             g_evals += 1;
 
-            let grad_alpha_dot_p = dot_product(&grad_alpha, direction)?;
+            let grad_alpha_dot_p = dot_product_f64(&grad_alpha, direction)?;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_dot_p, directional_derivative) {
@@ -300,6 +302,9 @@ impl LineSearch for StrongWolfeLineSearch {
     fn reset(&mut self) {
         // Strong Wolfe line search is stateless, nothing to reset
     }
+    fn clone_box(&self) -> Box<dyn LineSearch> {
+        Box::new(self.clone())
+    }
 }
 
 /// Configuration for backtracking line search
@@ -347,7 +352,7 @@ impl LineSearch for BacktrackingLineSearch {
         _gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<LineSearchResult> {
         // Check that direction is a descent direction
-        let directional_derivative = dot_product(current_gradient, direction)?;
+       let directional_derivative = dot_product_f64(current_gradient, direction)?;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
@@ -398,6 +403,9 @@ impl LineSearch for BacktrackingLineSearch {
 
     fn reset(&mut self) {
         // Backtracking line search is stateless, nothing to reset
+    }
+    fn clone_box(&self) -> Box<dyn LineSearch> {
+        Box::new(self.clone())
     }
 }
 

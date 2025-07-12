@@ -6,16 +6,11 @@
 //! - Serialization helpers
 //! - Common data structures
 
-pub mod math;
 pub mod logging;
 pub mod serialization;
 pub mod random;
+pub mod math;
 
-// Re-export commonly used utilities
-pub use math::{
-    compute_magnitude, magnitude_relative_difference, scale_tensors,
-    combine_tensors, tensor_dot_product, normalize_vector, dot_product, compute_parameter_change,
-};
 pub use logging::{
     setup_tracing, log_optimization_step, log_convergence_info,
     PerformanceTimer, OptimizationLogger,
@@ -25,6 +20,11 @@ pub use serialization::{
     ResultsSerializer, ConfigSerializer,
 };
 pub use random::{RandomGenerator, random_starting_point, random_starting_points};
+pub use math::{
+    compute_magnitude, dot_product, vector_add, vector_subtract, vector_scale,
+    norm_l2, norm_l1, norm_inf, is_finite, clamp_vector, lerp, angle_between,
+    dot_product_f64,
+};
 
 use crate::core::OptResult;
 

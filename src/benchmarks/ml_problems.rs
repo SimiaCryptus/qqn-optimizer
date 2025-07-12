@@ -335,6 +335,19 @@ impl SupportVectorMachine {
 }
 
 impl OptimizationProblem for SupportVectorMachine {
+    fn name(&self) -> &str {
+        "Support Vector Machine"
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        None // SVM doesn't have a known global optimum
+    }
+    fn convergence_tolerance(&self) -> f64 {
+        1e-6
+    }
+    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
+        None // No bounds by default
+    }
+    
     fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {
         let mut loss = 0.0;
         

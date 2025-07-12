@@ -1,7 +1,7 @@
 use crate::core::lbfgs::LBFGSState;
 use crate::core::optimizer::OptimizationMetadata;
 use crate::core::{ConvergenceInfo, LineSearch, Optimizer, StepResult, StrongWolfeLineSearch};
-use crate::utils::math::{compute_magnitude, magnitude_relative_difference};
+use crate::utils::math::{compute_magnitude, magnitude_relative_difference, scale_tensors, combine_tensors};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -157,13 +157,6 @@ impl Optimizer for QQNOptimizer {
     fn new(config: Self::Config) -> Self {
         Self::new(config)
     }
-    fn clone_box(&self) -> Box<dyn Optimizer<Config = Self::Config, State = Self::State>> {
-        Box::new(QQNOptimizer {
-            config: self.config.clone(),
-            state: self.state.clone(),
-            line_search: Box::new(StrongWolfeLineSearch::new(self.config.line_search.clone())),
-        })
-    }
 
 
     fn step(&mut self,
@@ -197,21 +190,43 @@ impl Optimizer for QQNOptimizer {
         };
 
         // 4. Perform line search
-        let step_result = self.line_search.search(
-            params,
-            &search_direction,
-            gradients,
-        )?;
+        let line_search = StrongWolfeLineSearch::new(self.config.line_search.clone());
+        
+        // Convert tensors to f64 vectors for line search
+        let current_point: Vec<f64> = params.iter()
+            .map(|p| p.to_scalar::<f64>().unwrap_or(0.0))
+            .collect();
+        let direction_vec: Vec<f64> = search_direction.iter()
+            .map(|d| d.to_scalar::<f64>().unwrap_or(0.0))
+            .collect();
+        let gradient_vec: Vec<f64> = gradients.iter()
+            .map(|g| g.to_scalar::<f64>().unwrap_or(0.0))
+            .collect();
+        
+        let current_value = self.evaluate_function(params)?;
+        
+        let objective_fn = |_x: &[f64]| -> anyhow::Result<f64> { Ok(0.0) };
+        let gradient_fn = |_x: &[f64]| -> anyhow::Result<Vec<f64>> { Ok(vec![0.0; gradient_vec.len()]) };
+        
+        let mut line_search_mut = line_search;
+        let line_search_result = line_search_mut.search(
+            &current_point,
+            &direction_vec,
+            current_value,
+            &gradient_vec,
+            &objective_fn,
+            &gradient_fn,
+        ).map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?;
 
       // Update parameters
         for (param, direction) in params.iter_mut().zip(search_direction.iter()) {
-            let step_size_tensor = Tensor::new(step_result.step_size, param.device())?;
+            let step_size_tensor = Tensor::new(line_search_result.step_size, param.device())?;
             let update = direction.broadcast_mul(&step_size_tensor)?;
             *param = param.add(&update)?;
         }
 
       // Update L-BFGS state
-        self.state.lbfgs_state.update(gradients, &search_direction, step_result.step_size)?;
+        self.state.lbfgs_state.update(gradients, &search_direction, line_search_result.step_size)?;
         self.state.iteration += 1;
 
         // 7. Create convergence info
@@ -219,14 +234,14 @@ impl Optimizer for QQNOptimizer {
             converged: grad_magnitude < 1e-6, // Simple convergence check
             gradient_norm: grad_magnitude,
             function_change: None, // Would need previous function value
-            parameter_change: Some(step_result.step_size * compute_magnitude(&search_direction)?),
+            parameter_change: Some(line_search_result.step_size * compute_magnitude(&search_direction)?),
             convergence_criterion: None,
         };
 
         Ok(StepResult {
-            step_size: step_result.step_size,
-            function_evaluations: step_result.function_evaluations,
-            gradient_evaluations: step_result.gradient_evaluations,
+            step_size: line_search_result.step_size,
+            function_evaluations: line_search_result.function_evaluations,
+            gradient_evaluations: line_search_result.gradient_evaluations,
             convergence_info,
             metadata: OptimizationMetadata::default(),
         })

@@ -1,5 +1,5 @@
 use crate::utils::math::*;
-use crate::core::optimizer::OptResult;
+use crate::core::OptResult;
  use std::f64::consts::PI;
 use serde::{Serialize, Deserialize};
 use anyhow::Result;

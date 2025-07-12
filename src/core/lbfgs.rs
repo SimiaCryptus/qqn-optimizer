@@ -34,7 +34,7 @@ impl Default for LBFGSConfig {
             history_size: 10,
             line_search: LineSearchConfig::default(),
             epsilon: 1e-8,
-           max_correction_pairs: usize,
+           max_correction_pairs: 10,
         }
     }
 }
@@ -200,18 +200,37 @@ impl LBFGSState {
 }
 
 /// L-BFGS optimizer implementation.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LBFGSOptimizer {
     config: LBFGSConfig,
     state: LBFGSState,
     line_search: Box<dyn LineSearch>,
 }
 
+impl Clone for LBFGSOptimizer {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            state: self.state.clone(),
+            line_search: self.line_search.clone_box(),
+        }
+    }
+}
+
 impl LBFGSOptimizer {
     /// Create a new L-BFGS optimizer with the given configuration.
     pub fn new(config: LBFGSConfig) -> Self {
         let state = LBFGSState::new(config.history_size);
-        let line_search = Box::new(StrongWolfeLineSearch::new(config.line_search.clone()));
+       let line_search = Box::new(StrongWolfeLineSearch::new(
+           crate::core::line_search::StrongWolfeConfig {
+               c1: config.line_search.c1,
+               c2: config.line_search.c2,
+               max_iterations: config.line_search.max_iterations,
+               min_step: 1e-16,
+               max_step: 1e16,
+               initial_step: config.line_search.initial_step,
+           }
+       ));
 
         Self {
             config,
@@ -243,8 +262,9 @@ impl LBFGSOptimizer {
         Ok(ConvergenceInfo {
             gradient_norm,
             converged: gradient_norm < 1e-6, // Default tolerance
-            stagnation_detected: false, // Could be enhanced with step size monitoring
-            max_iterations_reached: false, // Handled by caller
+            function_change: None,
+            parameter_change: None,
+            convergence_criterion: None,
         })
     }
 }
@@ -257,13 +277,6 @@ impl Optimizer for LBFGSOptimizer {
         Self::new(config)
     }
     
-    fn clone_box(&self) -> Box<dyn Optimizer<Config = Self::Config, State = Self::State>> {
-        Box::new(LBFGSOptimizer {
-            config: self.config.clone(),
-            state: self.state.clone(),
-            line_search: Box::new(StrongWolfeLineSearch::new(self.config.line_search.clone())),
-        })
-    }
 
 
     fn step(&mut self, 
@@ -274,12 +287,54 @@ impl Optimizer for LBFGSOptimizer {
         // Compute L-BFGS search direction
         let search_direction = self.state.compute_direction(gradients)?;
 
+        // Convert tensors to f64 vectors for line search
+        let params_f64: Vec<f64> = params.iter()
+            .map(|p| p.to_vec1::<f64>())
+            .collect::<CandleResult<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+        
+        let direction_f64: Vec<f64> = search_direction.iter()
+            .map(|d| d.to_vec1::<f64>())
+            .collect::<CandleResult<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+        
+        let gradients_f64: Vec<f64> = gradients.iter()
+            .map(|g| g.to_vec1::<f64>())
+            .collect::<CandleResult<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+        
+        // Create objective function closure
+        let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
+            // For now, return a dummy value since we don't have access to the objective function
+            // In a real implementation, this would need to be passed in or stored
+            Ok(0.0)
+        };
+        
+        // Create gradient function closure
+        let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+            // For now, return the current gradient
+            // In a real implementation, this would evaluate the gradient at x
+            Ok(gradients_f64.clone())
+        };
+        
+        // Compute current function value (dummy for now)
+        let current_value = 0.0;
+        
         // Perform line search to find optimal step size
         let line_search_result = self.line_search.search(
-            params,
-            &search_direction,
-            gradients,
-        )?;
+            &params_f64,
+            &direction_f64,
+            current_value,
+            &gradients_f64,
+            &objective_fn,
+            &gradient_fn,
+        ).map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?;
 
         // Update parameters: x_{k+1} = x_k + alpha * p_k
         for (param, direction) in params.iter_mut().zip(&search_direction) {

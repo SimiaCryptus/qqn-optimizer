@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+// Note: bincode serialization can be added later if needed
+// For now, we'll focus on serde-based serialization
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExperimentConfig {
     pub name: String,
@@ -18,7 +21,7 @@ pub struct ExperimentConfig {
 pub struct ProblemConfig {
     pub name: String,
     pub problem_type: ProblemType,
-    pub parameters: Option<HashMap<String, serde_json::Value>>,
+    pub parameters: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -196,6 +199,38 @@ impl ExperimentConfig {
         config.validate()?;
         Ok(config)
     }
+    pub fn default_research() -> Self {
+        Self {
+            name: "QQN Research Experiment".to_string(),
+            description: "Default research configuration for QQN optimizer evaluation".to_string(),
+            problems: vec![
+                create_rosenbrock_problem(2),
+                create_rosenbrock_problem(10),
+                create_rastrigin_problem(2),
+                create_rastrigin_problem(10),
+                ProblemConfig {
+                    name: "sphere_2d".to_string(),
+                    problem_type: ProblemType::Sphere { dimension: 2 },
+                    parameters: None,
+                },
+                ProblemConfig {
+                    name: "beale".to_string(),
+                    problem_type: ProblemType::Beale,
+                    parameters: None,
+                },
+            ],
+            optimizers: vec![
+                create_qqn_config(0.01, 10),
+                create_qqn_config(0.05, 10),
+                create_lbfgs_config(10),
+                create_adam_config(0.001),
+            ],
+            benchmark_settings: BenchmarkConfig::default(),
+            analysis_settings: AnalysisConfig::default(),
+            output_settings: OutputConfig::default(),
+        }
+    }
+
 
     pub fn to_file(&self, path: &PathBuf) -> Result<(), ConfigError> {
         let content = serde_yaml::to_string(self)

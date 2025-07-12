@@ -176,7 +176,7 @@ fn main() -> Result<()> {
 
 fn run_optimizer(
     problem: &QuadraticProblem,
-    mut optimizer: Box<dyn Optimizer>,
+    mut optimizer: Box<dyn OptimizerBox>,
     name: &str
 ) -> Result<(usize, f64)> {
     let mut x = problem.initial_point();
@@ -196,7 +196,8 @@ fn run_optimizer(
         }
 
         // Perform optimization step
-        let _step_result = optimizer.step(&mut x, &gradient)?;
+        let _step_result = optimizer.step_slice(&mut x, &gradient)
+            .map_err(|e| anyhow::anyhow!("Optimizer step failed: {}", e))?;
 
         iteration += 1;
 

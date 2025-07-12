@@ -30,16 +30,16 @@ use crate::benchmarks::evaluation::BenchmarkResults;
 /// Generate comprehensive analysis report
 pub fn generate_full_analysis(results: &BenchmarkResults) -> OptResult<AnalysisReport> {
     let stats = StatisticalAnalysis::new(results);
-    let convergence = stats.convergence_comparison()?;
-    let performance = stats.performance_profiles()?;
-    let robustness = stats.robustness_analysis()?;
+    let convergence = stats.convergence_comparison().clone();
+    let performance = stats.performance_profiles().clone();
+    let robustness = stats.robustness_analysis().clone();
 
     Ok(AnalysisReport {
         convergence_comparison: convergence,
         performance_profiles: performance,
         robustness_analysis: robustness,
-        statistical_tests: stats.significance_tests()?,
-        effect_sizes: stats.effect_sizes()?,
+        statistical_tests: stats.significance_tests().clone(),
+        effect_sizes: stats.effect_sizes(),
     })
 }
 

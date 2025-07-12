@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use plotters::backend::{BitMapBackend, SVGBackend};
 use plotters::prelude::*;
 use std::collections::HashMap;
+use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct PlotConfig {
     pub width: u32,
@@ -76,7 +77,7 @@ impl PlottingEngine {
     /// Create convergence plots showing objective value vs iterations
     pub fn convergence_plot(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height))
+       let root = BitMapBackend::new(&output_path, (self.width, self.height))
             .into_drawing_area();
         root.fill(&WHITE)?;
 
@@ -245,7 +246,7 @@ impl PlottingEngine {
                 .x_label_area_size(40)
                 .y_label_area_size(60)
                 .build_cartesian_2d(
-                    0..optimizer_data.len(),
+                    0.0..(optimizer_data.len() as f64),
                     min_value * 0.9..max_value * 1.1
                 )?;
 
@@ -253,7 +254,7 @@ impl PlottingEngine {
                 .x_desc("Optimizer")
                 .y_desc("Final Objective Value")
                 .x_label_formatter(&|x| {
-                    optimizer_data.get(*x)
+                    optimizer_data.get(*x as usize)
                         .map(|(name, _)| name.clone())
                         .unwrap_or_default()
                 })
@@ -261,7 +262,7 @@ impl PlottingEngine {
 
             chart.draw_series(
                 optimizer_data.iter().enumerate().map(|(x, (_, value))| {
-                    Rectangle::new([(x, min_value * 0.9), (x, *value)], BLUE.filled())
+                    Rectangle::new([(x as f64, min_value * 0.9), (x as f64 + 0.8, *value)], BLUE.filled())
                 })
             )?;
         }
@@ -319,7 +320,7 @@ impl PlottingEngine {
             .x_label_area_size(60)
             .y_label_area_size(70)
             .build_cartesian_2d(
-                0..box_data.len(),
+                0.0..(box_data.len() as f64),
                 global_min * 0.9..global_max * 1.1
             )?;
 
@@ -327,7 +328,7 @@ impl PlottingEngine {
             .x_desc("Optimizer")
             .y_desc("Final Objective Value")
             .x_label_formatter(&|x| {
-                box_data.get(*x)
+                box_data.get(*x as usize)
                     .map(|(name, _)| name.clone())
                     .unwrap_or_default()
             })
@@ -335,18 +336,18 @@ impl PlottingEngine {
 
         // Draw box plots
         for (i, (_, data)) in box_data.iter().enumerate() {
-            let x = i;
+            let x = i as f64;
             let box_width = 0.3;
             
             // Draw box (Q1 to Q3)
             chart.draw_series(std::iter::once(Rectangle::new(
-                [(x as f64 - box_width, data.q1), (x as f64 + box_width, data.q3)],
+                [(x as f64 - box_width/2.0, data.q1), (x as f64 + box_width/2.0, data.q3)],
                 BLUE.mix(0.3).filled()
             )))?;
             
             // Draw median line
             chart.draw_series(std::iter::once(PathElement::new(
-                vec![(x as f64 - box_width, data.median), (x as f64 + box_width, data.median)],
+                vec![(x as f64 - box_width/2.0, data.median), (x as f64 + box_width/2.0, data.median)],
                 &RED
             )))?;
             
@@ -374,7 +375,7 @@ impl PlottingEngine {
             .into_drawing_area();
         root.fill(&WHITE)?;
 
-        let max_ratio = profiles.ratios.iter().fold(0.0, |max, &r| max.max(r));
+        let max_ratio = profiles.ratios.iter().fold(0.0_f64, |max, &r| max.max(r));
 
         let mut chart = ChartBuilder::on(&root)
             .caption("Performance Profiles", ("sans-serif", 40))
@@ -421,8 +422,10 @@ impl PlottingEngine {
         root.fill(&WHITE)?;
 
         // Split into two subplots: histogram and time series
-        let (upper, lower) = root.split_evenly(false);
-
+        let areas = root.split_evenly((1, 2));
+        let upper = &areas[0];
+        let lower = &areas[1];
+        
         // Upper plot: Histogram of magnitude ratios
         {
             let all_ratios: Vec<f64> = qqn_traces.iter()
@@ -467,10 +470,10 @@ impl PlottingEngine {
                 )?;
 
                 // Draw threshold line
-                let threshold = 0.01; // Default QQN threshold
-                chart.draw_series(std::iter::once(PathElement::new(
-                    vec![(threshold, 0.0), (threshold, *max_count as f64)],
-                    &RED.stroke_width(2)
+                let threshold = 0.01_f64; // Default QQN threshold
+               chart.draw_series(std::iter::once(PathElement::new(
+                    vec![(threshold, 0), (threshold, *max_count)],
+                    &RED
                 )))?
                 .label("Threshold (τ)")
                 .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
@@ -503,7 +506,7 @@ impl PlottingEngine {
                     .map(|(i, &ratio)| (i, if ratio > threshold { 1.0 } else { 0.0 }))
                     .collect();
 
-                chart.draw_series(LineSeries::new(switching_signal, &GREEN.stroke_width(2)))?
+                chart.draw_series(LineSeries::new(switching_signal, GREEN.stroke_width(2)))?
                     .label("QQN Mode")
                     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &GREEN));
 
@@ -524,9 +527,17 @@ impl PlottingEngine {
         root.fill(&WHITE)?;
 
         // Split into 4 quadrants
-        let (upper, lower) = root.split_evenly((false, true));
-        let (upper_left, upper_right) = upper.split_evenly((true, false));
-        let (lower_left, lower_right) = lower.split_evenly((true, false));
+        let areas = root.split_evenly((1, 2));
+        let upper = &areas[0];
+        let lower = &areas[1];
+        // let (upper_left, upper_right) = upper.split_evenly((true, false));
+        let upper_area = upper.split_evenly((1, 2));
+        let upper_left = &upper_area[0];
+        let upper_right = &upper_area[1];
+        // let (lower_left, lower_right) = lower.split_evenly((true, false));
+        let lower_area = lower.split_evenly((1, 2));
+        let lower_left = &lower_area[0];
+        let lower_right = &lower_area[1];
 
         // Upper left: Convergence comparison
         if let Some(trace) = results.results.first() {

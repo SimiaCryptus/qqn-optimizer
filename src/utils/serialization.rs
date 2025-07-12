@@ -1,11 +1,9 @@
 //! Serialization utilities for saving and loading results.
 
-use crate::core::OptResult;
 use crate::benchmarks::BenchmarkResults;
 use crate::config::ExperimentConfig;
-use serde::{Serialize, Deserialize};
+use crate::core::OptResult;
 use std::path::Path;
-use bincode::config::standard;
 
 /// Save benchmark results to file
 pub fn save_results(results: &BenchmarkResults, path: &Path) -> OptResult<()> {
@@ -46,13 +44,17 @@ impl ResultsSerializer {
     pub fn with_format(format: SerializationFormat) -> Self {
         Self { format }
     }
-    
+
     pub fn save(&self, results: &BenchmarkResults, path: &Path) -> OptResult<()> {
         match self.format {
             SerializationFormat::Json => {
                 let json = serde_json::to_string_pretty(results)?;
                 std::fs::write(path, json)?;
             }
+           SerializationFormat::Toml => {
+               let toml = toml::to_string_pretty(results)?;
+               std::fs::write(path, toml)?;
+           }
             SerializationFormat::Bincode => {
                 let encoded = bincode::serialize(results)?;
                 std::fs::write(path, encoded)?;
@@ -68,6 +70,11 @@ impl ResultsSerializer {
                 let results = serde_json::from_str(&content)?;
                 Ok(results)
             }
+           SerializationFormat::Toml => {
+               let content = std::fs::read_to_string(path)?;
+               let results = toml::from_str(&content)?;
+               Ok(results)
+           }
             SerializationFormat::Bincode => {
                 let content = std::fs::read(path)?;
                 let results = bincode::deserialize(&content)?;

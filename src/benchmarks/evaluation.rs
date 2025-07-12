@@ -2,11 +2,35 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
-use crate::core::optimizer::{Optimizer, StepResult, ConvergenceInfo};
+use crate::core::optimizer::{Optimizer, OptimizerBox, StepResult, ConvergenceInfo};
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::utils::math::compute_magnitude;
 use candle_core::Tensor;
 use std::any::Any;
+
+
+/// Wrapper for Duration that implements bincode traits
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DurationWrapper(u64); // Store as nanoseconds
+
+impl From<Duration> for DurationWrapper {
+    fn from(duration: Duration) -> Self {
+        // Cap at u64::MAX to prevent overflow
+        let nanos = duration.as_nanos();
+        let nanos_u64 = if nanos > u64::MAX as u128 {
+            u64::MAX
+        } else {
+            nanos as u64
+        };
+        DurationWrapper(nanos_u64)
+    }
+}
+
+impl From<DurationWrapper> for Duration {
+    fn from(wrapper: DurationWrapper) -> Self {
+        Duration::from_nanos(wrapper.0)
+    }
+}
 
 /// Configuration for benchmark execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,7 +38,7 @@ pub struct BenchmarkConfig {
     pub max_iterations: usize,
     pub tolerance: f64,
     pub max_function_evaluations: usize,
-    pub time_limit: Duration,
+    pub time_limit: DurationWrapper,
     pub random_seed: u64,
     pub num_runs: usize,
 }
@@ -25,7 +49,7 @@ impl Default for BenchmarkConfig {
             max_iterations: 1000,
             tolerance: 1e-6,
             max_function_evaluations: 10000,
-            time_limit: Duration::from_secs(600), // 10 minutes
+            time_limit: Duration::from_secs(600).into(), // 10 minutes
             random_seed: 42,
             num_runs: 10,
         }
@@ -47,8 +71,11 @@ pub struct IterationData {
     pub gradient_norm: f64,
     pub step_size: f64,
     pub parameters: Vec<f64>,
-    pub timestamp: Duration,
+    pub timestamp: DurationWrapper,
 }
+
+    
+    
 
 impl OptimizationTrace {
     pub fn new() -> Self {
@@ -76,7 +103,7 @@ impl OptimizationTrace {
             gradient_norm,
             step_size,
             parameters: parameters.to_vec(),
-            timestamp,
+            timestamp: timestamp.into(),
         });
     }
 
@@ -188,7 +215,7 @@ impl BenchmarkRunner {
     pub async fn run_benchmarks(
         &self,
         problems: Vec<Box<dyn OptimizationProblem>>,
-        optimizers: Vec<Box<dyn Optimizer>>,
+        optimizers: Vec<Box<dyn OptimizerBox>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
         
@@ -213,7 +240,7 @@ impl BenchmarkRunner {
     pub(crate) async fn run_single_benchmark(
         &self,
         problem: &dyn OptimizationProblem,
-        optimizer: &dyn Optimizer,
+        optimizer: &dyn OptimizerBox,
         run_id: usize,
     ) -> Result<SingleResult, BenchmarkError> {
         // Set random seed for reproducibility
@@ -233,8 +260,9 @@ impl BenchmarkRunner {
         let mut trace = OptimizationTrace::new();
 
         // Main optimization loop with timeout
+        let time_limit: Duration = self.config.time_limit.clone().into();
         let optimization_result = timeout(
-            self.config.time_limit,
+            time_limit,
             self.optimization_loop(
                 problem,
                 opt.as_mut(),
@@ -255,7 +283,6 @@ impl BenchmarkRunner {
         };
 
         // Final evaluation
-        let final_value = problem.evaluate(&x).map_err(BenchmarkError::ProblemError)?;
         let final_value = problem.evaluate(&x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient = problem.gradient(&x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
@@ -279,7 +306,7 @@ impl BenchmarkRunner {
     async fn optimization_loop(
         &self,
         problem: &dyn OptimizationProblem,
-        optimizer: &mut dyn Optimizer,
+        optimizer: &mut dyn OptimizerBox,
         x: &mut [f64],
         iteration: &mut usize,
         function_evaluations: &mut usize,
@@ -288,11 +315,10 @@ impl BenchmarkRunner {
         start_time: Instant,
     ) -> Result<ConvergenceReason, BenchmarkError> {
         while *iteration < self.config.max_iterations {
-            // Evaluate function and gradient
-            let f_val = problem.evaluate(x).map_err(BenchmarkError::ProblemError)?;
+// Evaluate function and gradient
+            let f_val = problem.evaluate(x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             *function_evaluations += 1;
-
-            let gradient = problem.gradient(x).map_err(BenchmarkError::ProblemError)?;
+            let gradient = problem.gradient(x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             *gradient_evaluations += 1;
 
             // Record iteration data
@@ -317,8 +343,8 @@ impl BenchmarkRunner {
             }
 
             // Perform optimization step
-            let step_result = optimizer.step(x, &gradient)
-                .map_err(BenchmarkError::OptimizerError)?;
+        let step_result = optimizer.step_slice(x, &gradient)
+                .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
 
             // Update counters
             *function_evaluations += step_result.function_evaluations;
@@ -472,7 +498,7 @@ mod tests {
             Box::new(SphereFunction::new(2)),
         ];
         
-        let optimizers: Vec<Box<dyn Optimizer>> = vec![
+        let optimizers: Vec<Box<dyn OptimizerBox>> = vec![
             Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
         ];
 

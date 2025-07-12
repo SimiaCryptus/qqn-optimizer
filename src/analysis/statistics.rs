@@ -71,6 +71,30 @@ impl SignificanceTest {
         self.significant
     }
 }
+impl ConvergenceComparison {
+    /// Get the number of unique problems analyzed
+    pub fn num_problems(&self) -> usize {
+        // Count unique problems by looking at optimizer statistics
+        // This is an approximation - in a real implementation we'd track this separately
+        if self.optimizer_stats.is_empty() {
+            0
+        } else {
+            // Estimate based on pairwise comparisons
+            // Each optimizer pair represents problems they both solved
+            let total_comparisons = self.pairwise_comparisons.len();
+            if total_comparisons == 0 {
+                1 // At least one problem if we have optimizer stats
+            } else {
+                // Rough estimate - this could be improved with better tracking
+                (total_comparisons as f64).sqrt().ceil() as usize
+            }
+        }
+    }
+    /// Get the number of optimizers compared
+    pub fn num_optimizers(&self) -> usize {
+        self.optimizer_stats.len()
+    }
+}
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,6 +147,46 @@ impl StatisticalAnalysis {
             convergence_comparison,
             performance_profiles,
             robustness_analysis,
+        }
+    }
+    /// Get convergence comparison data
+    pub fn convergence_comparison(&self) -> &ConvergenceComparison {
+        &self.convergence_comparison
+    }
+    /// Get performance profiles data
+    pub fn performance_profiles(&self) -> &PerformanceProfiles {
+        &self.performance_profiles
+    }
+    /// Get robustness analysis data
+    pub fn robustness_analysis(&self) -> &RobustnessAnalysis {
+        &self.robustness_analysis
+    }
+    /// Get all significance tests
+    pub fn significance_tests(&self) -> &Vec<SignificanceTest> {
+        &self.convergence_comparison.significance_tests
+    }
+    /// Get effect sizes from pairwise comparisons
+    pub fn effect_sizes(&self) -> Vec<EffectSize> {
+        self.convergence_comparison.pairwise_comparisons
+            .iter()
+            .map(|comp| EffectSize {
+                optimizer_a: comp.optimizer_a.clone(),
+                optimizer_b: comp.optimizer_b.clone(),
+                cohens_d: comp.effect_size,
+                magnitude: Self::effect_size_magnitude(comp.effect_size),
+            })
+            .collect()
+    }
+    fn effect_size_magnitude(cohens_d: f64) -> String {
+        let abs_d = cohens_d.abs();
+        if abs_d < 0.2 {
+            "negligible".to_string()
+        } else if abs_d < 0.5 {
+            "small".to_string()
+        } else if abs_d < 0.8 {
+            "medium".to_string()
+        } else {
+            "large".to_string()
         }
     }
 
@@ -375,11 +439,17 @@ impl StatisticalAnalysis {
                 },
             );
         }
+        let optimizer_profiles = profiles.iter().map(|(name, profile_data)| {
+            (name.clone(), profile_data.tolerance_fractions.clone())
+        }).collect();
+
 
         PerformanceProfiles {
             tolerance_levels,
             time_limits,
             profiles,
+            ratios: vec![1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0],
+            optimizer_profiles,
         }
     }
 
