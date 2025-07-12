@@ -145,7 +145,7 @@ impl QQNOptimizer {
             1.0 // Avoid division by very small numbers
         } else {
             // Limit the scale factor to prevent numerical issues
-            (lbfgs_magnitude / grad_magnitude).min(10.0).max(0.1)
+            (lbfgs_magnitude / grad_magnitude).min(100.0).max(0.01)
         };
 
         // Create negative gradient (descent direction) scaled to match L-BFGS magnitude
@@ -212,9 +212,9 @@ impl Optimizer for QQNOptimizer {
             // Create hybrid quadratic path
             self.state.quadratic_path_count += 1;
             let quadratic_path = self.create_quadratic_path(gradients, &lbfgs_direction)?;
-            // Use t=0.1 to stay closer to gradient descent when magnitudes differ significantly
-            // This provides more stable convergence
-            let direction = quadratic_path.evaluate(0.1)?;
+            // Use t=0.5 for a balanced blend between gradient and L-BFGS directions
+            // This provides better convergence properties
+            let direction = quadratic_path.evaluate(0.5)?;
             (direction, true)
         };
         // Ensure we have a descent direction by checking dot product with gradient
@@ -260,16 +260,23 @@ impl Optimizer for QQNOptimizer {
         // In a real implementation, the objective and gradient functions would be provided
         // Use adaptive step size based on gradient magnitude and iteration count
         let grad_norm = compute_magnitude(gradients)?;
-        let base_step = if grad_norm > 1.0 {
-            0.01 / grad_norm  // Scale down for large gradients
-        } else if grad_norm < 0.01 {
-            1.0  // Use larger steps for small gradients
+        
+        // More conservative step size calculation
+        let base_step = if self.state.iteration == 0 {
+            // First iteration: use 1/grad_norm as initial step
+            1.0 / (1.0 + grad_norm)
+        } else if self.state.lbfgs_state.gamma() > 0.0 && !used_quadratic {
+            // Use the L-BFGS scaling factor when using pure L-BFGS
+            self.state.lbfgs_state.gamma().min(1.0).max(0.001)
+        } else if used_quadratic {
+            // More conservative step for quadratic path
+            0.5 / (1.0 + grad_norm.sqrt())
         } else {
-            0.1  // Default step size
+            0.1
         };
         
-        // Apply decay based on iteration count for stability
-        let step_size = base_step / (1.0 + 0.1 * self.state.iteration as f64).sqrt();
+        // Apply gentler decay based on iteration count
+        let step_size = base_step;
 
         let line_search_result = crate::core::line_search::LineSearchResult {
             step_size,
@@ -353,6 +360,8 @@ impl QuadraticPath {
     ///
     /// d(t) = t(1-t) * g_scaled + t² * d_lbfgs
     pub fn evaluate(&self, t: f64) -> CandleResult<Vec<Tensor>> {
+        // Clamp t to valid range
+        let t = t.max(0.0).min(1.0);
         let t_complement = 1.0 - t;
         let gradient_coeff = t * t_complement;
         let lbfgs_coeff = t * t;

@@ -130,22 +130,21 @@ impl LBFGSState {
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
         }
-        // Negate to get descent direction
-        let descent_direction = r.iter()
-            .map(|t| t.neg())
-            .collect::<CandleResult<Vec<_>>>()?;
 
-        // Make the direction a descent direction by negating if necessary
-        let grad_dot_direction = crate::utils::math::dot_product(gradient, &descent_direction)?;
-       if grad_dot_direction > 0.0 {
-           // If not a descent direction, return steepest descent
+        
+        // r is now the search direction (should already be a descent direction)
+        // Verify it's a descent direction
+        let grad_dot_r = dot_product(gradient, &r)?;
+        
+        if grad_dot_r >= 0.0 {
+            // Not a descent direction, use negative gradient
             Ok(gradient
                 .iter()
                 .map(|g| g.neg())
                 .collect::<CandleResult<Vec<_>>>()?)
         } else {
-            // Negate the direction to ensure it's a descent direction
-            Ok(r.iter().map(|t| t.neg()).collect::<CandleResult<Vec<_>>>()?)
+            // r is already a descent direction (negative curvature)
+            Ok(r)
         }
     }
 
@@ -335,16 +334,20 @@ impl Optimizer for LBFGSOptimizer {
         // In a real implementation, the objective and gradient functions would be provided
         // Use adaptive step size based on gradient magnitude
         let grad_norm = compute_magnitude(gradients)?;
-        let base_step = if grad_norm > 1.0 {
-            0.1 / grad_norm  // Scale down for large gradients
-        } else if grad_norm < 0.01 {
-            1.0  // Use larger steps for small gradients
+        
+        // More conservative step size calculation for L-BFGS
+        let base_step = if self.state.iteration() == 0 {
+            // First iteration: use 1/grad_norm as initial step
+            1.0 / (1.0 + grad_norm)
+        } else if self.state.gamma() > 0.0 {
+            // Use the L-BFGS scaling factor as a guide
+            self.state.gamma().min(1.0).max(0.001)
         } else {
-            0.5  // Default step size
+            0.1
         };
         
-        // Apply mild decay for stability
-        let step_size = base_step / (1.0 + 0.01 * self.state.iteration() as f64).sqrt();
+        // Apply gentler decay for stability
+        let step_size = base_step;
 
         let line_search_result = crate::core::line_search::LineSearchResult {
             step_size,
