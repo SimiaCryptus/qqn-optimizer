@@ -190,12 +190,12 @@ impl Default for OutputConfig {
 // Configuration loading and validation
 impl ExperimentConfig {
     pub fn from_file(path: &PathBuf) -> Result<Self, ConfigError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ConfigError::FileRead(path.clone(), e))?;
-        
-        let config: ExperimentConfig = serde_yaml::from_str(&content)
-            .map_err(|e| ConfigError::Parse(e))?;
-        
+        let content =
+            std::fs::read_to_string(path).map_err(|e| ConfigError::FileRead(path.clone(), e))?;
+
+        let config: ExperimentConfig =
+            serde_yaml::from_str(&content).map_err(|e| ConfigError::Parse(e))?;
+
         config.validate()?;
         Ok(config)
     }
@@ -231,19 +231,15 @@ impl ExperimentConfig {
         }
     }
 
-
     pub fn to_file(&self, path: &PathBuf) -> Result<(), ConfigError> {
-        let content = serde_yaml::to_string(self)
-            .map_err(|e| ConfigError::Serialize(e))?;
-        
+        let content = serde_yaml::to_string(self).map_err(|e| ConfigError::Serialize(e))?;
+
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| ConfigError::FileWrite(path.clone(), e))?;
+            std::fs::create_dir_all(parent).map_err(|e| ConfigError::FileWrite(path.clone(), e))?;
         }
-        
-        std::fs::write(path, content)
-            .map_err(|e| ConfigError::FileWrite(path.clone(), e))?;
-        
+
+        std::fs::write(path, content).map_err(|e| ConfigError::FileWrite(path.clone(), e))?;
+
         Ok(())
     }
 
@@ -276,23 +272,26 @@ impl ProblemConfig {
         match &self.problem_type {
             ProblemType::Rosenbrock { dimension } => {
                 if *dimension < 2 {
-                    return Err(ConfigError::InvalidProblem(
-                        format!("Rosenbrock dimension must be >= 2, got {}", dimension)
-                    ));
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Rosenbrock dimension must be >= 2, got {}",
+                        dimension
+                    )));
                 }
             }
             ProblemType::Rastrigin { dimension } => {
                 if *dimension < 1 {
-                    return Err(ConfigError::InvalidProblem(
-                        format!("Rastrigin dimension must be >= 1, got {}", dimension)
-                    ));
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Rastrigin dimension must be >= 1, got {}",
+                        dimension
+                    )));
                 }
             }
             ProblemType::Sphere { dimension } => {
                 if *dimension < 1 {
-                    return Err(ConfigError::InvalidProblem(
-                        format!("Sphere dimension must be >= 1, got {}", dimension)
-                    ));
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Sphere dimension must be >= 1, got {}",
+                        dimension
+                    )));
                 }
             }
             ProblemType::Beale => {
@@ -301,19 +300,19 @@ impl ProblemConfig {
             ProblemType::LogisticRegression { dataset } => {
                 if dataset.is_empty() {
                     return Err(ConfigError::InvalidProblem(
-                        "LogisticRegression dataset cannot be empty".to_string()
+                        "LogisticRegression dataset cannot be empty".to_string(),
                     ));
                 }
             }
             ProblemType::NeuralNetwork { architecture } => {
                 if architecture.layers.len() < 2 {
                     return Err(ConfigError::InvalidProblem(
-                        "Neural network must have at least 2 layers".to_string()
+                        "Neural network must have at least 2 layers".to_string(),
                     ));
                 }
                 if architecture.layers.iter().any(|&size| size == 0) {
                     return Err(ConfigError::InvalidProblem(
-                        "Neural network layer sizes must be > 0".to_string()
+                        "Neural network layer sizes must be > 0".to_string(),
                     ));
                 }
             }
@@ -325,53 +324,71 @@ impl ProblemConfig {
 impl OptimizerConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         match &self.optimizer_type {
-            OptimizerType::QQN { threshold, lbfgs_history, .. } => {
+            OptimizerType::QQN {
+                threshold,
+                lbfgs_history,
+                ..
+            } => {
                 if *threshold <= 0.0 || *threshold >= 1.0 {
-                    return Err(ConfigError::InvalidOptimizer(
-                        format!("QQN threshold must be in (0, 1), got {}", threshold)
-                    ));
+                    return Err(ConfigError::InvalidOptimizer(format!(
+                        "QQN threshold must be in (0, 1), got {}",
+                        threshold
+                    )));
                 }
                 if *lbfgs_history == 0 {
                     return Err(ConfigError::InvalidOptimizer(
-                        "QQN L-BFGS history must be > 0".to_string()
+                        "QQN L-BFGS history must be > 0".to_string(),
                     ));
                 }
             }
             OptimizerType::LBFGS { history, .. } => {
                 if *history == 0 {
                     return Err(ConfigError::InvalidOptimizer(
-                        "L-BFGS history must be > 0".to_string()
+                        "L-BFGS history must be > 0".to_string(),
                     ));
                 }
             }
-            OptimizerType::Adam { learning_rate, beta1, beta2, .. } => {
+            OptimizerType::Adam {
+                learning_rate,
+                beta1,
+                beta2,
+                ..
+            } => {
                 if *learning_rate <= 0.0 {
-                    return Err(ConfigError::InvalidOptimizer(
-                        format!("Adam learning rate must be > 0, got {}", learning_rate)
-                    ));
+                    return Err(ConfigError::InvalidOptimizer(format!(
+                        "Adam learning rate must be > 0, got {}",
+                        learning_rate
+                    )));
                 }
                 if *beta1 <= 0.0 || *beta1 >= 1.0 {
-                    return Err(ConfigError::InvalidOptimizer(
-                        format!("Adam beta1 must be in (0, 1), got {}", beta1)
-                    ));
+                    return Err(ConfigError::InvalidOptimizer(format!(
+                        "Adam beta1 must be in (0, 1), got {}",
+                        beta1
+                    )));
                 }
                 if *beta2 <= 0.0 || *beta2 >= 1.0 {
-                    return Err(ConfigError::InvalidOptimizer(
-                        format!("Adam beta2 must be in (0, 1), got {}", beta2)
-                    ));
+                    return Err(ConfigError::InvalidOptimizer(format!(
+                        "Adam beta2 must be in (0, 1), got {}",
+                        beta2
+                    )));
                 }
             }
-            OptimizerType::SGD { learning_rate, momentum } => {
+            OptimizerType::SGD {
+                learning_rate,
+                momentum,
+            } => {
                 if *learning_rate <= 0.0 {
-                    return Err(ConfigError::InvalidOptimizer(
-                        format!("SGD learning rate must be > 0, got {}", learning_rate)
-                    ));
+                    return Err(ConfigError::InvalidOptimizer(format!(
+                        "SGD learning rate must be > 0, got {}",
+                        learning_rate
+                    )));
                 }
                 if let Some(m) = momentum {
                     if *m < 0.0 || *m >= 1.0 {
-                        return Err(ConfigError::InvalidOptimizer(
-                            format!("SGD momentum must be in [0, 1), got {}", m)
-                        ));
+                        return Err(ConfigError::InvalidOptimizer(format!(
+                            "SGD momentum must be in [0, 1), got {}",
+                            m
+                        )));
                     }
                 }
             }
@@ -384,27 +401,28 @@ impl BenchmarkConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.max_iterations == 0 {
             return Err(ConfigError::InvalidBenchmark(
-                "max_iterations must be > 0".to_string()
+                "max_iterations must be > 0".to_string(),
             ));
         }
         if self.tolerance <= 0.0 {
-            return Err(ConfigError::InvalidBenchmark(
-                format!("tolerance must be > 0, got {}", self.tolerance)
-            ));
+            return Err(ConfigError::InvalidBenchmark(format!(
+                "tolerance must be > 0, got {}",
+                self.tolerance
+            )));
         }
         if self.max_function_evaluations == 0 {
             return Err(ConfigError::InvalidBenchmark(
-                "max_function_evaluations must be > 0".to_string()
+                "max_function_evaluations must be > 0".to_string(),
             ));
         }
         if self.time_limit.is_zero() {
             return Err(ConfigError::InvalidBenchmark(
-                "time_limit must be > 0".to_string()
+                "time_limit must be > 0".to_string(),
             ));
         }
         if self.num_runs == 0 {
             return Err(ConfigError::InvalidBenchmark(
-                "num_runs must be > 0".to_string()
+                "num_runs must be > 0".to_string(),
             ));
         }
         Ok(())
@@ -414,13 +432,14 @@ impl BenchmarkConfig {
 impl AnalysisConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.confidence_level <= 0.0 || self.confidence_level >= 1.0 {
-            return Err(ConfigError::InvalidAnalysis(
-                format!("confidence_level must be in (0, 1), got {}", self.confidence_level)
-            ));
+            return Err(ConfigError::InvalidAnalysis(format!(
+                "confidence_level must be in (0, 1), got {}",
+                self.confidence_level
+            )));
         }
         if self.statistical_tests.is_empty() {
             return Err(ConfigError::InvalidAnalysis(
-                "at least one statistical test must be specified".to_string()
+                "at least one statistical test must be specified".to_string(),
             ));
         }
         Ok(())
@@ -431,7 +450,7 @@ impl OutputConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.plot_formats.is_empty() && self.generate_plots {
             return Err(ConfigError::InvalidOutput(
-                "plot_formats cannot be empty when generate_plots is true".to_string()
+                "plot_formats cannot be empty when generate_plots is true".to_string(),
             ));
         }
         Ok(())
@@ -578,15 +597,12 @@ mod tests {
 
     #[test]
     fn test_config_serialization() {
-        let config = ExperimentConfigBuilder::new(
-            "test_experiment",
-            "Test experiment description"
-        )
-        .add_problem(create_rosenbrock_problem(10))
-        .add_optimizer(create_qqn_config(0.01, 10))
-        .add_optimizer(create_lbfgs_config(10))
-        .build()
-        .unwrap();
+        let config = ExperimentConfigBuilder::new("test_experiment", "Test experiment description")
+            .add_problem(create_rosenbrock_problem(10))
+            .add_optimizer(create_qqn_config(0.01, 10))
+            .add_optimizer(create_lbfgs_config(10))
+            .build()
+            .unwrap();
 
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.path().to_path_buf();

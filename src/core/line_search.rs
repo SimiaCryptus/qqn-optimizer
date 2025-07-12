@@ -1,8 +1,7 @@
-use crate::utils::math::{compute_magnitude, dot_product_f64};
-use anyhow::{Result, anyhow};
-use std::fmt::Debug;
+use crate::utils::math::dot_product_f64;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
-use candle_core::Tensor;
+use std::fmt::Debug;
 
 /// Line search result containing step size and evaluation counts
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,18 +47,17 @@ impl Default for LineSearchConfig {
     }
 }
 
-
 /// Trait for line search algorithms
 pub trait LineSearch: Send + Sync + Debug {
     /// Perform line search along given direction
     fn search(
         &mut self,
-       current_point: &[f64],
-       direction: &[f64],
-       current_value: f64,
-       current_gradient: &[f64],
-       objective_fn: &dyn Fn(&[f64]) -> anyhow::Result<f64>,
-       gradient_fn: &dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>>,
+        current_point: &[f64],
+        direction: &[f64],
+        current_value: f64,
+        current_gradient: &[f64],
+        objective_fn: &dyn Fn(&[f64]) -> anyhow::Result<f64>,
+        gradient_fn: &dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>>,
     ) -> Result<LineSearchResult>;
 
     /// Reset internal state
@@ -71,12 +69,12 @@ pub trait LineSearch: Send + Sync + Debug {
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone)]
 pub struct StrongWolfeConfig {
-    pub c1: f64,              // Armijo condition parameter (0 < c1 < c2 < 1)
-    pub c2: f64,              // Curvature condition parameter
+    pub c1: f64,               // Armijo condition parameter (0 < c1 < c2 < 1)
+    pub c2: f64,               // Curvature condition parameter
     pub max_iterations: usize, // Maximum line search iterations
-    pub min_step: f64,        // Minimum step size
-    pub max_step: f64,        // Maximum step size
-    pub initial_step: f64,    // Initial step size
+    pub min_step: f64,         // Minimum step size
+    pub max_step: f64,         // Maximum step size
+    pub initial_step: f64,     // Initial step size
 }
 
 impl Default for StrongWolfeConfig {
@@ -115,11 +113,7 @@ impl StrongWolfeLineSearch {
     }
 
     /// Check curvature condition: |∇f(x + α*p)ᵀp| ≤ c2*|∇f(x)ᵀp|
-    fn curvature_condition(
-        &self,
-        grad_alpha_dot_p: f64,
-        directional_derivative: f64,
-    ) -> bool {
+    fn curvature_condition(&self, grad_alpha_dot_p: f64, directional_derivative: f64) -> bool {
         grad_alpha_dot_p.abs() <= self.config.c2 * directional_derivative.abs()
     }
 
@@ -143,7 +137,7 @@ impl StrongWolfeLineSearch {
         for _ in 0..self.config.max_iterations {
             // Interpolate to find new trial point
             let alpha_j = 0.5 * (alpha_lo + alpha_hi); // Simple bisection
-            
+
             // Evaluate function at trial point
             let trial_point: Vec<f64> = current_point
                 .iter()
@@ -217,8 +211,9 @@ impl LineSearch for StrongWolfeLineSearch {
             f_evals += 1;
 
             // Check Armijo condition and sufficient decrease
-            if !self.armijo_condition(current_value, f_alpha, alpha, directional_derivative) 
-                || (i > 0 && f_alpha >= f_prev) {
+            if !self.armijo_condition(current_value, f_alpha, alpha, directional_derivative)
+                || (i > 0 && f_alpha >= f_prev)
+            {
                 // Zoom between alpha_prev and alpha
                 let (final_alpha, zoom_f_evals, zoom_g_evals) = self.zoom(
                     alpha_prev,
@@ -230,7 +225,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     objective_fn,
                     gradient_fn,
                 )?;
-                
+
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
                     function_evaluations: f_evals + zoom_f_evals,
@@ -269,7 +264,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     objective_fn,
                     gradient_fn,
                 )?;
-                
+
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
                     function_evaluations: f_evals + zoom_f_evals,
@@ -310,11 +305,11 @@ impl LineSearch for StrongWolfeLineSearch {
 /// Configuration for backtracking line search
 #[derive(Debug, Clone)]
 pub struct BacktrackingConfig {
-    pub c1: f64,              // Armijo condition parameter
-    pub rho: f64,             // Backtracking factor (0 < rho < 1)
+    pub c1: f64,               // Armijo condition parameter
+    pub rho: f64,              // Backtracking factor (0 < rho < 1)
     pub max_iterations: usize, // Maximum backtracking iterations
-    pub min_step: f64,        // Minimum step size
-    pub initial_step: f64,    // Initial step size
+    pub min_step: f64,         // Minimum step size
+    pub initial_step: f64,     // Initial step size
 }
 
 impl Default for BacktrackingConfig {
@@ -352,7 +347,7 @@ impl LineSearch for BacktrackingLineSearch {
         _gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<LineSearchResult> {
         // Check that direction is a descent direction
-       let directional_derivative = dot_product_f64(current_gradient, direction)?;
+        let directional_derivative = dot_product_f64(current_gradient, direction)?;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
@@ -444,25 +439,27 @@ mod tests {
     #[test]
     fn test_strong_wolfe_quadratic() {
         let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig::default());
-        
+
         let current_point = vec![2.0, 3.0];
         let direction = vec![-2.0, -3.0]; // Negative gradient (descent direction)
         let current_value = quadratic_function(&current_point).unwrap();
         let current_gradient = quadratic_gradient(&current_point).unwrap();
 
-        let result = line_search.search(
-            &current_point,
-            &direction,
-            current_value,
-            &current_gradient,
-            &quadratic_function,
-            &quadratic_gradient,
-        ).unwrap();
+        let result = line_search
+            .search(
+                &current_point,
+                &direction,
+                current_value,
+                &current_gradient,
+                &quadratic_function,
+                &quadratic_gradient,
+            )
+            .unwrap();
 
         assert!(result.success);
         assert!(result.step_size > 0.0);
         assert!(result.function_evaluations > 0);
-        
+
         // For quadratic function, optimal step should be 1.0
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
     }
@@ -470,20 +467,22 @@ mod tests {
     #[test]
     fn test_backtracking_quadratic() {
         let mut line_search = BacktrackingLineSearch::new(BacktrackingConfig::default());
-        
+
         let current_point = vec![1.0, 1.0];
         let direction = vec![-1.0, -1.0]; // Negative gradient
         let current_value = quadratic_function(&current_point).unwrap();
         let current_gradient = quadratic_gradient(&current_point).unwrap();
 
-        let result = line_search.search(
-            &current_point,
-            &direction,
-            current_value,
-            &current_gradient,
-            &quadratic_function,
-            &quadratic_gradient,
-        ).unwrap();
+        let result = line_search
+            .search(
+                &current_point,
+                &direction,
+                current_value,
+                &current_gradient,
+                &quadratic_function,
+                &quadratic_gradient,
+            )
+            .unwrap();
 
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -493,7 +492,7 @@ mod tests {
     #[test]
     fn test_non_descent_direction() {
         let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig::default());
-        
+
         let current_point = vec![1.0, 1.0];
         let direction = vec![1.0, 1.0]; // Positive gradient (ascent direction)
         let current_value = quadratic_function(&current_point).unwrap();

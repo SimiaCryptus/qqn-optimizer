@@ -40,7 +40,7 @@ impl ResultsSerializer {
             format: SerializationFormat::Json,
         }
     }
-    
+
     pub fn with_format(format: SerializationFormat) -> Self {
         Self { format }
     }
@@ -51,10 +51,10 @@ impl ResultsSerializer {
                 let json = serde_json::to_string_pretty(results)?;
                 std::fs::write(path, json)?;
             }
-           SerializationFormat::Toml => {
-               let toml = toml::to_string_pretty(results)?;
-               std::fs::write(path, toml)?;
-           }
+            SerializationFormat::Toml => {
+                let toml = toml::to_string_pretty(results)?;
+                std::fs::write(path, toml)?;
+            }
             SerializationFormat::Bincode => {
                 let encoded = bincode::serialize(results)?;
                 std::fs::write(path, encoded)?;
@@ -62,7 +62,7 @@ impl ResultsSerializer {
         }
         Ok(())
     }
-    
+
     pub fn load(&self, path: &Path) -> OptResult<BenchmarkResults> {
         match self.format {
             SerializationFormat::Json => {
@@ -70,11 +70,11 @@ impl ResultsSerializer {
                 let results = serde_json::from_str(&content)?;
                 Ok(results)
             }
-           SerializationFormat::Toml => {
-               let content = std::fs::read_to_string(path)?;
-               let results = toml::from_str(&content)?;
-               Ok(results)
-           }
+            SerializationFormat::Toml => {
+                let content = std::fs::read_to_string(path)?;
+                let results = toml::from_str(&content)?;
+                Ok(results)
+            }
             SerializationFormat::Bincode => {
                 let content = std::fs::read(path)?;
                 let results = bincode::deserialize(&content)?;
@@ -95,11 +95,11 @@ impl ConfigSerializer {
             format: SerializationFormat::Toml,
         }
     }
-    
+
     pub fn with_format(format: SerializationFormat) -> Self {
         Self { format }
     }
-    
+
     pub fn save(&self, config: &ExperimentConfig, path: &Path) -> OptResult<()> {
         match self.format {
             SerializationFormat::Json => {
@@ -117,7 +117,7 @@ impl ConfigSerializer {
         }
         Ok(())
     }
-    
+
     pub fn load(&self, path: &Path) -> OptResult<ExperimentConfig> {
         match self.format {
             SerializationFormat::Json => {

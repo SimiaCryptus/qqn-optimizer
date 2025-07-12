@@ -1,20 +1,17 @@
-use crate::utils::math::*;
-use crate::core::OptResult;
- use std::f64::consts::PI;
-use serde::{Serialize, Deserialize};
 use anyhow::Result;
+use std::f64::consts::PI;
 
- /// Trait defining an optimization problem interface
- pub trait OptimizationProblem: Send + Sync {
+/// Trait defining an optimization problem interface
+pub trait OptimizationProblem: Send + Sync {
     /// Get the problem name
     fn name(&self) -> &str;
-     /// Get the problem dimension
-     fn dimension(&self) -> usize;
-     /// Get the initial starting point
-     fn initial_point(&self) -> Vec<f64>;
-     /// Evaluate the objective function at point x
+    /// Get the problem dimension
+    fn dimension(&self) -> usize;
+    /// Get the initial starting point
+    fn initial_point(&self) -> Vec<f64>;
+    /// Evaluate the objective function at point x
     fn evaluate(&self, x: &[f64]) -> Result<f64>;
-     /// Compute the gradient at point x
+    /// Compute the gradient at point x
     fn gradient(&self, x: &[f64]) -> Result<Vec<f64>>;
     /// Get the optimal value if known
     fn optimal_value(&self) -> Option<f64>;
@@ -22,7 +19,7 @@ use anyhow::Result;
     fn convergence_tolerance(&self) -> f64;
     /// Get problem bounds if any
     fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)>;
- }
+}
 /// Rosenbrock function: f(x) = Σ[100(x_{i+1} - x_i²)² + (1 - x_i)²]
 /// Global minimum: f(1, 1, ..., 1) = 0
 #[derive(Debug, Clone)]
@@ -117,7 +114,8 @@ impl OptimizationProblem for RastriginFunction {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
         let n = self.dimension as f64;
-        let sum: f64 = x.iter()
+        let sum: f64 = x
+            .iter()
             .map(|&xi| xi * xi - self.a * (2.0 * PI * xi).cos())
             .sum();
         Ok(self.a * n + sum)
@@ -126,7 +124,8 @@ impl OptimizationProblem for RastriginFunction {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
-        let grad: Vec<f64> = x.iter()
+        let grad: Vec<f64> = x
+            .iter()
             .map(|&xi| 2.0 * xi + self.a * 2.0 * PI * (2.0 * PI * xi).sin())
             .collect();
         Ok(grad)
@@ -237,12 +236,11 @@ impl OptimizationProblem for BealeFunction {
         let term1 = 1.5 - x1 + x1 * x2;
         let term2 = 2.25 - x1 + x1 * x2 * x2;
         let term3 = 2.625 - x1 + x1 * x2 * x2 * x2;
-        let grad_x1 = 2.0 * term1 * (-1.0 + x2) + 
-                      2.0 * term2 * (-1.0 + x2 * x2) + 
-                      2.0 * term3 * (-1.0 + x2 * x2 * x2);
-        let grad_x2 = 2.0 * term1 * x1 + 
-                      2.0 * term2 * (2.0 * x1 * x2) + 
-                      2.0 * term3 * (3.0 * x1 * x2 * x2);
+        let grad_x1 = 2.0 * term1 * (-1.0 + x2)
+            + 2.0 * term2 * (-1.0 + x2 * x2)
+            + 2.0 * term3 * (-1.0 + x2 * x2 * x2);
+        let grad_x2 =
+            2.0 * term1 * x1 + 2.0 * term2 * (2.0 * x1 * x2) + 2.0 * term3 * (3.0 * x1 * x2 * x2);
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
@@ -296,10 +294,8 @@ impl OptimizationProblem for HimmelblauFunction {
         }
         let x1 = x[0];
         let x2 = x[1];
-        let grad_x1 = 2.0 * (x1 * x1 + x2 - 11.0) * (2.0 * x1) + 
-                      2.0 * (x1 + x2 * x2 - 7.0);
-        let grad_x2 = 2.0 * (x1 * x1 + x2 - 11.0) + 
-                      2.0 * (x1 + x2 * x2 - 7.0) * (2.0 * x2);
+        let grad_x1 = 2.0 * (x1 * x1 + x2 - 11.0) * (2.0 * x1) + 2.0 * (x1 + x2 * x2 - 7.0);
+        let grad_x2 = 2.0 * (x1 * x1 + x2 - 11.0) + 2.0 * (x1 + x2 * x2 - 7.0) * (2.0 * x2);
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
@@ -353,10 +349,8 @@ impl OptimizationProblem for BoothFunction {
         }
         let x1 = x[0];
         let x2 = x[1];
-        let grad_x1 = 2.0 * (x1 + 2.0 * x2 - 7.0) + 
-                      2.0 * (2.0 * x1 + x2 - 5.0) * 2.0;
-        let grad_x2 = 2.0 * (x1 + 2.0 * x2 - 7.0) * 2.0 + 
-                      2.0 * (2.0 * x1 + x2 - 5.0);
+        let grad_x1 = 2.0 * (x1 + 2.0 * x2 - 7.0) + 2.0 * (2.0 * x1 + x2 - 5.0) * 2.0;
+        let grad_x2 = 2.0 * (x1 + 2.0 * x2 - 7.0) * 2.0 + 2.0 * (2.0 * x1 + x2 - 5.0);
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {

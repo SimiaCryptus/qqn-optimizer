@@ -6,26 +6,24 @@
 //! - Visualization and plotting capabilities
 //! - Academic report generation
 
-pub mod statistics;
 pub mod plotting;
 pub mod reporting;
+pub mod statistics;
 
 // Re-export commonly used types
 
-pub use statistics::{
-    StatisticalAnalysis, ConvergenceComparison, PerformanceProfiles,
-    RobustnessAnalysis, SignificanceTest, EffectSize,
-};
 pub use plotting::{
-    PlottingEngine, PlotConfig, ConvergencePlot, PerformancePlot,
-    MagnitudeRatioPlot, StatisticalPlot, ExtendedOptimizationTrace,
+    ConvergencePlot, ExtendedOptimizationTrace, MagnitudeRatioPlot, PerformancePlot, PlotConfig,
+    PlottingEngine, StatisticalPlot,
 };
-pub use reporting::{
-    ReportGenerator, AcademicReport, LaTeXExporter, CSVExporter,
+pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter, ReportGenerator};
+pub use statistics::{
+    ConvergenceComparison, EffectSize, PerformanceProfiles, RobustnessAnalysis, SignificanceTest,
+    StatisticalAnalysis,
 };
 
-use crate::core::OptResult;
 use crate::benchmarks::evaluation::BenchmarkResults;
+use crate::core::OptResult;
 
 /// Generate comprehensive analysis report
 pub fn generate_full_analysis(results: &BenchmarkResults) -> OptResult<AnalysisReport> {
@@ -76,16 +74,18 @@ impl AnalysisReport {
              - Average effect size: {:.3}",
             self.convergence_comparison.num_problems(),
             self.convergence_comparison.num_optimizers(),
-            self.statistical_tests.iter().filter(|t| t.is_significant()).count(),
-            self.effect_sizes.iter().map(|e| e.magnitude()).sum::<f64>() / self.effect_sizes.len() as f64
+            self.statistical_tests
+                .iter()
+                .filter(|t| t.is_significant())
+                .count(),
+            self.effect_sizes.iter().map(|e| e.magnitude()).sum::<f64>()
+                / self.effect_sizes.len() as f64
         )
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_analysis_report_creation() {
         // This would require mock data in a real implementation

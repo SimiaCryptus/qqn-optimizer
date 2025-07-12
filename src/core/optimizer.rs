@@ -4,12 +4,12 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
-use std::fmt::Debug;
- use std::time::Duration;
- use candle_core::{Result, Tensor};
- use serde::{Deserialize, Serialize};
+use candle_core::{Result, Tensor};
+use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::error::Error;
+use std::fmt::Debug;
+use std::time::Duration;
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,7 +33,11 @@ impl Default for OptimizationMetadata {
 /// Trait object-safe version of Optimizer for dynamic dispatch
 pub trait OptimizerBox: Send + Sync + std::fmt::Debug {
     /// Perform a single optimization step with slice-based interface
-    fn step_slice(&mut self, params: &mut [f64], gradients: &[f64]) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>>;
+    fn step_slice(
+        &mut self,
+        params: &mut [f64],
+        gradients: &[f64],
+    ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>>;
     /// Reset the optimizer state
     fn reset(&mut self);
     /// Get the name of this optimizer
@@ -45,18 +49,19 @@ pub trait OptimizerBox: Send + Sync + std::fmt::Debug {
         false
     }
 }
- /// Core trait that all optimization algorithms must implement.
- ///
- /// This trait provides a unified interface for different optimization methods,
- /// enabling easy benchmarking and comparison between algorithms.
+/// Core trait that all optimization algorithms must implement.
+///
+/// This trait provides a unified interface for different optimization methods,
+/// enabling easy benchmarking and comparison between algorithms.
 pub trait Optimizer: Send + Sync + std::fmt::Debug {
-     /// Configuration type for this optimizer
-     type Config: Clone + Debug + Send + Sync;
-     /// Internal state type for this optimizer
-     type State: Clone + Debug + Send + Sync;
-     /// Create a new optimizer instance with the given configuration
-    fn new(config: Self::Config) -> Self where Self: Sized;
-
+    /// Configuration type for this optimizer
+    type Config: Clone + Debug + Send + Sync;
+    /// Internal state type for this optimizer
+    type State: Clone + Debug + Send + Sync;
+    /// Create a new optimizer instance with the given configuration
+    fn new(config: Self::Config) -> Self
+    where
+        Self: Sized;
 
     /// Perform a single optimization step
     ///
@@ -77,7 +82,6 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     /// Get the name of this optimizer (for reporting and analysis)
     fn name(&self) -> &str;
 
-
     /// Check if the optimizer has converged based on its internal criteria
     fn has_converged(&self) -> bool {
         false // Default implementation - most optimizers don't track convergence internally
@@ -91,31 +95,38 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     }
 }
 /// Blanket implementation to make any Optimizer work as OptimizerBox
-impl<T> OptimizerBox for T 
-where 
+impl<T> OptimizerBox for T
+where
     T: Optimizer + Clone + 'static,
 {
-    fn step_slice(&mut self, params: &mut [f64], gradients: &[f64]) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>> {
+    fn step_slice(
+        &mut self,
+        params: &mut [f64],
+        gradients: &[f64],
+    ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>> {
         // Convert slices to tensors
         let device = candle_core::Device::Cpu;
         let param_tensor = candle_core::Tensor::from_slice(params, params.len(), &device)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
         let grad_tensor = candle_core::Tensor::from_slice(gradients, gradients.len(), &device)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-        
+
         let mut param_tensors = vec![param_tensor];
         let grad_tensors = vec![grad_tensor];
-        
+
         // Call the tensor-based step method
-        let result = self.step(&mut param_tensors, &grad_tensors)
+        let result = self
+            .step(&mut param_tensors, &grad_tensors)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-        
+
         // Copy results back to slice
         if let Some(tensor) = param_tensors.first() {
-            let data = tensor.to_vec1::<f64>().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            let data = tensor
+                .to_vec1::<f64>()
+                .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
             params.copy_from_slice(&data);
         }
-        
+
         Ok(result)
     }
     fn reset(&mut self) {
@@ -137,16 +148,16 @@ where
 pub struct StepResult {
     /// Step size used in this iteration
     pub step_size: f64,
-    
+
     /// Number of function evaluations used in this step
     pub function_evaluations: usize,
-    
+
     /// Number of gradient evaluations used in this step
     pub gradient_evaluations: usize,
-    
+
     /// Information about convergence status
     pub convergence_info: ConvergenceInfo,
-    
+
     /// Additional optimizer-specific metadata
     pub metadata: OptimizationMetadata,
 }
@@ -180,16 +191,16 @@ impl StepResult {
 pub struct ConvergenceInfo {
     /// Whether the optimizer has converged
     pub converged: bool,
-    
+
     /// Gradient norm (L2 norm)
     pub gradient_norm: f64,
-    
+
     /// Change in function value from previous iteration
     pub function_change: Option<f64>,
-    
+
     /// Change in parameter values from previous iteration
     pub parameter_change: Option<f64>,
-    
+
     /// Convergence criterion that was satisfied (if any)
     pub convergence_criterion: Option<ConvergenceCriterion>,
 }
@@ -253,20 +264,17 @@ pub enum ConvergenceCriterion {
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
-    
-    
-
 
 pub struct TimingInfo {
     /// Time spent computing search direction
     pub direction_computation: Option<Duration>,
-    
+
     /// Time spent in line search
     pub line_search: Option<Duration>,
-    
+
     /// Time spent updating parameters
     pub parameter_update: Option<Duration>,
-    
+
     /// Total step duration
     pub step_duration: Duration,
 }
@@ -287,10 +295,10 @@ impl Default for TimingInfo {
 pub struct MemoryInfo {
     /// Peak memory usage during this step (in bytes)
     pub peak_memory: Option<usize>,
-    
+
     /// Memory allocated for optimizer state (in bytes)
     pub state_memory: Option<usize>,
-    
+
     /// Memory allocated for temporary computations (in bytes)
     pub temp_memory: Option<usize>,
 }
@@ -310,19 +318,19 @@ impl Default for MemoryInfo {
 pub struct ConvergenceConfig {
     /// Tolerance for gradient norm convergence
     pub gradient_tolerance: f64,
-    
+
     /// Tolerance for function value change convergence
     pub function_tolerance: f64,
-    
+
     /// Tolerance for parameter change convergence
     pub parameter_tolerance: f64,
-    
+
     /// Maximum number of iterations
     pub max_iterations: usize,
-    
+
     /// Maximum optimization time
     pub max_time: Option<Duration>,
-    
+
     /// Require multiple criteria to be satisfied
     pub require_multiple_criteria: bool,
 }
@@ -377,7 +385,8 @@ impl ConvergenceChecker {
         let gradient_converged = gradient_norm < self.config.gradient_tolerance;
 
         // Check function change convergence
-        let function_change = self.previous_function_value
+        let function_change = self
+            .previous_function_value
             .map(|prev| (function_value - prev).abs());
         let function_converged = function_change
             .map(|change| change < self.config.function_tolerance)
@@ -385,7 +394,10 @@ impl ConvergenceChecker {
 
         // Check parameter change convergence
         let parameter_change = if let Some(ref prev_params) = self.previous_parameters {
-            Some(crate::utils::math::compute_parameter_change(parameters, prev_params)?)
+            Some(crate::utils::math::compute_parameter_change(
+                parameters,
+                prev_params,
+            )?)
         } else {
             None
         };
@@ -397,7 +409,9 @@ impl ConvergenceChecker {
         let max_iterations_reached = self.iteration_count >= self.config.max_iterations;
 
         // Check time limit
-        let max_time_reached = self.config.max_time
+        let max_time_reached = self
+            .config
+            .max_time
             .map(|max_time| self.start_time.elapsed() >= max_time)
             .unwrap_or(false);
 
@@ -406,7 +420,8 @@ impl ConvergenceChecker {
             gradient_converged && (function_converged || parameter_converged)
         } else {
             gradient_converged || function_converged || parameter_converged
-        } || max_iterations_reached || max_time_reached;
+        } || max_iterations_reached
+            || max_time_reached;
 
         // Determine convergence criterion
         let convergence_criterion = if max_iterations_reached {
@@ -467,7 +482,7 @@ mod tests {
         let info = ConvergenceInfo::default()
             .with_gradient_norm(1e-7)
             .with_function_change(1e-10);
-        
+
         assert_eq!(info.gradient_norm, 1e-7);
         assert_eq!(info.function_change, Some(1e-10));
     }
@@ -494,11 +509,11 @@ mod tests {
         let parameters = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
         let info = checker.check_convergence(1.0, &gradients, &parameters)?;
-        
+
         // Should converge due to small gradient norm
         assert!(info.converged);
         assert!(info.gradient_norm < 1e-3);
-        
+
         Ok(())
     }
 }

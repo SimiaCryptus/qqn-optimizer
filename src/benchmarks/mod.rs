@@ -6,28 +6,26 @@
 //! - Benchmark execution framework
 //! - Performance evaluation metrics
 
+pub mod evaluation;
 pub mod functions;
 pub mod ml_problems;
-pub mod evaluation;
 pub mod runner;
 
 // Re-export commonly used types
 
+pub use evaluation::{
+    BenchmarkConfig, BenchmarkResults, BenchmarkRunner, OptimizationTrace, SingleResult,
+};
 pub use functions::{
-    RosenbrockFunction, RastriginFunction, SphereFunction, BealeFunction,
-    HimmelblauFunction, BoothFunction, AckleyFunction,
+    AckleyFunction, BealeFunction, BoothFunction, HimmelblauFunction, RastriginFunction,
+    RosenbrockFunction, SphereFunction,
 };
 pub use ml_problems::{
-    LogisticRegression, NeuralNetworkTraining, LinearRegression,
-    SupportVectorMachine,
-};
-pub use evaluation::{
-    BenchmarkRunner, BenchmarkConfig, BenchmarkResults, SingleResult,
-    OptimizationTrace,
+    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
 };
 
-use crate::core::OptResult;
 use crate::benchmarks::functions::OptimizationProblem;
+use crate::core::OptResult;
 
 /// Standard benchmark problems for optimization research
 pub fn standard_benchmark_suite() -> OptResult<Vec<Box<dyn OptimizationProblem>>> {
@@ -37,20 +35,19 @@ pub fn standard_benchmark_suite() -> OptResult<Vec<Box<dyn OptimizationProblem>>
     problems.push(Box::new(RosenbrockFunction::new(2)));
     problems.push(Box::new(RosenbrockFunction::new(10)));
     problems.push(Box::new(RosenbrockFunction::new(100)));
-    
+
     problems.push(Box::new(RastriginFunction::new(2)));
     problems.push(Box::new(RastriginFunction::new(10)));
     problems.push(Box::new(RastriginFunction::new(100)));
-    
+
     problems.push(Box::new(SphereFunction::new(10)));
     problems.push(Box::new(SphereFunction::new(100)));
     problems.push(Box::new(SphereFunction::new(1000)));
-    
+
     problems.push(Box::new(BealeFunction::new()));
     problems.push(Box::new(BoothFunction::new()));
     problems.push(Box::new(HimmelblauFunction::new()));
     problems.push(Box::new(AckleyFunction::new(10)));
-
 
     Ok(problems)
 }
@@ -62,11 +59,11 @@ pub fn ml_benchmark_suite() -> OptResult<Vec<Box<dyn OptimizationProblem>>> {
     // Logistic regression problems
     problems.push(Box::new(LogisticRegression::synthetic(100, 10)?));
     problems.push(Box::new(LogisticRegression::synthetic(1000, 50)?));
-    
+
     // Neural network problems
-    problems.push(Box::new(NeuralNetworkTraining::mlp_classification(
-        vec![784, 128, 64, 10]
-    )?));
+    problems.push(Box::new(NeuralNetworkTraining::mlp_classification(vec![
+        784, 128, 64, 10,
+    ])?));
 
     Ok(problems)
 }

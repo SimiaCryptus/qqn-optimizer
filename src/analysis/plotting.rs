@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use plotters::backend::{BitMapBackend, SVGBackend};
 use plotters::prelude::*;
 use std::collections::HashMap;
-use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct PlotConfig {
     pub width: u32,
@@ -33,7 +32,11 @@ pub trait MagnitudeRatioPlot {
     fn plot_magnitude_ratios(&self, traces: &[QQNTrace], filename: &str) -> Result<()>;
 }
 pub trait StatisticalPlot {
-    fn plot_statistics(&self, analysis: &crate::analysis::statistics::StatisticalAnalysis, filename: &str) -> Result<()>;
+    fn plot_statistics(
+        &self,
+        analysis: &crate::analysis::statistics::StatisticalAnalysis,
+        filename: &str,
+    ) -> Result<()>;
 }
 
 /// Extended optimization trace with additional fields for plotting
@@ -47,7 +50,11 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
     fn from(trace: &OptimizationTrace) -> Self {
         Self {
             optimizer_name: "Unknown".to_string(),
-            objective_values: trace.iterations.iter().map(|iter| iter.function_value).collect(),
+            objective_values: trace
+                .iterations
+                .iter()
+                .map(|iter| iter.function_value)
+                .collect(),
             iterations: trace.iterations.iter().map(|iter| iter.iteration).collect(),
         }
     }
@@ -75,19 +82,24 @@ impl PlottingEngine {
     }
 
     /// Create convergence plots showing objective value vs iterations
-    pub fn convergence_plot(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
+    pub fn convergence_plot(
+        &self,
+        traces: &[ExtendedOptimizationTrace],
+        filename: &str,
+    ) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-       let root = BitMapBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
+        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
         // Find the range of iterations and objective values
-        let max_iterations = traces.iter()
+        let max_iterations = traces
+            .iter()
             .map(|t| t.objective_values.len())
             .max()
             .unwrap_or(0);
-        
-        let (min_obj, max_obj) = traces.iter()
+
+        let (min_obj, max_obj) = traces
+            .iter()
             .flat_map(|t| t.objective_values.iter())
             .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &val| {
                 (min.min(val), max.max(val))
@@ -100,27 +112,32 @@ impl PlottingEngine {
             .y_label_area_size(70)
             .build_cartesian_2d(0..max_iterations, min_obj..max_obj)?;
 
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .x_desc("Iterations")
             .y_desc("Objective Value")
             .draw()?;
 
         // Color palette for different optimizers
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
-        
+
         for (i, trace) in traces.iter().enumerate() {
             let color = colors[i % colors.len()];
-            let series_data: Vec<(usize, f64)> = trace.objective_values.iter()
+            let series_data: Vec<(usize, f64)> = trace
+                .objective_values
+                .iter()
                 .enumerate()
                 .map(|(iter, &val)| (iter, val))
                 .collect();
 
-            chart.draw_series(LineSeries::new(series_data, color))?
+            chart
+                .draw_series(LineSeries::new(series_data, color))?
                 .label(&trace.optimizer_name)
                 .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
         }
 
-        chart.configure_series_labels()
+        chart
+            .configure_series_labels()
             .background_style(&WHITE.mix(0.8))
             .border_style(&BLACK)
             .draw()?;
@@ -131,24 +148,30 @@ impl PlottingEngine {
     }
 
     /// Create log-scale convergence plots for better visualization of convergence
-    pub fn log_convergence_plot(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
+    pub fn log_convergence_plot(
+        &self,
+        traces: &[ExtendedOptimizationTrace],
+        filename: &str,
+    ) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
+        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
-        let max_iterations = traces.iter()
+        let max_iterations = traces
+            .iter()
             .map(|t| t.objective_values.len())
             .max()
             .unwrap_or(0);
 
         // Find minimum positive objective value for log scale
-        let min_positive_obj = traces.iter()
+        let min_positive_obj = traces
+            .iter()
             .flat_map(|t| t.objective_values.iter())
             .filter(|&&val| val > 0.0)
             .fold(f64::INFINITY, |min, &val| min.min(val));
 
-        let max_obj = traces.iter()
+        let max_obj = traces
+            .iter()
             .flat_map(|t| t.objective_values.iter())
             .fold(f64::NEG_INFINITY, |max, &val| max.max(val));
 
@@ -162,26 +185,31 @@ impl PlottingEngine {
             .y_label_area_size(70)
             .build_cartesian_2d(0..max_iterations, log_min..log_max)?;
 
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .x_desc("Iterations")
             .y_desc("Log10(Objective Value)")
             .draw()?;
 
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
-        
+
         for (i, trace) in traces.iter().enumerate() {
             let color = colors[i % colors.len()];
-            let series_data: Vec<(usize, f64)> = trace.objective_values.iter()
+            let series_data: Vec<(usize, f64)> = trace
+                .objective_values
+                .iter()
                 .enumerate()
                 .map(|(iter, &val)| (iter, val.max(1e-12).log10()))
                 .collect();
 
-            chart.draw_series(LineSeries::new(series_data, color))?
+            chart
+                .draw_series(LineSeries::new(series_data, color))?
                 .label(&trace.optimizer_name)
                 .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
         }
 
-        chart.configure_series_labels()
+        chart
+            .configure_series_labels()
             .background_style(&WHITE.mix(0.8))
             .border_style(&BLACK)
             .draw()?;
@@ -194,13 +222,12 @@ impl PlottingEngine {
     /// Create performance comparison bar charts
     pub fn performance_comparison(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
+        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
         // Group results by problem and optimizer
         let mut problem_results: HashMap<String, HashMap<String, Vec<f64>>> = HashMap::new();
-        
+
         for result in &results.results {
             problem_results
                 .entry(result.problem_name.clone())
@@ -212,7 +239,7 @@ impl PlottingEngine {
 
         // Calculate mean final values for each optimizer on each problem
         let mut chart_data: Vec<(String, Vec<(String, f64)>)> = Vec::new();
-        
+
         for (problem, optimizers) in problem_results {
             let mut optimizer_means = Vec::new();
             for (optimizer, values) in optimizers {
@@ -230,41 +257,49 @@ impl PlottingEngine {
         for (i, (problem_name, optimizer_data)) in chart_data.iter().enumerate() {
             let y_start = i as u32 * subplot_height;
             let y_end = (i + 1) as u32 * subplot_height;
-            
+
             let subplot = root.margin(10, 10, y_start as i32, (self.height - y_end) as i32);
-            
-            let max_value = optimizer_data.iter()
+
+            let max_value = optimizer_data
+                .iter()
                 .map(|(_, val)| *val)
                 .fold(f64::NEG_INFINITY, f64::max);
-            
-            let min_value = optimizer_data.iter()
+
+            let min_value = optimizer_data
+                .iter()
                 .map(|(_, val)| *val)
                 .fold(f64::INFINITY, f64::min);
 
             let mut chart = ChartBuilder::on(&subplot)
-                .caption(&format!("Performance on {}", problem_name), ("sans-serif", 20))
+                .caption(
+                    &format!("Performance on {}", problem_name),
+                    ("sans-serif", 20),
+                )
                 .x_label_area_size(40)
                 .y_label_area_size(60)
                 .build_cartesian_2d(
                     0.0..(optimizer_data.len() as f64),
-                    min_value * 0.9..max_value * 1.1
+                    min_value * 0.9..max_value * 1.1,
                 )?;
 
-            chart.configure_mesh()
+            chart
+                .configure_mesh()
                 .x_desc("Optimizer")
                 .y_desc("Final Objective Value")
                 .x_label_formatter(&|x| {
-                    optimizer_data.get(*x as usize)
+                    optimizer_data
+                        .get(*x as usize)
                         .map(|(name, _)| name.clone())
                         .unwrap_or_default()
                 })
                 .draw()?;
 
-            chart.draw_series(
-                optimizer_data.iter().enumerate().map(|(x, (_, value))| {
-                    Rectangle::new([(x as f64, min_value * 0.9), (x as f64 + 0.8, *value)], BLUE.filled())
-                })
-            )?;
+            chart.draw_series(optimizer_data.iter().enumerate().map(|(x, (_, value))| {
+                Rectangle::new(
+                    [(x as f64, min_value * 0.9), (x as f64 + 0.8, *value)],
+                    BLUE.filled(),
+                )
+            }))?;
         }
 
         root.present()?;
@@ -275,13 +310,12 @@ impl PlottingEngine {
     /// Create box plots showing distribution of results
     pub fn performance_boxplot(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
+        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
         // Group results by optimizer across all problems
         let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
-        
+
         for result in &results.results {
             optimizer_results
                 .entry(result.optimizer_name.clone())
@@ -291,28 +325,41 @@ impl PlottingEngine {
 
         // Calculate statistics for each optimizer
         let mut box_data: Vec<(String, BoxPlotData)> = Vec::new();
-        
+
         for (optimizer, mut values) in optimizer_results {
             values.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let n = values.len();
-            
+
             if n > 0 {
                 let q1 = values[n / 4];
                 let median = values[n / 2];
                 let q3 = values[3 * n / 4];
                 let min = values[0];
                 let max = values[n - 1];
-                
-                box_data.push((optimizer, BoxPlotData {
-                    min, q1, median, q3, max
-                }));
+
+                box_data.push((
+                    optimizer,
+                    BoxPlotData {
+                        min,
+                        q1,
+                        median,
+                        q3,
+                        max,
+                    },
+                ));
             }
         }
 
         box_data.sort_by(|a, b| a.0.cmp(&b.0));
 
-        let global_min = box_data.iter().map(|(_, data)| data.min).fold(f64::INFINITY, f64::min);
-        let global_max = box_data.iter().map(|(_, data)| data.max).fold(f64::NEG_INFINITY, f64::max);
+        let global_min = box_data
+            .iter()
+            .map(|(_, data)| data.min)
+            .fold(f64::INFINITY, f64::min);
+        let global_max = box_data
+            .iter()
+            .map(|(_, data)| data.max)
+            .fold(f64::NEG_INFINITY, f64::max);
 
         let mut chart = ChartBuilder::on(&root)
             .caption("Performance Distribution", ("sans-serif", 40))
@@ -321,14 +368,16 @@ impl PlottingEngine {
             .y_label_area_size(70)
             .build_cartesian_2d(
                 0.0..(box_data.len() as f64),
-                global_min * 0.9..global_max * 1.1
+                global_min * 0.9..global_max * 1.1,
             )?;
 
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .x_desc("Optimizer")
             .y_desc("Final Objective Value")
             .x_label_formatter(&|x| {
-                box_data.get(*x as usize)
+                box_data
+                    .get(*x as usize)
                     .map(|(name, _)| name.clone())
                     .unwrap_or_default()
             })
@@ -338,28 +387,34 @@ impl PlottingEngine {
         for (i, (_, data)) in box_data.iter().enumerate() {
             let x = i as f64;
             let box_width = 0.3;
-            
+
             // Draw box (Q1 to Q3)
             chart.draw_series(std::iter::once(Rectangle::new(
-                [(x as f64 - box_width/2.0, data.q1), (x as f64 + box_width/2.0, data.q3)],
-                BLUE.mix(0.3).filled()
+                [
+                    (x as f64 - box_width / 2.0, data.q1),
+                    (x as f64 + box_width / 2.0, data.q3),
+                ],
+                BLUE.mix(0.3).filled(),
             )))?;
-            
+
             // Draw median line
             chart.draw_series(std::iter::once(PathElement::new(
-                vec![(x as f64 - box_width/2.0, data.median), (x as f64 + box_width/2.0, data.median)],
-                &RED
+                vec![
+                    (x as f64 - box_width / 2.0, data.median),
+                    (x as f64 + box_width / 2.0, data.median),
+                ],
+                &RED,
             )))?;
-            
+
             // Draw whiskers
             chart.draw_series(std::iter::once(PathElement::new(
                 vec![(x as f64, data.min), (x as f64, data.q1)],
-                &BLACK
+                &BLACK,
             )))?;
-            
+
             chart.draw_series(std::iter::once(PathElement::new(
                 vec![(x as f64, data.q3), (x as f64, data.max)],
-                &BLACK
+                &BLACK,
             )))?;
         }
 
@@ -369,10 +424,13 @@ impl PlottingEngine {
     }
 
     /// Create performance profiles showing fraction of problems solved within tolerance
-    pub fn performance_profiles(&self, profiles: &PerformanceProfiles, filename: &str) -> Result<()> {
+    pub fn performance_profiles(
+        &self,
+        profiles: &PerformanceProfiles,
+        filename: &str,
+    ) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
+        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
         let max_ratio = profiles.ratios.iter().fold(0.0_f64, |max, &r| max.max(r));
@@ -384,27 +442,31 @@ impl PlottingEngine {
             .y_label_area_size(70)
             .build_cartesian_2d(1.0..max_ratio, 0.0..1.0)?;
 
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .x_desc("Performance Ratio")
             .y_desc("Fraction of Problems Solved")
             .draw()?;
 
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
-        
+
         for (i, (optimizer, profile_data)) in profiles.optimizer_profiles.iter().enumerate() {
             let color = colors[i % colors.len()];
-            
-            chart.draw_series(LineSeries::new(
-                profile_data.iter().enumerate().map(|(j, &fraction)| {
-                    (profiles.ratios[j], fraction)
-                }),
-                color
-            ))?
-            .label(optimizer)
-            .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
+
+            chart
+                .draw_series(LineSeries::new(
+                    profile_data
+                        .iter()
+                        .enumerate()
+                        .map(|(j, &fraction)| (profiles.ratios[j], fraction)),
+                    color,
+                ))?
+                .label(optimizer)
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
         }
 
-        chart.configure_series_labels()
+        chart
+            .configure_series_labels()
             .background_style(&WHITE.mix(0.8))
             .border_style(&BLACK)
             .draw()?;
@@ -417,30 +479,32 @@ impl PlottingEngine {
     /// Create QQN-specific analysis plots showing magnitude ratios and switching behavior
     pub fn magnitude_ratio_analysis(&self, qqn_traces: &[QQNTrace], filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
+        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
         // Split into two subplots: histogram and time series
         let areas = root.split_evenly((1, 2));
         let upper = &areas[0];
         let lower = &areas[1];
-        
+
         // Upper plot: Histogram of magnitude ratios
         {
-            let all_ratios: Vec<f64> = qqn_traces.iter()
+            let all_ratios: Vec<f64> = qqn_traces
+                .iter()
                 .flat_map(|trace| trace.magnitude_ratios.iter())
                 .cloned()
                 .collect();
 
             if !all_ratios.is_empty() {
                 let min_ratio = all_ratios.iter().fold(f64::INFINITY, |min, &r| min.min(r));
-                let max_ratio = all_ratios.iter().fold(f64::NEG_INFINITY, |max, &r| max.max(r));
-                
+                let max_ratio = all_ratios
+                    .iter()
+                    .fold(f64::NEG_INFINITY, |max, &r| max.max(r));
+
                 let num_bins = 50;
                 let bin_width = (max_ratio - min_ratio) / num_bins as f64;
                 let mut histogram = vec![0; num_bins];
-                
+
                 for &ratio in &all_ratios {
                     let bin = ((ratio - min_ratio) / bin_width).floor() as usize;
                     let bin = bin.min(num_bins - 1);
@@ -456,27 +520,27 @@ impl PlottingEngine {
                     .y_label_area_size(50)
                     .build_cartesian_2d(min_ratio..max_ratio, 0..*max_count)?;
 
-                chart.configure_mesh()
+                chart
+                    .configure_mesh()
                     .x_desc("Magnitude Ratio (ρ)")
                     .y_desc("Frequency")
                     .draw()?;
 
-                chart.draw_series(
-                    histogram.iter().enumerate().map(|(i, &count)| {
-                        let x_start = min_ratio + i as f64 * bin_width;
-                        let x_end = x_start + bin_width;
-                        Rectangle::new([(x_start, 0), (x_end, count)], BLUE.mix(0.7).filled())
-                    })
-                )?;
+                chart.draw_series(histogram.iter().enumerate().map(|(i, &count)| {
+                    let x_start = min_ratio + i as f64 * bin_width;
+                    let x_end = x_start + bin_width;
+                    Rectangle::new([(x_start, 0), (x_end, count)], BLUE.mix(0.7).filled())
+                }))?;
 
                 // Draw threshold line
                 let threshold = 0.01_f64; // Default QQN threshold
-               chart.draw_series(std::iter::once(PathElement::new(
-                    vec![(threshold, 0), (threshold, *max_count)],
-                    &RED
-                )))?
-                .label("Threshold (τ)")
-                .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+                chart
+                    .draw_series(std::iter::once(PathElement::new(
+                        vec![(threshold, 0), (threshold, *max_count)],
+                        &RED,
+                    )))?
+                    .label("Threshold (τ)")
+                    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
 
                 chart.configure_series_labels().draw()?;
             }
@@ -495,18 +559,22 @@ impl PlottingEngine {
                     .y_label_area_size(50)
                     .build_cartesian_2d(0..max_iterations, 0.0..1.0)?;
 
-                chart.configure_mesh()
+                chart
+                    .configure_mesh()
                     .x_desc("Iteration")
                     .y_desc("Mode (0=L-BFGS, 1=Quadratic)")
                     .draw()?;
 
                 // Convert magnitude ratios to binary switching signal
-                let switching_signal: Vec<(usize, f64)> = trace.magnitude_ratios.iter()
+                let switching_signal: Vec<(usize, f64)> = trace
+                    .magnitude_ratios
+                    .iter()
                     .enumerate()
                     .map(|(i, &ratio)| (i, if ratio > threshold { 1.0 } else { 0.0 }))
                     .collect();
 
-                chart.draw_series(LineSeries::new(switching_signal, GREEN.stroke_width(2)))?
+                chart
+                    .draw_series(LineSeries::new(switching_signal, GREEN.stroke_width(2)))?
                     .label("QQN Mode")
                     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &GREEN));
 
@@ -522,8 +590,8 @@ impl PlottingEngine {
     /// Create comprehensive comparison dashboard
     pub fn create_dashboard(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width * 2, self.height * 2))
-            .into_drawing_area();
+        let root =
+            BitMapBackend::new(&output_path, (self.width * 2, self.height * 2)).into_drawing_area();
         root.fill(&WHITE)?;
 
         // Split into 4 quadrants
@@ -584,12 +652,11 @@ impl PlottingEngine {
     /// Export plots in different formats
     pub fn export_svg(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.svg", self.output_dir, filename);
-        let root = SVGBackend::new(&output_path, (self.width, self.height))
-            .into_drawing_area();
-        
+        let root = SVGBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
+
         // Reuse convergence plot logic with SVG backend
         self.draw_convergence_plot_on_backend(traces, root)?;
-        
+
         println!("SVG plot saved to: {}", output_path);
         Ok(())
     }
@@ -597,19 +664,21 @@ impl PlottingEngine {
     fn draw_convergence_plot_on_backend<DB: DrawingBackend>(
         &self,
         traces: &[ExtendedOptimizationTrace],
-        root: DrawingArea<DB, plotters::coord::Shift>
+        root: DrawingArea<DB, plotters::coord::Shift>,
     ) -> Result<()>
     where
         DB::ErrorType: 'static,
     {
         root.fill(&WHITE)?;
 
-        let max_iterations = traces.iter()
+        let max_iterations = traces
+            .iter()
             .map(|t| t.objective_values.len())
             .max()
             .unwrap_or(0);
-        
-        let (min_obj, max_obj) = traces.iter()
+
+        let (min_obj, max_obj) = traces
+            .iter()
             .flat_map(|t| t.objective_values.iter())
             .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &val| {
                 (min.min(val), max.max(val))
@@ -622,26 +691,31 @@ impl PlottingEngine {
             .y_label_area_size(70)
             .build_cartesian_2d(0..max_iterations, min_obj..max_obj)?;
 
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .x_desc("Iterations")
             .y_desc("Objective Value")
             .draw()?;
 
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
-        
+
         for (i, trace) in traces.iter().enumerate() {
             let color = colors[i % colors.len()];
-            let series_data: Vec<(usize, f64)> = trace.objective_values.iter()
+            let series_data: Vec<(usize, f64)> = trace
+                .objective_values
+                .iter()
                 .enumerate()
                 .map(|(iter, &val)| (iter, val))
                 .collect();
 
-            chart.draw_series(LineSeries::new(series_data, color))?
+            chart
+                .draw_series(LineSeries::new(series_data, color))?
                 .label(&trace.optimizer_name)
                 .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
         }
 
-        chart.configure_series_labels()
+        chart
+            .configure_series_labels()
             .background_style(&WHITE.mix(0.8))
             .border_style(&BLACK)
             .draw()?;
@@ -691,7 +765,7 @@ mod tests {
             q3: 3.0,
             max: 4.0,
         };
-        
+
         assert_eq!(data.median, 2.0);
         assert!(data.q1 < data.median);
         assert!(data.median < data.q3);

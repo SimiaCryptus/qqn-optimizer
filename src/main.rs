@@ -2,8 +2,8 @@ fn main() {
     println!("Hello, world!");
 }
 
-use candle_core::{Tensor, Result as CandleResult};
 use anyhow::Result;
+use candle_core::{Result as CandleResult, Tensor};
 /// Compute the magnitude (L2 norm) of a vector of tensors
 pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
     let mut sum_squares = 0.0;
@@ -18,14 +18,18 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
 /// Compute dot product between two tensor vectors
 pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
     if a.len() != b.len() {
-        return Err(candle_core::Error::Msg("Vector dimensions must match".to_string()));
+        return Err(candle_core::Error::Msg(
+            "Vector dimensions must match".to_string(),
+        ));
     }
     let mut result = 0.0;
     for (tensor_a, tensor_b) in a.iter().zip(b.iter()) {
         let values_a = tensor_a.to_vec1::<f64>()?;
         let values_b = tensor_b.to_vec1::<f64>()?;
         if values_a.len() != values_b.len() {
-            return Err(candle_core::Error::Msg("Tensor dimensions must match".to_string()));
+            return Err(candle_core::Error::Msg(
+                "Tensor dimensions must match".to_string(),
+            ));
         }
         for (&val_a, &val_b) in values_a.iter().zip(values_b.iter()) {
             result += val_a * val_b;
@@ -48,7 +52,9 @@ pub fn dot_product_f64(a: &[f64], b: &[f64]) -> Result<f64> {
 /// Add two tensor vectors element-wise
 pub fn vector_add(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
     if a.len() != b.len() {
-        return Err(candle_core::Error::Msg("Vector dimensions must match".to_string()));
+        return Err(candle_core::Error::Msg(
+            "Vector dimensions must match".to_string(),
+        ));
     }
     let mut result = Vec::with_capacity(a.len());
     for (tensor_a, tensor_b) in a.iter().zip(b.iter()) {
@@ -59,7 +65,9 @@ pub fn vector_add(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
 /// Subtract two tensor vectors element-wise (a - b)
 pub fn vector_subtract(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
     if a.len() != b.len() {
-        return Err(candle_core::Error::Msg("Vector dimensions must match".to_string()));
+        return Err(candle_core::Error::Msg(
+            "Vector dimensions must match".to_string(),
+        ));
     }
     let mut result = Vec::with_capacity(a.len());
     for (tensor_a, tensor_b) in a.iter().zip(b.iter()) {
@@ -134,14 +142,12 @@ pub fn magnitude_relative_difference(mag1: f64, mag2: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::Device;
     use approx::assert_relative_eq;
+    use candle_core::Device;
     #[test]
     fn test_compute_magnitude() -> CandleResult<()> {
         let device = Device::Cpu;
-        let tensors = vec![
-            Tensor::from_slice(&[3.0, 4.0], &[2], &device)?,
-        ];
+        let tensors = vec![Tensor::from_slice(&[3.0, 4.0], &[2], &device)?];
         let magnitude = compute_magnitude(&tensors)?;
         assert_relative_eq!(magnitude, 5.0, epsilon = 1e-10);
         Ok(())
@@ -217,7 +223,15 @@ mod tests {
     }
     #[test]
     fn test_magnitude_relative_difference() {
-        assert_relative_eq!(magnitude_relative_difference(10.0, 8.0), 0.2, epsilon = 1e-10);
-        assert_relative_eq!(magnitude_relative_difference(0.0, 0.0), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            magnitude_relative_difference(10.0, 8.0),
+            0.2,
+            epsilon = 1e-10
+        );
+        assert_relative_eq!(
+            magnitude_relative_difference(0.0, 0.0),
+            0.0,
+            epsilon = 1e-10
+        );
     }
 }

@@ -9,20 +9,18 @@
 /// Core result type used throughout the optimization framework
 pub type OptResult<T> = anyhow::Result<T>;
 
-pub mod optimizer;
-pub mod qqn;
 pub mod lbfgs;
 pub mod line_search;
-pub use optimizer::{Optimizer, StepResult, ConvergenceInfo, OptimizationMetadata};
-pub use qqn::{QQNOptimizer, QQNConfig, QQNState, QuadraticPath};
-pub use lbfgs::{LBFGSOptimizer, LBFGSConfig, LBFGSState};
+pub mod optimizer;
+pub mod qqn;
+pub use lbfgs::{LBFGSConfig, LBFGSOptimizer, LBFGSState};
 pub use line_search::{
-    LineSearch, LineSearchConfig, LineSearchMethod, StrongWolfeLineSearch, 
-    BacktrackingLineSearch, StrongWolfeConfig, BacktrackingConfig,
-    LineSearchResult, TerminationReason
+    BacktrackingConfig, BacktrackingLineSearch, LineSearch, LineSearchConfig, LineSearchMethod,
+    LineSearchResult, StrongWolfeConfig, StrongWolfeLineSearch, TerminationReason,
 };
+pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
 // Common result type for optimization operations
-
 
 /// Tolerance for numerical comparisons
 pub const NUMERICAL_TOLERANCE: f64 = 1e-12;

@@ -5,13 +5,14 @@
 //! It serves both as a baseline optimizer for benchmarking and as a core component of the
 //! QQN algorithm.
 
-use crate::core::optimizer::{Optimizer, StepResult, ConvergenceInfo};
+use crate::core::line_search::{LineSearch, LineSearchConfig, StrongWolfeLineSearch};
 use crate::core::optimizer::OptimizationMetadata;
-use crate::core::line_search::{LineSearch, StrongWolfeLineSearch, LineSearchConfig};
-use crate::core::OptResult;
-use crate::utils::math::{compute_magnitude, dot_product, vector_add, vector_subtract, vector_scale};
-use candle_core::{Tensor, Device, Result as CandleResult};
-use serde::{Serialize, Deserialize};
+use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
+use crate::utils::math::{
+    compute_magnitude, dot_product, vector_add, vector_scale, vector_subtract,
+};
+use candle_core::{Device, Result as CandleResult, Tensor};
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::Instant;
 
@@ -34,7 +35,7 @@ impl Default for LBFGSConfig {
             history_size: 10,
             line_search: LineSearchConfig::default(),
             epsilon: 1e-8,
-           max_correction_pairs: 10,
+            max_correction_pairs: 10,
         }
     }
 }
@@ -86,7 +87,8 @@ impl LBFGSState {
     pub fn compute_direction(&self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
         if self.s_history.is_empty() {
             // No history available, use steepest descent
-            return Ok(gradient.iter()
+            return Ok(gradient
+                .iter()
                 .map(|g| g.neg())
                 .collect::<CandleResult<Vec<_>>>()?);
         }
@@ -98,10 +100,10 @@ impl LBFGSState {
         for i in (0..self.s_history.len()).rev() {
             let s_i = &self.s_history[i];
             let rho_i = self.rho_history[i];
-            
+
             let alpha_i = rho_i * dot_product(s_i, &q)?;
             alpha.push(alpha_i);
-            
+
             // q = q - alpha_i * y_i
             let y_i = &self.y_history[i];
             let scaled_y = vector_scale(y_i, alpha_i)?;
@@ -120,10 +122,10 @@ impl LBFGSState {
             let y_i = &self.y_history[i];
             let rho_i = self.rho_history[i];
             let alpha_i = alpha[i];
-            
+
             let beta = rho_i * dot_product(y_i, &r)?;
             let correction_factor = alpha_i - beta;
-            
+
             // r = r + (alpha_i - beta) * s_i
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
@@ -133,10 +135,12 @@ impl LBFGSState {
     }
 
     /// Update the L-BFGS state with new gradient and step information.
-    pub fn update(&mut self, 
-                  new_gradient: &[Tensor], 
-                  step_direction: &[Tensor], 
-                  step_size: f64) -> CandleResult<()> {
+    pub fn update(
+        &mut self,
+        new_gradient: &[Tensor],
+        step_direction: &[Tensor],
+        step_size: f64,
+    ) -> CandleResult<()> {
         // Compute parameter difference: s_k = step_size * step_direction
         let s_k = vector_scale(step_direction, step_size)?;
 
@@ -221,16 +225,16 @@ impl LBFGSOptimizer {
     /// Create a new L-BFGS optimizer with the given configuration.
     pub fn new(config: LBFGSConfig) -> Self {
         let state = LBFGSState::new(config.history_size);
-       let line_search = Box::new(StrongWolfeLineSearch::new(
-           crate::core::line_search::StrongWolfeConfig {
-               c1: config.line_search.c1,
-               c2: config.line_search.c2,
-               max_iterations: config.line_search.max_iterations,
-               min_step: 1e-16,
-               max_step: 1e16,
-               initial_step: config.line_search.initial_step,
-           }
-       ));
+        let line_search = Box::new(StrongWolfeLineSearch::new(
+            crate::core::line_search::StrongWolfeConfig {
+                c1: config.line_search.c1,
+                c2: config.line_search.c2,
+                max_iterations: config.line_search.max_iterations,
+                min_step: 1e-16,
+                max_step: 1e16,
+                initial_step: config.line_search.initial_step,
+            },
+        ));
 
         Self {
             config,
@@ -258,7 +262,7 @@ impl LBFGSOptimizer {
     /// Compute convergence information for the current state.
     fn compute_convergence_info(&self, gradient: &[Tensor]) -> CandleResult<ConvergenceInfo> {
         let gradient_norm = compute_magnitude(gradient)?;
-        
+
         Ok(ConvergenceInfo {
             gradient_norm,
             converged: gradient_norm < 1e-6, // Default tolerance
@@ -276,65 +280,67 @@ impl Optimizer for LBFGSOptimizer {
     fn new(config: Self::Config) -> Self {
         Self::new(config)
     }
-    
 
-
-    fn step(&mut self, 
-            params: &mut [Tensor],
-            gradients: &[Tensor]) -> CandleResult<StepResult> {
+    fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> CandleResult<StepResult> {
         let start_time = Instant::now();
-        
+
         // Compute L-BFGS search direction
         let search_direction = self.state.compute_direction(gradients)?;
 
         // Convert tensors to f64 vectors for line search
-        let params_f64: Vec<f64> = params.iter()
+        let params_f64: Vec<f64> = params
+            .iter()
             .map(|p| p.to_vec1::<f64>())
             .collect::<CandleResult<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect();
-        
-        let direction_f64: Vec<f64> = search_direction.iter()
+
+        let direction_f64: Vec<f64> = search_direction
+            .iter()
             .map(|d| d.to_vec1::<f64>())
             .collect::<CandleResult<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect();
-        
-        let gradients_f64: Vec<f64> = gradients.iter()
+
+        let gradients_f64: Vec<f64> = gradients
+            .iter()
             .map(|g| g.to_vec1::<f64>())
             .collect::<CandleResult<Vec<_>>>()?
             .into_iter()
             .flatten()
             .collect();
-        
+
         // Create objective function closure
         let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
             // For now, return a dummy value since we don't have access to the objective function
             // In a real implementation, this would need to be passed in or stored
             Ok(0.0)
         };
-        
+
         // Create gradient function closure
         let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
             // For now, return the current gradient
             // In a real implementation, this would evaluate the gradient at x
             Ok(gradients_f64.clone())
         };
-        
+
         // Compute current function value (dummy for now)
         let current_value = 0.0;
-        
+
         // Perform line search to find optimal step size
-        let line_search_result = self.line_search.search(
-            &params_f64,
-            &direction_f64,
-            current_value,
-            &gradients_f64,
-            &objective_fn,
-            &gradient_fn,
-        ).map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?;
+        let line_search_result = self
+            .line_search
+            .search(
+                &params_f64,
+                &direction_f64,
+                current_value,
+                &gradients_f64,
+                &objective_fn,
+                &gradient_fn,
+            )
+            .map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?;
 
         // Update parameters: x_{k+1} = x_k + alpha * p_k
         for (param, direction) in params.iter_mut().zip(&search_direction) {
@@ -344,7 +350,8 @@ impl Optimizer for LBFGSOptimizer {
         }
 
         // Update L-BFGS state with new information
-        self.state.update(gradients, &search_direction, line_search_result.step_size)?;
+        self.state
+            .update(gradients, &search_direction, line_search_result.step_size)?;
 
         // Compute convergence information
         let convergence_info = self.compute_convergence_info(gradients)?;
@@ -378,8 +385,8 @@ impl Optimizer for LBFGSOptimizer {
 mod tests {
     use super::*;
     use crate::utils::math::*;
-    use candle_core::Device;
     use approx::assert_relative_eq;
+    use candle_core::Device;
 
     #[test]
     fn test_lbfgs_state_creation() {
@@ -393,17 +400,13 @@ mod tests {
     fn test_lbfgs_steepest_descent_fallback() -> CandleResult<()> {
         let device = Device::Cpu;
         let state = LBFGSState::new(5);
-        
-        let gradient = vec![
-            Tensor::from_slice(&[1.0, 2.0], (2,), &device)?,
-        ];
+
+        let gradient = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
         let direction = state.compute_direction(&gradient)?;
-        
+
         // Should return negative gradient (steepest descent)
-        let expected = vec![
-            Tensor::from_slice(&[-1.0, -2.0], (2,), &device)?,
-        ];
+        let expected = vec![Tensor::from_slice(&[-1.0, -2.0], (2,), &device)?];
 
         let dir_values = direction[0].to_vec1::<f64>()?;
         let exp_values = expected[0].to_vec1::<f64>()?;
@@ -417,7 +420,7 @@ mod tests {
     fn test_lbfgs_state_update() -> CandleResult<()> {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5);
-        
+
         let grad1 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[0.5, 0.5], &[2], &device)?];
         let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
@@ -440,7 +443,7 @@ mod tests {
     fn test_lbfgs_optimizer_creation() {
         let config = LBFGSConfig::default();
         let optimizer = LBFGSOptimizer::new(config);
-        
+
         assert_eq!(optimizer.name(), "L-BFGS");
         assert_eq!(optimizer.state().history_length(), 0);
     }
@@ -449,10 +452,10 @@ mod tests {
     fn test_lbfgs_reset() {
         let config = LBFGSConfig::default();
         let mut optimizer = LBFGSOptimizer::new(config);
-        
+
         // Manually set some state
         optimizer.state.iteration = 5;
-        
+
         optimizer.reset();
         assert_eq!(optimizer.state().iteration(), 0);
         assert_eq!(optimizer.state().history_length(), 0);
@@ -462,7 +465,7 @@ mod tests {
     fn test_curvature_condition_rejection() -> CandleResult<()> {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5);
-        
+
         let grad1 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?]; // Same gradient
         let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
@@ -470,7 +473,7 @@ mod tests {
 
         state.update(&grad1, &direction, step_size)?;
         state.update(&grad2, &direction, step_size)?;
-        
+
         // Should not add to history due to zero curvature (y_k = 0)
         assert_eq!(state.history_length(), 0);
 
@@ -481,14 +484,18 @@ mod tests {
     fn test_history_size_limit() -> CandleResult<()> {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(2); // Small history size
-        
+
         // Add more updates than history size
         for i in 0..5 {
-            let grad = vec![Tensor::from_slice(&[1.0 + i as f64 * 0.1, 1.0], &[2], &device)?];
+            let grad = vec![Tensor::from_slice(
+                &[1.0 + i as f64 * 0.1, 1.0],
+                &[2],
+                &device,
+            )?];
             let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
             state.update(&grad, &direction, 0.1)?;
         }
-        
+
         // Should maintain only the history size limit
         assert!(state.history_length() <= 2);
 

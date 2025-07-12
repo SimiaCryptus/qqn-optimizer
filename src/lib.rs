@@ -36,32 +36,35 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
-pub mod core;
-pub mod benchmarks;
 pub mod analysis;
-pub mod utils;
+pub mod benchmarks;
 pub mod config;
+pub mod core;
+pub mod utils;
 
 // Re-export commonly used types
 pub use core::{
-    optimizer::{Optimizer, StepResult, ConvergenceInfo},
-    qqn::{QQNOptimizer, QQNConfig},
-    lbfgs::{LBFGSOptimizer, LBFGSConfig},
+    lbfgs::{LBFGSConfig, LBFGSOptimizer},
+    optimizer::{ConvergenceInfo, Optimizer, StepResult},
+    qqn::{QQNConfig, QQNOptimizer},
 };
 
 pub use benchmarks::{
-    functions::{OptimizationProblem, RosenbrockFunction, RastriginFunction, SphereFunction, BealeFunction, AckleyFunction},
+    evaluation::{BenchmarkResults, BenchmarkRunner},
+    functions::{
+        AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
+        SphereFunction,
+    },
     ml_problems::{LogisticRegression, NeuralNetworkTraining},
-    evaluation::{BenchmarkRunner, BenchmarkResults},
 };
 
 pub use analysis::{
-    statistics::{StatisticalAnalysis, ConvergenceComparison, PerformanceProfiles},
-    plotting::{PlottingEngine, PlotConfig, ExtendedOptimizationTrace},
-    reporting::{ReportGenerator, AcademicReport},
+    plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine},
+    reporting::{AcademicReport, ReportGenerator},
+    statistics::{ConvergenceComparison, PerformanceProfiles, StatisticalAnalysis},
 };
 
-pub use config::{ExperimentConfig, ProblemConfig, OptimizerConfig};
+pub use config::{ExperimentConfig, OptimizerConfig, ProblemConfig};
 
 // Error types
 pub use anyhow::{Error, Result};

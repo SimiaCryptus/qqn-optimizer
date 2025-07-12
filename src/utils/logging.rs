@@ -1,7 +1,7 @@
 //! Logging and performance monitoring utilities
+use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
-use tracing::{info, debug, warn};
-use serde::{Serialize, Deserialize};
+use tracing::{debug, info, warn};
 /// Setup tracing for the optimization framework
 pub fn setup_tracing() -> anyhow::Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -32,7 +32,10 @@ pub fn log_convergence_info(converged: bool, reason: &str, iterations: usize) {
     if converged {
         info!("Converged after {} iterations: {}", iterations, reason);
     } else {
-        warn!("Failed to converge after {} iterations: {}", iterations, reason);
+        warn!(
+            "Failed to converge after {} iterations: {}",
+            iterations, reason
+        );
     }
 }
 /// Performance timer for measuring execution time

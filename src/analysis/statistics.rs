@@ -96,7 +96,6 @@ impl ConvergenceComparison {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceProfiles {
     pub tolerance_levels: Vec<f64>,
@@ -167,7 +166,8 @@ impl StatisticalAnalysis {
     }
     /// Get effect sizes from pairwise comparisons
     pub fn effect_sizes(&self) -> Vec<EffectSize> {
-        self.convergence_comparison.pairwise_comparisons
+        self.convergence_comparison
+            .pairwise_comparisons
             .iter()
             .map(|comp| EffectSize {
                 optimizer_a: comp.optimizer_a.clone(),
@@ -418,14 +418,9 @@ impl StatisticalAnalysis {
         let mut profiles = HashMap::new();
 
         for (optimizer_name, optimizer_results) in &grouped_results {
-            let tolerance_fractions = Self::compute_tolerance_fractions(
-                optimizer_results,
-                &tolerance_levels,
-            );
-            let time_fractions = Self::compute_time_fractions(
-                optimizer_results,
-                &time_limits,
-            );
+            let tolerance_fractions =
+                Self::compute_tolerance_fractions(optimizer_results, &tolerance_levels);
+            let time_fractions = Self::compute_time_fractions(optimizer_results, &time_limits);
 
             let overall_score = Self::compute_overall_score(&tolerance_fractions, &time_fractions);
 
@@ -439,10 +434,10 @@ impl StatisticalAnalysis {
                 },
             );
         }
-        let optimizer_profiles = profiles.iter().map(|(name, profile_data)| {
-            (name.clone(), profile_data.tolerance_fractions.clone())
-        }).collect();
-
+        let optimizer_profiles = profiles
+            .iter()
+            .map(|(name, profile_data)| (name.clone(), profile_data.tolerance_fractions.clone()))
+            .collect();
 
         PerformanceProfiles {
             tolerance_levels,
@@ -469,10 +464,7 @@ impl StatisticalAnalysis {
             .collect()
     }
 
-    fn compute_time_fractions(
-        results: &[&SingleResult],
-        time_limits: &[f64],
-    ) -> Vec<f64> {
+    fn compute_time_fractions(results: &[&SingleResult], time_limits: &[f64]) -> Vec<f64> {
         time_limits
             .iter()
             .map(|&time_limit| {
@@ -488,7 +480,8 @@ impl StatisticalAnalysis {
     }
 
     fn compute_overall_score(tolerance_fractions: &[f64], time_fractions: &[f64]) -> f64 {
-        let tolerance_score: f64 = tolerance_fractions.iter().sum::<f64>() / tolerance_fractions.len() as f64;
+        let tolerance_score: f64 =
+            tolerance_fractions.iter().sum::<f64>() / tolerance_fractions.len() as f64;
         let time_score: f64 = time_fractions.iter().sum::<f64>() / time_fractions.len() as f64;
         (tolerance_score + time_score) / 2.0
     }
@@ -510,7 +503,7 @@ impl StatisticalAnalysis {
         // Compute category performance
         for (category, problems) in &problem_categories {
             let mut optimizer_performance = HashMap::new();
-            
+
             for result in &results.results {
                 if problems.contains(&result.problem_name) {
                     let entry = optimizer_performance
@@ -659,10 +652,8 @@ impl StatisticalAnalysis {
             return 0.0;
         }
         let mean = Self::mean(values);
-        let variance = values
-            .iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>() / (values.len() - 1) as f64;
+        let variance =
+            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
         variance.sqrt()
     }
 
@@ -727,14 +718,19 @@ impl StatisticalAnalysis {
         let n_b = group_b.len() as f64;
 
         let se = ((var_a / n_a) + (var_b / n_b)).sqrt();
-        let t_stat = if se == 0.0 { 0.0 } else { (mean_a - mean_b) / se };
+        let t_stat = if se == 0.0 {
+            0.0
+        } else {
+            (mean_a - mean_b) / se
+        };
 
         // Degrees of freedom for Welch's t-test
         let df = if var_a == 0.0 && var_b == 0.0 {
             n_a + n_b - 2.0
         } else {
             let numerator = ((var_a / n_a) + (var_b / n_b)).powi(2);
-            let denominator = (var_a / n_a).powi(2) / (n_a - 1.0) + (var_b / n_b).powi(2) / (n_b - 1.0);
+            let denominator =
+                (var_a / n_a).powi(2) / (n_a - 1.0) + (var_b / n_b).powi(2) / (n_b - 1.0);
             numerator / denominator
         };
 
@@ -746,7 +742,7 @@ impl StatisticalAnalysis {
 
     fn mann_whitney_u_test(group_a: &[f64], group_b: &[f64]) -> (f64, f64) {
         let mut combined: Vec<(f64, usize)> = Vec::new();
-        
+
         for &value in group_a {
             combined.push((value, 0)); // 0 for group A
         }
@@ -774,8 +770,12 @@ impl StatisticalAnalysis {
         // Simplified p-value calculation
         let expected_u = (n_a * n_b) / 2.0;
         let std_u = ((n_a * n_b * (n_a + n_b + 1.0)) / 12.0).sqrt();
-        
-        let z_score = if std_u == 0.0 { 0.0 } else { (u_stat - expected_u) / std_u };
+
+        let z_score = if std_u == 0.0 {
+            0.0
+        } else {
+            (u_stat - expected_u) / std_u
+        };
         let p_value = if z_score.abs() > 1.96 { 0.05 } else { 0.5 };
 
         (u_stat, p_value)
@@ -789,7 +789,7 @@ mod tests {
     #[test]
     fn test_statistical_functions() {
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        
+
         assert_eq!(StatisticalAnalysis::mean(&values), 3.0);
         assert_eq!(StatisticalAnalysis::median(&values), 3.0);
         assert!((StatisticalAnalysis::std_dev(&values) - 1.5811388300841898).abs() < 1e-10);
@@ -799,7 +799,7 @@ mod tests {
     fn test_cohens_d() {
         let group_a = vec![1.0, 2.0, 3.0];
         let group_b = vec![4.0, 5.0, 6.0];
-        
+
         let effect_size = StatisticalAnalysis::cohens_d(&group_a, &group_b);
         assert!(effect_size < 0.0); // group_a has lower mean
         assert!(effect_size.abs() > 1.0); // Large effect size
@@ -809,8 +809,9 @@ mod tests {
     fn test_confidence_interval() {
         let group_a = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let group_b = vec![6.0, 7.0, 8.0, 9.0, 10.0];
-        
-        let (lower, upper) = StatisticalAnalysis::confidence_interval_mean_diff(&group_a, &group_b, 0.95);
+
+        let (lower, upper) =
+            StatisticalAnalysis::confidence_interval_mean_diff(&group_a, &group_b, 0.95);
         assert!(lower < upper);
         assert!(lower < -3.0); // Mean difference should be around -5
         assert!(upper > -7.0);

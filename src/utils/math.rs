@@ -6,8 +6,8 @@
 //! - Numerical stability utilities
 //! - Common mathematical functions for optimization
 
+use anyhow::{anyhow, Result};
 use candle_core::{Result as CandleResult, Tensor};
-use anyhow::{Result, anyhow};
 
 /// Compute the magnitude (L2 norm) of a vector of tensors
 pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
@@ -27,7 +27,7 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
 pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
     if a.len() != b.len() {
         return Err(candle_core::Error::Msg(
-            "Tensor vectors must have same length for dot product".to_string()
+            "Tensor vectors must have same length for dot product".to_string(),
         ));
     }
 
@@ -39,7 +39,7 @@ pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
 
         if values_a.len() != values_b.len() {
             return Err(candle_core::Error::Msg(
-                "Tensors must have same number of elements for dot product".to_string()
+                "Tensors must have same number of elements for dot product".to_string(),
             ));
         }
 
@@ -59,12 +59,11 @@ pub fn dot_product_f64(a: &[f64], b: &[f64]) -> Result<f64> {
     Ok(result)
 }
 
-
 /// Add two tensor vectors element-wise
 pub fn vector_add(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
     if a.len() != b.len() {
         return Err(candle_core::Error::Msg(
-            "Tensor vectors must have same length for addition".to_string()
+            "Tensor vectors must have same length for addition".to_string(),
         ));
     }
 
@@ -81,7 +80,7 @@ pub fn vector_add(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
 pub fn vector_subtract(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
     if a.len() != b.len() {
         return Err(candle_core::Error::Msg(
-            "Tensor vectors must have same length for subtraction".to_string()
+            "Tensor vectors must have same length for subtraction".to_string(),
         ));
     }
 
@@ -190,7 +189,8 @@ pub fn euclidean_distance(a: &[f64], b: &[f64]) -> Result<f64> {
         return Err(anyhow!("Points must have same dimension"));
     }
 
-    let sum_sq_diff = a.iter()
+    let sum_sq_diff = a
+        .iter()
         .zip(b.iter())
         .map(|(x, y)| (x - y).powi(2))
         .sum::<f64>();
@@ -219,7 +219,8 @@ pub fn condition_number_estimate(values: &[f64]) -> f64 {
     }
 
     let max_val = values.iter().map(|x| x.abs()).fold(0.0, f64::max);
-    let min_val = values.iter()
+    let min_val = values
+        .iter()
         .map(|x| x.abs())
         .filter(|&x| x > f64::EPSILON)
         .fold(f64::INFINITY, f64::min);
@@ -256,7 +257,11 @@ pub fn moving_average(values: &[f64], window_size: usize) -> Vec<f64> {
     let mut result = Vec::new();
 
     for i in 0..values.len() {
-        let start = if i + 1 >= window_size { i + 1 - window_size } else { 0 };
+        let start = if i + 1 >= window_size {
+            i + 1 - window_size
+        } else {
+            0
+        };
         let end = i + 1;
         let window = &values[start..end];
         let avg = window.iter().sum::<f64>() / window.len() as f64;
@@ -293,9 +298,7 @@ mod tests {
     #[test]
     fn test_compute_magnitude() -> CandleResult<()> {
         let device = Device::Cpu;
-        let tensors = vec![
-            Tensor::from_slice(&[3.0, 4.0], &[2], &device)?,
-        ];
+        let tensors = vec![Tensor::from_slice(&[3.0, 4.0], &[2], &device)?];
 
         let magnitude = compute_magnitude(&tensors)?;
         assert_relative_eq!(magnitude, 5.0, epsilon = 1e-10);
@@ -344,16 +347,32 @@ mod tests {
 
     #[test]
     fn test_magnitude_relative_difference() {
-        assert_relative_eq!(magnitude_relative_difference(10.0, 8.0), 0.2, epsilon = 1e-10);
-        assert_relative_eq!(magnitude_relative_difference(0.0, 0.0), 0.0, epsilon = 1e-10);
-        assert_relative_eq!(magnitude_relative_difference(5.0, 5.0), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            magnitude_relative_difference(10.0, 8.0),
+            0.2,
+            epsilon = 1e-10
+        );
+        assert_relative_eq!(
+            magnitude_relative_difference(0.0, 0.0),
+            0.0,
+            epsilon = 1e-10
+        );
+        assert_relative_eq!(
+            magnitude_relative_difference(5.0, 5.0),
+            0.0,
+            epsilon = 1e-10
+        );
     }
 
     #[test]
     fn test_norms() {
         let values = vec![3.0, -4.0, 0.0, 5.0];
 
-        assert_relative_eq!(norm_l2(&values), (9.0 + 16.0 + 0.0 + 25.0_f64).sqrt(), epsilon = 1e-10);
+        assert_relative_eq!(
+            norm_l2(&values),
+            (9.0 + 16.0 + 0.0 + 25.0_f64).sqrt(),
+            epsilon = 1e-10
+        );
         assert_relative_eq!(norm_l1(&values), 12.0, epsilon = 1e-10);
         assert_relative_eq!(norm_inf(&values), 5.0, epsilon = 1e-10);
     }

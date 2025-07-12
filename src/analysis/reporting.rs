@@ -1,7 +1,7 @@
 //! Report generation tools.
 
-use crate::core::OptResult;
 use crate::analysis::AnalysisReport;
+use crate::core::OptResult;
 
 /// Report generator for academic publications
 pub struct ReportGenerator {
@@ -49,7 +49,7 @@ impl LaTeXExporter {
     pub fn new() -> Self {
         Self
     }
-    
+
     pub fn export_report(&self, report: &AnalysisReport) -> OptResult<String> {
         Ok(format!(
             "\\documentclass{{article}}\n\\begin{{document}}\n{}\n\\end{{document}}",
@@ -65,8 +65,12 @@ impl CSVExporter {
     pub fn new() -> Self {
         Self
     }
-    
-    pub fn export_report(&self, _report: &AnalysisReport, _output_dir: &std::path::Path) -> OptResult<()> {
+
+    pub fn export_report(
+        &self,
+        _report: &AnalysisReport,
+        _output_dir: &std::path::Path,
+    ) -> OptResult<()> {
         // Stub implementation
         Ok(())
     }

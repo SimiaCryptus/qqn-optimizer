@@ -1,13 +1,10 @@
+use crate::benchmarks::functions::OptimizationProblem;
+use crate::core::optimizer::{Optimizer, OptimizerBox};
+use serde::{Deserialize, Serialize};
+use std::any::Any;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
-use crate::core::optimizer::{Optimizer, OptimizerBox, StepResult, ConvergenceInfo};
-use crate::benchmarks::functions::OptimizationProblem;
-use crate::utils::math::compute_magnitude;
-use candle_core::Tensor;
-use std::any::Any;
-
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,9 +71,6 @@ pub struct IterationData {
     pub timestamp: DurationWrapper,
 }
 
-    
-    
-
 impl OptimizationTrace {
     pub fn new() -> Self {
         Self {
@@ -96,7 +90,7 @@ impl OptimizationTrace {
         timestamp: Duration,
     ) {
         let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-        
+
         self.iterations.push(IterationData {
             iteration,
             function_value,
@@ -179,7 +173,8 @@ impl BenchmarkResults {
     }
 
     pub fn get_problem_names(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.results
+        let mut names: Vec<String> = self
+            .results
             .iter()
             .map(|r| r.problem_name.clone())
             .collect::<std::collections::HashSet<_>>()
@@ -190,7 +185,8 @@ impl BenchmarkResults {
     }
 
     pub fn get_optimizer_names(&self) -> Vec<String> {
-        let mut names: Vec<String> = self.results
+        let mut names: Vec<String> = self
+            .results
             .iter()
             .map(|r| r.optimizer_name.clone())
             .collect::<std::collections::HashSet<_>>()
@@ -218,16 +214,14 @@ impl BenchmarkRunner {
         optimizers: Vec<Box<dyn OptimizerBox>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
-        
+
         for problem in &problems {
             for optimizer in &optimizers {
                 for run_id in 0..self.config.num_runs {
-                    let result = self.run_single_benchmark(
-                        problem.as_ref(),
-                        optimizer.as_ref(),
-                        run_id,
-                    ).await?;
-                    
+                    let result = self
+                        .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id)
+                        .await?;
+
                     results.add_result(result);
                 }
             }
@@ -245,7 +239,7 @@ impl BenchmarkRunner {
     ) -> Result<SingleResult, BenchmarkError> {
         // Set random seed for reproducibility
         let seed = self.config.random_seed + run_id as u64;
-        
+
         // Clone optimizer for this run
         let mut opt = optimizer.clone_box();
         opt.reset();
@@ -272,19 +266,27 @@ impl BenchmarkRunner {
                 &mut gradient_evaluations,
                 &mut trace,
                 start_time,
-            )
-        ).await;
+            ),
+        )
+        .await;
 
         let (convergence_achieved, convergence_reason) = match optimization_result {
-            Ok(Ok(reason)) => (reason == ConvergenceReason::GradientTolerance || 
-                              reason == ConvergenceReason::FunctionTolerance, reason),
+            Ok(Ok(reason)) => (
+                reason == ConvergenceReason::GradientTolerance
+                    || reason == ConvergenceReason::FunctionTolerance,
+                reason,
+            ),
             Ok(Err(_)) => (false, ConvergenceReason::NumericalError),
             Err(_) => (false, ConvergenceReason::TimeLimit),
         };
 
         // Final evaluation
-        let final_value = problem.evaluate(&x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
-        let final_gradient = problem.gradient(&x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+        let final_value = problem
+            .evaluate(&x)
+            .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+        let final_gradient = problem
+            .gradient(&x)
+            .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
         Ok(SingleResult {
@@ -315,10 +317,14 @@ impl BenchmarkRunner {
         start_time: Instant,
     ) -> Result<ConvergenceReason, BenchmarkError> {
         while *iteration < self.config.max_iterations {
-// Evaluate function and gradient
-            let f_val = problem.evaluate(x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+            // Evaluate function and gradient
+            let f_val = problem
+                .evaluate(x)
+                .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             *function_evaluations += 1;
-            let gradient = problem.gradient(x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+            let gradient = problem
+                .gradient(x)
+                .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             *gradient_evaluations += 1;
 
             // Record iteration data
@@ -343,7 +349,8 @@ impl BenchmarkRunner {
             }
 
             // Perform optimization step
-        let step_result = optimizer.step_slice(x, &gradient)
+            let step_result = optimizer
+                .step_slice(x, &gradient)
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
 
             // Update counters
@@ -395,16 +402,16 @@ impl BenchmarkRunner {
 pub enum BenchmarkError {
     #[error("Problem evaluation error: {0}")]
     ProblemError(String),
-    
+
     #[error("Optimizer error: {0}")]
     OptimizerError(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 }
@@ -414,51 +421,55 @@ impl BenchmarkResults {
     /// Calculate success rate for each optimizer
     pub fn success_rates(&self) -> HashMap<String, f64> {
         let mut rates = HashMap::new();
-        
+
         for optimizer_name in self.get_optimizer_names() {
             let results = self.get_results_for_optimizer(&optimizer_name);
             let successful = results.iter().filter(|r| r.convergence_achieved).count();
             let total = results.len();
-            
+
             rates.insert(optimizer_name, successful as f64 / total as f64);
         }
-        
+
         rates
     }
 
     /// Calculate average final values for each optimizer on each problem
     pub fn average_final_values(&self) -> HashMap<(String, String), f64> {
         let mut averages = HashMap::new();
-        
+
         for problem_name in self.get_problem_names() {
             for optimizer_name in self.get_optimizer_names() {
-                let results: Vec<_> = self.results
+                let results: Vec<_> = self
+                    .results
                     .iter()
-                    .filter(|r| r.problem_name == problem_name && r.optimizer_name == optimizer_name)
+                    .filter(|r| {
+                        r.problem_name == problem_name && r.optimizer_name == optimizer_name
+                    })
                     .collect();
-                
+
                 if !results.is_empty() {
-                    let avg = results.iter().map(|r| r.final_value).sum::<f64>() / results.len() as f64;
+                    let avg =
+                        results.iter().map(|r| r.final_value).sum::<f64>() / results.len() as f64;
                     averages.insert((problem_name.clone(), optimizer_name.clone()), avg);
                 }
             }
         }
-        
+
         averages
     }
 
     /// Calculate average execution times
     pub fn average_execution_times(&self) -> HashMap<String, Duration> {
         let mut times = HashMap::new();
-        
+
         for optimizer_name in self.get_optimizer_names() {
             let results = self.get_results_for_optimizer(&optimizer_name);
             let total_time: Duration = results.iter().map(|r| r.execution_time).sum();
             let avg_time = total_time / results.len() as u32;
-            
+
             times.insert(optimizer_name, avg_time);
         }
-        
+
         times
     }
 
@@ -481,7 +492,7 @@ impl BenchmarkResults {
 mod tests {
     use super::*;
     use crate::benchmarks::functions::SphereFunction;
-    use crate::core::lbfgs::{LBFGSOptimizer, LBFGSConfig};
+    use crate::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 
     #[tokio::test]
     async fn test_benchmark_runner() {
@@ -493,17 +504,14 @@ mod tests {
         };
 
         let runner = BenchmarkRunner::new(config);
-        
-        let problems: Vec<Box<dyn OptimizationProblem>> = vec![
-            Box::new(SphereFunction::new(2)),
-        ];
-        
-        let optimizers: Vec<Box<dyn OptimizerBox>> = vec![
-            Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-        ];
+
+        let problems: Vec<Box<dyn OptimizationProblem>> = vec![Box::new(SphereFunction::new(2))];
+
+        let optimizers: Vec<Box<dyn OptimizerBox>> =
+            vec![Box::new(LBFGSOptimizer::new(LBFGSConfig::default()))];
 
         let results = runner.run_benchmarks(problems, optimizers).await.unwrap();
-        
+
         assert_eq!(results.results.len(), 2); // 1 problem × 1 optimizer × 2 runs
         assert!(results.results.iter().all(|r| r.convergence_achieved));
     }
@@ -512,7 +520,7 @@ mod tests {
     fn test_benchmark_results_analysis() {
         let config = BenchmarkConfig::default();
         let mut results = BenchmarkResults::new(config);
-        
+
         // Add mock results
         results.add_result(SingleResult {
             problem_name: "sphere".to_string(),
@@ -531,8 +539,11 @@ mod tests {
 
         let success_rates = results.success_rates();
         assert_eq!(success_rates.get("lbfgs"), Some(&1.0));
-        
+
         let avg_values = results.average_final_values();
-        assert_eq!(avg_values.get(&("sphere".to_string(), "lbfgs".to_string())), Some(&1e-8));
+        assert_eq!(
+            avg_values.get(&("sphere".to_string(), "lbfgs".to_string())),
+            Some(&1e-8)
+        );
     }
 }
