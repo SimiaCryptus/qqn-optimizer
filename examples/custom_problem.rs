@@ -8,8 +8,8 @@
 
 use anyhow::Result;
 use qqn_optimizer::{
-    OptimizationProblem, QQNOptimizer, QQNConfig, LBFGSOptimizer, LBFGSConfig,
-    Optimizer, LineSearchConfig, StrongWolfeConfig
+    LBFGSConfig, LBFGSOptimizer, OptimizationProblem, Optimizer, OptimizerBox,
+    QQNConfig, QQNOptimizer
 };
 
 /// Custom quadratic optimization problem: f(x) = 0.5 * x^T * A * x + b^T * x + c
@@ -121,6 +121,10 @@ impl OptimizationProblem for QuadraticProblem {
 
     fn convergence_tolerance(&self) -> f64 {
         1e-8
+    }
+    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
+        // No bounds for this quadratic problem - allow unconstrained optimization
+        None
     }
 }
 

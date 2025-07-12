@@ -80,13 +80,14 @@ pub struct LineSearchConfig {
     pub c2: f64,
     pub max_iterations: usize,
     pub initial_step: f64,
+    pub min_step: f64,
+    pub max_step: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LineSearchMethod {
     StrongWolfe,
     Backtracking,
-    Armijo,
 }
 
 impl Default for LineSearchConfig {
@@ -97,6 +98,8 @@ impl Default for LineSearchConfig {
             c2: 0.9,
             max_iterations: 20,
             initial_step: 1.0,
+            min_step: 1e-16,
+            max_step: 1e16,
         }
     }
 }

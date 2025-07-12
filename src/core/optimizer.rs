@@ -203,6 +203,8 @@ pub struct ConvergenceInfo {
 
     /// Convergence criterion that was satisfied (if any)
     pub convergence_criterion: Option<ConvergenceCriterion>,
+    /// Whether QQN hybrid mode is active (for QQN optimizers)
+    pub qqn_mode_active: bool,
 }
 
 impl Default for ConvergenceInfo {
@@ -213,6 +215,7 @@ impl Default for ConvergenceInfo {
             function_change: None,
             parameter_change: None,
             convergence_criterion: None,
+            qqn_mode_active: false,
         }
     }
 }
@@ -241,6 +244,11 @@ impl ConvergenceInfo {
     /// Update convergence status based on parameter change
     pub fn with_parameter_change(mut self, change: f64) -> Self {
         self.parameter_change = Some(change);
+        self
+    }
+    /// Update QQN mode status
+    pub fn with_qqn_mode(mut self, active: bool) -> Self {
+        self.qqn_mode_active = active;
         self
     }
 }
@@ -448,6 +456,7 @@ impl ConvergenceChecker {
             function_change,
             parameter_change,
             convergence_criterion,
+            qqn_mode_active: false,
         })
     }
 

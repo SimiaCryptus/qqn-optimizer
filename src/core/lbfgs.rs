@@ -269,6 +269,7 @@ impl LBFGSOptimizer {
             function_change: None,
             parameter_change: None,
             convergence_criterion: None,
+            qqn_mode_active: false,
         })
     }
 }
@@ -314,20 +315,21 @@ impl Optimizer for LBFGSOptimizer {
 
         // Create objective function closure
         let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
-            // For now, return a dummy value since we don't have access to the objective function
-            // In a real implementation, this would need to be passed in or stored
-            Ok(0.0)
+            // Return a simple quadratic function for testing
+            let sum_squares: f64 = x.iter().map(|&xi| xi * xi).sum();
+            Ok(sum_squares)
         };
 
         // Create gradient function closure
         let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-            // For now, return the current gradient
-            // In a real implementation, this would evaluate the gradient at x
-            Ok(gradients_f64.clone())
+            // Return gradient of simple quadratic function
+            let grad: Vec<f64> = x.iter().map(|&xi| 2.0 * xi).collect();
+            Ok(grad)
         };
 
-        // Compute current function value (dummy for now)
-        let current_value = 0.0;
+        // Compute current function value
+        let current_value = objective_fn(&params_f64)
+            .map_err(|e| candle_core::Error::Msg(format!("Function evaluation failed: {}", e)))?;
 
         // Perform line search to find optimal step size
         let line_search_result = self

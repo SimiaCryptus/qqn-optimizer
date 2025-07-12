@@ -7,9 +7,10 @@
 //! - Analyze the results
 
 use anyhow::Result;
+use candle_core::{Device, Tensor};
 use qqn_optimizer::{
-    QQNOptimizer, QQNConfig, RosenbrockFunction, OptimizationProblem,
-    LineSearchConfig, StrongWolfeConfig
+    OptimizationProblem, Optimizer, QQNConfig, QQNOptimizer, RosenbrockFunction,
+    StrongWolfeConfig
 };
 
 fn main() -> Result<()> {
@@ -17,11 +18,14 @@ fn main() -> Result<()> {
     let config = QQNConfig {
         threshold: 0.01,           // Magnitude difference threshold
         lbfgs_history: 10,         // L-BFGS history length
-        line_search: LineSearchConfig::StrongWolfe(StrongWolfeConfig {
-            c1: 1e-4,              // Armijo condition parameter
-            c2: 0.9,               // Curvature condition parameter
-            max_iterations: 20,     // Maximum line search iterations
-        }),
+        line_search: StrongWolfeConfig {
+            c1: 1e-4,
+            c2: 0.9,
+            max_iterations: 20,
+            initial_step: 1.0,
+            min_step: 1e-16,
+            max_step: 1e16,
+        },
         epsilon: 1e-8,             // Numerical stability constant
     };
 
@@ -30,6 +34,7 @@ fn main() -> Result<()> {
     // Define the optimization problem (2D Rosenbrock function)
     let problem = RosenbrockFunction::new(2);
     let mut x = problem.initial_point(); // Start at [-1.2, 1.0]
+    let device = Device::Cpu;
 
     println!("Starting optimization of 2D Rosenbrock function");
     println!("Initial point: {:?}", x);
@@ -56,8 +61,15 @@ fn main() -> Result<()> {
             break;
         }
 
+        // Convert Vec<f64> to Tensor for optimizer
+        let mut x_tensor = vec![Tensor::from_slice(&x, x.len(), &device)?];
+        let gradient_tensor = vec![Tensor::from_slice(&gradient, gradient.len(), &device)?];
+
         // Perform optimization step
-        let step_result = optimizer.step(&mut x, &gradient)?;
+        let step_result = optimizer.step(&mut x_tensor, &gradient_tensor)?;
+
+        // Convert result back to Vec<f64>
+        x = x_tensor[0].to_vec1::<f64>()?;
 
         // Print step information
         if iteration % 50 == 0 {

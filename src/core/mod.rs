@@ -18,7 +18,7 @@ pub use line_search::{
     BacktrackingConfig, BacktrackingLineSearch, LineSearch, LineSearchConfig, LineSearchMethod,
     LineSearchResult, StrongWolfeConfig, StrongWolfeLineSearch, TerminationReason,
 };
-pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, OptimizerBox, StepResult};
 pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
 // Common result type for optimization operations
 

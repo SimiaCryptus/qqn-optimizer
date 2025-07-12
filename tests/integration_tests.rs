@@ -1,10 +1,10 @@
-use qqn_optimizer::core::optimizer::Optimizer;
-use qqn_optimizer::core::qqn::{QQNOptimizer, QQNConfig};
-use qqn_optimizer::core::lbfgs::{LBFGSOptimizer, LBFGSConfig};
-use qqn_optimizer::benchmarks::functions::{RosenbrockFunction, SphereFunction, OptimizationProblem};
-use qqn_optimizer::utils::math::compute_magnitude;
-use candle_core::{Tensor, Device};
 use approx::assert_relative_eq;
+use candle_core::{Device, Tensor};
+use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFunction, SphereFunction};
+use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
+use qqn_optimizer::core::optimizer::Optimizer;
+use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
+use qqn_optimizer::utils::math::compute_magnitude;
 
 fn tensor_from_vec(values: Vec<f64>) -> Tensor {
     Tensor::from_slice(&values, &[values.len()], &Device::Cpu).unwrap()
@@ -121,6 +121,7 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
 fn test_qqn_quadratic_path_switching() {
     let mut config = QQNConfig::default();
     config.threshold = 0.1; // 10% threshold for easier testing
+    let threshold = config.threshold; // Store threshold before move
     
     let mut optimizer = QQNOptimizer::new(config);
     
@@ -134,7 +135,8 @@ fn test_qqn_quadratic_path_switching() {
     
     let state1 = optimizer.state();
     // Should have used quadratic path due to large magnitude difference
-    assert!(state1.last_magnitude_ratio > config.threshold);
+    assert!(!state1.magnitude_ratios.is_empty());
+    assert!(state1.magnitude_ratios.last().unwrap() > &threshold);
     
     // Create scenario with small gradient (similar magnitudes)
     let small_gradient = vec![tensor_from_vec(vec![0.01, 0.01])];
@@ -189,8 +191,9 @@ fn test_qqn_reset_functionality() {
     optimizer.reset();
     let state = optimizer.state();
     assert_eq!(state.iteration, 0);
-    assert_eq!(state.last_magnitude_ratio, 0.0);
-    assert!(!state.used_quadratic_path);
+    assert!(state.magnitude_ratios.is_empty());
+    assert_eq!(state.quadratic_path_count, 0);
+    assert_eq!(state.lbfgs_count, 0);
 }
 
 // Property-based tests using proptest
@@ -198,7 +201,7 @@ fn test_qqn_reset_functionality() {
 mod property_tests {
     use super::*;
     use proptest::prelude::*;
-    
+
     proptest! {
         #[test]
         fn test_descent_property(

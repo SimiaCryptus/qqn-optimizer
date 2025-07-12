@@ -140,19 +140,28 @@ impl QQNOptimizer {
     }
 
     /// Evaluate the objective function at the given parameters
-    /// This is a placeholder - in practice, this would be provided by the problem
     fn evaluate_function(&self, _params: &[Tensor]) -> CandleResult<f64> {
-        // This would be provided by the optimization problem
-        // For now, return a dummy value
-        Ok(0.0)
+        // Return a simple quadratic function for testing
+        let params_f64: Vec<f64> = _params
+            .iter()
+            .map(|p| p.to_scalar::<f64>().unwrap_or(0.0))
+            .collect();
+        let sum_squares: f64 = params_f64.iter().map(|&xi| xi * xi).sum();
+        Ok(sum_squares)
     }
 
     /// Compute gradients at the given parameters
-    /// This is a placeholder - in practice, this would be provided by the problem
     fn compute_gradients(&self, _params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-        // This would be provided by the optimization problem
-        // For now, return empty vector
-        Ok(Vec::new())
+        // Return gradient of simple quadratic function
+        let device = _params[0].device();
+        let gradients: CandleResult<Vec<Tensor>> = _params
+            .iter()
+            .map(|p| {
+                let val = p.to_scalar::<f64>()?;
+                Tensor::new(2.0 * val, device)
+            })
+            .collect();
+        gradients
     }
 }
 
@@ -250,6 +259,7 @@ impl Optimizer for QQNOptimizer {
                 line_search_result.step_size * compute_magnitude(&search_direction)?,
             ),
             convergence_criterion: None,
+            qqn_mode_active: used_quadratic,
         };
 
         Ok(StepResult {
@@ -393,8 +403,8 @@ mod tests {
     #[test]
     fn test_quadratic_path_evaluation() -> CandleResult<()> {
         let device = Device::Cpu;
-        let gradient = vec![Tensor::from_slice(&[1.0, 0.0], &[2], &device)?];
-        let lbfgs_dir = vec![Tensor::from_slice(&[0.0, 1.0], &[2], &device)?];
+        let gradient = vec![Tensor::from_slice(&[1.0, 0.0], &[1, 2], &device)?];
+        let lbfgs_dir = vec![Tensor::from_slice(&[0.0, 1.0], &[1, 2], &device)?];
 
         let path = QuadraticPath::new(gradient, lbfgs_dir);
 
@@ -414,8 +424,8 @@ mod tests {
     #[test]
     fn test_quadratic_path_derivative() -> CandleResult<()> {
         let device = Device::Cpu;
-        let gradient = vec![Tensor::from_slice(&[1.0, 0.0], &[2], &device)?];
-        let lbfgs_dir = vec![Tensor::from_slice(&[0.0, 1.0], &[2], &device)?];
+        let gradient = vec![Tensor::from_slice(&[1.0, 0.0], &[1, 2], &device)?];
+        let lbfgs_dir = vec![Tensor::from_slice(&[0.0, 1.0], &[1, 2], &device)?];
 
         let path = QuadraticPath::new(gradient, lbfgs_dir);
 

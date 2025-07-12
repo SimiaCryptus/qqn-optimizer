@@ -45,7 +45,8 @@ pub mod utils;
 // Re-export commonly used types
 pub use core::{
     lbfgs::{LBFGSConfig, LBFGSOptimizer},
-    optimizer::{ConvergenceInfo, Optimizer, StepResult},
+    line_search::{BacktrackingConfig, LineSearchConfig, LineSearchMethod, StrongWolfeConfig},
+    optimizer::{ConvergenceInfo, Optimizer, OptimizerBox, StepResult},
     qqn::{QQNConfig, QQNOptimizer},
 };
 

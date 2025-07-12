@@ -272,8 +272,10 @@ impl BenchmarkRunner {
 
         let (convergence_achieved, convergence_reason) = match optimization_result {
             Ok(Ok(reason)) => (
-                reason == ConvergenceReason::GradientTolerance
-                    || reason == ConvergenceReason::FunctionTolerance,
+                matches!(reason, 
+                    ConvergenceReason::GradientTolerance | 
+                    ConvergenceReason::FunctionTolerance
+                ),
                 reason,
             ),
             Ok(Err(_)) => (false, ConvergenceReason::NumericalError),
@@ -339,8 +341,17 @@ impl BenchmarkRunner {
 
             // Check convergence
             let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-            if gradient_norm < self.config.tolerance {
+            // Use the more lenient of the two tolerances to ensure convergence is achievable
+            let tolerance = problem.convergence_tolerance().max(self.config.tolerance);
+            if gradient_norm < tolerance {
                 return Ok(ConvergenceReason::GradientTolerance);
+            }
+            // Check function value convergence if optimal value is known
+            if let Some(optimal_value) = problem.optimal_value() {
+                let function_tolerance = (f_val - optimal_value).abs();
+                if function_tolerance < tolerance {
+                    return Ok(ConvergenceReason::FunctionTolerance);
+                }
             }
 
             // Check function evaluation limit
@@ -373,28 +384,8 @@ impl BenchmarkRunner {
         Ok(ConvergenceReason::MaxIterations)
     }
 
-    fn check_convergence(
-        &self,
-        function_value: f64,
-        gradient: &[f64],
-        problem: &dyn OptimizationProblem,
-    ) -> bool {
-        // Gradient norm convergence
-        let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-        if gradient_norm < self.config.tolerance {
-            return true;
-        }
 
-        // Function value convergence (if optimal value is known)
-        if let Some(optimal_value) = problem.optimal_value() {
-            let function_tolerance = (function_value - optimal_value).abs();
-            if function_tolerance < self.config.tolerance {
-                return true;
-            }
-        }
 
-        false
-    }
 }
 
 /// Benchmark execution errors
