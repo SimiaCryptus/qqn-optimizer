@@ -1,0 +1,26 @@
+#[test]
+fn test_qqn_numerical_stability() {
+    let config = QQNConfig::default();
+    let mut optimizer = QQNOptimizer::new(config);
+    
+    // Test with very small gradients
+    let mut params = vec![tensor_from_vec(vec![1.0, 1.0])];
+    let tiny_gradient = vec![tensor_from_vec(vec![1e-12, 1e-12])];
+    
+    let result = optimizer.step(&mut params, &tiny_gradient);
+-   assert!(result.is_ok());
++   assert!(result.is_ok(), "Step with tiny gradient should succeed: {:?}", result);
+    
+    // Check that parameters are still finite
+    let param_values: Vec<f64> = params[0].to_vec1().unwrap();
+    assert!(param_values.iter().all(|&x| x.is_finite()));
+    
+    // Test with very large gradients
+    let large_gradient = vec![tensor_from_vec(vec![1e6, 1e6])];
+    let result2 = optimizer.step(&mut params, &large_gradient);
+-   assert!(result2.is_ok());
++   assert!(result2.is_ok(), "Step with large gradient should succeed: {:?}", result2);
+    
+    let param_values2: Vec<f64> = params[0].to_vec1().unwrap();
+    assert!(param_values2.iter().all(|&x| x.is_finite()));
+}

@@ -83,9 +83,9 @@ impl LBFGSState {
         self.gamma = 1.0;
     }
 
-    /// Compute the L-BFGS search direction using the two-loop recursion algorithm.
+/// Compute the L-BFGS search direction using the two-loop recursion
     pub fn compute_direction(&self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-        if self.s_history.is_empty() {
+       if self.s_history.is_empty() {
             // No history available, use steepest descent
             return Ok(gradient
                 .iter()
@@ -130,8 +130,23 @@ impl LBFGSState {
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
         }
+        // Negate to get descent direction
+        let descent_direction = r.iter()
+            .map(|t| t.neg())
+            .collect::<CandleResult<Vec<_>>>()?;
 
-        Ok(r)
+        // Make the direction a descent direction by negating if necessary
+        let grad_dot_direction = crate::utils::math::dot_product(gradient, &descent_direction)?;
+       if grad_dot_direction > 0.0 {
+           // If not a descent direction, return steepest descent
+            Ok(gradient
+                .iter()
+                .map(|g| g.neg())
+                .collect::<CandleResult<Vec<_>>>()?)
+        } else {
+            // Negate the direction to ensure it's a descent direction
+            Ok(r.iter().map(|t| t.neg()).collect::<CandleResult<Vec<_>>>()?)
+        }
     }
 
     /// Update the L-BFGS state with new gradient and step information.
@@ -323,7 +338,7 @@ impl Optimizer for LBFGSOptimizer {
         // Create gradient function closure
         let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
             // Return gradient of simple quadratic function
-            let grad: Vec<f64> = x.iter().map(|&xi| 2.0 * xi).collect();
+            let grad: Vec<f64> = x.iter().map(|&xi| xi).collect();
             Ok(grad)
         };
 

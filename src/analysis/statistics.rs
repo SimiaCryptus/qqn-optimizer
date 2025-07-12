@@ -725,7 +725,7 @@ impl StatisticalAnalysis {
         };
 
         // Degrees of freedom for Welch's t-test
-        let df = if var_a == 0.0 && var_b == 0.0 {
+        let _df = if var_a == 0.0 && var_b == 0.0 {
             n_a + n_b - 2.0
         } else {
             let numerator = ((var_a / n_a) + (var_b / n_b)).powi(2);
