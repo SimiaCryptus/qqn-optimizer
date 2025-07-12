@@ -19,7 +19,10 @@ fn tensors_to_vec(tensors: &[Tensor]) -> Vec<f64> {
 #[tokio::test]
 async fn test_qqn_rosenbrock_optimization() {
     let problem = RosenbrockFunction::new(2);
-    let config = QQNConfig::default();
+    let mut config = QQNConfig::default();
+    config.line_search.initial_step = 0.1; // Start with smaller steps for Rosenbrock
+    config.line_search.c1 = 1e-4;
+    config.line_search.c2 = 0.9;
     let mut optimizer = QQNOptimizer::new(config);
 
     let mut x = problem.initial_point();
