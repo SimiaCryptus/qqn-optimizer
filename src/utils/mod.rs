@@ -7,15 +7,14 @@
 //! - Common data structures
 
 pub mod math;
-pub mod math;
 pub mod logging;
 pub mod serialization;
-pub use math::*;
+pub mod random;
 
 // Re-export commonly used utilities
 pub use math::{
     compute_magnitude, magnitude_relative_difference, scale_tensors,
-    combine_tensors, tensor_dot_product, normalize_vector,
+    combine_tensors, tensor_dot_product, normalize_vector, dot_product, compute_parameter_change,
 };
 pub use logging::{
     setup_tracing, log_optimization_step, log_convergence_info,
@@ -25,8 +24,10 @@ pub use serialization::{
     save_results, load_results, save_config, load_config,
     ResultsSerializer, ConfigSerializer,
 };
+pub use random::{RandomGenerator, random_starting_point, random_starting_points};
 
 use crate::core::OptResult;
+
 
 /// Common mathematical constants
 pub mod constants {
@@ -85,7 +86,7 @@ pub mod validation {
             if !val.is_finite() {
                 return Err(anyhow::anyhow!(
                     "Non-finite value {} at index {}", val, i
-                ));
+                ).into());
             }
         }
         Ok(())

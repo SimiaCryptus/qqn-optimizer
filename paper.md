@@ -167,9 +167,9 @@ QQN consistently achieves faster convergence than L-BFGS on ill-conditioned prob
 
 | Method | MNIST (MLP) | CIFAR-10 (CNN) | Time Ratio |
 |--------|-------------|----------------|------------|
-| L-BFGS | 97.8% | 73.2% | 1.0x |
-| Adam | 98.1% | 75.6% | 0.8x |
-| QQN | 98.3% | 76.1% | 1.1x |
+| L-BFGS | 97.8%       | 73.2%          | 1.0x       |
+| Adam   | 98.1%       | 75.6%          | 0.8x       |
+| QQN    | 98.3%       | 76.1%          | 1.1x       |
 
 QQN achieves comparable or better final accuracy while exhibiting more stable convergence than L-BFGS, particularly in early iterations where the Hessian approximation is poor.
 

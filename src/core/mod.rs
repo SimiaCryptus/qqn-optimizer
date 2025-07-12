@@ -1,32 +1,28 @@
 //! Core optimization algorithms and traits.
 //!
 //! This module contains the fundamental building blocks for optimization algorithms,
-pub mod optimizer;
-// Re-export commonly used types
-pub use optimizer::{
-    Optimizer, StepResult, ConvergenceInfo, ConvergenceCriterion,
-    OptimizationMetadata, TimingInfo, MemoryInfo,
-    ConvergenceConfig, ConvergenceChecker,
-};
 //! - Base traits for optimizers and problems
 //! - QQN algorithm implementation
 //! - Baseline optimizers (L-BFGS, Adam, SGD)
 //! - Line search algorithms
 //! - Mathematical utilities
+/// Core result type used throughout the optimization framework
+pub type OptResult<T> = anyhow::Result<T>;
 
 pub mod optimizer;
 pub mod qqn;
 pub mod lbfgs;
 pub mod line_search;
-
-// Re-export commonly used types
-pub use optimizer::{Optimizer, StepResult, ConvergenceInfo, OptimizationProblem};
+pub use optimizer::{Optimizer, StepResult, ConvergenceInfo, OptimizationMetadata};
 pub use qqn::{QQNOptimizer, QQNConfig, QQNState, QuadraticPath};
 pub use lbfgs::{LBFGSOptimizer, LBFGSConfig, LBFGSState};
-pub use line_search::{LineSearch, LineSearchConfig, StrongWolfeLineSearch, BacktrackingLineSearch};
+pub use line_search::{
+    LineSearch, LineSearchConfig, LineSearchMethod, StrongWolfeLineSearch, 
+    BacktrackingLineSearch, StrongWolfeConfig, BacktrackingConfig,
+    LineSearchResult, TerminationReason
+};
+// Common result type for optimization operations
 
-/// Common result type for optimization operations
-pub type OptResult<T> = anyhow::Result<T>;
 
 /// Tolerance for numerical comparisons
 pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
@@ -49,11 +45,3 @@ mod tests {
         assert!(DEFAULT_LBFGS_HISTORY > 0);
     }
 }
-pub mod line_search;
-pub mod lbfgs;
-pub mod qqn;
-pub use optimizer::*;
-pub use line_search::*;
-pub use lbfgs::*;
-pub use qqn::*;
-pub use lbfgs::*;

@@ -19,6 +19,16 @@ The Quadratic Quasi-Newton (QQN) algorithm addresses reliability issues in L-BFG
 ### Installation
 
 ```bash
+# Install system dependencies (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install libfontconfig1-dev pkg-config
+# Install system dependencies (macOS)
+brew install fontconfig pkg-config
+# Install system dependencies (CentOS/RHEL/Fedora)
+sudo yum install fontconfig-devel pkgconfig
+# or for newer versions:
+sudo dnf install fontconfig-devel pkgconfig
+# Clone and build
 git clone https://github.com/SimiaCryptus/qqn-optimizer
 cd qqn-optimizer
 cargo build --release

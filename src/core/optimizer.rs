@@ -5,23 +5,42 @@
 //! and convergence behavior.
 
 use std::fmt::Debug;
-use std::time::Duration;
-use candle_core::{Result, Tensor};
-use serde::{Deserialize, Serialize};
+ use std::time::Duration;
+ use candle_core::{Result, Tensor};
+ use serde::{Deserialize, Serialize};
+use std::any::Any;
 
-/// Core trait that all optimization algorithms must implement.
-///
-/// This trait provides a unified interface for different optimization methods,
-/// enabling easy benchmarking and comparison between algorithms.
-pub trait Optimizer: Send + Sync + Clone + Debug {
-    /// Configuration type for this optimizer
-    type Config: Clone + Debug + Send + Sync;
-    
-    /// Internal state type for this optimizer
-    type State: Clone + Debug + Send + Sync;
+/// Additional metadata that optimizers can provide
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OptimizationMetadata {
+    /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
+    pub optimizer_data: std::collections::HashMap<String, f64>,
+    /// Timing information for different phases of the step
+    pub timing_info: TimingInfo,
+    /// Memory usage information
+    pub memory_info: MemoryInfo,
+}
+impl Default for OptimizationMetadata {
+    fn default() -> Self {
+        Self {
+            optimizer_data: std::collections::HashMap::new(),
+            timing_info: TimingInfo::default(),
+            memory_info: MemoryInfo::default(),
+        }
+    }
+}
+ /// Core trait that all optimization algorithms must implement.
+ ///
+ /// This trait provides a unified interface for different optimization methods,
+ /// enabling easy benchmarking and comparison between algorithms.
+pub trait Optimizer: Send + Sync + std::fmt::Debug {
+     /// Configuration type for this optimizer
+     type Config: Clone + Debug + Send + Sync;
+     /// Internal state type for this optimizer
+     type State: Clone + Debug + Send + Sync;
+     /// Create a new optimizer instance with the given configuration
+    fn new(config: Self::Config) -> Self where Self: Sized;
 
-    /// Create a new optimizer instance with the given configuration
-    fn new(config: Self::Config) -> Self;
 
     /// Perform a single optimization step
     ///
@@ -40,7 +59,10 @@ pub trait Optimizer: Send + Sync + Clone + Debug {
     fn state(&self) -> &Self::State;
 
     /// Get the name of this optimizer (for reporting and analysis)
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
+    /// Create a boxed clone of this optimizer
+    fn clone_box(&self) -> Box<dyn Optimizer<Config = Self::Config, State = Self::State>>;
+
 
     /// Check if the optimizer has converged based on its internal criteria
     fn has_converged(&self) -> bool {
@@ -169,29 +191,10 @@ pub enum ConvergenceCriterion {
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OptimizationMetadata {
-    /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
-    pub optimizer_data: std::collections::HashMap<String, f64>,
     
-    /// Timing information for different phases of the step
-    pub timing: TimingInfo,
     
-    /// Memory usage information
-    pub memory_info: MemoryInfo,
-}
 
-impl Default for OptimizationMetadata {
-    fn default() -> Self {
-        Self {
-            optimizer_data: std::collections::HashMap::new(),
-            timing: TimingInfo::default(),
-            memory_info: MemoryInfo::default(),
-        }
-    }
-}
 
-/// Timing information for optimization steps
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimingInfo {
     /// Time spent computing search direction
     pub direction_computation: Option<Duration>,
@@ -202,8 +205,8 @@ pub struct TimingInfo {
     /// Time spent updating parameters
     pub parameter_update: Option<Duration>,
     
-    /// Total step time
-    pub total_step_time: Option<Duration>,
+    /// Total step duration
+    pub step_duration: Duration,
 }
 
 impl Default for TimingInfo {
@@ -212,7 +215,7 @@ impl Default for TimingInfo {
             direction_computation: None,
             line_search: None,
             parameter_update: None,
-            total_step_time: None,
+            step_duration: Duration::from_secs(0),
         }
     }
 }
@@ -425,8 +428,8 @@ mod tests {
 
         // Create test tensors
         let device = Device::Cpu;
-        let gradients = vec![Tensor::from_slice(&[1e-4, 1e-4], &[2], &device)?];
-        let parameters = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
+        let gradients = vec![Tensor::from_slice(&[1e-4, 1e-4], (2,), &device)?];
+        let parameters = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
         let info = checker.check_convergence(1.0, &gradients, &parameters)?;
         

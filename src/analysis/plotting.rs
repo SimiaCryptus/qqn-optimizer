@@ -1,10 +1,56 @@
-use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace, SingleResult};
-use crate::analysis::statistics::{ConvergenceComparison, PerformanceProfiles};
+use crate::analysis::statistics::PerformanceProfiles;
+use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace};
 use crate::core::qqn::QQNTrace;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
+use plotters::backend::{BitMapBackend, SVGBackend};
 use plotters::prelude::*;
 use std::collections::HashMap;
-use std::path::Path;
+#[derive(Debug, Clone)]
+pub struct PlotConfig {
+    pub width: u32,
+    pub height: u32,
+    pub output_format: String,
+    pub color_scheme: String,
+}
+impl Default for PlotConfig {
+    fn default() -> Self {
+        Self {
+            width: 1024,
+            height: 768,
+            output_format: "png".to_string(),
+            color_scheme: "default".to_string(),
+        }
+    }
+}
+pub trait ConvergencePlot {
+    fn plot_convergence(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()>;
+}
+pub trait PerformancePlot {
+    fn plot_performance(&self, results: &BenchmarkResults, filename: &str) -> Result<()>;
+}
+pub trait MagnitudeRatioPlot {
+    fn plot_magnitude_ratios(&self, traces: &[QQNTrace], filename: &str) -> Result<()>;
+}
+pub trait StatisticalPlot {
+    fn plot_statistics(&self, analysis: &crate::analysis::statistics::StatisticalAnalysis, filename: &str) -> Result<()>;
+}
+
+/// Extended optimization trace with additional fields for plotting
+#[derive(Debug, Clone)]
+pub struct ExtendedOptimizationTrace {
+    pub optimizer_name: String,
+    pub objective_values: Vec<f64>,
+    pub iterations: Vec<usize>,
+}
+impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
+    fn from(trace: &OptimizationTrace) -> Self {
+        Self {
+            optimizer_name: "Unknown".to_string(),
+            objective_values: trace.iterations.iter().map(|iter| iter.function_value).collect(),
+            iterations: trace.iterations.iter().map(|iter| iter.iteration).collect(),
+        }
+    }
+}
 
 pub struct PlottingEngine {
     output_dir: String,
@@ -28,7 +74,7 @@ impl PlottingEngine {
     }
 
     /// Create convergence plots showing objective value vs iterations
-    pub fn convergence_plot(&self, traces: &[OptimizationTrace], filename: &str) -> Result<()> {
+    pub fn convergence_plot(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height))
             .into_drawing_area();
@@ -36,7 +82,7 @@ impl PlottingEngine {
 
         // Find the range of iterations and objective values
         let max_iterations = traces.iter()
-            .map(|t| t.iterations.len())
+            .map(|t| t.objective_values.len())
             .max()
             .unwrap_or(0);
         
@@ -84,14 +130,14 @@ impl PlottingEngine {
     }
 
     /// Create log-scale convergence plots for better visualization of convergence
-    pub fn log_convergence_plot(&self, traces: &[OptimizationTrace], filename: &str) -> Result<()> {
+    pub fn log_convergence_plot(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height))
             .into_drawing_area();
         root.fill(&WHITE)?;
 
         let max_iterations = traces.iter()
-            .map(|t| t.iterations.len())
+            .map(|t| t.objective_values.len())
             .max()
             .unwrap_or(0);
 
@@ -375,7 +421,7 @@ impl PlottingEngine {
         root.fill(&WHITE)?;
 
         // Split into two subplots: histogram and time series
-        let (upper, lower) = root.split_evenly((false, true));
+        let (upper, lower) = root.split_evenly(false);
 
         // Upper plot: Histogram of magnitude ratios
         {
@@ -525,7 +571,7 @@ impl PlottingEngine {
     }
 
     /// Export plots in different formats
-    pub fn export_svg(&self, traces: &[OptimizationTrace], filename: &str) -> Result<()> {
+    pub fn export_svg(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()> {
         let output_path = format!("{}/{}.svg", self.output_dir, filename);
         let root = SVGBackend::new(&output_path, (self.width, self.height))
             .into_drawing_area();
@@ -539,7 +585,7 @@ impl PlottingEngine {
 
     fn draw_convergence_plot_on_backend<DB: DrawingBackend>(
         &self,
-        traces: &[OptimizationTrace],
+        traces: &[ExtendedOptimizationTrace],
         root: DrawingArea<DB, plotters::coord::Shift>
     ) -> Result<()>
     where
@@ -548,7 +594,7 @@ impl PlottingEngine {
         root.fill(&WHITE)?;
 
         let max_iterations = traces.iter()
-            .map(|t| t.iterations.len())
+            .map(|t| t.objective_values.len())
             .max()
             .unwrap_or(0);
         

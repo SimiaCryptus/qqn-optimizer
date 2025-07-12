@@ -1,4 +1,4 @@
-use crate::benchmarks::evaluation::{BenchmarkResults, SingleResult, OptimizationTrace};
+use crate::benchmarks::evaluation::{BenchmarkResults, SingleResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -51,12 +51,35 @@ pub struct SignificanceTest {
     pub significant: bool,
     pub alpha: f64,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EffectSize {
+    pub optimizer_a: String,
+    pub optimizer_b: String,
+    pub cohens_d: f64,
+    pub magnitude: String,
+}
+impl EffectSize {
+    pub fn magnitude(&self) -> f64 {
+        self.cohens_d.abs()
+    }
+    pub fn is_significant(&self) -> bool {
+        self.cohens_d.abs() > 0.2 // Small effect size threshold
+    }
+}
+impl SignificanceTest {
+    pub fn is_significant(&self) -> bool {
+        self.significant
+    }
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceProfiles {
     pub tolerance_levels: Vec<f64>,
     pub time_limits: Vec<f64>,
     pub profiles: HashMap<String, ProfileData>,
+    pub ratios: Vec<f64>,
+    pub optimizer_profiles: HashMap<String, Vec<f64>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

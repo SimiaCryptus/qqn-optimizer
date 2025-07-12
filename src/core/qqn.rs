@@ -1,12 +1,26 @@
-use crate::core::{Optimizer, StepResult, ConvergenceInfo, LineSearch, LineSearchConfig, StrongWolfeLineSearch};
-use crate::core::lbfgs::{LBFGSOptimizer, LBFGSConfig, LBFGSState};
-use crate::core::optimizer::{Optimizer, StepResult, ConvergenceInfo};
-use crate::core::lbfgs::{LBFGSOptimizer, LBFGSConfig};
-use crate::core::line_search::{LineSearch, StrongWolfeLineSearch, LineSearchConfig};
-use crate::utils::math::{compute_magnitude, magnitude_relative_difference, scale_tensors, combine_tensors};
-use candle_core::{Tensor, Device, Result as CandleResult};
-use serde::{Serialize, Deserialize};
+use crate::core::lbfgs::LBFGSState;
+use crate::core::optimizer::OptimizationMetadata;
+use crate::core::{ConvergenceInfo, LineSearch, Optimizer, StepResult, StrongWolfeLineSearch};
+use crate::utils::math::{compute_magnitude, magnitude_relative_difference};
+use candle_core::{Device, Result as CandleResult, Tensor};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+/// QQN trace information for analysis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QQNTrace {
+    pub magnitude_ratios: Vec<f64>,
+    pub quadratic_path_usage: Vec<bool>,
+    pub step_sizes: Vec<f64>,
+}
+impl QQNTrace {
+    pub fn new() -> Self {
+        Self {
+            magnitude_ratios: Vec::new(),
+            quadratic_path_usage: Vec::new(),
+            step_sizes: Vec::new(),
+        }
+    }
+}
 
 /// Configuration for the QQN optimizer
 #[derive(Debug, Clone)]
@@ -16,7 +30,7 @@ pub struct QQNConfig {
     /// L-BFGS history length
     pub lbfgs_history: usize,
     /// Line search configuration
-    pub line_search: LineSearchConfig,
+    pub line_search: crate::core::line_search::StrongWolfeConfig,
     /// Numerical stability constant
     pub epsilon: f64,
 }
@@ -26,7 +40,7 @@ impl Default for QQNConfig {
         Self {
             threshold: 0.01,
             lbfgs_history: 10,
-            line_search: LineSearchConfig::strong_wolfe(),
+            line_search: crate::core::line_search::StrongWolfeConfig::default(),
             epsilon: 1e-8,
         }
     }
@@ -72,23 +86,19 @@ impl QQNState {
 /// 3. If magnitude difference exceeds threshold, create hybrid quadratic path
 /// 4. Perform line search on the chosen path
 /// 5. Update parameters and L-BFGS history
+#[derive(Debug, Clone)]
 pub struct QQNOptimizer {
     config: QQNConfig,
     state: QQNState,
-    line_search: Box<dyn LineSearch>,
 }
 
 impl QQNOptimizer {
     /// Create a new QQN optimizer with the given configuration
     pub fn new(config: QQNConfig) -> Self {
-        let line_search: Box<dyn LineSearch> = Box::new(
-            StrongWolfeLineSearch::new(config.line_search.clone())
-        );
         
         Self {
             state: QQNState::new(config.lbfgs_history),
             config,
-            line_search,
         }
     }
 
@@ -147,13 +157,21 @@ impl Optimizer for QQNOptimizer {
     fn new(config: Self::Config) -> Self {
         Self::new(config)
     }
+    fn clone_box(&self) -> Box<dyn Optimizer<Config = Self::Config, State = Self::State>> {
+        Box::new(QQNOptimizer {
+            config: self.config.clone(),
+            state: self.state.clone(),
+            line_search: Box::new(StrongWolfeLineSearch::new(self.config.line_search.clone())),
+        })
+    }
+
 
     fn step(&mut self,
            params: &mut [Tensor],
            gradients: &[Tensor]) -> CandleResult<StepResult> {
         
         // 1. Compute L-BFGS direction
-      let lbfgs_direction = self.lbfgs_optimizer.compute_direction(gradients)?;
+        let lbfgs_direction = self.state.lbfgs_state.compute_direction(gradients)?;
 
       // Calculate magnitude ratio
         let grad_magnitude = compute_magnitude(gradients)?;
@@ -183,26 +201,26 @@ impl Optimizer for QQNOptimizer {
             params,
             &search_direction,
             gradients,
-            &|p| self.evaluate_function(p),
-            &|p| self.compute_gradients(p)
         )?;
 
       // Update parameters
         for (param, direction) in params.iter_mut().zip(search_direction.iter()) {
-            let update = direction.mul_scalar(step_result.step_size)?;
+            let step_size_tensor = Tensor::new(step_result.step_size, param.device())?;
+            let update = direction.broadcast_mul(&step_size_tensor)?;
             *param = param.add(&update)?;
         }
 
       // Update L-BFGS state
-      self.lbfgs_optimizer.update_history(gradients, &search_direction, step_result.step_size)?;
+        self.state.lbfgs_state.update(gradients, &search_direction, step_result.step_size)?;
         self.state.iteration += 1;
 
         // 7. Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: grad_magnitude < 1e-6, // Simple convergence check
             gradient_norm: grad_magnitude,
-            step_norm: step_result.step_size * compute_magnitude(&search_direction)?,
             function_change: None, // Would need previous function value
+            parameter_change: Some(step_result.step_size * compute_magnitude(&search_direction)?),
+            convergence_criterion: None,
         };
 
         Ok(StepResult {
@@ -210,6 +228,7 @@ impl Optimizer for QQNOptimizer {
             function_evaluations: step_result.function_evaluations,
             gradient_evaluations: step_result.gradient_evaluations,
             convergence_info,
+            metadata: OptimizationMetadata::default(),
         })
     }
 
@@ -268,98 +287,6 @@ impl QuadraticPath {
         
         combine_tensors(&gradient_term, &lbfgs_term)
     }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::utils::math::compute_magnitude;
-    use candle_core::{Tensor, Device};
-    use approx::assert_relative_eq;
-    fn create_test_tensors(values: &[f64]) -> Vec<Tensor> {
-        vec![Tensor::from_slice(values, &[values.len()], &Device::Cpu).unwrap()]
-    }
-    #[test]
-    fn test_qqn_config_default() {
-        let config = QQNConfig::default();
-        assert_eq!(config.threshold, 0.01);
-        assert_eq!(config.lbfgs_history, 10);
-        assert_eq!(config.epsilon, 1e-8);
-    }
-    #[test]
-    fn test_quadratic_path_evaluation() {
-        let gradient = create_test_tensors(&[1.0, 0.0]);
-        let lbfgs_dir = create_test_tensors(&[0.0, 1.0]);
-        let path = QuadraticPath::new(gradient, lbfgs_dir);
-        // At t=0, should be zero vector
-        let result_0 = path.evaluate(0.0).unwrap();
-        let values_0: Vec<f64> = result_0[0].to_vec1().unwrap();
-        assert_relative_eq!(values_0[0], 0.0, epsilon = 1e-10);
-        assert_relative_eq!(values_0[1], 0.0, epsilon = 1e-10);
-        // At t=1, should be L-BFGS direction
-        let result_1 = path.evaluate(1.0).unwrap();
-        let values_1: Vec<f64> = result_1[0].to_vec1().unwrap();
-        assert_relative_eq!(values_1[0], 0.0, epsilon = 1e-10);
-        assert_relative_eq!(values_1[1], 1.0, epsilon = 1e-10);
-        // At t=0.5, should be blend
-        let result_05 = path.evaluate(0.5).unwrap();
-        let values_05: Vec<f64> = result_05[0].to_vec1().unwrap();
-        assert_relative_eq!(values_05[0], 0.25, epsilon = 1e-10); // 0.5 * 0.5 * 1.0
-        assert_relative_eq!(values_05[1], 0.25, epsilon = 1e-10); // 0.5 * 0.5 * 1.0
-    }
-    #[test]
-    fn test_quadratic_path_derivative() {
-        let gradient = create_test_tensors(&[1.0, 0.0]);
-        let lbfgs_dir = create_test_tensors(&[0.0, 1.0]);
-        let path = QuadraticPath::new(gradient, lbfgs_dir);
-        // At t=0, derivative should be gradient
-        let deriv_0 = path.derivative(0.0).unwrap();
-        let values_0: Vec<f64> = deriv_0[0].to_vec1().unwrap();
-        assert_relative_eq!(values_0[0], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(values_0[1], 0.0, epsilon = 1e-10);
-        // At t=1, derivative should be 2 * L-BFGS - gradient
-        let deriv_1 = path.derivative(1.0).unwrap();
-        let values_1: Vec<f64> = deriv_1[0].to_vec1().unwrap();
-        assert_relative_eq!(values_1[0], -1.0, epsilon = 1e-10); // -1 * 1.0
-        assert_relative_eq!(values_1[1], 2.0, epsilon = 1e-10);  // 2 * 1.0
-    }
-    #[test]
-    fn test_qqn_optimizer_creation() {
-        let config = QQNConfig::default();
-        let optimizer = QQNOptimizer::new(config);
-        assert_eq!(optimizer.state.iteration, 0);
-        assert_eq!(optimizer.state.last_magnitude_ratio, 0.0);
-        assert!(!optimizer.state.used_quadratic_path);
-    }
-    #[test]
-    fn test_magnitude_threshold_logic() {
-        let mut config = QQNConfig::default();
-        config.threshold = 0.1; // 10% threshold
-        let mut optimizer = QQNOptimizer::new(config);
-        // Create test parameters and gradients
-        let mut params = create_test_tensors(&[1.0, 1.0]);
-        let gradients = create_test_tensors(&[0.1, 0.1]); // Small gradient
-        // This should trigger the quadratic path due to magnitude difference
-        let result = optimizer.step(&mut params, &gradients);
-        assert!(result.is_ok());
-        // Check that we can access the state
-        let state = optimizer.state();
-        assert_eq!(state.iteration, 1);
-    }
-    #[test]
-    fn test_reset_functionality() {
-        let config = QQNConfig::default();
-        let mut optimizer = QQNOptimizer::new(config);
-        // Perform a step to change state
-        let mut params = create_test_tensors(&[1.0, 1.0]);
-        let gradients = create_test_tensors(&[0.1, 0.1]);
-        let _ = optimizer.step(&mut params, &gradients);
-        assert_eq!(optimizer.state().iteration, 1);
-        // Reset and check state
-        optimizer.reset();
-        assert_eq!(optimizer.state().iteration, 0);
-        assert_eq!(optimizer.state().last_magnitude_ratio, 0.0);
-        assert!(!optimizer.state().used_quadratic_path);
-    }
-}
 
     /// Get the scaled gradient component
     pub fn scaled_gradient(&self) -> &[Tensor] {
@@ -423,8 +350,8 @@ impl MagnitudeTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::Device;
     use approx::assert_relative_eq;
+    use candle_core::Device;
 
     #[test]
     fn test_qqn_config_default() {

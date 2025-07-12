@@ -8,26 +8,24 @@
 
 pub mod statistics;
 pub mod plotting;
-pub use statistics::*;
-pub use plotting::*;
-pub mod plotting;
 pub mod reporting;
 
 // Re-export commonly used types
+
 pub use statistics::{
     StatisticalAnalysis, ConvergenceComparison, PerformanceProfiles,
     RobustnessAnalysis, SignificanceTest, EffectSize,
 };
 pub use plotting::{
     PlottingEngine, PlotConfig, ConvergencePlot, PerformancePlot,
-    MagnitudeRatioPlot, StatisticalPlot,
+    MagnitudeRatioPlot, StatisticalPlot, ExtendedOptimizationTrace,
 };
 pub use reporting::{
     ReportGenerator, AcademicReport, LaTeXExporter, CSVExporter,
 };
 
 use crate::core::OptResult;
-use crate::benchmarks::BenchmarkResults;
+use crate::benchmarks::evaluation::BenchmarkResults;
 
 /// Generate comprehensive analysis report
 pub fn generate_full_analysis(results: &BenchmarkResults) -> OptResult<AnalysisReport> {

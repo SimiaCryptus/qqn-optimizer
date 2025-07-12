@@ -1,9 +1,11 @@
 use crate::utils::math::{compute_magnitude, dot_product};
 use anyhow::{Result, anyhow};
 use std::fmt::Debug;
+use serde::{Deserialize, Serialize};
+use candle_core::Tensor;
 
 /// Line search result containing step size and evaluation counts
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineSearchResult {
     pub step_size: f64,
     pub function_evaluations: usize,
@@ -12,7 +14,7 @@ pub struct LineSearchResult {
     pub termination_reason: TerminationReason,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TerminationReason {
     WolfeConditionsSatisfied,
     ArmijoConditionSatisfied,
@@ -20,6 +22,32 @@ pub enum TerminationReason {
     StepSizeTooSmall,
     FunctionEvaluationError,
 }
+/// General line search configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LineSearchConfig {
+    pub method: LineSearchMethod,
+    pub c1: f64,
+    pub c2: f64,
+    pub max_iterations: usize,
+    pub initial_step: f64,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LineSearchMethod {
+    StrongWolfe,
+    Backtracking,
+}
+impl Default for LineSearchConfig {
+    fn default() -> Self {
+        Self {
+            method: LineSearchMethod::StrongWolfe,
+            c1: 1e-4,
+            c2: 0.9,
+            max_iterations: 50,
+            initial_step: 1.0,
+        }
+    }
+}
+
 
 /// Trait for line search algorithms
 pub trait LineSearch: Send + Sync + Debug {

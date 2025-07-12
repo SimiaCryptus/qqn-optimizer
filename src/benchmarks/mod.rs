@@ -9,15 +9,13 @@
 pub mod functions;
 pub mod ml_problems;
 pub mod evaluation;
-pub use functions::*;
-pub use ml_problems::*;
-pub use evaluation::*;
-pub mod evaluation;
+pub mod runner;
 
 // Re-export commonly used types
+
 pub use functions::{
     RosenbrockFunction, RastriginFunction, SphereFunction, BealeFunction,
-    HimmelblauFunction, AckleyFunction,
+    HimmelblauFunction, BoothFunction, AckleyFunction,
 };
 pub use ml_problems::{
     LogisticRegression, NeuralNetworkTraining, LinearRegression,
@@ -25,14 +23,15 @@ pub use ml_problems::{
 };
 pub use evaluation::{
     BenchmarkRunner, BenchmarkConfig, BenchmarkResults, SingleResult,
-    OptimizationTrace, PerformanceMetrics,
+    OptimizationTrace,
 };
 
 use crate::core::OptResult;
+use crate::benchmarks::functions::OptimizationProblem;
 
 /// Standard benchmark problems for optimization research
-pub fn standard_benchmark_suite() -> OptResult<Vec<Box<dyn crate::core::OptimizationProblem>>> {
-    let mut problems: Vec<Box<dyn crate::core::OptimizationProblem>> = Vec::new();
+pub fn standard_benchmark_suite() -> OptResult<Vec<Box<dyn OptimizationProblem>>> {
+    let mut problems: Vec<Box<dyn OptimizationProblem>> = Vec::new();
 
     // Mathematical functions
     problems.push(Box::new(RosenbrockFunction::new(2)));
@@ -48,15 +47,17 @@ pub fn standard_benchmark_suite() -> OptResult<Vec<Box<dyn crate::core::Optimiza
     problems.push(Box::new(SphereFunction::new(1000)));
     
     problems.push(Box::new(BealeFunction::new()));
+    problems.push(Box::new(BoothFunction::new()));
     problems.push(Box::new(HimmelblauFunction::new()));
     problems.push(Box::new(AckleyFunction::new(10)));
+
 
     Ok(problems)
 }
 
 /// Machine learning benchmark problems
-pub fn ml_benchmark_suite() -> OptResult<Vec<Box<dyn crate::core::OptimizationProblem>>> {
-    let mut problems: Vec<Box<dyn crate::core::OptimizationProblem>> = Vec::new();
+pub fn ml_benchmark_suite() -> OptResult<Vec<Box<dyn OptimizationProblem>>> {
+    let mut problems: Vec<Box<dyn OptimizationProblem>> = Vec::new();
 
     // Logistic regression problems
     problems.push(Box::new(LogisticRegression::synthetic(100, 10)?));

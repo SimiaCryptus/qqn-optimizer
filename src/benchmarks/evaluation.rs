@@ -5,6 +5,8 @@ use tokio::time::timeout;
 use crate::core::optimizer::{Optimizer, StepResult, ConvergenceInfo};
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::utils::math::compute_magnitude;
+use candle_core::Tensor;
+use std::any::Any;
 
 /// Configuration for benchmark execution
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,7 +106,7 @@ pub struct SingleResult {
     pub convergence_reason: ConvergenceReason,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ConvergenceReason {
     GradientTolerance,
     FunctionTolerance,
@@ -174,7 +176,7 @@ impl BenchmarkResults {
 
 /// Main benchmark runner
 pub struct BenchmarkRunner {
-    config: BenchmarkConfig,
+    pub(crate) config: BenchmarkConfig,
 }
 
 impl BenchmarkRunner {
@@ -208,7 +210,7 @@ impl BenchmarkRunner {
     }
 
     /// Run a single benchmark with one problem and one optimizer
-    async fn run_single_benchmark(
+    pub(crate) async fn run_single_benchmark(
         &self,
         problem: &dyn OptimizationProblem,
         optimizer: &dyn Optimizer,
@@ -254,7 +256,8 @@ impl BenchmarkRunner {
 
         // Final evaluation
         let final_value = problem.evaluate(&x).map_err(BenchmarkError::ProblemError)?;
-        let final_gradient = problem.gradient(&x).map_err(BenchmarkError::ProblemError)?;
+        let final_value = problem.evaluate(&x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+        let final_gradient = problem.gradient(&x).map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
         Ok(SingleResult {

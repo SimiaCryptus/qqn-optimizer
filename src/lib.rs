@@ -41,14 +41,8 @@ pub mod benchmarks;
 pub mod analysis;
 pub mod utils;
 pub mod config;
-pub mod config;
-pub mod cli;
 
 // Re-export commonly used types
-pub use core::optimizer::{Optimizer, StepResult, ConvergenceInfo};
-pub use core::qqn::{QQNOptimizer, QQNConfig};
-pub use core::lbfgs::{LBFGSOptimizer, LBFGSConfig};
-pub use config::{ExperimentConfig, ExperimentConfigBuilder, ConfigError};
 pub use core::{
     optimizer::{Optimizer, StepResult, ConvergenceInfo},
     qqn::{QQNOptimizer, QQNConfig},
@@ -56,14 +50,15 @@ pub use core::{
 };
 
 pub use benchmarks::{
-    functions::{RosenbrockFunction, RastriginFunction, SphereFunction, BealeFunction},
+    functions::{OptimizationProblem, RosenbrockFunction, RastriginFunction, SphereFunction, BealeFunction, AckleyFunction},
     ml_problems::{LogisticRegression, NeuralNetworkTraining},
-    evaluation::{BenchmarkRunner, BenchmarkConfig, BenchmarkResults},
+    evaluation::{BenchmarkRunner, BenchmarkResults},
 };
 
 pub use analysis::{
     statistics::{StatisticalAnalysis, ConvergenceComparison, PerformanceProfiles},
-    plotting::{PlottingEngine, PlotConfig},
+    plotting::{PlottingEngine, PlotConfig, ExtendedOptimizationTrace},
+    reporting::{ReportGenerator, AcademicReport},
 };
 
 pub use config::{ExperimentConfig, ProblemConfig, OptimizerConfig};
