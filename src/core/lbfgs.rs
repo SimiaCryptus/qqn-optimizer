@@ -130,8 +130,7 @@ impl LBFGSState {
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
         }
-
-        
+    
         // r is now the search direction (should already be a descent direction)
         // Verify it's a descent direction
         let grad_dot_r = dot_product(gradient, &r)?;
@@ -301,34 +300,6 @@ impl Optimizer for LBFGSOptimizer {
 
         // Compute L-BFGS search direction
         let search_direction = self.state.compute_direction(gradients)?;
-
-        // Convert tensors to f64 vectors for line search
-        let params_f64: Vec<f64> = params
-            .iter()
-            .map(|p| p.to_vec1::<f64>())
-            .collect::<CandleResult<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-        let direction_f64: Vec<f64> = search_direction
-            .iter()
-            .map(|d| d.to_vec1::<f64>())
-            .collect::<CandleResult<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-        let gradients_f64: Vec<f64> = gradients
-            .iter()
-            .map(|g| g.to_vec1::<f64>())
-            .collect::<CandleResult<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-
-
 
         // Use a fixed step size for now since we don't have access to the objective function
         // In a real implementation, the objective and gradient functions would be provided

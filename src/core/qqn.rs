@@ -122,7 +122,7 @@ impl QQNOptimizer {
     /// - At t=1: d(1) = d_lbfgs (pure L-BFGS step)
     /// - Derivative at t=0: d'(0) = g_scaled (guaranteed descent direction)
     /// - Smooth transition between gradient descent and quasi-Newton behavior
-  fn create_quadratic_path(
+    pub fn create_quadratic_path(
         &self,
         gradient: &[Tensor],
         lbfgs_direction: &[Tensor],

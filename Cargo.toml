@@ -24,4 +24,4 @@ tempfile = "3.8"
 proptest = "1.4"
 half = { version = "2.3", features = ["bytemuck", "num-traits", "serde", "rand_distr"] }
 rand_distr = { version = "0.4", features = ["std"] }
-nalgebra = "0.32"
+criterion = { version = "0.6.0", features = ["plotters"] }
