@@ -556,7 +556,7 @@ mod tests {
     #[test]
     fn test_lbfgs_steepest_descent_fallback() -> CandleResult<()> {
         let device = Device::Cpu;
-        let state = LBFGSState::new(5);
+        let mut state = LBFGSState::new(5);
 
         let gradient = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
