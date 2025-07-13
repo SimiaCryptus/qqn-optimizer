@@ -1,6 +1,6 @@
 use approx::assert_relative_eq;
 use candle_core::{Device, Tensor};
-use log::debug;
+use log::{debug, warn};
 use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFunction, SphereFunction};
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::{DifferentiableFunction, ObjectiveOnlyFunction, Optimizer};
