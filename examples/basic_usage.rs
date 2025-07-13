@@ -81,7 +81,6 @@ fn main() -> Result<()> {
         if iteration % 50 == 0 {
             println!("  Step size: {:.6}", step_result.step_size);
             println!("  Function evaluations: {}", step_result.function_evaluations);
-            println!("  QQN mode: {}", if step_result.convergence_info.qqn_mode_active { "Hybrid" } else { "L-BFGS" });
         }
 
         iteration += 1;

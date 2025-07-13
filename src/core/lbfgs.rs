@@ -343,7 +343,6 @@ impl LBFGSOptimizer {
             function_change: None,
             parameter_change: None,
             convergence_criterion: None,
-            qqn_mode_active: false,
         })
     }
 }
