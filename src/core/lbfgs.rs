@@ -92,21 +92,21 @@ impl LBFGSState {
 
 /// Compute the L-BFGS search direction using the two-loop recursion
     pub fn compute_direction(&self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-    // Validate input
-    if gradient.is_empty() {
-        return Err(candle_core::Error::Msg("Empty gradient vector".into()));
-    }
-    // Check for NaN/Inf in gradient
-    for (i, grad) in gradient.iter().enumerate() {
-        let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
-        if grad_vec.iter().any(|&x| !x.is_finite()) {
-            return Err(candle_core::Error::Msg(
-                format!("Non-finite gradient detected at index {}", i)
-            ));
+        // Validate input
+        if gradient.is_empty() {
+            return Err(candle_core::Error::Msg("Empty gradient vector".into()));
         }
-    }
+        // Check for NaN/Inf in gradient
+        for (i, grad) in gradient.iter().enumerate() {
+            let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
+            if grad_vec.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    format!("Non-finite gradient detected at index {}", i)
+                ));
+            }
+        }
 
-    if self.s_history.is_empty() {
+        if self.s_history.is_empty() {
             // No history available, use steepest descent
             debug!("L-BFGS: No history, using steepest descent");
             return Ok(gradient
@@ -153,12 +153,12 @@ impl LBFGSState {
 
         // Second loop: compute final direction
         for i in 0..self.s_history.len() {
-            let s_i = &self.s_history[i];
-            let y_i = &self.y_history[i];
-            let rho_i = self.rho_history[i];
             if i >= alpha.len() {
                 continue; // Skip if we didn't compute alpha for this iteration
             }
+            let s_i = &self.s_history[i];
+            let y_i = &self.y_history[i];
+            let rho_i = self.rho_history[i];
 
             let alpha_i = alpha[i];
 

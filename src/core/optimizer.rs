@@ -6,7 +6,6 @@
 
 use candle_core::{Result, Tensor};
 use serde::{Deserialize, Serialize};
-use std::any::Any;
 use std::error::Error;
 use std::fmt::Debug;
 use std::time::Duration;

@@ -66,6 +66,7 @@ pub trait LineSearch: Send + Sync + Debug {
 
     /// Reset internal state
     fn reset(&mut self);
+    
     /// Clone the line search algorithm
     fn clone_box(&self) -> Box<dyn LineSearch>;
 }

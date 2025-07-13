@@ -19,6 +19,12 @@ pub struct QQNTrace {
     pub direction_norms: Vec<f64>,
     pub descent_dot_products: Vec<f64>,
 }
+impl Default for QQNTrace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QQNTrace {
     pub fn new() -> Self {
         Self {
@@ -196,13 +202,12 @@ impl QQNOptimizer {
     /// Perform line search on the parametric curve to find optimal t
     fn parametric_line_search(
         &self,
-        params: &[Tensor],
+        _params: &[Tensor],
         quadratic_path: &QuadraticPath,
-        objective_fn: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
+        _objective_fn: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
     ) -> CandleResult<(f64, Vec<Tensor>)> {
-        let mut best_t = 0.5;
-        let mut best_value = f64::INFINITY;
-        let mut best_direction = quadratic_path.evaluate(0.5)?;
+        let best_t;
+        let best_direction;
         // Golden section search over t ∈ [0, 1]
         let phi = (1.0 + 5.0_f64.sqrt()) / 2.0; // Golden ratio
         let resphi = 2.0 - phi;
@@ -230,9 +235,9 @@ impl QQNOptimizer {
     /// Find optimal t parameter for the quadratic path using golden section search
     fn find_optimal_t(
         &self,
-        params: &[Tensor],
+        _params: &[Tensor],
         quadratic_path: &QuadraticPath,
-        current_value: f64,
+        _current_value: f64,
         gradients: &[Tensor],
     ) -> CandleResult<f64> {
         // Golden section search for optimal t
@@ -413,19 +418,26 @@ impl Optimizer for QQNOptimizer {
         // Handle very small direction norms more gracefully
         if direction_norm < 1e-12 {
             debug!("QQN: Very small direction norm {:.6e}, using scaled negative gradient", direction_norm);
-            let grad_norm = compute_magnitude(gradients)?;
             let final_direction = if grad_norm > self.config.epsilon {
                 // Use negative gradient scaled to reasonable magnitude
                 let scale = 1e-6 / grad_norm;
                 gradients
                     .iter()
-                    .map(|g| g.neg()?.broadcast_mul(&Tensor::new(scale, g.device())?))
+                    .map(|g| {
+                        let neg_g = g.neg()?;
+                        let scale_tensor = Tensor::new(scale, g.device())?;
+                        neg_g.broadcast_mul(&scale_tensor)
+                    })
                     .collect::<CandleResult<Vec<_>>>()?
             } else {
                 // Both gradient and direction are tiny, use minimal step
                 gradients
                     .iter()
-                    .map(|g| Tensor::zeros_like(g)?.add(&Tensor::new(-1e-12, g.device())?))
+                    .map(|g| {
+                        let zeros = Tensor::zeros_like(g)?;
+                        let tiny_step = Tensor::new(-1e-12, g.device())?;
+                        zeros.add(&tiny_step)
+                    })
                     .collect::<CandleResult<Vec<_>>>()?
             };
             let step_size = 1e-12;

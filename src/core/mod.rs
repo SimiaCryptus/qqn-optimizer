@@ -20,7 +20,7 @@ pub use line_search::{
 };
 pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, OptimizerBox, StepResult};
 pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
-// Common result type for optimization operations
+
 
 /// Tolerance for numerical comparisons
 pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
