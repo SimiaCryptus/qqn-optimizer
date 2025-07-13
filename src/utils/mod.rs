@@ -8,7 +8,6 @@
 
 pub mod logging;
 pub mod math;
-pub mod random;
 pub mod serialization;
 
 pub use logging::{
@@ -16,10 +15,9 @@ pub use logging::{
     PerformanceTimer,
 };
 pub use math::{
-    angle_between, clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, lerp,
+    clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, lerp,
     norm_inf, norm_l1, norm_l2, vector_add, vector_scale, vector_subtract,
 };
-pub use random::{random_starting_point, random_starting_points, RandomGenerator};
 pub use serialization::{
     load_config, load_results, save_config, save_results, ConfigSerializer, ResultsSerializer,
 };

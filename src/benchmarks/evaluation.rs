@@ -124,7 +124,7 @@ pub struct SingleResult {
     pub function_evaluations: usize,
     pub gradient_evaluations: usize,
     pub convergence_achieved: bool,
-    pub execution_time: DurationWrapper,
+    pub execution_time: Duration,
     pub trace: OptimizationTrace,
     pub convergence_reason: ConvergenceReason,
 }
@@ -313,7 +313,7 @@ impl BenchmarkRunner {
             function_evaluations,
             gradient_evaluations,
             convergence_achieved,
-            execution_time: start_time.elapsed().into(),
+            execution_time: start_time.elapsed(),
             trace,
             convergence_reason,
         })
@@ -508,16 +508,13 @@ impl BenchmarkResults {
     }
 
     /// Calculate average execution times
-    pub fn average_execution_times(&self) -> HashMap<String, DurationWrapper> {
+    pub fn average_execution_times(&self) -> HashMap<String, Duration> {
         let mut times = HashMap::new();
 
         for optimizer_name in self.get_optimizer_names() {
             let results = self.get_results_for_optimizer(&optimizer_name);
-            let total_nanos: u64 = results.iter()
-                .map(|r| Duration::from(r.execution_time.clone()).as_nanos() as u64)
-                .sum();
-            let avg_nanos = total_nanos / results.len() as u64;
-            let avg_time = Duration::from_nanos(avg_nanos).into();
+            let total_time: Duration = results.iter().map(|r| r.execution_time).sum();
+            let avg_time = total_time / results.len() as u32;
 
             times.insert(optimizer_name, avg_time);
         }

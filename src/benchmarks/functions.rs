@@ -444,6 +444,10 @@ impl OptimizationProblem for AckleyFunction {
     }
 }
 impl Default for BealeFunction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Default for HimmelblauFunction {
     fn default() -> Self {
         Self::new()
