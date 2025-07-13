@@ -91,7 +91,7 @@ impl LBFGSState {
     }
 
 /// Compute the L-BFGS search direction using the two-loop recursion
-    pub fn compute_direction(&self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
         // Validate input
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
@@ -147,6 +147,11 @@ impl LBFGSState {
 
         // Apply initial Hessian approximation scaling
         debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
+    // Additional safety check for gamma
+    if !self.gamma.is_finite() || self.gamma <= 0.0 {
+        warn!("L-BFGS: Invalid gamma detected: {}, resetting to 1.0", self.gamma);
+        self.gamma = 1.0;
+    }
     // Clamp gamma to prevent numerical issues
     let safe_gamma = self.gamma.max(1e-6).min(1e6);
     let mut r = vector_scale(&q, safe_gamma)?;
@@ -238,10 +243,15 @@ impl LBFGSState {
                 let y_dot_y = dot_product(&y_k, &y_k)?;
                 if y_dot_y > self.epsilon() {
                     let new_gamma = s_dot_y / y_dot_y;
+                    // Ensure gamma is finite before updating
+                    if new_gamma.is_finite() && new_gamma > 0.0 {
                     // Clamp gamma to reasonable range
                     self.gamma = new_gamma.max(1e-3).min(1e3);
                     if (new_gamma - self.gamma).abs() > 1e-10 {
                         debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
+                    }
+                    } else {
+                        debug!("L-BFGS: Invalid gamma computed: {}, keeping current value", new_gamma);
                     }
                 }
             } else {
@@ -390,7 +400,8 @@ impl Optimizer for LBFGSOptimizer {
         // Adaptive step size with backtracking line search
         let mut step_size = if self.state.iteration() == 0 {
             // First iteration: use a conservative step size
-            1.0
+            // Scale based on gradient magnitude to avoid overshooting
+            (1.0 / grad_norm).min(1.0).max(0.01)
         } else {
             // Use L-BFGS scaling factor as starting point
             self.state.gamma()
@@ -404,6 +415,8 @@ impl Optimizer for LBFGSOptimizer {
         let backtrack_factor = 0.5;
         let max_backtracks = 30;
         let mut backtrack_count = 0;
+        let mut best_step_size = step_size;
+        let mut best_value = f64::INFINITY;
 
         for _ in 0..max_backtracks {
             // Check if step size is reasonable
@@ -413,12 +426,37 @@ impl Optimizer for LBFGSOptimizer {
             if step_norm < 1e-8 {
                 debug!("L-BFGS: Accepting small step (norm={:.6e})", step_norm);
                 success = true;
+                best_step_size = step_size;
                 break;
             }
 
-            // Accept reasonable step sizes
-            if step_size <= 1.0 {
+            // Try the step and check if it reduces the function value
+            let mut trial_params = params.to_vec();
+            for (param, direction) in trial_params.iter_mut().zip(&search_direction) {
+                let step_size_tensor = Tensor::new(step_size, param.device())?;
+                let step = direction.broadcast_mul(&step_size_tensor)?;
+                *param = param.add(&step)?;
+            }
+
+            // Evaluate function at trial point
+            let trial_value = match _objective_value(&trial_params) {
+                Ok(val) => val,
+                Err(_) => {
+                    // If evaluation fails, backtrack
+                    step_size *= backtrack_factor;
+                    backtrack_count += 1;
+                    continue;
+                }
+            };
+
+            // Check Armijo condition for sufficient decrease
+            let directional_derivative = -grad_norm * grad_norm; // For steepest descent, this is -||g||^2
+            let expected_decrease = self.config.line_search.c1 * step_size * directional_derivative;
+
+            if trial_value <= best_value + expected_decrease {
                 success = true;
+                best_value = trial_value;
+                best_step_size = step_size;
                 break;
             }
 
@@ -426,6 +464,9 @@ impl Optimizer for LBFGSOptimizer {
             step_size *= backtrack_factor;
             backtrack_count += 1;
         }
+        // Use the best step size found
+        step_size = best_step_size;
+
         if backtrack_count > 0 {
             debug!("L-BFGS: Backtracked {} times to step_size={:.6e}", backtrack_count, step_size);
         }

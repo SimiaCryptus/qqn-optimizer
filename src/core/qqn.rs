@@ -368,6 +368,36 @@ impl Optimizer for QQNOptimizer {
             grad_magnitude,
             lbfgs_magnitude,
         );
+        // Check for invalid magnitude ratio
+        if !magnitude_ratio.is_finite() {
+            warn!("QQN: Invalid magnitude ratio detected, using negative gradient");
+            let direction = scale_tensors(gradients, -1.0)?;
+            let step_size = 0.01 / grad_magnitude.max(1.0);
+            // Update parameters with conservative step
+            for (param, dir) in params.iter_mut().zip(direction.iter()) {
+                let step_size_tensor = Tensor::new(step_size, param.device())?;
+                let update = dir.broadcast_mul(&step_size_tensor)?;
+                *param = param.add(&update)?;
+            }
+            self.state.iteration += 1;
+            let convergence_info = ConvergenceInfo {
+                converged: false,
+                gradient_norm: grad_magnitude,
+                function_change: None,
+                parameter_change: Some(step_size),
+                convergence_criterion: None,
+            };
+            let mut metadata = OptimizationMetadata::default();
+            metadata.optimizer_data.insert("invalid_magnitude_ratio".to_string(), 1.0);
+            return Ok(StepResult {
+                step_size,
+                function_evaluations: 0,
+                gradient_evaluations: 0,
+                convergence_info,
+                metadata,
+            });
+        }
+
         debug!("QQN step {}: grad_norm={:.6e}, lbfgs_norm={:.6e}, relative_diff={:.6}", 
                self.state.iteration, grad_magnitude, lbfgs_magnitude, magnitude_ratio);
 

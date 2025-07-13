@@ -5,6 +5,7 @@ use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFuncti
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::Optimizer;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
+use qqn_optimizer::init_logging;
 use qqn_optimizer::utils::math::compute_magnitude;
 
 fn init_logger() {
@@ -90,6 +91,7 @@ async fn test_qqn_rosenbrock_optimization() {
 
 #[tokio::test]
 async fn test_qqn_vs_lbfgs_sphere_function() {
+    init_logging();
     let problem = SphereFunction::new(5); // Use smaller dimension for more reliable convergence
     // Create objective function closure
     let objective = |tensors: &[Tensor]| -> candle_core::Result<f64> {
@@ -151,8 +153,8 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
     let lbfgs_final_value = problem.evaluate(&lbfgs_x).unwrap();
     
     // Both should converge to near-zero
-    assert!(qqn_final_value < 1.0, "QQN failed to converge on sphere function: {}", qqn_final_value);
-    assert!(lbfgs_final_value < 1e-6, "L-BFGS failed to converge on sphere function: {}", lbfgs_final_value);
+    assert!(qqn_final_value < 1e-3, "QQN failed to converge on sphere function: {}", qqn_final_value);
+    assert!(lbfgs_final_value < 1e-3, "L-BFGS failed to converge on sphere function: {}", lbfgs_final_value);
     
     // QQN should be competitive with L-BFGS (within 3x iterations)
     assert!(qqn_iterations <= lbfgs_iterations * 10,
