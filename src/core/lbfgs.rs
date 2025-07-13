@@ -51,15 +51,15 @@ impl Default for LBFGSConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LBFGSState {
     /// History of parameter differences (s_k = x_{k+1} - x_k)
-    #[serde(skip)]
+    #[serde(skip_serializing, skip_deserializing)]
     s_history: VecDeque<Vec<Tensor>>,
     /// History of gradient differences (y_k = g_{k+1} - g_k)
-    #[serde(skip)]
+    #[serde(skip_serializing, skip_deserializing)]
     y_history: VecDeque<Vec<Tensor>>,
     /// Reciprocals of s_k^T y_k for efficiency
     rho_history: VecDeque<f64>,
     /// Previous gradient for computing differences
-    #[serde(skip)]
+    #[serde(skip_serializing, skip_deserializing)]
     prev_gradient: Option<Vec<Tensor>>,
     /// Current iteration number
     iteration: usize,

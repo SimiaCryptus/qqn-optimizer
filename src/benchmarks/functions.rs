@@ -443,3 +443,14 @@ impl OptimizationProblem for AckleyFunction {
         Some((lower, upper))
     }
 }
+impl Default for BealeFunction {
+impl Default for HimmelblauFunction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl Default for BoothFunction {
+    fn default() -> Self {
+        Self::new()
+    }
+}

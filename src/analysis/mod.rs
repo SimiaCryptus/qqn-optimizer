@@ -13,8 +13,7 @@ pub mod statistics;
 // Re-export commonly used types
 
 pub use plotting::{
-    ConvergencePlot, ExtendedOptimizationTrace, MagnitudeRatioPlot, PerformancePlot, PlotConfig,
-    PlottingEngine, StatisticalPlot,
+    ExtendedOptimizationTrace, PlotConfig, PlottingEngine,
 };
 pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter, ReportGenerator};
 pub use statistics::{

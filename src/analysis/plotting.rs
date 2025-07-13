@@ -1,10 +1,19 @@
 use crate::analysis::statistics::PerformanceProfiles;
 use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace};
-use crate::core::qqn::QQNTrace;
 use anyhow::Result;
 use plotters::backend::{BitMapBackend, SVGBackend};
 use plotters::prelude::*;
 use std::collections::HashMap;
+/// QQN trace information for plotting
+#[derive(Debug, Clone)]
+pub struct QQNTrace {
+    pub magnitude_ratios: Vec<f64>,
+    pub quadratic_path_usage: Vec<bool>,
+    pub step_sizes: Vec<f64>,
+    pub gradient_norms: Vec<f64>,
+    pub direction_norms: Vec<f64>,
+    pub descent_dot_products: Vec<f64>,
+}
 #[derive(Debug, Clone)]
 pub struct PlotConfig {
     pub width: u32,
@@ -21,22 +30,6 @@ impl Default for PlotConfig {
             color_scheme: "default".to_string(),
         }
     }
-}
-pub trait ConvergencePlot {
-    fn plot_convergence(&self, traces: &[ExtendedOptimizationTrace], filename: &str) -> Result<()>;
-}
-pub trait PerformancePlot {
-    fn plot_performance(&self, results: &BenchmarkResults, filename: &str) -> Result<()>;
-}
-pub trait MagnitudeRatioPlot {
-    fn plot_magnitude_ratios(&self, traces: &[QQNTrace], filename: &str) -> Result<()>;
-}
-pub trait StatisticalPlot {
-    fn plot_statistics(
-        &self,
-        analysis: &crate::analysis::statistics::StatisticalAnalysis,
-        filename: &str,
-    ) -> Result<()>;
 }
 
 /// Extended optimization trace with additional fields for plotting

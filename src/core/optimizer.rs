@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Debug;
 use std::time::Duration;
+use std::collections::HashMap;
 /// Trait for differentiable functions that can compute both value and gradients
 pub trait DifferentiableFunction: Send + Sync {
     /// Evaluate the function at the given point

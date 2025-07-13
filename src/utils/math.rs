@@ -494,7 +494,7 @@ mod tests {
     }
 }
 
-pub(crate) fn compute_parameter_change(p0: &[Tensor], p1: &Vec<Tensor>) -> CandleResult<f64> {
+pub fn compute_parameter_change(p0: &[Tensor], p1: &[Tensor]) -> CandleResult<f64> {
     if p0.len() != p1.len() {
         return Err(candle_core::Error::Msg(
             "Parameter vectors must have the same length".to_string(),

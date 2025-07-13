@@ -177,6 +177,7 @@ impl StatisticalAnalysis {
             })
             .collect()
     }
+    /// Helper method to determine effect size magnitude
     fn effect_size_magnitude(cohens_d: f64) -> String {
         let abs_d = cohens_d.abs();
         if abs_d < 0.2 {

@@ -5,7 +5,7 @@ use crate::core::ConvergenceInfo;
 use crate::core::Optimizer;
 use crate::core::StepResult;
 use crate::utils::math::{
-    combine_tensors, compute_magnitude, scale_tensors,
+    combine_tensors, compute_magnitude, scale_tensors, dot_product,
 };
 use anyhow::Result as AnyhowResult;
 use candle_core::{Result as CandleResult, Tensor};
