@@ -358,6 +358,14 @@ impl Optimizer for QQNOptimizer {
 
         // 1. Compute L-BFGS direction
         let lbfgs_direction = self.state.lbfgs_state.compute_direction(gradients)?;
+        // Check if L-BFGS direction is valid
+        let lbfgs_valid = lbfgs_direction.iter().all(|d| {
+            d.flatten_all()
+                .and_then(|f| f.to_vec1::<f64>())
+                .map(|v| v.iter().all(|&x| x.is_finite()))
+                .unwrap_or(false)
+        });
+
 
         // Calculate magnitude ratio
         let grad_magnitude = compute_magnitude(gradients)?;
@@ -368,17 +376,26 @@ impl Optimizer for QQNOptimizer {
             grad_magnitude,
             lbfgs_magnitude,
         );
+
         // Check for invalid magnitude ratio
-        if !magnitude_ratio.is_finite() {
+        if !magnitude_ratio.is_finite() || !lbfgs_valid || !lbfgs_magnitude.is_finite() {
             warn!("QQN: Invalid magnitude ratio detected, using negative gradient");
             let direction = scale_tensors(gradients, -1.0)?;
-            let step_size = 0.01 / grad_magnitude.max(1.0);
+            // Use a more conservative step size to prevent divergence
+            let step_size = 0.01 / (grad_magnitude + 1.0);
             // Update parameters with conservative step
             for (param, dir) in params.iter_mut().zip(direction.iter()) {
                 let step_size_tensor = Tensor::new(step_size, param.device())?;
                 let update = dir.broadcast_mul(&step_size_tensor)?;
                 *param = param.add(&update)?;
             }
+            // Update L-BFGS state with the actual step taken
+            self.state.lbfgs_state.update(
+                gradients,
+                &scale_tensors(&direction, step_size)?,
+                1.0,
+            )?;
+
             self.state.iteration += 1;
             let convergence_info = ConvergenceInfo {
                 converged: false,
@@ -400,12 +417,6 @@ impl Optimizer for QQNOptimizer {
 
         debug!("QQN step {}: grad_norm={:.6e}, lbfgs_norm={:.6e}, relative_diff={:.6}", 
                self.state.iteration, grad_magnitude, lbfgs_magnitude, magnitude_ratio);
-
-        // Warn if magnitude ratio is extreme
-        if magnitude_ratio > 10.0 {
-            warn!("QQN: Large magnitude ratio detected: {}", magnitude_ratio);
-        }
-
         debug!("QQN: Using quadratic path (magnitude_ratio {} > threshold {})",
                    magnitude_ratio, self.config.threshold);
         let quadratic_path = self.create_quadratic_path(gradients, &lbfgs_direction)?;
@@ -414,191 +425,40 @@ impl Optimizer for QQNOptimizer {
         let optimal_t = self.find_optimal_t_golden_section(params, &quadratic_path, gradients, objective_fn)?;
         debug!("QQN: Found optimal t = {:.6}", optimal_t);
 
-        let mut direction = quadratic_path.evaluate(optimal_t)?;
+        let direction = quadratic_path.evaluate(optimal_t)?;
 
         // Verify descent property as required by paper: if g^T d_QQN(t*) ≥ 0, set t* = ε
         let descent_check = crate::utils::math::dot_product(gradients, &direction)?;
         if descent_check >= 0.0 {
             warn!("QQN: Direction not descent (dot product: {:.6e}), using small t = ε", descent_check);
             let small_t = 1e-6;
-            direction = quadratic_path.evaluate(small_t)?;
+            let direction = quadratic_path.evaluate(small_t)?;
             // Double-check the small t gives descent
             let small_t_descent = crate::utils::math::dot_product(gradients, &direction)?;
             if small_t_descent >= 0.0 {
                 // Fallback to negative gradient if even small t fails
                 warn!("QQN: Even small t fails descent, using negative gradient");
-                direction = scale_tensors(gradients, -1.0)?;
+                let direction = scale_tensors(gradients, -1.0)?;
+                // Apply the negative gradient direction directly
+                for (param, dir) in params.iter_mut().zip(direction.iter()) {
+                    *param = param.add(dir)?;
+                }
+            } else {
+                // Apply the direction from small t
+                for (param, dir) in params.iter_mut().zip(direction.iter()) {
+                    *param = param.add(dir)?;
+                }
             }
-        }
-
-        // Ensure we have a descent direction by checking dot product with gradient
-        let direction_dot_grad = direction
-            .iter()
-            .zip(gradients.iter())
-            .map(|(d, g)| {
-                // Handle multi-dimensional tensors properly
-                let d_flat = d.flatten_all().unwrap();
-                let g_flat = g.flatten_all().unwrap();
-                let d_vec = d_flat.to_vec1::<f64>().unwrap();
-                let g_vec = g_flat.to_vec1::<f64>().unwrap();
-                d_vec.iter().zip(g_vec.iter()).map(|(di, gi)| di * gi).sum::<f64>()
-            })
-            .sum::<f64>();
-        debug!("QQN: direction_dot_grad = {:.6e}", direction_dot_grad);
-
-        // If not a descent direction, fall back to negative gradient
-        let final_direction = if direction_dot_grad >= 0.0 {
-            warn!("QQN: Search direction is not descent, falling back to negative gradient");
-            scale_tensors(gradients, -1.0)?
         } else {
-            direction
-        };
-
-        // Use adaptive step size based on gradient magnitude and iteration count
-        let grad_norm = compute_magnitude(gradients)?;
-        let direction_norm = compute_magnitude(&final_direction)?;
-        // Check for numerical issues
-        if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
-            return Err(candle_core::Error::Msg(
-                format!("Invalid direction norm: {}", direction_norm)
-            ));
-        }
-
-        // Handle very small direction norms more gracefully
-        if direction_norm < 1e-12 {
-            debug!("QQN: Very small direction norm {:.6e}, using scaled negative gradient", direction_norm);
-            let final_direction = if grad_norm > self.config.epsilon {
-                // Use negative gradient scaled to reasonable magnitude
-                let scale = 1e-6 / grad_norm;
-                gradients
-                    .iter()
-                    .map(|g| {
-                        let neg_g = g.neg()?;
-                        let scale_tensor = Tensor::new(scale, g.device())?;
-                        neg_g.broadcast_mul(&scale_tensor)
-                    })
-                    .collect::<CandleResult<Vec<_>>>()?
-            } else {
-                // Both gradient and direction are tiny, use minimal step
-                gradients
-                    .iter()
-                    .map(|g| {
-                        let zeros = Tensor::zeros_like(g)?;
-                        let tiny_step = Tensor::new(-1e-12, g.device())?;
-                        zeros.add(&tiny_step)
-                    })
-                    .collect::<CandleResult<Vec<_>>>()?
-            };
-            let step_size = 1e-12;
-            // Update parameters with minimal step
-            for (param, direction) in params.iter_mut().zip(final_direction.iter()) {
-                let step_size_tensor = Tensor::new(step_size, param.device())?;
-                let update = direction.broadcast_mul(&step_size_tensor)?;
-                *param = param.add(&update)?;
+            // Apply the direction from optimal t
+            for (param, dir) in params.iter_mut().zip(direction.iter()) {
+                *param = param.add(dir)?;
             }
-            // Don't update L-BFGS state for numerical edge cases
-            self.state.iteration += 1;
-            let convergence_info = ConvergenceInfo {
-                converged: true, // Consider converged if gradients are this small
-                gradient_norm: grad_norm,
-                function_change: None,
-                parameter_change: Some(step_size),
-                convergence_criterion: None,
-            };
-            let mut metadata = OptimizationMetadata::default();
-            metadata.optimizer_data.insert("numerical_edge_case".to_string(), 1.0);
-            return Ok(StepResult {
-                step_size,
-                function_evaluations: 0,
-                gradient_evaluations: 0,
-                convergence_info,
-                metadata,
-            });
         }
 
-        // Adaptive step size with backtracking line search
-        let mut step_size = if self.state.iteration == 0 {
-            // First iteration: start with larger step
-            // For Rosenbrock-like functions, we need more conservative initial steps
-            let initial_step = if grad_norm > 1.0 {
-                0.01 / grad_norm.sqrt()
-            } else {
-                0.1
-            };
-            debug!("QQN: Initial step size = {:.6e}", initial_step);
-            initial_step
-        } else {
-            // Use previous successful step size as starting point
-            // Adapt based on history
-            let base_step = self.state.lbfgs_state.gamma();
-            base_step.max(0.0001).min(0.1)
-        };
 
-        // Simple backtracking line search
-        let mut success = false;
-        let backtrack_factor = 0.5;
-        let max_backtracks = 50;
-        let mut backtrack_count = 0;
-
-        for _ in 0..max_backtracks {
-            // Check if step size is reasonable
-            let step_norm = step_size * compute_magnitude(&final_direction)?;
-
-            // If step is very small relative to parameters, accept it
-            if step_norm < 1e-10 {
-                debug!("QQN: Accepting small step (norm={:.6e})", step_norm);
-                success = true;
-                break;
-            }
-
-            // Accept reasonable steps based on problem scale
-            let param_norm = params.iter()
-                .map(|p| p.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-                .flatten()
-                .map(|x| x * x)
-                .sum::<f64>()
-                .sqrt();
-
-            let relative_step = if param_norm > 1e-10 {
-                step_norm / param_norm
-            } else {
-                step_norm
-            };
-
-            // Accept if step is reasonable relative to current parameters
-            if relative_step <= 0.5 || step_norm <= 1.0 {
-                success = true;
-                break;
-            }
-
-            // Backtrack
-            step_size *= backtrack_factor;
-            backtrack_count += 1;
-        }
-        if backtrack_count > 0 {
-            debug!("QQN: Backtracked {} times to step_size={:.6e}", backtrack_count, step_size);
-        }
-
-        // Ensure minimum step size
-        step_size = step_size.max(1e-16);
-        if !success {
-            warn!("QQN: Line search failed to find acceptable step size");
-        }
-
-        let line_search_result = crate::core::line_search::LineSearchResult {
-            step_size,
-            function_evaluations: 0,
-            gradient_evaluations: 0,
-            success,
-            termination_reason: crate::core::line_search::TerminationReason::WolfeConditionsSatisfied,
-        };
-
-        // Update parameters
-        for (param, direction) in params.iter_mut().zip(final_direction.iter()) {
-            let step_size_tensor = Tensor::new(line_search_result.step_size, param.device())?;
-            let update = direction.broadcast_mul(&step_size_tensor)?;
-            *param = param.add(&update)?;
-            // Check for NaN/Inf in updated parameters
+        // Check for NaN/Inf in updated parameters
+        for param in params.iter() {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
                 return Err(candle_core::Error::Msg(
@@ -607,11 +467,14 @@ impl Optimizer for QQNOptimizer {
             }
         }
 
+        // Calculate step size for reporting (magnitude of the actual step taken)
+        let step_size = compute_magnitude(&direction)?;
+
         // Update L-BFGS state
         self.state.lbfgs_state.update(
             gradients,
-            &final_direction,
-            line_search_result.step_size,
+            &direction,
+            1.0, // We've already applied the full direction
         )?;
 
         // Increment iteration counter AFTER all operations complete successfully
@@ -622,23 +485,22 @@ impl Optimizer for QQNOptimizer {
             converged: grad_magnitude < 1e-6, // Simple convergence check
             gradient_norm: grad_magnitude,
             function_change: None, // Would need previous function value
-            parameter_change: Some(
-                line_search_result.step_size * compute_magnitude(&final_direction)?,
-            ),
+            parameter_change: Some(step_size),
             convergence_criterion: None,
         };
 
         let mut metadata = OptimizationMetadata::default();
         metadata.optimizer_data.insert("magnitude_ratio".to_string(), magnitude_ratio);
         metadata.optimizer_data.insert("gradient_norm".to_string(), grad_magnitude);
-        metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
+        metadata.optimizer_data.insert("direction_norm".to_string(), compute_magnitude(&direction)?);
         metadata.optimizer_data.insert("step_size".to_string(), step_size);
-        metadata.optimizer_data.insert("descent_dot_product".to_string(), direction_dot_grad);
+        metadata.optimizer_data.insert("descent_dot_product".to_string(), descent_check);
+        metadata.optimizer_data.insert("optimal_t".to_string(), optimal_t);
 
         Ok(StepResult {
-            step_size: line_search_result.step_size,
-            function_evaluations: line_search_result.function_evaluations,
-            gradient_evaluations: line_search_result.gradient_evaluations,
+            step_size,
+            function_evaluations: 0, // Would need to track in find_optimal_t
+            gradient_evaluations: 0,
             convergence_info,
             metadata,
         })

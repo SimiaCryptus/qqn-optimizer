@@ -100,9 +100,11 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
         for (i, grad) in gradient.iter().enumerate() {
             let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
             if grad_vec.iter().any(|&x| !x.is_finite()) {
-                return Err(candle_core::Error::Msg(
-                    format!("Non-finite gradient detected at index {}", i)
-                ));
+                warn!("L-BFGS: Non-finite gradient detected at index {}, using steepest descent", i);
+                return Ok(gradient
+                    .iter()
+                    .map(|g| g.neg())
+                    .collect::<CandleResult<Vec<_>>>()?);
             }
         }
 
@@ -140,6 +142,17 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
             let y_i = &self.y_history[i];
             let scaled_y = vector_scale(y_i, alpha_i)?;
             q = vector_subtract(&q, &scaled_y)?;
+            // Check if q has become non-finite
+            for (j, q_tensor) in q.iter().enumerate() {
+                let q_vec = q_tensor.flatten_all()?.to_vec1::<f64>()?;
+                if q_vec.iter().any(|&x| !x.is_finite()) {
+                    warn!("L-BFGS: Non-finite q detected during first loop, using steepest descent");
+                    return Ok(gradient
+                        .iter()
+                        .map(|g| g.neg())
+                        .collect::<CandleResult<Vec<_>>>()?);
+                }
+            }
         }
 
         // Reverse alpha to match forward iteration order
@@ -177,13 +190,37 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
             // r = r + (alpha_i - beta) * s_i
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
+            // Check if r has become non-finite
+            for (j, r_tensor) in r.iter().enumerate() {
+                let r_vec = r_tensor.flatten_all()?.to_vec1::<f64>()?;
+                if r_vec.iter().any(|&x| !x.is_finite()) {
+                    warn!("L-BFGS: Non-finite r detected during second loop, using steepest descent");
+                    return Ok(gradient
+                        .iter()
+                        .map(|g| g.neg())
+                        .collect::<CandleResult<Vec<_>>>()?);
+                }
+            }
         }
+    // Final check on the direction
+    let direction = r.iter()
+        .map(|t| t.neg())
+        .collect::<CandleResult<Vec<_>>>()?;
+    // Verify the direction is finite
+    for (i, dir) in direction.iter().enumerate() {
+        let dir_vec = dir.flatten_all()?.to_vec1::<f64>()?;
+        if dir_vec.iter().any(|&x| !x.is_finite()) {
+            warn!("L-BFGS: Non-finite direction detected, using steepest descent");
+            return Ok(gradient
+                .iter()
+                .map(|g| g.neg())
+                .collect::<CandleResult<Vec<_>>>()?);
+        }
+    }
 
 
     // Return the negative of r to get a descent direction
-    Ok(r.iter()
-        .map(|t| t.neg())
-        .collect::<CandleResult<Vec<_>>>()?)
+    Ok(direction)
     }
 
     /// Update the L-BFGS state with new gradient and step information.
@@ -245,8 +282,8 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
                     let new_gamma = s_dot_y / y_dot_y;
                     // Ensure gamma is finite before updating
                     if new_gamma.is_finite() && new_gamma > 0.0 {
-                    // Clamp gamma to reasonable range
-                    self.gamma = new_gamma.max(1e-3).min(1e3);
+                        // Clamp gamma to more conservative range to prevent instability
+                        self.gamma = new_gamma.max(1e-4).min(1e2);
                     if (new_gamma - self.gamma).abs() > 1e-10 {
                         debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
                     }
@@ -388,9 +425,38 @@ impl Optimizer for LBFGSOptimizer {
         // Validate search direction
         let direction_norm = compute_magnitude(&search_direction)?;
         if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
-            return Err(candle_core::Error::Msg(
-                format!("Invalid search direction norm: {}", direction_norm)
-            ));
+            warn!("L-BFGS: Invalid search direction norm: {}, using steepest descent", direction_norm);
+            // Fall back to steepest descent
+            let search_direction = gradients
+                .iter()
+                .map(|g| g.neg())
+                .collect::<CandleResult<Vec<_>>>()?;
+            let direction_norm = compute_magnitude(&search_direction)?;
+            let step_size = 0.01 / (direction_norm + 1.0);
+
+            // Update parameters with conservative step
+            for (param, dir) in params.iter_mut().zip(search_direction.iter()) {
+                let step_size_tensor = Tensor::new(step_size, param.device())?;
+                let update = dir.broadcast_mul(&step_size_tensor)?;
+                *param = param.add(&update)?;
+            }
+
+            // Update L-BFGS state
+            self.state.update(gradients, &search_direction, step_size)?;
+
+            let convergence_info = self.compute_convergence_info(gradients)?;
+            let step_duration = start_time.elapsed();
+            let mut metadata = OptimizationMetadata::default();
+            metadata.timing_info.step_duration = step_duration;
+            metadata.optimizer_data.insert("fallback_to_steepest_descent".to_string(), 1.0);
+
+            return Ok(StepResult {
+                step_size,
+                function_evaluations: 0,
+                gradient_evaluations: 0,
+                convergence_info,
+                metadata,
+            });
         }
 
         // Use adaptive step size based on gradient magnitude
@@ -401,7 +467,7 @@ impl Optimizer for LBFGSOptimizer {
         let mut step_size = if self.state.iteration() == 0 {
             // First iteration: use a conservative step size
             // Scale based on gradient magnitude to avoid overshooting
-            (1.0 / grad_norm).min(1.0).max(0.01)
+            (0.1 / (grad_norm + 1.0)).min(1.0).max(0.001)
         } else {
             // Use L-BFGS scaling factor as starting point
             self.state.gamma()
