@@ -332,6 +332,7 @@ impl Optimizer for QQNOptimizer {
         trace!("Applying step to parameters");
         let step_norm = compute_magnitude(&direction)?;
         debug!("Step norm before application: {:.6e}", step_norm);
+        
         // Safety check: if step is too large, scale it down
         let max_step_norm = 10.0; // Conservative maximum step size
         let scaling_factor = if step_norm > max_step_norm {
@@ -349,6 +350,7 @@ impl Optimizer for QQNOptimizer {
                 *param = param.add(dir)?;
             }
         }
+        
         // Check for NaN/Inf in updated parameters
         for (i, param) in params.iter().enumerate() {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
@@ -366,15 +368,12 @@ impl Optimizer for QQNOptimizer {
                 ));
             }
         }
-        // Compute gradients at the new parameters for L-BFGS update
-        debug!("Computing gradients at new parameters for L-BFGS update");
-        let new_gradients = function.gradient(params)?;
-
-
-        // Update L-BFGS state
+        
+        // Update L-BFGS state with gradients at old parameters
+        // This is the correct way - we need gradient difference between old and new points
         debug!("Updating L-BFGS history");
         self.state.lbfgs_state.update(
-            &new_gradients, // Use gradients at new parameters
+            &gradients, // Use gradients at old parameters
             &direction,
             1.0, // We've already applied the full direction
         )?;

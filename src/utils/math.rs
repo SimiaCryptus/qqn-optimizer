@@ -12,6 +12,10 @@ use log::warn;
 
 /// Compute the magnitude (L2 norm) of a vector of tensors
 pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
+    if tensors.is_empty() {
+        return Ok(0.0);
+    }
+    
     let mut sum_of_squares = 0.0;
 
     for tensor in tensors {
@@ -26,7 +30,7 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
             sum_of_squares += val * val;
             // warn and exit if any value is NaN or Inf
             if !sum_of_squares.is_finite() {
-                warn!("Tensor contains non-finite value: {}", val);
+                warn!("Sum of squares became non-finite after adding: {}", val);
                 // Return infinity if any value is non-finite
                 return Ok(f64::INFINITY);
             }

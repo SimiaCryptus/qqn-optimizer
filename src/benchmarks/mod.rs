@@ -15,6 +15,7 @@ pub mod runner;
 
 pub use evaluation::{
     BenchmarkConfig, BenchmarkResults, BenchmarkRunner, OptimizationTrace, SingleResult,
+    ConvergenceReason,
 };
 pub use functions::{
     AckleyFunction, BealeFunction, BoothFunction, HimmelblauFunction, RastriginFunction,
@@ -23,5 +24,3 @@ pub use functions::{
 pub use ml_problems::{
     LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
 };
-
-

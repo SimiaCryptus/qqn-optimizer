@@ -476,10 +476,17 @@ impl Optimizer for LBFGSOptimizer {
             // Scale based on gradient magnitude to avoid overshooting
             (0.01 / (grad_norm + 1.0)).min(0.1).max(0.0001)
         } else {
-            // Use L-BFGS scaling factor as starting point
-            self.state.gamma()
-                .max(self.config.min_step_size)
-                .min(1.0) // Cap at 1.0 to prevent overshooting
+            // Better step size initialization based on both gradient and direction norms
+            let dir_norm = compute_magnitude(&search_direction)?;
+            if dir_norm > 0.0 {
+                // Use the ratio of norms as a guide, capped by gamma
+                let norm_ratio = grad_norm / dir_norm;
+                (norm_ratio * self.state.gamma())
+                    .max(self.config.min_step_size)
+                    .min(1.0)
+            } else {
+                self.config.min_step_size
+            }
         };
         debug!("L-BFGS: Initial step size = {:.6e}", step_size);
 
