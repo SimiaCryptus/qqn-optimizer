@@ -40,7 +40,7 @@ problems:
     problem_type:
       type: "NeuralNetwork"
       architecture:
-        layers: [3072, 256, 128, 10]
+        layers: [ 3072, 256, 128, 10 ]
         activation: "relu"
         loss: "cross_entropy"
 
@@ -140,7 +140,7 @@ benchmark_settings:
   parallel_runs: true
 
 analysis_settings:
-  statistical_tests: ["TTest", "MannWhitney"]
+  statistical_tests: [ "TTest", "MannWhitney" ]
   confidence_level: 0.95
   performance_profiles: true
   convergence_analysis: true
@@ -152,4 +152,4 @@ output_settings:
   export_csv: true
   export_json: true
   latex_tables: true
-  plot_formats: ["PNG", "PDF", "SVG"]
+  plot_formats: [ "PNG", "PDF", "SVG" ]

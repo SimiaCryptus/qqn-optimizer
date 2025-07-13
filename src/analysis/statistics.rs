@@ -340,7 +340,7 @@ impl StatisticalAnalysis {
         let effect_size = Self::cohens_d(&values_a, &values_b);
 
         // Compute confidence interval for mean difference
-        let confidence_interval = Self::confidence_interval_mean_diff(&values_a, &values_b, 0.95);
+        let confidence_interval = Self::confidence_interval_mean_diff(&values_a, &values_b);
 
         PairwiseComparison {
             optimizer_a: opt_a.to_string(),
@@ -558,7 +558,7 @@ impl StatisticalAnalysis {
             );
         }
 
-        let sensitivity_analysis = Self::compute_sensitivity_analysis(results);
+        let sensitivity_analysis = Self::compute_sensitivity_analysis();
 
         RobustnessAnalysis {
             problem_categories,
@@ -626,7 +626,7 @@ impl StatisticalAnalysis {
         failure_modes
     }
 
-    fn compute_sensitivity_analysis(results: &BenchmarkResults) -> SensitivityAnalysis {
+    fn compute_sensitivity_analysis() -> SensitivityAnalysis {
         // Simplified sensitivity analysis
         let parameter_sensitivity = HashMap::new(); // Would need parameter variation data
         let dimension_scaling = Vec::new(); // Would need multi-dimensional problem data
@@ -688,7 +688,6 @@ impl StatisticalAnalysis {
     fn confidence_interval_mean_diff(
         group_a: &[f64],
         group_b: &[f64],
-        confidence_level: f64,
     ) -> (f64, f64) {
         let mean_a = Self::mean(group_a);
         let mean_b = Self::mean(group_b);
@@ -702,7 +701,6 @@ impl StatisticalAnalysis {
         let mean_diff = mean_a - mean_b;
 
         // Using t-distribution critical value (approximation for large samples)
-        let alpha = 1.0 - confidence_level;
         let t_critical = 1.96; // Approximation for 95% confidence
 
         let margin_of_error = t_critical * se;
@@ -810,8 +808,7 @@ mod tests {
         let group_a = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let group_b = vec![6.0, 7.0, 8.0, 9.0, 10.0];
 
-        let (lower, upper) =
-            StatisticalAnalysis::confidence_interval_mean_diff(&group_a, &group_b, 0.95);
+        let (lower, upper) = StatisticalAnalysis::confidence_interval_mean_diff(&group_a, &group_b);
         assert!(lower < upper);
         assert!(lower < -3.0); // Mean difference should be around -5
         assert!(upper > -7.0);

@@ -8,8 +8,8 @@
 
 use anyhow::Result;
 use qqn_optimizer::{
-    LBFGSConfig, LBFGSOptimizer, OptimizationProblem, Optimizer, OptimizerBox,
-    QQNConfig, QQNOptimizer
+    LBFGSConfig, LBFGSOptimizer, OptimizationProblem, OptimizerBox,
+    QQNConfig, QQNOptimizer,
 };
 
 /// Custom quadratic optimization problem: f(x) = 0.5 * x^T * A * x + b^T * x + c
@@ -29,7 +29,7 @@ impl QuadraticProblem {
     pub fn new(dimension: usize, condition_number: f64) -> Self {
         // Create a positive definite matrix with specified condition number
         let mut matrix_a = vec![vec![0.0; dimension]; dimension];
-        
+
         // Create diagonal matrix with eigenvalues from 1 to condition_number
         for i in 0..dimension {
             let eigenvalue = 1.0 + (condition_number - 1.0) * (i as f64) / ((dimension - 1) as f64);
@@ -145,7 +145,7 @@ fn main() -> Result<()> {
     let qqn_result = run_optimizer(
         &problem,
         Box::new(QQNOptimizer::new(QQNConfig::default())),
-        "QQN"
+        "QQN",
     )?;
 
     // Test with L-BFGS optimizer
@@ -153,7 +153,7 @@ fn main() -> Result<()> {
     let lbfgs_result = run_optimizer(
         &problem,
         Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-        "L-BFGS"
+        "L-BFGS",
     )?;
 
     // Compare results
@@ -181,7 +181,7 @@ fn main() -> Result<()> {
 fn run_optimizer(
     problem: &QuadraticProblem,
     mut optimizer: Box<dyn OptimizerBox>,
-    name: &str
+    name: &str,
 ) -> Result<(usize, f64)> {
     let mut x = problem.initial_point();
     let mut iteration = 0;

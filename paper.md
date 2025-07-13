@@ -21,7 +21,11 @@ second-order curvature information while maintaining modest memory requirements.
 convergence guarantees, L-BFGS often exhibits poor practical behavior in non-convex optimization, particularly in neural
 network training [[Keskar & Berahas, 2016]](#keskar-berahas-2016).
 
-The fundamental challenge stems from L-BFGS's reliance on local quadratic approximations, which can produce unreliable search directions when: (1) the objective function exhibits high nonlinearity, (2) the limited history fails to capture relevant curvature information, or (3) numerical precision issues corrupt the quasi-Newton update. In such cases, the algorithm may suggest steps that increase the objective function, necessitating extensive backtracking that reduces to inefficient small steps along suboptimal directions.
+The fundamental challenge stems from L-BFGS's reliance on local quadratic approximations, which can produce unreliable
+search directions when: (1) the objective function exhibits high nonlinearity, (2) the limited history fails to capture
+relevant curvature information, or (3) numerical precision issues corrupt the quasi-Newton update. In such cases, the
+algorithm may suggest steps that increase the objective function, necessitating extensive backtracking that reduces to
+inefficient small steps along suboptimal directions.
 
 We propose Quadratic Quasi-Newton (QQN), a hybrid optimization method that addresses these limitations through a novel
 parametric interpolation approach:
@@ -39,7 +43,6 @@ fluidly rather than through discrete switching, requiring minimal hyperparameter
 Our contributions are:
 
 - Empirical evaluation demonstrating improved stability and performance on benchmark problems
-
 
 ## 2. Background and Related Work
 

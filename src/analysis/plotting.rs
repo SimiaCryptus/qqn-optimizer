@@ -1,7 +1,7 @@
 use crate::analysis::statistics::PerformanceProfiles;
 use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace};
 use crate::core::qqn::QQNTrace;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use plotters::backend::{BitMapBackend, SVGBackend};
 use plotters::prelude::*;
 use std::collections::HashMap;
@@ -608,7 +608,7 @@ impl PlottingEngine {
         let lower_right = &lower_area[1];
 
         // Upper left: Convergence comparison
-        if let Some(trace) = results.results.first() {
+        if let Some(_trace) = results.results.first() {
             // This would need actual trace data - simplified for now
             let mut chart = ChartBuilder::on(&upper_left)
                 .caption("Convergence", ("sans-serif", 20))

@@ -3,6 +3,7 @@
 ## Rust Language Essentials
 
 ### Ownership & Memory Model
+
 - **No garbage collector**: Memory managed through ownership system
 - **Move semantics**: Values transferred between variables (not copied)
 - **Borrowing**: `&T` (immutable) and `&mut T` (mutable) references
@@ -17,6 +18,7 @@ let len = v2.len();     // OK
 ```
 
 ### Error Handling
+
 - **No exceptions**: Use `Result<T, E>` and `Option<T>`
 - **`?` operator**: Early return on error
 - **Pattern matching**: `match` for control flow
@@ -34,6 +36,7 @@ let result = divide(10.0, 2.0)?; // Returns early if error
 ```
 
 ### Traits (Interfaces)
+
 - **Behavior definition**: Like interfaces but more powerful
 - **Generics**: `<T>` with trait bounds
 - **Associated types**: Types tied to trait implementations
@@ -46,6 +49,7 @@ trait Optimizer {
 ```
 
 ### Key Syntax Differences
+
 - **Immutable by default**: `let x = 5` vs `let mut x = 5`
 - **No null**: Use `Option<T>` instead
 - **Pattern matching**: Exhaustive `match` statements
@@ -55,12 +59,14 @@ trait Optimizer {
 ## Candle ML Framework
 
 ### Core Concepts
+
 - **Tensors**: `candle_core::Tensor` - similar to PyTorch tensors
 - **Devices**: CPU vs CUDA, explicit device management
 - **Automatic differentiation**: Built-in gradient computation
 - **Modules**: Neural network layers in `candle_nn`
 
 ### Tensor Operations
+
 ```rust
 use candle_core::{Tensor, Device, DType};
 
@@ -71,6 +77,7 @@ let c = a.matmul(&b)?;  // Matrix multiplication
 ```
 
 ### Optimization Framework
+
 ```rust
 use candle_nn::optim::{Optimizer, SGD};
 
@@ -79,6 +86,7 @@ optimizer.step(&grads)?;
 ```
 
 ### Key Differences from PyTorch
+
 - **Explicit error handling**: Everything returns `Result`
 - **Device management**: Must specify device explicitly
 - **Immutable tensors**: Operations return new tensors
@@ -87,6 +95,7 @@ optimizer.step(&grads)?;
 ## Essential Crates for QQN
 
 ### Core Dependencies
+
 ```toml
 [dependencies]
 candle-core = "0.3"
@@ -97,11 +106,13 @@ serde = { version = "1.0", features = ["derive"] }
 ```
 
 ### Numerical Computing
+
 - **`nalgebra`**: Linear algebra (if you need more than Candle)
 - **`ndarray`**: NumPy-like arrays (alternative to tensors)
 - **`statrs`**: Statistical functions
 
 ### Benchmarking & Testing
+
 - **`criterion`**: Performance benchmarking
 - **`approx`**: Floating-point comparisons
 - **`proptest`**: Property-based testing
@@ -109,6 +120,7 @@ serde = { version = "1.0", features = ["derive"] }
 ## QQN Implementation Architecture
 
 ### Trait Design Pattern
+
 ```rust
 pub trait Optimizer {
     type Config: Clone + Debug;
@@ -126,6 +138,7 @@ pub struct QQNOptimizer {
 ```
 
 ### Error Handling Strategy
+
 ```rust
 use anyhow::{Result, Context};
 
@@ -149,6 +162,7 @@ impl QQNOptimizer {
 ## Development Workflow
 
 ### Project Structure
+
 ```
 qqn-optimizer/
 ├── Cargo.toml           # Dependencies and metadata
@@ -164,6 +178,7 @@ qqn-optimizer/
 ```
 
 ### Testing Strategy
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -180,6 +195,7 @@ mod tests {
 ```
 
 ### Performance Benchmarking
+
 ```rust
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -198,16 +214,19 @@ fn bench_qqn_step(c: &mut Criterion) {
 ## Key Learning Resources
 
 ### Language Fundamentals
+
 - **The Rust Book**: https://doc.rust-lang.org/book/
 - **Rust by Example**: https://doc.rust-lang.org/rust-by-example/
 - **Rustlings**: Interactive exercises
 
 ### ML-Specific
+
 - **Candle Examples**: https://github.com/huggingface/candle/tree/main/candle-examples
 - **Candle Book**: https://huggingface.co/docs/candle/
 - **Burn Framework**: Alternative ML framework to compare approaches
 
 ### Optimization Background
+
 - **nalgebra docs**: For linear algebra operations
 - **Scientific computing in Rust**: https://arewelearningyet.com/
 
@@ -224,6 +243,7 @@ fn bench_qqn_step(c: &mut Criterion) {
 ## Development Tools
 
 ### Essential Tools
+
 - **rustc**: Compiler with excellent error messages
 - **cargo**: Package manager and build tool
 - **clippy**: Linter with optimization suggestions
@@ -231,13 +251,16 @@ fn bench_qqn_step(c: &mut Criterion) {
 - **rust-analyzer**: LSP for IDEs
 
 ### IDE Setup
+
 - **VS Code**: rust-analyzer extension
 - **IntelliJ**: Rust plugin
 - **Vim/Neovim**: rust-analyzer + coc.nvim
 
 ### Debugging
+
 - **`dbg!` macro**: Print debugging
 - **`gdb`/`lldb`: Native debugging
 - **`cargo test`**: Built-in test runner
 
-This should give you the lay of the land for implementing QQN in Rust with Candle. The ownership system will be the biggest adjustment, but it prevents entire classes of bugs common in C++/Java.
+This should give you the lay of the land for implementing QQN in Rust with Candle. The ownership system will be the
+biggest adjustment, but it prevents entire classes of bugs common in C++/Java.

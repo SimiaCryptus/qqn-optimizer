@@ -8,6 +8,7 @@
 
 use anyhow::{anyhow, Result};
 use candle_core::{Result as CandleResult, Tensor};
+use log::warn;
 
 /// Compute the magnitude (L2 norm) of a vector of tensors
 pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
@@ -16,10 +17,33 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
     for tensor in tensors {
         let values = tensor.flatten_all()?.to_vec1::<f64>()?;
         for &val in &values {
+            // warn and exit if any value is NaN or Inf
+            if !val.is_finite() {
+                warn!("Tensor contains non-finite value: {}", val);
+                // Return infinity if any value is non-finite
+                return Ok(f64::INFINITY);
+            }
             sum_of_squares += val * val;
+            // warn and exit if any value is NaN or Inf
+            if !sum_of_squares.is_finite() {
+                warn!("Tensor contains non-finite value: {}", val);
+                // Return infinity if any value is non-finite
+                return Ok(f64::INFINITY);
+            }
         }
     }
-
+    if sum_of_squares.is_nan() {
+        warn!("Sum of squares is NaN, returning infinity");
+        return Ok(f64::INFINITY);
+    }
+    if sum_of_squares.is_infinite() {
+        warn!("Sum of squares is infinite, returning infinity");
+        return Ok(f64::INFINITY);
+    }
+    if sum_of_squares < 0.0 {
+        warn!("Sum of squares is negative, returning NaN");
+        return Ok(f64::NAN);
+    }
     Ok(sum_of_squares.sqrt())
 }
 

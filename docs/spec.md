@@ -1,15 +1,19 @@
 ## 1. Project Overview
 
 ### 1.1 Purpose
-Implement and validate the QQN optimization algorithm through rigorous benchmarking against established methods (L-BFGS, Adam, SGD) across diverse optimization problems.
+
+Implement and validate the QQN optimization algorithm through rigorous benchmarking against established methods (L-BFGS,
+Adam, SGD) across diverse optimization problems.
 
 ### 1.2 Scope
+
 - **Core Algorithm**: Complete QQN implementation with magnitude-based normalization
 - **Benchmarking Suite**: Standardized test problems for optimization research
 - **Performance Analysis**: Statistical validation and visualization tools
 - **Research Reproducibility**: Deterministic execution and result archival
 
 ### 1.3 Success Criteria
+
 - QQN implementation passes mathematical correctness tests
 - Benchmarks demonstrate statistically significant improvements over baselines
 - Code quality enables academic peer review and reproduction
@@ -48,6 +52,7 @@ qqn-optimizer/
 ### 2.2 Technology Stack
 
 **Core Dependencies**:
+
 - `candle-core`: Tensor operations and GPU acceleration
 - `candle-nn`: Neural network primitives and optimizers
 - `nalgebra`: Linear algebra for mathematical functions
@@ -58,6 +63,7 @@ qqn-optimizer/
 - `tracing`: Structured logging and performance profiling
 
 **Development Dependencies**:
+
 - `criterion`: Micro-benchmarking framework
 - `proptest`: Property-based testing
 - `approx`: Floating-point comparisons
@@ -851,20 +857,24 @@ fn create_quadratic_path(&self,
 ## Configuration Guide
 
 ### Problem Configuration
+
 - **Mathematical Functions**: Rosenbrock, Rastrigin, Sphere, Beale
 - **Machine Learning**: Logistic regression, neural networks
 - **Custom Problems**: Implement `OptimizationProblem` trait
 
 ### Optimizer Configuration
+
 - **QQN Parameters**: threshold, L-BFGS history, line search settings
 - **Baseline Optimizers**: L-BFGS, Adam, SGD with momentum
 - **Custom Optimizers**: Implement `Optimizer` trait
 
 ### Experimental Design
+
 - **Multiple Runs**: Statistical significance through repetition
 - **Random Seeds**: Reproducible results
 - **Time Limits**: Practical performance constraints
 - **Convergence Criteria**: Problem-specific tolerances
+
 ```
 
 ---
@@ -928,18 +938,20 @@ fn create_quadratic_path(&self,
 ### 12.1 Package Structure
 
 ```
+
 qqn-optimizer-v1.0.0/
-├── Cargo.toml                 # Rust package configuration
-├── README.md                  # Quick start guide
-├── LICENSE                    # MIT license
-├── CITATION.cff              # Academic citation format
-├── src/                      # Source code
-├── examples/                 # Usage examples
-├── experiments/              # Experimental configurations
-├── docs/                     # Comprehensive documentation
-├── tests/                    # Test suite
-├── benches/                  # Performance benchmarks
-└── results/                  # Example results
+├── Cargo.toml # Rust package configuration
+├── README.md # Quick start guide
+├── LICENSE # MIT license
+├── CITATION.cff # Academic citation format
+├── src/ # Source code
+├── examples/ # Usage examples
+├── experiments/ # Experimental configurations
+├── docs/ # Comprehensive documentation
+├── tests/ # Test suite
+├── benches/ # Performance benchmarks
+└── results/ # Example results
+
 ```
 
 ### 12.2 Distribution Channels
@@ -984,6 +996,7 @@ jobs:
 ## 13. Timeline and Milestones
 
 ### Phase 1: Core Implementation (Week 1)
+
 - [ ] Project setup and dependency configuration
 - [ ] QQN algorithm implementation
 - [ ] Basic mathematical test functions
@@ -991,6 +1004,7 @@ jobs:
 - [ ] Initial benchmarking framework
 
 ### Phase 2: Benchmarking Suite (Week 2)
+
 - [ ] Machine learning problem implementations
 - [ ] Baseline optimizer implementations
 - [ ] Statistical analysis framework
@@ -998,6 +1012,7 @@ jobs:
 - [ ] Configuration management system
 
 ### Phase 3: Validation and Polish (Week 3)
+
 - [ ] Comprehensive test suite
 - [ ] Performance optimization
 - [ ] Documentation completion
@@ -1005,6 +1020,7 @@ jobs:
 - [ ] Academic paper integration
 
 ### Phase 4: Publication Preparation (Week 4)
+
 - [ ] Results analysis and interpretation
 - [ ] Academic writing and LaTeX integration
 - [ ] Code review and quality assurance
@@ -1017,48 +1033,51 @@ jobs:
 
 ### 14.1 Technical Risks
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Numerical instability | Medium | High | Extensive testing, condition monitoring |
-| Performance regression | Low | Medium | Continuous benchmarking, profiling |
-| Platform compatibility | Low | Medium | CI testing on multiple platforms |
-| Dependency conflicts | Medium | Low | Minimal dependencies, version pinning |
+| Risk                   | Probability | Impact | Mitigation                              |
+|------------------------|-------------|--------|-----------------------------------------|
+| Numerical instability  | Medium      | High   | Extensive testing, condition monitoring |
+| Performance regression | Low         | Medium | Continuous benchmarking, profiling      |
+| Platform compatibility | Low         | Medium | CI testing on multiple platforms        |
+| Dependency conflicts   | Medium      | Low    | Minimal dependencies, version pinning   |
 
 ### 14.2 Research Risks
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| No performance improvement | Medium | High | Conservative claims, focus on stability |
-| Reproducibility issues | Low | High | Deterministic implementation, extensive testing |
-| Prior art discovery | Low | Medium | Thorough literature review, novel positioning |
-| Statistical significance | Medium | Medium | Proper experimental design, multiple runs |
+| Risk                       | Probability | Impact | Mitigation                                      |
+|----------------------------|-------------|--------|-------------------------------------------------|
+| No performance improvement | Medium      | High   | Conservative claims, focus on stability         |
+| Reproducibility issues     | Low         | High   | Deterministic implementation, extensive testing |
+| Prior art discovery        | Low         | Medium | Thorough literature review, novel positioning   |
+| Statistical significance   | Medium      | Medium | Proper experimental design, multiple runs       |
 
 ### 14.3 Timeline Risks
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Implementation complexity | Medium | Medium | Incremental development, early testing |
-| Benchmark development | Low | Low | Start with simple problems, expand gradually |
-| Documentation overhead | Medium | Low | Concurrent documentation, automated generation |
-| Analysis complexity | Medium | Medium | Standard statistical methods, existing tools |
+| Risk                      | Probability | Impact | Mitigation                                     |
+|---------------------------|-------------|--------|------------------------------------------------|
+| Implementation complexity | Medium      | Medium | Incremental development, early testing         |
+| Benchmark development     | Low         | Low    | Start with simple problems, expand gradually   |
+| Documentation overhead    | Medium      | Low    | Concurrent documentation, automated generation |
+| Analysis complexity       | Medium      | Medium | Standard statistical methods, existing tools   |
 
 ---
 
 ## 15. Success Metrics
 
 ### 15.1 Technical Success
+
 - [ ] QQN implementation passes all correctness tests
 - [ ] Performance within 10% of baseline optimizers
 - [ ] Successful optimization on all benchmark problems
 - [ ] Code quality meets academic publication standards
 
 ### 15.2 Research Success
+
 - [ ] Statistically significant improvements demonstrated
 - [ ] Results support theoretical claims in paper
 - [ ] Implementation enables reproducible research
 - [ ] Framework suitable for follow-up research
 
 ### 15.3 Academic Success
+
 - [ ] Paper accepted for publication or arXiv submission
 - [ ] Code and data publicly available
 - [ ] Results cited in optimization literature

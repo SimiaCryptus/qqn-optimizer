@@ -2,6 +2,48 @@ use crate::utils::math::dot_product_f64;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+/// Trait for 1-D differentiable parametric curves
+/// Represents a curve x(t) where t is a scalar parameter
+pub trait ParametricCurve: Send + Sync + Debug {
+    /// Evaluate the curve at parameter t
+    fn evaluate(&self, t: f64) -> Result<Vec<f64>>;
+    /// Evaluate the derivative of the curve at parameter t
+    fn derivative(&self, t: f64) -> Result<Vec<f64>>;
+    /// Get the initial derivative at t=0 for descent checking
+    fn initial_derivative(&self) -> Result<Vec<f64>>;
+    /// Clone the curve
+    fn clone_box(&self) -> Box<dyn ParametricCurve>;
+}
+/// Linear parametric curve: x(t) = x0 + t * direction
+#[derive(Debug, Clone)]
+pub struct LinearCurve {
+    start_point: Vec<f64>,
+    direction: Vec<f64>,
+}
+impl LinearCurve {
+    pub fn new(start_point: Vec<f64>, direction: Vec<f64>) -> Self {
+        Self { start_point, direction }
+    }
+}
+impl ParametricCurve for LinearCurve {
+    fn evaluate(&self, t: f64) -> Result<Vec<f64>> {
+        Ok(self.start_point
+            .iter()
+            .zip(self.direction.iter())
+            .map(|(x, d)| x + t * d)
+            .collect())
+    }
+    fn derivative(&self, _t: f64) -> Result<Vec<f64>> {
+        // For linear curves, derivative is constant
+        Ok(self.direction.clone())
+    }
+    fn initial_derivative(&self) -> Result<Vec<f64>> {
+        Ok(self.direction.clone())
+    }
+    fn clone_box(&self) -> Box<dyn ParametricCurve> {
+        Box::new(self.clone())
+    }
+}
 
 /// Line search result containing step size and evaluation counts
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,7 +95,7 @@ impl Default for LineSearchConfig {
 
 /// Trait for line search algorithms
 pub trait LineSearch: Send + Sync + Debug {
-    /// Perform line search along given direction
+    /// Perform line search along given direction (legacy interface)
     fn search(
         &mut self,
         current_point: &[f64],
@@ -62,11 +104,31 @@ pub trait LineSearch: Send + Sync + Debug {
         current_gradient: &[f64],
         objective_fn: &dyn Fn(&[f64]) -> anyhow::Result<f64>,
         gradient_fn: &dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>>,
+    ) -> Result<LineSearchResult> {
+        // Convert to parametric curve interface
+        let curve = LinearCurve::new(current_point.to_vec(), direction.to_vec());
+        self.search_along_curve(
+            &curve,
+            current_value,
+            current_gradient,
+            objective_fn,
+            gradient_fn,
+        )
+    }
+
+    /// Perform line search along a parametric curve
+    fn search_along_curve(
+        &mut self,
+        curve: &dyn ParametricCurve,
+        current_value: f64,
+        current_gradient: &[f64],
+        objective_fn: &dyn Fn(&[f64]) -> anyhow::Result<f64>,
+        gradient_fn: &dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>>,
     ) -> Result<LineSearchResult>;
 
     /// Reset internal state
     fn reset(&mut self);
-    
+
     /// Clone the line search algorithm
     fn clone_box(&self) -> Box<dyn LineSearch>;
 }
@@ -129,8 +191,7 @@ impl StrongWolfeLineSearch {
         alpha_hi: f64,
         f0: f64,
         directional_derivative: f64,
-        current_point: &[f64],
-        direction: &[f64],
+        curve: &dyn ParametricCurve,
         objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
         gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<(f64, usize, usize)> {
@@ -144,11 +205,7 @@ impl StrongWolfeLineSearch {
             let alpha_j = 0.5 * (alpha_lo + alpha_hi); // Simple bisection
 
             // Evaluate function at trial point
-            let trial_point: Vec<f64> = current_point
-                .iter()
-                .zip(direction.iter())
-                .map(|(x, d)| x + alpha_j * d)
-                .collect();
+            let trial_point = curve.evaluate(alpha_j)?;
 
             let f_alpha_j = objective_fn(&trial_point)?;
             f_evals += 1;
@@ -163,7 +220,9 @@ impl StrongWolfeLineSearch {
             let grad_alpha_j = gradient_fn(&trial_point)?;
             g_evals += 1;
 
-            let grad_alpha_j_dot_p = dot_product_f64(&grad_alpha_j, direction)?;
+            // Get curve derivative at alpha_j
+            let curve_derivative = curve.derivative(alpha_j)?;
+            let grad_alpha_j_dot_p = dot_product_f64(&grad_alpha_j, &curve_derivative)?;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_j_dot_p, directional_derivative) {
@@ -183,17 +242,19 @@ impl StrongWolfeLineSearch {
 }
 
 impl LineSearch for StrongWolfeLineSearch {
-    fn search(
+    fn search_along_curve(
         &mut self,
-        current_point: &[f64],
-        direction: &[f64],
+        curve: &dyn ParametricCurve,
         current_value: f64,
         current_gradient: &[f64],
         objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
         gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<LineSearchResult> {
+        // Get initial curve derivative
+        let initial_derivative = curve.initial_derivative()?;
+
         // Check that direction is a descent direction
-        let directional_derivative = dot_product_f64(current_gradient, direction)?;
+        let directional_derivative = dot_product_f64(current_gradient, &initial_derivative)?;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
@@ -206,11 +267,7 @@ impl LineSearch for StrongWolfeLineSearch {
 
         for i in 0..self.config.max_iterations {
             // Evaluate function at current step size
-            let trial_point: Vec<f64> = current_point
-                .iter()
-                .zip(direction.iter())
-                .map(|(x, d)| x + alpha * d)
-                .collect();
+            let trial_point = curve.evaluate(alpha)?;
 
             let f_alpha = objective_fn(&trial_point)?;
             f_evals += 1;
@@ -225,8 +282,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     alpha,
                     current_value,
                     directional_derivative,
-                    current_point,
-                    direction,
+                    curve,
                     objective_fn,
                     gradient_fn,
                 )?;
@@ -244,7 +300,9 @@ impl LineSearch for StrongWolfeLineSearch {
             let grad_alpha = gradient_fn(&trial_point)?;
             g_evals += 1;
 
-            let grad_alpha_dot_p = dot_product_f64(&grad_alpha, direction)?;
+            // Get curve derivative at alpha
+            let curve_derivative = curve.derivative(alpha)?;
+            let grad_alpha_dot_p = dot_product_f64(&grad_alpha, &curve_derivative)?;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_dot_p, directional_derivative) {
@@ -264,8 +322,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     alpha_prev,
                     current_value,
                     directional_derivative,
-                    current_point,
-                    direction,
+                    curve,
                     objective_fn,
                     gradient_fn,
                 )?;
@@ -342,17 +399,19 @@ impl BacktrackingLineSearch {
 }
 
 impl LineSearch for BacktrackingLineSearch {
-    fn search(
+    fn search_along_curve(
         &mut self,
-        current_point: &[f64],
-        direction: &[f64],
+        curve: &dyn ParametricCurve,
         current_value: f64,
         current_gradient: &[f64],
         objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
         _gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<LineSearchResult> {
+        // Get initial curve derivative
+        let initial_derivative = curve.initial_derivative()?;
+
         // Check that direction is a descent direction
-        let directional_derivative = dot_product_f64(current_gradient, direction)?;
+        let directional_derivative = dot_product_f64(current_gradient, &initial_derivative)?;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
@@ -362,11 +421,7 @@ impl LineSearch for BacktrackingLineSearch {
 
         for _ in 0..self.config.max_iterations {
             // Evaluate function at current step size
-            let trial_point: Vec<f64> = current_point
-                .iter()
-                .zip(direction.iter())
-                .map(|(x, d)| x + alpha * d)
-                .collect();
+            let trial_point = curve.evaluate(alpha)?;
 
             let f_alpha = objective_fn(&trial_point)?;
             f_evals += 1;

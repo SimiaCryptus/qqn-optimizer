@@ -3,7 +3,6 @@
 use crate::benchmarks::evaluation::{BenchmarkError, BenchmarkResults, BenchmarkRunner};
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::core::lbfgs::LBFGSOptimizer;
-use crate::core::optimizer::Optimizer;
 use crate::core::qqn::QQNOptimizer;
 
 /// Run benchmarks for L-BFGS optimizer

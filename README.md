@@ -1,10 +1,14 @@
 # QQN Optimizer Research Framework
 
-A Rust-based implementation of the Quadratic Quasi-Newton (QQN) optimization algorithm for academic research and publication. This framework provides a complete optimization toolkit with benchmarking capabilities, designed to validate QQN's theoretical contributions and enable reproducible research results.
+A Rust-based implementation of the Quadratic Quasi-Newton (QQN) optimization algorithm for academic research and
+publication. This framework provides a complete optimization toolkit with benchmarking capabilities, designed to
+validate QQN's theoretical contributions and enable reproducible research results.
 
 ## Overview
 
-The Quadratic Quasi-Newton (QQN) algorithm addresses reliability issues in L-BFGS by detecting when the quasi-Newton approximation may be unreliable and smoothly blending it with the guaranteed descent direction of the gradient using quadratic interpolation.
+The Quadratic Quasi-Newton (QQN) algorithm addresses reliability issues in L-BFGS by detecting when the quasi-Newton
+approximation may be unreliable and smoothly blending it with the guaranteed descent direction of the gradient using
+quadratic interpolation.
 
 ### Key Features
 
@@ -57,9 +61,9 @@ use qqn_optimizer::{QQNOptimizer, QQNConfig, RosenbrockFunction, OptimizationPro
 
 // Create optimizer
 let config = QQNConfig {
-    threshold: 0.01,
-    lbfgs_history: 10,
-    ..Default::default()
+threshold: 0.01,
+lbfgs_history: 10,
+..Default::default ()
 };
 let mut optimizer = QQNOptimizer::new(config);
 
@@ -69,13 +73,13 @@ let mut x = problem.initial_point();
 
 // Optimization loop
 for iteration in 0..1000 {
-    let gradient = problem.gradient(&x)?;
-    let step_result = optimizer.step(&mut x, &gradient)?;
+let gradient = problem.gradient( & x)?;
+let step_result = optimizer.step( &mut x, & gradient) ?;
 
-    if step_result.convergence_info.converged {
-        println!("Converged in {} iterations", iteration);
-        break;
-    }
+if step_result.convergence_info.converged {
+println ! ("Converged in {} iterations", iteration);
+break;
+}
 }
 ```
 
@@ -91,17 +95,20 @@ QQN combines the efficiency of L-BFGS with the reliability of gradient descent t
 ## Benchmarking Suite
 
 ### Mathematical Functions
+
 - **Rosenbrock**: Classic non-convex optimization test
 - **Rastrigin**: Highly multimodal function
 - **Sphere**: Simple convex quadratic
 - **Beale**: Two-dimensional non-convex function
 
 ### Machine Learning Problems
+
 - **Logistic Regression**: Binary classification with regularization
 - **Neural Networks**: Multi-layer perceptron training
 - **Custom Problems**: Extensible framework for new problems
 
 ### Baseline Optimizers
+
 - **L-BFGS**: Limited-memory quasi-Newton method
 - **Adam**: Adaptive moment estimation
 - **SGD**: Stochastic gradient descent with momentum
@@ -138,9 +145,9 @@ benchmark_settings:
 
 | Problem Size | Max Time/Step | Memory Limit |
 |--------------|---------------|--------------|
-| 100D | 1ms | 10MB |
-| 1,000D | 10ms | 100MB |
-| 10,000D | 100ms | 1GB |
+| 100D         | 1ms           | 10MB         |
+| 1,000D       | 10ms          | 100MB        |
+| 10,000D      | 100ms         | 1GB          |
 
 ## Testing
 
@@ -199,8 +206,10 @@ If you use this software in your research, please cite:
 
 ## References
 
-1. Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. Mathematical Programming, 45(1-3), 503-528.
+1. Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. Mathematical
+   Programming, 45(1-3), 503-528.
 
 2. Nocedal, J., & Wright, S. (2006). Numerical optimization. Springer Science & Business Media.
 
-3. Moré, J. J., & Wild, S. M. (2009). Benchmarking derivative-free optimization algorithms. SIAM Journal on Optimization, 20(1), 172-191.
+3. Moré, J. J., & Wild, S. M. (2009). Benchmarking derivative-free optimization algorithms. SIAM Journal on
+   Optimization, 20(1), 172-191.

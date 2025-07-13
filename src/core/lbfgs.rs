@@ -11,7 +11,7 @@ use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
 use crate::utils::math::{
     compute_magnitude, dot_product, vector_add, vector_scale, vector_subtract,
 };
-use candle_core::{Device, Result as CandleResult, Tensor};
+use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -90,8 +90,8 @@ impl LBFGSState {
         self.gamma = 1.0;
     }
 
-/// Compute the L-BFGS search direction using the two-loop recursion
-pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+    /// Compute the L-BFGS search direction using the two-loop recursion
+    pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
         // Validate input
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
@@ -143,7 +143,7 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
             let scaled_y = vector_scale(y_i, alpha_i)?;
             q = vector_subtract(&q, &scaled_y)?;
             // Check if q has become non-finite
-            for (j, q_tensor) in q.iter().enumerate() {
+            for (_j, q_tensor) in q.iter().enumerate() {
                 let q_vec = q_tensor.flatten_all()?.to_vec1::<f64>()?;
                 if q_vec.iter().any(|&x| !x.is_finite()) {
                     warn!("L-BFGS: Non-finite q detected during first loop, using steepest descent");
@@ -160,14 +160,14 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
 
         // Apply initial Hessian approximation scaling
         debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
-    // Additional safety check for gamma
-    if !self.gamma.is_finite() || self.gamma <= 0.0 {
-        warn!("L-BFGS: Invalid gamma detected: {}, resetting to 1.0", self.gamma);
-        self.gamma = 1.0;
-    }
-    // Clamp gamma to prevent numerical issues
-    let safe_gamma = self.gamma.max(1e-6).min(1e6);
-    let mut r = vector_scale(&q, safe_gamma)?;
+        // Additional safety check for gamma
+        if !self.gamma.is_finite() || self.gamma <= 0.0 {
+            warn!("L-BFGS: Invalid gamma detected: {}, resetting to 1.0", self.gamma);
+            self.gamma = 1.0;
+        }
+        // Clamp gamma to prevent numerical issues
+        let safe_gamma = self.gamma.max(1e-6).min(1e6);
+        let mut r = vector_scale(&q, safe_gamma)?;
 
         // Second loop: compute final direction
         for i in 0..self.s_history.len() {
@@ -191,7 +191,7 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
             // Check if r has become non-finite
-            for (j, r_tensor) in r.iter().enumerate() {
+            for (_j, r_tensor) in r.iter().enumerate() {
                 let r_vec = r_tensor.flatten_all()?.to_vec1::<f64>()?;
                 if r_vec.iter().any(|&x| !x.is_finite()) {
                     warn!("L-BFGS: Non-finite r detected during second loop, using steepest descent");
@@ -202,25 +202,25 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
                 }
             }
         }
-    // Final check on the direction
-    let direction = r.iter()
-        .map(|t| t.neg())
-        .collect::<CandleResult<Vec<_>>>()?;
-    // Verify the direction is finite
-    for (i, dir) in direction.iter().enumerate() {
-        let dir_vec = dir.flatten_all()?.to_vec1::<f64>()?;
-        if dir_vec.iter().any(|&x| !x.is_finite()) {
-            warn!("L-BFGS: Non-finite direction detected, using steepest descent");
-            return Ok(gradient
-                .iter()
-                .map(|g| g.neg())
-                .collect::<CandleResult<Vec<_>>>()?);
+        // Final check on the direction
+        let direction = r.iter()
+            .map(|t| t.neg())
+            .collect::<CandleResult<Vec<_>>>()?;
+        // Verify the direction is finite
+        for (_i, dir) in direction.iter().enumerate() {
+            let dir_vec = dir.flatten_all()?.to_vec1::<f64>()?;
+            if dir_vec.iter().any(|&x| !x.is_finite()) {
+                warn!("L-BFGS: Non-finite direction detected, using steepest descent");
+                return Ok(gradient
+                    .iter()
+                    .map(|g| g.neg())
+                    .collect::<CandleResult<Vec<_>>>()?);
+            }
         }
-    }
 
 
-    // Return the negative of r to get a descent direction
-    Ok(direction)
+        // Return the negative of r to get a descent direction
+        Ok(direction)
     }
 
     /// Update the L-BFGS state with new gradient and step information.
@@ -284,9 +284,9 @@ pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Ten
                     if new_gamma.is_finite() && new_gamma > 0.0 {
                         // Clamp gamma to more conservative range to prevent instability
                         self.gamma = new_gamma.max(1e-4).min(1e2);
-                    if (new_gamma - self.gamma).abs() > 1e-10 {
-                        debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
-                    }
+                        if (new_gamma - self.gamma).abs() > 1e-10 {
+                            debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
+                        }
                     } else {
                         debug!("L-BFGS: Invalid gamma computed: {}, keeping current value", new_gamma);
                     }
@@ -374,21 +374,13 @@ impl LBFGSOptimizer {
         &mut self.state
     }
 
-    /// Check convergence based on gradient norm.
-    fn check_convergence(&self, gradient: &[Tensor], tolerance: f64) -> CandleResult<bool> {
-        let grad_norm = compute_magnitude(gradient)?;
-        Ok(grad_norm < tolerance)
-    }
-
     /// Compute convergence information for the current state.
     fn compute_convergence_info(&self, gradient: &[Tensor]) -> CandleResult<ConvergenceInfo> {
         let gradient_norm = compute_magnitude(gradient)?;
 
         Ok(ConvergenceInfo {
-            gradient_norm,
             converged: gradient_norm < 1e-6, // Default tolerance
             function_change: None,
-            parameter_change: None,
             convergence_criterion: None,
         })
     }
@@ -405,10 +397,12 @@ impl Optimizer for LBFGSOptimizer {
     fn step(
         &mut self,
         params: &mut [Tensor],
-        gradients: &[Tensor],
-        _objective_value: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
+        function: &dyn crate::core::optimizer::DifferentiableFunction,
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
+        // Compute gradients at current parameters
+        let gradients = function.gradient(params)?;
+
         // Input validation
         if params.is_empty() || gradients.is_empty() {
             return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
@@ -421,7 +415,7 @@ impl Optimizer for LBFGSOptimizer {
         }
 
         // Compute L-BFGS search direction
-        let search_direction = self.state.compute_direction(gradients)?;
+        let search_direction = self.state.compute_direction(&gradients)?;
         // Validate search direction
         let direction_norm = compute_magnitude(&search_direction)?;
         if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
@@ -442,9 +436,12 @@ impl Optimizer for LBFGSOptimizer {
             }
 
             // Update L-BFGS state
-            self.state.update(gradients, &search_direction, step_size)?;
+            // Don't update state with invalid steps
+            if step_size > 0.0 {
+                self.state.update(&gradients, &search_direction, step_size)?;
+            }
 
-            let convergence_info = self.compute_convergence_info(gradients)?;
+            let convergence_info = self.compute_convergence_info(&gradients)?;
             let step_duration = start_time.elapsed();
             let mut metadata = OptimizationMetadata::default();
             metadata.timing_info.step_duration = step_duration;
@@ -460,36 +457,36 @@ impl Optimizer for LBFGSOptimizer {
         }
 
         // Use adaptive step size based on gradient magnitude
-        let grad_norm = compute_magnitude(gradients)?;
+        let grad_norm = compute_magnitude(&gradients)?;
         debug!("L-BFGS step {}: grad_norm={:.6e}", self.state.iteration(), grad_norm);
 
         // Adaptive step size with backtracking line search
         let mut step_size = if self.state.iteration() == 0 {
             // First iteration: use a conservative step size
             // Scale based on gradient magnitude to avoid overshooting
-            (0.1 / (grad_norm + 1.0)).min(1.0).max(0.001)
+            (0.01 / (grad_norm + 1.0)).min(0.1).max(0.0001)
         } else {
             // Use L-BFGS scaling factor as starting point
             self.state.gamma()
                 .max(self.config.min_step_size)
-                .min(self.config.max_step_size)
+                .min(1.0) // Cap at 1.0 to prevent overshooting
         };
         debug!("L-BFGS: Initial step size = {:.6e}", step_size);
 
         // Simple backtracking line search
         let mut success = false;
         let backtrack_factor = 0.5;
-        let max_backtracks = 30;
+        let max_backtracks = 50; // Increase to allow more backtracking
         let mut backtrack_count = 0;
         let mut best_step_size = step_size;
-        let mut best_value = f64::INFINITY;
+        let best_value = f64::INFINITY;
 
         for _ in 0..max_backtracks {
             // Check if step size is reasonable
             let step_norm = step_size * compute_magnitude(&search_direction)?;
 
             // If step is very small relative to parameters, accept it
-            if step_norm < 1e-8 {
+            if step_norm < 1e-10 || step_size < self.config.min_step_size {
                 debug!("L-BFGS: Accepting small step (norm={:.6e})", step_norm);
                 success = true;
                 best_step_size = step_size;
@@ -505,7 +502,7 @@ impl Optimizer for LBFGSOptimizer {
             }
 
             // Evaluate function at trial point
-            let trial_value = match _objective_value(&trial_params) {
+            let trial_value = match function.evaluate(&trial_params) {
                 Ok(val) => val,
                 Err(_) => {
                     // If evaluation fails, backtrack
@@ -519,11 +516,16 @@ impl Optimizer for LBFGSOptimizer {
             let directional_derivative = -grad_norm * grad_norm; // For steepest descent, this is -||g||^2
             let expected_decrease = self.config.line_search.c1 * step_size * directional_derivative;
 
-            if trial_value <= best_value + expected_decrease {
+            // Also check that the trial value is finite and reasonable
+            if trial_value.is_finite() && trial_value <= best_value + expected_decrease {
                 success = true;
-                best_value = trial_value;
                 best_step_size = step_size;
                 break;
+            } else if !trial_value.is_finite() {
+                // If we get non-finite values, backtrack more aggressively
+                step_size *= backtrack_factor * backtrack_factor;
+                backtrack_count += 2;
+                continue;
             }
 
             // Backtrack
@@ -569,10 +571,10 @@ impl Optimizer for LBFGSOptimizer {
 
         // Update L-BFGS state with new information
         self.state
-            .update(gradients, &search_direction, line_search_result.step_size)?;
+            .update(&gradients, &search_direction, line_search_result.step_size)?;
 
         // Compute convergence information
-        let convergence_info = self.compute_convergence_info(gradients)?;
+        let convergence_info = self.compute_convergence_info(&gradients)?;
         let step_duration = start_time.elapsed();
         let mut metadata = OptimizationMetadata::default();
         metadata.timing_info.step_duration = step_duration;
@@ -589,6 +591,26 @@ impl Optimizer for LBFGSOptimizer {
             convergence_info,
             metadata,
         })
+    }
+    fn step_with_gradients(
+        &mut self,
+        params: &mut [Tensor],
+        gradients: &[Tensor],
+    ) -> CandleResult<StepResult> {
+
+
+        // Create a thread-safe function wrapper that uses the provided gradients
+        let gradients_clone = gradients.to_vec();
+
+        let function = crate::core::optimizer::SeparateFunctions::new(
+            move |_params: &[Tensor]| -> CandleResult<f64> {
+                // Since we have pre-computed gradients, return a dummy value
+                // The actual objective evaluation should be done externally if needed
+                Ok(0.0)
+            },
+            move |_: &[Tensor]| Ok(gradients_clone.clone()),
+        );
+        self.step(params, &function)
     }
 
     fn reset(&mut self) {
@@ -607,7 +629,6 @@ impl Optimizer for LBFGSOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::math::*;
     use approx::assert_relative_eq;
     use candle_core::Device;
 

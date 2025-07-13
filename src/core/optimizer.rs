@@ -4,12 +4,111 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
-use candle_core::{Device, Result as CandleResult};
+use candle_core::Result as CandleResult;
 use candle_core::{Result, Tensor};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Debug;
 use std::time::Duration;
+/// Trait for differentiable functions that can compute both value and gradients
+pub trait DifferentiableFunction: Send + Sync {
+    /// Evaluate the function at the given point
+    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64>;
+    /// Compute gradients at the given point
+    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
+    /// Compute both value and gradients (default implementation calls both separately)
+    fn evaluate_with_gradient(&self, params: &[Tensor]) -> CandleResult<(f64, Vec<Tensor>)> {
+        let value = self.evaluate(params)?;
+        let grad = self.gradient(params)?;
+        Ok((value, grad))
+    }
+}
+/// Wrapper for functions that only provide objective evaluation
+pub struct ObjectiveOnlyFunction<F>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+{
+    objective_fn: F,
+}
+impl<F> ObjectiveOnlyFunction<F>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+{
+    pub fn new(objective_fn: F) -> Self {
+        Self { objective_fn }
+    }
+}
+impl<F> DifferentiableFunction for ObjectiveOnlyFunction<F>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+{
+    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
+        (self.objective_fn)(params)
+    }
+    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+        // Numerical gradient computation using finite differences
+        let h = 1e-8; // Step size for finite differences
+        let mut gradients = Vec::new();
+
+        for (i, param) in params.iter().enumerate() {
+            let param_shape = param.shape();
+            let param_data = param.to_vec1::<f64>()?;
+            let mut grad_data = vec![0.0; param_data.len()];
+
+            for j in 0..param_data.len() {
+                // Forward difference
+                let mut params_plus = params.to_vec();
+                let mut data_plus = param_data.clone();
+                data_plus[j] += h;
+                params_plus[i] = Tensor::from_vec(data_plus, param_shape, param.device())?;
+                let f_plus = (self.objective_fn)(&params_plus)?;
+
+                // Backward difference
+                let mut params_minus = params.to_vec();
+                let mut data_minus = param_data.clone();
+                data_minus[j] -= h;
+                params_minus[i] = Tensor::from_vec(data_minus, param_shape, param.device())?;
+                let f_minus = (self.objective_fn)(&params_minus)?;
+
+                // Central difference
+                grad_data[j] = (f_plus - f_minus) / (2.0 * h);
+            }
+
+            gradients.push(Tensor::from_vec(grad_data, param_shape, param.device())?);
+        }
+        Ok(gradients)
+    }
+}
+/// Wrapper for separate objective and gradient functions
+pub struct SeparateFunctions<F, G>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
+{
+    objective_fn: F,
+    gradient_fn: G,
+}
+impl<F, G> SeparateFunctions<F, G>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
+{
+    pub fn new(objective_fn: F, gradient_fn: G) -> Self {
+        Self { objective_fn, gradient_fn }
+    }
+}
+impl<F, G> DifferentiableFunction for SeparateFunctions<F, G>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
+{
+    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
+        (self.objective_fn)(params)
+    }
+    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+        (self.gradient_fn)(params)
+    }
+}
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,22 +162,48 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     where
         Self: Sized;
 
-    /// Perform a single optimization step
+
+    /// Perform a single optimization step using a differentiable function
+    ///
+    /// # Arguments
+    /// * `params` - Mutable reference to parameter tensors to be updated
+    /// * `function` - Differentiable function to optimize
+    ///
+    /// # Returns
+    /// A `StepResult` containing information about the optimization step
+    fn step(
+        &mut self,
+        params: &mut [Tensor],
+        function: &dyn DifferentiableFunction,
+    ) -> Result<StepResult>;
+
+    /// Perform a single optimization step with pre-computed gradients
     ///
     /// # Arguments
     /// * `params` - Mutable reference to parameter tensors to be updated
     /// * `gradients` - Gradient tensors for the current parameters
+    /// * `objective_value` - Function to evaluate objective at given parameters
     ///
     /// # Returns
     /// A `StepResult` containing information about the optimization step
-    //fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> Result<StepResult>;
-
-    fn step(
+    fn step_with_gradients(
         &mut self,
         params: &mut [Tensor],
         gradients: &[Tensor],
-        objective_value: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
-    ) -> Result<StepResult>;
+    ) -> Result<StepResult> {
+        // Default implementation: create a thread-safe function wrapper
+        let gradients_clone = gradients.to_vec();
+
+        let function = SeparateFunctions::new(
+            move |_params: &[Tensor]| -> CandleResult<f64> {
+                // Since we have pre-computed gradients, return a dummy value
+                // The actual objective evaluation should be done externally
+                Ok(0.0)
+            },
+            move |_: &[Tensor]| Ok(gradients_clone.clone()),
+        );
+        self.step(params, &function)
+    }
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
@@ -123,9 +248,8 @@ where
 
         // Call the tensor-based step method
         // Create a dummy objective function that returns 0.0
-        let dummy_objective = |_: &[Tensor]| -> CandleResult<f64> { Ok(0.0) };
         let result = self
-            .step(&mut param_tensors, &grad_tensors, &dummy_objective)
+            .step_with_gradients(&mut param_tensors, &grad_tensors)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
 
         // Copy results back to slice
@@ -201,14 +325,8 @@ pub struct ConvergenceInfo {
     /// Whether the optimizer has converged
     pub converged: bool,
 
-    /// Gradient norm (L2 norm)
-    pub gradient_norm: f64,
-
     /// Change in function value from previous iteration
     pub function_change: Option<f64>,
-
-    /// Change in parameter values from previous iteration
-    pub parameter_change: Option<f64>,
 
     /// Convergence criterion that was satisfied (if any)
     pub convergence_criterion: Option<ConvergenceCriterion>,
@@ -218,9 +336,7 @@ impl Default for ConvergenceInfo {
     fn default() -> Self {
         Self {
             converged: false,
-            gradient_norm: f64::INFINITY,
             function_change: None,
-            parameter_change: None,
             convergence_criterion: None,
         }
     }
@@ -235,21 +351,9 @@ impl ConvergenceInfo {
         }
     }
 
-    /// Update convergence status based on gradient norm
-    pub fn with_gradient_norm(mut self, norm: f64) -> Self {
-        self.gradient_norm = norm;
-        self
-    }
-
     /// Update convergence status based on function change
     pub fn with_function_change(mut self, change: f64) -> Self {
         self.function_change = Some(change);
-        self
-    }
-
-    /// Update convergence status based on parameter change
-    pub fn with_parameter_change(mut self, change: f64) -> Self {
-        self.parameter_change = Some(change);
         self
     }
 }
@@ -453,9 +557,7 @@ impl ConvergenceChecker {
 
         Ok(ConvergenceInfo {
             converged,
-            gradient_norm,
             function_change,
-            parameter_change,
             convergence_criterion,
         })
     }
@@ -489,10 +591,8 @@ mod tests {
     #[test]
     fn test_convergence_info_builder() {
         let info = ConvergenceInfo::default()
-            .with_gradient_norm(1e-7)
             .with_function_change(1e-10);
 
-        assert_eq!(info.gradient_norm, 1e-7);
         assert_eq!(info.function_change, Some(1e-10));
     }
 
@@ -521,7 +621,6 @@ mod tests {
 
         // Should converge due to small gradient norm
         assert!(info.converged);
-        assert!(info.gradient_norm < 1e-3);
 
         Ok(())
     }
