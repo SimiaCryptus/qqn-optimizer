@@ -4,6 +4,7 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
+use candle_core::{Device, Result as CandleResult};
 use candle_core::{Result, Tensor};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -70,7 +71,14 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     ///
     /// # Returns
     /// A `StepResult` containing information about the optimization step
-    fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> Result<StepResult>;
+    //fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> Result<StepResult>;
+
+    fn step_with_objective(
+        &mut self,
+        params: &mut [Tensor],
+        gradients: &[Tensor],
+        objective_value: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
+    ) -> Result<StepResult>;
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
@@ -114,8 +122,10 @@ where
         let grad_tensors = vec![grad_tensor];
 
         // Call the tensor-based step method
+        // Create a dummy objective function that returns 0.0
+        let dummy_objective = |_: &[Tensor]| -> CandleResult<f64> { Ok(0.0) };
         let result = self
-            .step(&mut param_tensors, &grad_tensors)
+            .step_with_objective(&mut param_tensors, &grad_tensors, &dummy_objective)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
 
         // Copy results back to slice

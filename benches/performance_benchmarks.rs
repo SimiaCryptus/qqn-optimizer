@@ -28,13 +28,17 @@ fn benchmark_qqn_step(c: &mut Criterion) {
         let mut params = vec![tensor_from_vec(x.clone())];
         let gradient_vec = problem.gradient(&x).unwrap();
         let gradients = vec![tensor_from_vec(gradient_vec)];
+        let objective_fn = |params: &[Tensor]| -> candle_core::Result<f64> {
+            let param_vec = tensors_to_vec(params);
+            problem.evaluate(&param_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+        };
         
         group.bench_with_input(
             BenchmarkId::new("QQN", dimension),
             dimension,
             |b, _| {
                 b.iter(|| {
-                    let _ = optimizer.step(black_box(&mut params), black_box(&gradients));
+                    let _ = optimizer.step_with_objective(black_box(&mut params), black_box(&gradients), &objective_fn);
                 })
             },
         );
@@ -50,6 +54,10 @@ fn benchmark_optimizer_comparison(c: &mut Criterion) {
     let problem = RosenbrockFunction::new(dimension);
     let x = problem.initial_point();
     let gradient_vec = problem.gradient(&x).unwrap();
+    let objective_fn = |params: &[Tensor]| -> candle_core::Result<f64> {
+        let param_vec = tensors_to_vec(params);
+        problem.evaluate(&param_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+    };
     
     // QQN Benchmark
     {
@@ -60,7 +68,7 @@ fn benchmark_optimizer_comparison(c: &mut Criterion) {
         
         group.bench_function("QQN_100d", |b| {
             b.iter(|| {
-                let _ = optimizer.step(black_box(&mut params), black_box(&gradients));
+                let _ = optimizer.step_with_objective(black_box(&mut params), black_box(&gradients), &objective_fn);
             })
         });
     }
@@ -74,7 +82,7 @@ fn benchmark_optimizer_comparison(c: &mut Criterion) {
         
         group.bench_function("LBFGS_100d", |b| {
             b.iter(|| {
-                let _ = optimizer.step(black_box(&mut params), black_box(&gradients));
+                let _ = optimizer.step_with_objective(black_box(&mut params), black_box(&gradients), &objective_fn);
             })
         });
     }
@@ -148,12 +156,16 @@ fn benchmark_full_optimization(c: &mut Criterion) {
             
             let mut x = problem.initial_point();
             let mut params = vec![tensor_from_vec(x.clone())];
+            let objective_fn = |params: &[Tensor]| -> candle_core::Result<f64> {
+                let param_vec = tensors_to_vec(params);
+                problem.evaluate(&param_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+            };
             
             for _ in 0..max_iterations {
                 let gradient_vec = problem.gradient(&x).unwrap();
                 let gradients = vec![tensor_from_vec(gradient_vec)];
                 
-                let _ = optimizer.step(&mut params, &gradients);
+                let _ = optimizer.step_with_objective(&mut params, &gradients, &objective_fn);
                 x = tensors_to_vec(&params);
                 
                 let current_value = problem.evaluate(&x).unwrap();
@@ -173,12 +185,16 @@ fn benchmark_full_optimization(c: &mut Criterion) {
             
             let mut x = problem.initial_point();
             let mut params = vec![tensor_from_vec(x.clone())];
+            let objective_fn = |params: &[Tensor]| -> candle_core::Result<f64> {
+                let param_vec = tensors_to_vec(params);
+                problem.evaluate(&param_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+            };
             
             for _ in 0..max_iterations {
                 let gradient_vec = problem.gradient(&x).unwrap();
                 let gradients = vec![tensor_from_vec(gradient_vec)];
                 
-                let _ = optimizer.step(&mut params, &gradients);
+                let _ = optimizer.step_with_objective(&mut params, &gradients, &objective_fn);
                 x = tensors_to_vec(&params);
                 
                 let current_value = problem.evaluate(&x).unwrap();

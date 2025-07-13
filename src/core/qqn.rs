@@ -121,11 +121,11 @@ impl QQNOptimizer {
     ///
     /// The quadratic path is defined as:
     /// ```text
-    /// d(t) = t(1-t) * g_scaled + t² * d_lbfgs
+    /// d(t) = t(1-t) * (-g) + t² * d_lbfgs
     /// ```
     ///
     /// where:
-    /// - `g_scaled` is the negative gradient scaled to match L-BFGS magnitude
+    /// - `-g` is the negative gradient
     /// - `d_lbfgs` is the L-BFGS search direction
     /// - `t ∈ [0, 1]` is the interpolation parameter
     ///
@@ -163,39 +163,14 @@ impl QQNOptimizer {
             lbfgs_direction.to_vec()
         };
 
-        // Scale negative gradient to match L-BFGS magnitude  
-        let grad_magnitude = compute_magnitude(gradient)?;
-        let lbfgs_magnitude = compute_magnitude(&corrected_lbfgs_direction)?;
-        debug!("QQN: grad_magnitude = {}, lbfgs_magnitude = {}", grad_magnitude, lbfgs_magnitude);
-        // Check for numerical issues
-        if !grad_magnitude.is_finite() || !lbfgs_magnitude.is_finite() {
-            return Err(candle_core::Error::Msg(
-                format!("Non-finite magnitudes detected: grad={}, lbfgs={}",
-                        grad_magnitude, lbfgs_magnitude)
-            ));
-        }
 
-
-        let scale_factor = if grad_magnitude < self.config.epsilon || lbfgs_magnitude < self.config.epsilon {
-            debug!("QQN: Using unit scale factor due to small magnitudes");
-            1.0 // Avoid division by very small numbers
-        } else {
-            // Limit the scale factor to prevent numerical issues
-            let raw_scale = lbfgs_magnitude / grad_magnitude;
-            let clamped_scale = raw_scale.min(100.0).max(0.01);
-            if (raw_scale - clamped_scale).abs() > 1e-6 {
-                warn!("QQN: Scale factor clamped from {} to {}", raw_scale, clamped_scale);
-            }
-            clamped_scale
-        };
-
-        // Create scaled negative gradient (descent direction)
-        let scaled_gradient = scale_tensors(gradient, -scale_factor)?;
-        debug!("QQN: Created quadratic path with scale_factor = {}", scale_factor);
+        // Create negative gradient (no scaling as per paper)
+        let negative_gradient = scale_tensors(gradient, -1.0)?;
+        debug!("QQN: Created quadratic path");
 
 
         Ok(QuadraticPath::new(
-            scaled_gradient,
+            negative_gradient,
             corrected_lbfgs_direction,
         ))
     }
@@ -232,13 +207,56 @@ impl QQNOptimizer {
         best_direction = quadratic_path.evaluate(best_t)?;
         Ok((best_t, best_direction))
     }
-    /// Find optimal t parameter for the quadratic path using golden section search
-    fn find_optimal_t(
+    /// Simplified version of find_optimal_t for when objective function is not available
+    fn find_optimal_t_simplified(
         &self,
         _params: &[Tensor],
         quadratic_path: &QuadraticPath,
-        _current_value: f64,
         gradients: &[Tensor],
+    ) -> CandleResult<f64> {
+        // Use directional derivative as proxy for objective value
+        let phi = (1.0 + 5.0_f64.sqrt()) / 2.0;
+        let resphi = 2.0 - phi;
+        let mut a = 1e-6_f64; // Start with small positive t
+        let mut b = 1.0_f64;
+        let tol = 1e-4_f64;
+
+        while (b - a) > tol {
+            let t1 = a + resphi * (b - a);
+            let t2 = b - resphi * (b - a);
+
+            let dir1 = quadratic_path.evaluate(t1)?;
+            let dir2 = quadratic_path.evaluate(t2)?;
+
+            // Use negative of directional derivative as objective proxy
+            let dot1 = crate::utils::math::dot_product(gradients, &dir1)?;
+            let dot2 = crate::utils::math::dot_product(gradients, &dir2)?;
+
+            // Ensure descent directions
+            if dot1 >= 0.0 && dot2 >= 0.0 {
+                b = t1.min(t2);
+                continue;
+            }
+
+            // Choose based on steepest descent
+            if dot1 < dot2 {
+                b = t2;
+            } else {
+                a = t1;
+            }
+        }
+
+        Ok((a + b) / 2.0)
+    }
+
+    /// Find optimal t parameter for the quadratic path using golden section search
+    fn find_optimal_t(
+        &self,
+        params: &[Tensor],
+        quadratic_path: &QuadraticPath,
+        current_value: f64,
+        gradients: &[Tensor],
+        objective_fn: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
     ) -> CandleResult<f64> {
         // Golden section search for optimal t
         let phi = (1.0 + 5.0_f64.sqrt()) / 2.0;
@@ -246,34 +264,71 @@ impl QQNOptimizer {
         let mut a = 0.0_f64;
         let mut b = 1.0_f64;
         let tol = 1e-4_f64;
+
         // Ensure we start with a descent direction (t > 0)
         let min_t = 1e-6_f64;
         a = a.max(min_t);
+        // Track best t found
+        let mut best_t = min_t;
+        let mut best_value = f64::INFINITY;
+
         while (b - a) > tol {
             let t1 = a + resphi * (b - a);
             let t2 = b - resphi * (b - a);
+
             let dir1 = quadratic_path.evaluate(t1)?;
             let dir2 = quadratic_path.evaluate(t2)?;
+
             // Check descent property
             let descent1 = crate::utils::math::dot_product(gradients, &dir1)? < 0.0;
             let descent2 = crate::utils::math::dot_product(gradients, &dir2)? < 0.0;
+
             if !descent1 && !descent2 {
                 // Neither direction is descent, use smaller t
                 b = t1.min(t2);
                 continue;
             }
-            // For now, prefer the direction that's more descent-like
-            // In a full implementation, we'd evaluate the actual objective function
-            let dot1 = if descent1 { crate::utils::math::dot_product(gradients, &dir1)? } else { 0.0 };
-            let dot2 = if descent2 { crate::utils::math::dot_product(gradients, &dir2)? } else { 0.0 };
-            if dot1 < dot2 {  // More negative is better (steeper descent)
+
+            // Evaluate objective function at trial points
+            let mut val1 = f64::INFINITY;
+            let mut val2 = f64::INFINITY;
+
+            if descent1 {
+                let trial_params1: CandleResult<Vec<Tensor>> = params.iter().zip(dir1.iter())
+                    .map(|(p, d)| p.add(d))
+                    .collect();
+                if let Ok(trial) = trial_params1 {
+                    val1 = objective_fn(&trial).unwrap_or(f64::INFINITY);
+                    if val1 < best_value {
+                        best_value = val1;
+                        best_t = t1;
+                    }
+                }
+            }
+
+            if descent2 {
+                let trial_params2: CandleResult<Vec<Tensor>> = params.iter().zip(dir2.iter())
+                    .map(|(p, d)| p.add(d))
+                    .collect();
+                if let Ok(trial) = trial_params2 {
+                    val2 = objective_fn(&trial).unwrap_or(f64::INFINITY);
+                    if val2 < best_value {
+                        best_value = val2;
+                        best_t = t2;
+                    }
+                }
+            }
+
+            // Update search interval based on function values
+            if val1 < val2 {
                 b = t2;
             } else {
                 a = t1;
             }
         }
-        let optimal_t = (a + b) / 2.0;
-        Ok(optimal_t.max(min_t).min(1.0))
+
+        // Return best t found, ensuring it's in valid range
+        Ok(best_t.max(min_t).min(1.0))
     }
 
 
@@ -311,7 +366,17 @@ impl Optimizer for QQNOptimizer {
         Self::new(config)
     }
 
-    fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> CandleResult<StepResult> {
+    fn step_with_objective(
+        &mut self,
+        params: &mut [Tensor],
+        gradients: &[Tensor],
+        objective_fn: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
+    ) -> CandleResult<StepResult> {
+        // Note: The paper's algorithm requires evaluating the objective function
+        // during the parametric line search. Since the Optimizer trait doesn't
+        // provide the objective function, we use a simplified version here.
+        // For full implementation, use step_with_objective() instead.
+
         // Input validation
         if params.is_empty() || gradients.is_empty() {
             return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
@@ -339,25 +404,21 @@ impl Optimizer for QQNOptimizer {
         let grad_magnitude = compute_magnitude(gradients)?;
         let lbfgs_magnitude = compute_magnitude(&lbfgs_direction)?;
 
-        // Correct reliability ratio calculation as per paper
-        let relative_diff = if grad_magnitude + lbfgs_magnitude > self.config.epsilon {
-            (lbfgs_magnitude - grad_magnitude).abs() / (lbfgs_magnitude + grad_magnitude)
-        } else {
-            0.0
-        };
+        // Calculate magnitude ratio as per paper (ρ = |‖d_LBFGS‖ - ‖g‖| / (‖d_LBFGS‖ + ‖g‖))
+        let magnitude_ratio = magnitude_relative_difference(grad_magnitude, lbfgs_magnitude);
         debug!("QQN step {}: grad_norm={:.6e}, lbfgs_norm={:.6e}, relative_diff={:.6}", 
-               self.state.iteration, grad_magnitude, lbfgs_magnitude, relative_diff);
+               self.state.iteration, grad_magnitude, lbfgs_magnitude, magnitude_ratio);
 
 
         // Store magnitude ratio for analysis
-        self.state.magnitude_ratios.push(relative_diff);
+        self.state.magnitude_ratios.push(magnitude_ratio);
         // Warn if magnitude ratio is extreme
-        if relative_diff > 10.0 {
-            warn!("QQN: Large magnitude ratio detected: {}", relative_diff);
+        if magnitude_ratio > 10.0 {
+            warn!("QQN: Large magnitude ratio detected: {}", magnitude_ratio);
         }
 
         // Choose optimization path
-        let (search_direction, used_quadratic) = if relative_diff <= self.config.threshold {
+        let (search_direction, used_quadratic) = if magnitude_ratio <= self.config.threshold {
             // Use standard L-BFGS
             self.state.lbfgs_count += 1;
             debug!("QQN: Using standard L-BFGS direction");
@@ -365,12 +426,15 @@ impl Optimizer for QQNOptimizer {
         } else {
             // Create hybrid quadratic path
             self.state.quadratic_path_count += 1;
-            debug!("QQN: Using quadratic path (relative_diff {} > threshold {})", 
-                   relative_diff, self.config.threshold);
+            debug!("QQN: Using quadratic path (magnitude_ratio {} > threshold {})", 
+                   magnitude_ratio, self.config.threshold);
             let quadratic_path = self.create_quadratic_path(gradients, &lbfgs_direction)?;
 
             // Find optimal t using parametric line search
-            let optimal_t = self.find_optimal_t(params, &quadratic_path, 0.0, gradients)?;
+            let current_value = objective_fn(params)?;
+            let optimal_t = self.find_optimal_t(params, &quadratic_path, current_value, gradients, objective_fn)?;
+            // Simplified version without objective function evaluation
+            let optimal_t = self.find_optimal_t_simplified(params, &quadratic_path, gradients)?;
             debug!("QQN: Found optimal t = {:.6}", optimal_t);
             let direction = quadratic_path.evaluate(optimal_t)?;
             (direction, true)
@@ -589,7 +653,7 @@ impl Optimizer for QQNOptimizer {
         };
 
         let mut metadata = OptimizationMetadata::default();
-        metadata.optimizer_data.insert("magnitude_ratio".to_string(), relative_diff);
+        metadata.optimizer_data.insert("magnitude_ratio".to_string(), magnitude_ratio);
         metadata.optimizer_data.insert("used_quadratic".to_string(), if used_quadratic { 1.0 } else { 0.0 });
         metadata.optimizer_data.insert("gradient_norm".to_string(), grad_magnitude);
         metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
@@ -622,22 +686,22 @@ impl Optimizer for QQNOptimizer {
 /// Represents a quadratic interpolation path between two search directions
 #[derive(Debug, Clone)]
 pub struct QuadraticPath {
-    scaled_gradient: Vec<Tensor>,
+    negative_gradient: Vec<Tensor>,
     lbfgs_direction: Vec<Tensor>,
 }
 
 impl QuadraticPath {
     /// Create a new quadratic path
-    pub fn new(scaled_gradient: Vec<Tensor>, lbfgs_direction: Vec<Tensor>) -> Self {
+    pub fn new(negative_gradient: Vec<Tensor>, lbfgs_direction: Vec<Tensor>) -> Self {
         Self {
-            scaled_gradient,
+            negative_gradient,
             lbfgs_direction,
         }
     }
 
     /// Evaluate the quadratic path at parameter t ∈ [0, 1]
     ///
-    /// d(t) = t(1-t) * g_scaled + t² * d_lbfgs
+    /// d(t) = t(1-t) * (-g) + t² * d_lbfgs
     pub fn evaluate(&self, t: f64) -> CandleResult<Vec<Tensor>> {
         // Clamp t to valid range
         let t = t.max(0.0).min(1.0);
@@ -646,7 +710,7 @@ impl QuadraticPath {
         let gradient_coeff = t * (1.0 - t);
         let lbfgs_coeff = t * t;
 
-        let gradient_term = scale_tensors(&self.scaled_gradient, gradient_coeff)?;
+        let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
         let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
 
         combine_tensors(&gradient_term, &lbfgs_term)
@@ -654,20 +718,20 @@ impl QuadraticPath {
 
     /// Compute the derivative of the quadratic path at parameter t
     ///
-    /// d'(t) = (1-2t) * g_scaled + 2t * d_lbfgs
+    /// d'(t) = (1-2t) * (-g) + 2t * d_lbfgs
     pub fn derivative(&self, t: f64) -> CandleResult<Vec<Tensor>> {
         let gradient_coeff = 1.0 - 2.0 * t;
         let lbfgs_coeff = 2.0 * t;
 
-        let gradient_term = scale_tensors(&self.scaled_gradient, gradient_coeff)?;
+        let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
         let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
 
         combine_tensors(&gradient_term, &lbfgs_term)
     }
 
-    /// Get the scaled gradient component
-    pub fn scaled_gradient(&self) -> &[Tensor] {
-        &self.scaled_gradient
+    /// Get the negative gradient component
+    pub fn negative_gradient(&self) -> &[Tensor] {
+        &self.negative_gradient
     }
 
     /// Get the L-BFGS direction component

@@ -173,30 +173,12 @@ impl LBFGSState {
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
         }
-    
-        // r is now the search direction (should already be a descent direction)
-        // Verify it's a descent direction
-        let grad_dot_r = dot_product(gradient, &r)?;
-    debug!("L-BFGS: grad_dot_r = {:.6e}", grad_dot_r);
 
-    if grad_dot_r >= -1e-12 {
-            // Not a descent direction, use negative gradient
-            warn!("L-BFGS: Computed direction is not descent (dot product: {}), using negative gradient", grad_dot_r);
-        // Scale negative gradient to have reasonable magnitude
-        let grad_norm = compute_magnitude(gradient)?;
-        let scale = if grad_norm > 1e-10 {
-            1.0 / grad_norm.sqrt()
-        } else {
-            1.0
-        };
-            Ok(gradient
-                .iter()
-                .map(|g| g.neg()?.broadcast_mul(&Tensor::new(scale, g.device())?))
-                .collect::<CandleResult<Vec<_>>>()?)
-        } else {
-            // r is already a descent direction (negative curvature)
-            Ok(r)
-        }
+
+    // Return the negative of r to get a descent direction
+    Ok(r.iter()
+        .map(|t| t.neg())
+        .collect::<CandleResult<Vec<_>>>()?)
     }
 
     /// Update the L-BFGS state with new gradient and step information.
@@ -374,7 +356,12 @@ impl Optimizer for LBFGSOptimizer {
         Self::new(config)
     }
 
-    fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> CandleResult<StepResult> {
+    fn step_with_objective(
+        &mut self,
+        params: &mut [Tensor],
+        gradients: &[Tensor],
+        _objective_value: &dyn Fn(&[Tensor]) -> CandleResult<f64>,
+    ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
         // Input validation
         if params.is_empty() || gradients.is_empty() {
@@ -403,10 +390,8 @@ impl Optimizer for LBFGSOptimizer {
 
         // Adaptive step size with backtracking line search
         let mut step_size = if self.state.iteration() == 0 {
-            // First iteration: start with larger step
-            // More conservative initial step for better stability
-            let initial_step = 0.1 / grad_norm.max(1.0).sqrt();
-            initial_step.min(self.config.max_step_size)
+            // First iteration: use a conservative step size
+            1.0
         } else {
             // Use L-BFGS scaling factor as starting point
             self.state.gamma()
@@ -432,8 +417,8 @@ impl Optimizer for LBFGSOptimizer {
                 break;
             }
 
-            // For testing/benchmarking, we accept steps that aren't too large
-            if step_size <= 2.0 && step_norm <= 5.0 {
+            // Accept reasonable step sizes
+            if step_size <= 1.0 {
                 success = true;
                 break;
             }

@@ -42,6 +42,12 @@ async fn test_qqn_rosenbrock_optimization() {
     let mut iterations = 0;
     let max_iterations = 10000; // Allow more iterations for difficult Rosenbrock function
     let tolerance = 1e-3; // More reasonable tolerance for Rosenbrock
+    // Create objective function closure
+    let objective = |tensors: &[Tensor]| -> candle_core::Result<f64> {
+        let x_vec = tensors_to_vec(tensors);
+        Ok(problem.evaluate(&x_vec).unwrap())
+    };
+
 
     while iterations < max_iterations {
         let gradient_vec = problem.gradient(&x).unwrap();
@@ -52,7 +58,7 @@ async fn test_qqn_rosenbrock_optimization() {
             debug!("Converged at iteration {} with grad_norm={:.6e}", iterations, grad_norm);
             break;
         }
-        let step_result = optimizer.step(&mut params, &gradients).unwrap();
+        let step_result = optimizer.step_with_objective(&mut params, &gradients, &objective).unwrap();
         
         // Update x for next iteration
         x = tensors_to_vec(&params);
@@ -85,7 +91,13 @@ async fn test_qqn_rosenbrock_optimization() {
 #[tokio::test]
 async fn test_qqn_vs_lbfgs_sphere_function() {
     let problem = SphereFunction::new(5); // Use smaller dimension for more reliable convergence
+    // Create objective function closure
+    let objective = |tensors: &[Tensor]| -> candle_core::Result<f64> {
+        let x_vec = tensors_to_vec(tensors);
+        Ok(problem.evaluate(&x_vec).unwrap())
+    };
     
+
     // Test QQN
     let qqn_config = QQNConfig::default();
     let mut qqn_optimizer = QQNOptimizer::new(qqn_config);
@@ -104,7 +116,7 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
         
         let gradients = vec![tensor_from_vec(gradient_vec)];
         
-        let _ = qqn_optimizer.step(&mut qqn_params, &gradients).unwrap();
+        let _ = qqn_optimizer.step_with_objective(&mut qqn_params, &gradients, &objective).unwrap();
         qqn_x = tensors_to_vec(&qqn_params);
         
         
@@ -128,7 +140,7 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
         
         let gradients = vec![tensor_from_vec(gradient_vec)];
         
-        let _ = lbfgs_optimizer.step(&mut lbfgs_params, &gradients).unwrap();
+        let _ = lbfgs_optimizer.step_with_objective(&mut lbfgs_params, &gradients, &objective).unwrap();
         lbfgs_x = tensors_to_vec(&lbfgs_params);
         
         
@@ -154,13 +166,19 @@ fn test_qqn_quadratic_path_switching() {
     config.threshold = 0.1; // 10% threshold for easier testing
 
     let mut optimizer = QQNOptimizer::new(config);
+    // Create a simple quadratic objective function
+    let objective = |tensors: &[Tensor]| -> candle_core::Result<f64> {
+        let x = tensors[0].to_vec1::<f64>()?;
+        Ok(x[0] * x[0] + x[1] * x[1])
+    };
     
+
     // Create scenario where magnitude difference is large
     let mut params = vec![tensor_from_vec(vec![1.0, 1.0])];
     let large_gradient = vec![tensor_from_vec(vec![10.0, 10.0])]; // Large gradient
     
     // First step should use quadratic path due to magnitude difference
-    let result1 = optimizer.step(&mut params, &large_gradient);
+    let result1 = optimizer.step_with_objective(&mut params, &large_gradient, &objective);
     if let Err(e) = &result1 {
         println!("First step error: {:?}", e);
     }
@@ -174,7 +192,7 @@ fn test_qqn_quadratic_path_switching() {
     
     // Create scenario with small gradient (similar magnitudes)
     let small_gradient = vec![tensor_from_vec(vec![0.01, 0.01])];
-    let result2 = optimizer.step(&mut params, &small_gradient);
+    let result2 = optimizer.step_with_objective(&mut params, &small_gradient, &objective);
     if let Err(e) = &result2 {
         println!("Second step error: {:?}", e);
     }
@@ -188,12 +206,18 @@ fn test_qqn_quadratic_path_switching() {
 fn test_qqn_numerical_stability() {
     let config = QQNConfig::default();
     let mut optimizer = QQNOptimizer::new(config);
+    // Create a simple objective function
+    let objective = |tensors: &[Tensor]| -> candle_core::Result<f64> {
+        let x = tensors[0].to_vec1::<f64>()?;
+        Ok(x[0] * x[0] + x[1] * x[1])
+    };
     
+
     // Test with very small gradients
     let mut params = vec![tensor_from_vec(vec![1.0, 1.0])];
     let tiny_gradient = vec![tensor_from_vec(vec![1e-12, 1e-12])];
     
-    let result = optimizer.step(&mut params, &tiny_gradient);
+    let result = optimizer.step_with_objective(&mut params, &tiny_gradient, &objective);
     if let Err(e) = &result {
         println!("Tiny gradient step error: {:?}", e);
     }
@@ -214,7 +238,7 @@ fn test_qqn_numerical_stability() {
 
     // Test with very large gradients
     let large_gradient = vec![tensor_from_vec(vec![1e6, 1e6])];
-    let result2 = optimizer.step(&mut params, &large_gradient);
+    let result2 = optimizer.step_with_objective(&mut params, &large_gradient, &objective);
     if let Err(e) = &result2 {
         println!("Large gradient step error: {:?}", e);
     }
@@ -228,14 +252,20 @@ fn test_qqn_numerical_stability() {
 fn test_qqn_reset_functionality() {
     let config = QQNConfig::default();
     let mut optimizer = QQNOptimizer::new(config);
+    // Create a simple objective function
+    let objective = |tensors: &[Tensor]| -> candle_core::Result<f64> {
+        let x = tensors[0].to_vec1::<f64>()?;
+        Ok(x[0] * x[0] + x[1] * x[1])
+    };
     
+
     // Perform several steps
     let mut params = vec![tensor_from_vec(vec![1.0, 1.0])];
     let gradient = vec![tensor_from_vec(vec![0.1, 0.1])];
     let mut iterations_before_reset = 0;
     
     for _ in 0..5 {
-        if let Ok(_) = optimizer.step(&mut params, &gradient) {
+        if let Ok(_) = optimizer.step_with_objective(&mut params, &gradient, &objective) {
             iterations_before_reset += 1;
         }
     }

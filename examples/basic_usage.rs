@@ -64,9 +64,15 @@ fn main() -> Result<()> {
         // Convert Vec<f64> to Tensor for optimizer
         let mut x_tensor = vec![Tensor::from_slice(&x, x.len(), &device)?];
         let gradient_tensor = vec![Tensor::from_slice(&gradient, gradient.len(), &device)?];
+        // Create objective function for the optimizer
+        let objective = |params: &[Tensor]| -> candle_core::Result<f64> {
+            let x_vec = params[0].to_vec1::<f64>()?;
+            problem.evaluate(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+        };
+
 
         // Perform optimization step
-        let step_result = optimizer.step(&mut x_tensor, &gradient_tensor)?;
+        let step_result = optimizer.step_with_objective(&mut x_tensor, &gradient_tensor, &objective)?;
 
         // Convert result back to Vec<f64>
         x = x_tensor[0].to_vec1::<f64>()?;
