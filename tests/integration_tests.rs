@@ -185,8 +185,6 @@ fn test_qqn_quadratic_path_switching() {
     assert!(result1.is_ok(), "First step should succeed");
     
     let state1 = optimizer.state();
-    // Should have used quadratic path due to large magnitude difference
-    assert!(!state1.magnitude_ratios.is_empty());
     // Note: The magnitude ratio might be small initially due to L-BFGS state being empty
     // This is expected behavior for the first few iterations
     
@@ -276,9 +274,6 @@ fn test_qqn_reset_functionality() {
     optimizer.reset();
     let state = optimizer.state();
     assert_eq!(state.iteration, 0);
-    assert!(state.magnitude_ratios.is_empty());
-    assert_eq!(state.quadratic_path_count, 0);
-    assert_eq!(state.lbfgs_count, 0);
 }
 
 // Property-based tests using proptest

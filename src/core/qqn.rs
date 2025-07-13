@@ -72,12 +72,6 @@ pub struct QQNState {
     pub iteration: usize,
     /// L-BFGS internal state
     pub lbfgs_state: LBFGSState,
-    /// History of magnitude ratios
-    pub magnitude_ratios: Vec<f64>,
-    /// Number of times quadratic path was used
-    pub quadratic_path_count: usize,
-    /// Number of times standard L-BFGS was used
-    pub lbfgs_count: usize,
 }
 
 impl QQNState {
@@ -85,9 +79,6 @@ impl QQNState {
         Self {
             iteration: 0,
             lbfgs_state: LBFGSState::new(lbfgs_history),
-            magnitude_ratios: Vec::new(),
-            quadratic_path_count: 0,
-            lbfgs_count: 0,
         }
     }
 }
@@ -380,52 +371,38 @@ impl Optimizer for QQNOptimizer {
         debug!("QQN step {}: grad_norm={:.6e}, lbfgs_norm={:.6e}, relative_diff={:.6}", 
                self.state.iteration, grad_magnitude, lbfgs_magnitude, magnitude_ratio);
 
-        // Store magnitude ratio for analysis
-        self.state.magnitude_ratios.push(magnitude_ratio);
         // Warn if magnitude ratio is extreme
         if magnitude_ratio > 10.0 {
             warn!("QQN: Large magnitude ratio detected: {}", magnitude_ratio);
         }
 
-        // Choose optimization path
-        let (search_direction, used_quadratic) = if magnitude_ratio <= self.config.threshold {
-            // Use standard L-BFGS
-            self.state.lbfgs_count += 1;
-            debug!("QQN: Using standard L-BFGS direction");
-            (lbfgs_direction, false)
-        } else {
-            // Create hybrid quadratic path
-            self.state.quadratic_path_count += 1;
-            debug!("QQN: Using quadratic path (magnitude_ratio {} > threshold {})", 
+        debug!("QQN: Using quadratic path (magnitude_ratio {} > threshold {})",
                    magnitude_ratio, self.config.threshold);
-            let quadratic_path = self.create_quadratic_path(gradients, &lbfgs_direction)?;
+        let quadratic_path = self.create_quadratic_path(gradients, &lbfgs_direction)?;
 
-            // Find optimal t using golden section search as per paper
-            let optimal_t = self.find_optimal_t_golden_section(params, &quadratic_path, gradients, objective_fn)?;
-            debug!("QQN: Found optimal t = {:.6}", optimal_t);
+        // Find optimal t using golden section search as per paper
+        let optimal_t = self.find_optimal_t_golden_section(params, &quadratic_path, gradients, objective_fn)?;
+        debug!("QQN: Found optimal t = {:.6}", optimal_t);
 
-            let mut direction = quadratic_path.evaluate(optimal_t)?;
+        let mut direction = quadratic_path.evaluate(optimal_t)?;
 
-            // Verify descent property as required by paper: if g^T d_QQN(t*) ≥ 0, set t* = ε
-            let descent_check = crate::utils::math::dot_product(gradients, &direction)?;
-            if descent_check >= 0.0 {
-                warn!("QQN: Direction not descent (dot product: {:.6e}), using small t = ε", descent_check);
-                let small_t = 1e-6;
-                direction = quadratic_path.evaluate(small_t)?;
-                // Double-check the small t gives descent
-                let small_t_descent = crate::utils::math::dot_product(gradients, &direction)?;
-                if small_t_descent >= 0.0 {
-                    // Fallback to negative gradient if even small t fails
-                    warn!("QQN: Even small t fails descent, using negative gradient");
-                    direction = scale_tensors(gradients, -1.0)?;
-                }
+        // Verify descent property as required by paper: if g^T d_QQN(t*) ≥ 0, set t* = ε
+        let descent_check = crate::utils::math::dot_product(gradients, &direction)?;
+        if descent_check >= 0.0 {
+            warn!("QQN: Direction not descent (dot product: {:.6e}), using small t = ε", descent_check);
+            let small_t = 1e-6;
+            direction = quadratic_path.evaluate(small_t)?;
+            // Double-check the small t gives descent
+            let small_t_descent = crate::utils::math::dot_product(gradients, &direction)?;
+            if small_t_descent >= 0.0 {
+                // Fallback to negative gradient if even small t fails
+                warn!("QQN: Even small t fails descent, using negative gradient");
+                direction = scale_tensors(gradients, -1.0)?;
             }
-
-            (direction, true)
-        };
+        }
 
         // Ensure we have a descent direction by checking dot product with gradient
-        let direction_dot_grad = search_direction
+        let direction_dot_grad = direction
             .iter()
             .zip(gradients.iter())
             .map(|(d, g)| {
@@ -444,7 +421,7 @@ impl Optimizer for QQNOptimizer {
             warn!("QQN: Search direction is not descent, falling back to negative gradient");
             scale_tensors(gradients, -1.0)?
         } else {
-            search_direction
+            direction
         };
 
         // Use adaptive step size based on gradient magnitude and iteration count
@@ -497,7 +474,6 @@ impl Optimizer for QQNOptimizer {
                 function_change: None,
                 parameter_change: Some(step_size),
                 convergence_criterion: None,
-                qqn_mode_active: false,
             };
             let mut metadata = OptimizationMetadata::default();
             metadata.optimizer_data.insert("numerical_edge_case".to_string(), 1.0);
@@ -525,13 +501,7 @@ impl Optimizer for QQNOptimizer {
             // Use previous successful step size as starting point
             // Adapt based on history
             let base_step = self.state.lbfgs_state.gamma();
-            if used_quadratic {
-                // If using quadratic path, be more conservative
-                base_step.max(0.0001).min(0.1)
-            } else {
-                // For L-BFGS, allow larger steps
-                base_step.max(0.001).min(0.5)
-            }
+            base_step.max(0.0001).min(0.1)
         };
 
         // Simple backtracking line search
@@ -626,12 +596,10 @@ impl Optimizer for QQNOptimizer {
                 line_search_result.step_size * compute_magnitude(&final_direction)?,
             ),
             convergence_criterion: None,
-            qqn_mode_active: used_quadratic,
         };
 
         let mut metadata = OptimizationMetadata::default();
         metadata.optimizer_data.insert("magnitude_ratio".to_string(), magnitude_ratio);
-        metadata.optimizer_data.insert("used_quadratic".to_string(), if used_quadratic { 1.0 } else { 0.0 });
         metadata.optimizer_data.insert("gradient_norm".to_string(), grad_magnitude);
         metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
         metadata.optimizer_data.insert("step_size".to_string(), step_size);
@@ -791,8 +759,5 @@ mod tests {
     fn test_qqn_state_initialization() {
         let state = QQNState::new(5);
         assert_eq!(state.iteration, 0);
-        assert_eq!(state.magnitude_ratios.len(), 0);
-        assert_eq!(state.quadratic_path_count, 0);
-        assert_eq!(state.lbfgs_count, 0);
     }
 }
