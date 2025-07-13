@@ -96,6 +96,16 @@ impl LBFGSState {
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
         }
+        // Check gradient magnitude to avoid numerical issues
+        let grad_norm = compute_magnitude(gradient)?;
+        if grad_norm < 1e-12 {
+            debug!("L-BFGS: Very small gradient norm {:.6e}, using steepest descent", grad_norm);
+            return Ok(gradient
+                .iter()
+                .map(|g| g.neg())
+                .collect::<CandleResult<Vec<_>>>()?);
+        }
+        
         // Check for NaN/Inf in gradient
         for (i, grad) in gradient.iter().enumerate() {
             let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;

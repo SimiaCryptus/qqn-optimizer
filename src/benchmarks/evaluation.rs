@@ -334,24 +334,44 @@ impl BenchmarkRunner {
         let mut stagnation_count = 0;
         let mut numerical_error_count = 0;
         const MAX_NUMERICAL_ERRORS: usize = 3;
+        const MAX_STAGNATION_COUNT: usize = 50;
 
         while *iteration < self.config.max_iterations {
             // Evaluate function and gradient
-            let f_val = problem
-                .evaluate(x)
-                .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+            let f_val = match problem.evaluate(x) {
+                Ok(val) => val,
+                Err(e) => {
+                    warn!("Function evaluation failed at iteration {}: {}", iteration, e);
+                    numerical_error_count += 1;
+                    if numerical_error_count >= MAX_NUMERICAL_ERRORS {
+                        return Ok(ConvergenceReason::NumericalError);
+                    }
+                    continue;
+                }
+            };
+            
             if !f_val.is_finite() {
                 warn!("Non-finite function value at iteration {}: {}", iteration, f_val);
                 numerical_error_count += 1;
                 if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                     return Ok(ConvergenceReason::NumericalError);
                 }
+                continue;
             }
 
             *function_evaluations += 1;
-            let gradient = problem
-                .gradient(x)
-                .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+            let gradient = match problem.gradient(x) {
+                Ok(grad) => grad,
+                Err(e) => {
+                    warn!("Gradient evaluation failed at iteration {}: {}", iteration, e);
+                    numerical_error_count += 1;
+                    if numerical_error_count >= MAX_NUMERICAL_ERRORS {
+                        return Ok(ConvergenceReason::NumericalError);
+                    }
+                    continue;
+                }
+            };
+            
             *gradient_evaluations += 1;
             // Check for non-finite gradients
             if gradient.iter().any(|&g| !g.is_finite()) {
@@ -360,6 +380,7 @@ impl BenchmarkRunner {
                 if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                     return Ok(ConvergenceReason::NumericalError);
                 }
+                continue;
             }
 
             // Record iteration data
@@ -398,9 +419,7 @@ impl BenchmarkRunner {
                     stagnation_count += 1;
                     debug!("Stagnation detected: |f_change|={:.6e} < {:.6e}, count={}", 
                            x1.abs(), stagnation_threshold, stagnation_count);
-                    // Only consider stagnated if we've had many iterations without progress
-                    // and the gradient is still large
-                    if stagnation_count > 20 {
+                    if stagnation_count > MAX_STAGNATION_COUNT {
                         // Consider it converged if function value hasn't changed much
                         warn!("Function value stagnated for {} iterations with grad_norm={:.6e}", 
                               stagnation_count, gradient_norm);

@@ -723,18 +723,27 @@ impl StatisticalAnalysis {
             (mean_a - mean_b) / se
         };
 
-        // Degrees of freedom for Welch's t-test
-        let _df = if var_a == 0.0 && var_b == 0.0 {
+        // Degrees of freedom for Welch's t-test (Welch-Satterthwaite equation)
+        let df = if var_a == 0.0 && var_b == 0.0 {
             n_a + n_b - 2.0
         } else {
             let numerator = ((var_a / n_a) + (var_b / n_b)).powi(2);
             let denominator =
                 (var_a / n_a).powi(2) / (n_a - 1.0) + (var_b / n_b).powi(2) / (n_b - 1.0);
-            numerator / denominator
+            if denominator > 0.0 {
+                numerator / denominator
+            } else {
+                n_a + n_b - 2.0
+            }
         };
 
-        // Simplified p-value calculation (would use proper t-distribution in practice)
-        let p_value = if t_stat.abs() > 2.0 { 0.05 } else { 0.5 };
+        // Calculate p-value using t-distribution
+        let p_value = if df > 0.0 {
+            let t_dist = StudentsT::new(0.0, 1.0, df).unwrap();
+            2.0 * (1.0 - t_dist.cdf(t_stat.abs()))
+        } else {
+            0.5
+        };
 
         (t_stat, p_value)
     }
