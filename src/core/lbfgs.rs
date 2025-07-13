@@ -356,7 +356,7 @@ impl Optimizer for LBFGSOptimizer {
         Self::new(config)
     }
 
-    fn step_with_objective(
+    fn step(
         &mut self,
         params: &mut [Tensor],
         gradients: &[Tensor],

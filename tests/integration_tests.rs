@@ -58,7 +58,7 @@ async fn test_qqn_rosenbrock_optimization() {
             debug!("Converged at iteration {} with grad_norm={:.6e}", iterations, grad_norm);
             break;
         }
-        let step_result = optimizer.step_with_objective(&mut params, &gradients, &objective).unwrap();
+        let step_result = optimizer.step(&mut params, &gradients, &objective).unwrap();
         
         // Update x for next iteration
         x = tensors_to_vec(&params);
@@ -115,8 +115,8 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
         }
         
         let gradients = vec![tensor_from_vec(gradient_vec)];
-        
-        let _ = qqn_optimizer.step_with_objective(&mut qqn_params, &gradients, &objective).unwrap();
+
+        let _ = qqn_optimizer.step(&mut qqn_params, &gradients, &objective).unwrap();
         qqn_x = tensors_to_vec(&qqn_params);
         
         
@@ -139,8 +139,8 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
         }
         
         let gradients = vec![tensor_from_vec(gradient_vec)];
-        
-        let _ = lbfgs_optimizer.step_with_objective(&mut lbfgs_params, &gradients, &objective).unwrap();
+
+        let _ = lbfgs_optimizer.step(&mut lbfgs_params, &gradients, &objective).unwrap();
         lbfgs_x = tensors_to_vec(&lbfgs_params);
         
         
@@ -178,7 +178,7 @@ fn test_qqn_quadratic_path_switching() {
     let large_gradient = vec![tensor_from_vec(vec![10.0, 10.0])]; // Large gradient
     
     // First step should use quadratic path due to magnitude difference
-    let result1 = optimizer.step_with_objective(&mut params, &large_gradient, &objective);
+    let result1 = optimizer.step(&mut params, &large_gradient, &objective);
     if let Err(e) = &result1 {
         println!("First step error: {:?}", e);
     }
@@ -192,7 +192,7 @@ fn test_qqn_quadratic_path_switching() {
     
     // Create scenario with small gradient (similar magnitudes)
     let small_gradient = vec![tensor_from_vec(vec![0.01, 0.01])];
-    let result2 = optimizer.step_with_objective(&mut params, &small_gradient, &objective);
+    let result2 = optimizer.step(&mut params, &small_gradient, &objective);
     if let Err(e) = &result2 {
         println!("Second step error: {:?}", e);
     }
@@ -216,8 +216,8 @@ fn test_qqn_numerical_stability() {
     // Test with very small gradients
     let mut params = vec![tensor_from_vec(vec![1.0, 1.0])];
     let tiny_gradient = vec![tensor_from_vec(vec![1e-12, 1e-12])];
-    
-    let result = optimizer.step_with_objective(&mut params, &tiny_gradient, &objective);
+
+    let result = optimizer.step(&mut params, &tiny_gradient, &objective);
     if let Err(e) = &result {
         println!("Tiny gradient step error: {:?}", e);
     }
@@ -238,7 +238,7 @@ fn test_qqn_numerical_stability() {
 
     // Test with very large gradients
     let large_gradient = vec![tensor_from_vec(vec![1e6, 1e6])];
-    let result2 = optimizer.step_with_objective(&mut params, &large_gradient, &objective);
+    let result2 = optimizer.step(&mut params, &large_gradient, &objective);
     if let Err(e) = &result2 {
         println!("Large gradient step error: {:?}", e);
     }
@@ -265,7 +265,7 @@ fn test_qqn_reset_functionality() {
     let mut iterations_before_reset = 0;
     
     for _ in 0..5 {
-        if let Ok(_) = optimizer.step_with_objective(&mut params, &gradient, &objective) {
+        if let Ok(_) = optimizer.step(&mut params, &gradient, &objective) {
             iterations_before_reset += 1;
         }
     }

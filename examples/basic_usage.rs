@@ -72,7 +72,7 @@ fn main() -> Result<()> {
 
 
         // Perform optimization step
-        let step_result = optimizer.step_with_objective(&mut x_tensor, &gradient_tensor, &objective)?;
+        let step_result = optimizer.step(&mut x_tensor, &gradient_tensor, &objective)?;
 
         // Convert result back to Vec<f64>
         x = x_tensor[0].to_vec1::<f64>()?;

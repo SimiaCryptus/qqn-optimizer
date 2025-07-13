@@ -488,3 +488,13 @@ pub(crate) fn compute_parameter_change(p0: &[Tensor], p1: &Vec<Tensor>) -> Candl
 
     Ok(sum_of_squares.sqrt())
 }
+/// Compute magnitude relative difference as defined in the QQN paper
+/// ρ = |‖d_LBFGS‖ - ‖g‖| / (‖d_LBFGS‖ + ‖g‖)
+pub fn magnitude_relative_difference_qqn(grad_magnitude: f64, lbfgs_magnitude: f64) -> f64 {
+    let denominator = lbfgs_magnitude + grad_magnitude;
+    if denominator < f64::EPSILON {
+        0.0 // Both magnitudes are essentially zero
+    } else {
+        (lbfgs_magnitude - grad_magnitude).abs() / denominator
+    }
+}

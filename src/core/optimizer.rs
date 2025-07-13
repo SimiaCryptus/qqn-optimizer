@@ -73,7 +73,7 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     /// A `StepResult` containing information about the optimization step
     //fn step(&mut self, params: &mut [Tensor], gradients: &[Tensor]) -> Result<StepResult>;
 
-    fn step_with_objective(
+    fn step(
         &mut self,
         params: &mut [Tensor],
         gradients: &[Tensor],
@@ -125,7 +125,7 @@ where
         // Create a dummy objective function that returns 0.0
         let dummy_objective = |_: &[Tensor]| -> CandleResult<f64> { Ok(0.0) };
         let result = self
-            .step_with_objective(&mut param_tensors, &grad_tensors, &dummy_objective)
+            .step(&mut param_tensors, &grad_tensors, &dummy_objective)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
 
         // Copy results back to slice

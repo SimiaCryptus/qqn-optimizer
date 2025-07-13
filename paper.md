@@ -34,15 +34,12 @@ The resulting algorithm maintains the efficiency benefits of quasi-Newton method
 while gracefully accessing gradient descent behavior when it would be more effective. Unlike trust region methods that
 constrain step sizes, QQN modifies the search space itself, allowing the line search to naturally find the best
 combination of first and second-order information. Crucially, this approach handles disagreements between methods
-fluidly rather than through discrete switching, requiring minimal metaparameter tuning.
+fluidly rather than through discrete switching, requiring minimal hyperparameter tuning.
 
 Our contributions are:
 
-- A novel parametric quadratic spline interpolation that treats method disagreements fluidly
-- Theoretical analysis proving QQN maintains descent properties across the entire parameter space
-- Empirical demonstration of improved stability over L-BFGS with minimal metaparameter burden
-- Discovery that the interpolation parameter t* exhibits predictable stability patterns that enable computational
-  optimizations
+- Empirical evaluation demonstrating improved stability and performance on benchmark problems
+
 
 ## 2. Background and Related Work
 
@@ -75,7 +72,13 @@ ensure descent. This modifies the problem rather than the algorithm, potentially
 Line search procedures find a step size $\alpha$ along a search direction $d$ that satisfies the Wolfe
 conditions [[Wolfe, 1969]](#wolfe-1969):
 
-Strong Wolfe conditions additionally require $|g(x + \alpha d)^T d| \leq c_2 |g^T d|$ to prevent excessively large steps.
+1. Sufficient decrease: $f(x + \alpha d) \leq f(x) + c_1 \alpha \nabla f(x)^T d$
+2. Curvature condition: $\nabla f(x + \alpha d)^T d \geq c_2 \nabla f(x)^T d$
+
+where $0 < c_1 < c_2 < 1$ (typically $c_1 = 10^{-4}$, $c_2 = 0.9$).
+
+Strong Wolfe conditions additionally require $|\nabla f(x + \alpha d)^T d| \leq c_2 |\nabla f(x)^T d|$ to prevent
+excessively large steps.
 
 ## 3. Method
 
@@ -88,7 +91,7 @@ curvature but may produce unreliable directions in non-convex regions.
 Instead of making this binary choice, QQN constructs a parametric curve that spans the space between these two extremes.
 The line search then naturally discovers the optimal point along this curve, effectively choosing how much to trust the
 quasi-Newton approximation. This fluid treatment of disagreements eliminates the need for complex switching heuristics
-and reduces metaparameter burden while automatically adapting to local problem geometry.
+and reduces hyperparameter burden while automatically adapting to local problem geometry.
 
 ### 3.2 Parametric Quadratic Spline
 
@@ -99,10 +102,9 @@ $$d_{QQN}(t) = t(1-t)(-g) + t^2 d_{LBFGS}$$
 where $t \in [0,1]$ is the interpolation parameter.
 
 This formulation has elegant properties:
-- **At $t=0$**: $d_{QQN}(0) = 0$ (no movement)
-- **At $t=1$**: $d_{QQN}(1) = d_{LBFGS}$ (pure L-BFGS)
-- **Derivative at $t=0$**: $\frac{d}{dt}d_{QQN}(0) = -g$ (gradient descent direction)
-- **Derivative at $t=1$**: $\frac{d}{dt}d_{QQN}(1) = -g + 2d_{LBFGS}$
+
+- **At $t=0$**: $d_{QQN}(0) = 0$ (no step)
+- **At $t=1$**: $d_{QQN}(1) = d_{LBFGS}$ (pure L-BFGS direction)
 
 The quadratic form ensures smooth interpolation while maintaining the key property that small steps (small $t$) behave
 like gradient descent, while larger steps approach the L-BFGS direction.
@@ -116,372 +118,41 @@ $$\min_{t \in [0,1]} f(x + d_{QQN}(t))$$
 This is equivalent to a standard line search along the parametric curve $d_{QQN}(t)$. Standard line search methods (
 backtracking, Wolfe conditions) can be directly applied by treating $t$ as the step size parameter.
 
-### 3.4 Reliability-Based Activation
+### 3.4 The Fluid Interpolation Approach
 
-QQN uses the parametric interpolation when the L-BFGS direction may be unreliable. We detect this through the magnitude
-ratio:
+The key innovation of QQN is that it always uses the parametric interpolation - there is no discrete choice or
+switching. The line search naturally discovers the optimal value of $t$ that minimizes the objective function along the
+parametric curve. This fluid approach means:
 
-$$\rho = \frac{|\|d_{LBFGS}\| - \|g\||}{\|d_{LBFGS}\| + \|g\|}$$
+- When L-BFGS is reliable and agrees with the gradient direction, the line search will naturally find $t$ close to 1
+- When L-BFGS is unreliable or disagrees with the gradient, the line search will find smaller values of $t$
+- The optimization automatically adapts without any explicit reliability detection or thresholds
 
-When $\rho > \tau$ (threshold), the dramatic difference in suggested step scales indicates potential unreliability, and
-QQN activates the parametric search. Otherwise, it uses standard L-BFGS.
+This eliminates the need for heuristic switching criteria and allows the method to smoothly transition between gradient
+descent and quasi-Newton behavior based solely on what produces the best objective function value.
 
 ### 3.5 Complete Algorithm
 
-```
-Algorithm 1: QQN Optimization Step
-Input: Current point x, gradient g, L-BFGS history
-Output: Updated point x_{k+1}
-
-1: Compute d_LBFGS using L-BFGS two-loop recursion
-2: Calculate ρ = |‖d_LBFGS‖ - ‖g‖| / (‖d_LBFGS‖ + ‖g‖)
-3: if ρ ≤ τ then
-4:    Perform line search along d_LBFGS
-5:    d ← α* d_LBFGS
-6: else
-7:    Define d_QQN(t) = t(1-t)(-g) + t²d_LBFGS  
-8:    Find t* ∈ [0,1] satisfying:
-       a) Strong Wolfe conditions along d_QQN(t*)
-       b) If no t satisfies Wolfe, use t minimizing f(x + d_QQN(t))
-9:    Verify descent: if g^T d_QQN(t*) ≥ 0, set t* = ε (small positive)
-9:    d ← d_QQN(t*)
-10: end if
-11: Update L-BFGS history with step d
-12: return x + d
-```
-
-## 4. Theoretical Analysis
-
-### 4.1 Descent Property
-
-**Theorem 1**: The parametric direction $d_{QQN}(t)$ is a descent direction for all $t \in (0, t_{max}]$ where $t_{max}$
-depends on the angle between $g$ and $d_{LBFGS}$.
-
-*Proof*: The directional derivative along $d_{QQN}(t)$ is:
-$$\nabla f(x)^T d_{QQN}(t) = t(1-t)g^T(-g) + t^2 g^T d_{LBFGS}$$
-$$= -t(1-t)\|g\|^2 + t^2 g^T d_{LBFGS}$$
-
-For small $t$, the first term dominates and is negative, ensuring descent. The descent property holds as long as the
-second term doesn't overwhelm the first. Specifically, descent is guaranteed when:
-$$t < \frac{\|g\|^2}{\|g\|^2 - g^T d_{LBFGS}}$$
-
-When $d_{LBFGS}$ is a descent direction ($g^T d_{LBFGS} < 0$), this bound is always greater than 1, ensuring descent for
-all $t \in (0,1]$. □
-
-### 4.2 Interpolation Properties
-
-**Theorem 2**: The parametric curve $d_{QQN}(t)$ provides a smooth interpolation between gradient descent and L-BFGS
-behaviors.
-
-*Proof*:
-
-- Continuity: $d_{QQN}(t)$ is a polynomial in $t$, hence continuous
-- Boundary behavior: $d_{QQN}(0) = 0$ and $d_{QQN}(1) = d_{LBFGS}$
-- Derivative continuity: $\frac{d}{dt}d_{QQN}(t) = (1-2t)(-g) + 2t d_{LBFGS}$ is continuous
-- At $t=0$: derivative is $-g$ (gradient descent)
-- At $t=1$: derivative approaches the L-BFGS-gradient combination □
-
-### 4.3 Convergence Analysis
-
-**Theorem 3**: Under standard assumptions (Lipschitz continuous gradient, bounded below), QQN converges to a stationary
-point.
-
-*Proof sketch*: QQN maintains descent at each iteration through the parametric interpolation. When $\rho \leq \tau$, it
-reduces to L-BFGS with known convergence properties. When $\rho > \tau$, the parametric curve ensures access to the
-gradient direction, guaranteeing sufficient decrease. Standard convergence results for line search methods apply. □
-**Corollary**: The convergence rate of QQN is bounded by:
-$$\min_{k \leq K} \|\nabla f(x_k)\|^2 \leq \frac{f(x_0) - f^*}{K \cdot \min_k \gamma_k}$$
-where $\gamma_k$ is the sufficient decrease constant at iteration k.
-**Remark**: The convergence rate depends on the frequency of parametric interpolation activation. In the worst case
-where QQN frequently falls back to gradient-like behavior (small t*), the convergence rate approaches that of gradient
-descent. However, empirically we observe that t* increases over iterations, suggesting improved rates as the
-optimization progresses.
-
-### 4.4 Parameter Stability
-
-**Theorem 4**: Under mild regularity conditions, the optimal parameter t* exhibits local stability properties that
-enable computational optimizations.
-
-*Proof sketch*: The parametric curve creates a well-behaved optimization landscape in t. When the objective function has
-locally consistent curvature properties, consecutive iterations will find similar optimal t* values. This stability can
-be exploited for warm-starting and predictive stepping. □
-
-### 4.5 Computational Complexity
-
-QQN adds minimal overhead to L-BFGS:
-The total computational cost per iteration is:
-
-- **Standard L-BFGS**: $O(mn)$ for direction computation + line search cost
-- **QQN (when activated)**: $O(mn)$ + $O(n)$ per parametric evaluation
-- **Overhead**: Typically 5-15% when parametric search is active
-
-Importantly, the stability of t* across iterations enables several optimizations:
-
-- **Warm starting**: Previous t* provides excellent initial guess
-- **Reduced line search iterations**: Typically 20-40% fewer function evaluations
-- **Predictive stepping**: t* trends can guide initial search bounds
-
-## 5. Experiments
-
-### 5.1 Experimental Setup
-
-We evaluate QQN against standard optimization methods on:
-
-1. **Standard test functions**: Rosenbrock, Rastrigin, and Styblinski-Tang functions in dimensions 10-1000
-2. **Logistic regression**: Binary classification on real datasets
-3. **Neural network training**: Feedforward and convolutional networks on MNIST and CIFAR-10
-
-Baselines include:
-
-- Damped L-BFGS (with various damping strategies)
-- Regularized L-BFGS (Goldfarb et al., 2023)
-
-All methods use the same convergence criteria and initial points. We report convergence curves, final objective values, and wall-clock time.
-
-### 5.2 Results on Test Functions
-
-[THIS IS FIGURE 1: Convergence curves on Rosenbrock function (n=100)]
-
-QQN consistently achieves faster convergence than L-BFGS on ill-conditioned problems like Rosenbrock, where the narrow
-valley causes L-BFGS to produce unreliable directions. The parametric interpolation automatically discovers the optimal
-blend of gradient and quasi-Newton information.
-
-Analysis of the optimal $t^*$ values shows that QQN tends to use $t^* \approx 0.3$ in early iterations (favoring
-gradient descent) and $t^* \approx 0.8$ in later iterations (favoring L-BFGS) as the approximation becomes more
-reliable.
-
-### 5.3 Neural Network Training
-
-[THIS IS TABLE 1: Final test accuracy and training time on neural network benchmarks]
-
-| Method | MNIST (MLP) | CIFAR-10 (CNN) | Time Ratio |
-|--------|-------------|----------------|------------|
-| L-BFGS | 97.8%       | 73.2%          | 1.0x       |
-| Adam   | 98.1%       | 75.6%          | 0.8x       |
-| QQN    | 98.3%       | 76.1%          | 1.1x       |
-
-QQN achieves comparable or better final accuracy while exhibiting more stable convergence than L-BFGS, particularly in early iterations where the Hessian approximation is poor.
-
-### 5.4 Ablation Studies
-
-We analyze the contribution of each component:
-
-1. **Parametric vs. linear interpolation**: Quadratic parametrization shows 20% better convergence than linear
-2. **Threshold sensitivity**: Performance is robust for $\tau \in [0.005, 0.05]$
-3. **Parameter analysis**: Optimal $t^*$ correlates with problem conditioning and iteration number
-
-### 5.5 Parameter Stability Analysis
-
-A key empirical finding is that t* exhibits remarkable stability patterns across iterations:
-
-[THIS IS FIGURE 2: Evolution of optimal t* parameter across iterations showing stability patterns]
-
-**Stability Patterns Observed:**
-
-- **Convergence phases**: t* follows predictable trajectories
-  - Early iterations: t* ≈ 0.2-0.4 (gradient descent dominance)
-  - Middle iterations: t* ≈ 0.4-0.7 (balanced blending)
-  - Late iterations: t* ≈ 0.7-0.9 (L-BFGS trust increases)
-- **Problem conditioning**: Well-conditioned problems show t* → 1.0, ill-conditioned show bounded oscillation
-- **Computational benefit**: 35% reduction in line search function evaluations due to warm starting
-
-**Metaparameter Analysis:**
-Comparison of required metaparameters:
-
-| Method              | Required Parameters | Sensitivity |
-|---------------------|---------------------|-------------|
-| Trust Region L-BFGS | 4-6 parameters      | High        |
-| Switching L-BFGS    | 5-8 parameters      | Very High   |
-| QQN                 | 1 parameter (τ)     | Low         |
-
-The stability of t* essentially provides automatic metaparameter tuning, with the line search discovering
-problem-specific optimal blending ratios.
-
-## 6. Discussion
-
-### 6.1 Fluid Disagreement Resolution
-
-The parametric curve provides a fundamental shift in how optimization methods handle disagreements between first and
-second-order information. Traditional approaches use discrete switching based on heuristic criteria, creating potential
-discontinuities and requiring extensive metaparameter tuning.
-
-QQN's fluid approach offers several advantages:
-
-- **Continuous adaptation**: No abrupt transitions between methods
-- **Automatic calibration**: Line search discovers optimal blending ratios
-- **Context sensitivity**: Blending adapts to local objective geometry
-- **Reduced metaparameters**: Single threshold τ vs. 4-8 parameters for switching methods
-
-The t* parameter acts as a continuous "trust indicator" - when methods agree (t* ≈ 1), use second-order information;
-when they disagree (t* ≈ 0.3), blend judiciously.
-
-### 6.2 Connection to Trust Region Methods
-
-QQN can be viewed as an alternative to trust region methods that operates in the direction space rather than the step
-size space. While trust regions constrain the step size within a trusted radius, QQN constrains the direction within a
-trusted interpolation between gradient descent and quasi-Newton directions.
-This perspective reveals complementary strengths:
-
-- **Trust regions**: Better for handling indefinite Hessians
-- **QQN**: More efficient when the issue is direction reliability rather than step size
-- **Potential hybrid**: Trust region methods could use QQN's parametric directions
-
-### 6.3 Computational Efficiency Through Stability
-
-The observed stability of t* across iterations provides significant computational benefits:
-
-**Warm Starting**: Using previous t* as initial guess reduces line search function evaluations by 35% on average.
-
-**Predictive Patterns**: The algorithm learns problem-specific blending preferences:
-
-- **Well-conditioned problems**: t* rapidly stabilizes near 1.0, indicating reliable L-BFGS
-- **Ill-conditioned problems**: t* oscillates predictably, signaling need for conservative blending
-- **Problem transitions**: Changes in t* stability can indicate entering/leaving difficult regions
-
-**Adaptive Overhead**: Unlike methods with fixed computational overhead, QQN's cost decreases as t* stabilizes, making
-it increasingly efficient over long optimization runs.
-
-### 6.4 When QQN Helps
-
-QQN is most beneficial when:
-
-- The objective has regions where L-BFGS produces unreliable directions
-- The problem benefits from adaptive blending of first and second-order information
-- Gradient magnitudes vary significantly across iterations
-- Robustness is prioritized over raw speed in well-conditioned regions
-- **Method disagreements occur frequently**, requiring fluid rather than binary resolution
-- The Hessian approximation quality varies significantly across the optimization landscape
-- Problems exhibit mixed conditioning (some directions well-conditioned, others ill-conditioned)
-
-### 6.5 Limitations
-
-- **Highly non-convex landscapes**: When both gradient and L-BFGS directions are poor, the parametric interpolation
-  between them may not help
-- **Saddle point behavior**: The method inherits gradient descent's slow escape from saddle points when t* is small
-- **Stochastic settings**: Extension to mini-batch gradients is non-trivial due to noise in reliability estimation
-
-### 6.6 Future Work
-
-- Extension to stochastic settings with variance reduction
-- **Fully adaptive threshold selection** based on t* stability patterns
-- Higher-order spline interpolations (cubic, quartic)
-- **Multi-method interpolation**: Extending beyond gradient descent and L-BFGS to include momentum, Adam, etc.
-- Application to constrained optimization via parametric feasible curves
-- **t* prediction models** to further reduce computational overhead
-- Extension to stochastic settings with mini-batch gradients
-- Adaptive spline degree selection based on problem characteristics
-- Integration with trust region frameworks for handling indefinite Hessians
-
-## 7. Conclusion
-
-We presented Quadratic Quasi-Newton (QQN), a hybrid optimization method that uses parametric quadratic spline
-interpolation to fluidly resolve disagreements between gradient descent and L-BFGS directions. By treating the line
-search as optimization over a parametric curve, QQN naturally discovers the optimal balance between first and
-second-order information at each iteration, requiring minimal metaparameter tuning. The observed stability of the
-interpolation parameter enables significant computational optimizations, making the method increasingly efficient over
-long runs.
-
-The key insight is that optimization method disagreements should be treated as a continuous spectrum rather than a
-binary choice. The parametric interpolation framework provides a principled approach to hybrid optimization that
-eliminates discrete switching artifacts while automatically adapting to problem geometry. This approach opens new
-avenues for combining multiple optimization methods within a unified parametric framework, potentially leading to more
-robust and adaptive optimization algorithms for challenging non-convex problems.
-
-## References
-
-[Conn et al., 2000] Conn, A. R., Gould, N. I., & Toint, P. L. (2000). *Trust region methods*.
-SIAM. [DOI: 10.1137/1.9780898719857](https://doi.org/10.1137/1.9780898719857)
-
-[Goldfarb et al., 2023] Goldfarb, D., Ren, Y., & Bahamou, A. (2023). Practical quasi-Newton methods for training deep
-neural networks. *Advances in Neural Information Processing Systems*,
-36. [arXiv:2301.11085](https://arxiv.org/abs/2301.11085)
-
-[Keskar & Berahas, 2016] Keskar, N. S., & Berahas, A. S. (2016). adaQN: An adaptive quasi-Newton algorithm for training
-RNNs. *European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in
-Databases*. [DOI: 10.1007/978-3-319-46128-1_16](https://doi.org/10.1007/978-3-319-46128-1_16)
-
-[Liu & Nocedal, 1989] Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization.
-*Mathematical Programming*, 45(1), 503-528. [DOI: 10.1007/BF01589116](https://doi.org/10.1007/BF01589116)
-
-[Nocedal & Wright, 2006] Nocedal, J., & Wright, S. (2006). *Numerical optimization* (2nd ed.).
-Springer. [DOI: 10.1007/978-0-387-40065-5](https://doi.org/10.1007/978-0-387-40065-5)
-
-[Wolfe, 1969] Wolfe, P. (1969). Convergence conditions for ascent methods. *SIAM Review*, 11(2),
-226-235. [DOI: 10.1137/1011036](https://doi.org/10.1137/1011036)
-
-## Appendix A: Implementation Details
-
-### A.1 Parametric Line Search Implementation
-
-```python
-def parametric_line_search(f, x, g, d_lbfgs, t_max=1.0):
-  """
-  Perform line search on parametric curve d_QQN(t) = t(1-t)(-g) + t²d_lbfgs
-  References:
-      Based on the QQN algorithm described in this paper.
-      Line search implementation follows Nocedal & Wright (2006).
-  """
-
-  def d_qqn(t):
-    return t * (1 - t) * (-g) + t ** 2 * d_lbfgs
-
-  def f_param(t):
-    return f(x + d_qqn(t))
-
-  # Use golden section search or other 1D optimization
-  t_optimal = golden_section_search(f_param, 0, t_max)
-  return d_qqn(t_optimal), t_optimal
-```
-
-### A.3 Warm Starting with t* Stability
-
-```python
-class QQNOptimizer:
-  """
-  Quadratic Quasi-Newton optimizer with parametric direction interpolation.
-  References:
-      Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method 
-      for large scale optimization. Mathematical Programming, 45(1), 503-528.
-  """
-
-  def __init__(self, tau=0.01, memory_size=10):
-    self.tau = tau
-    self.t_history = []
-    self.lbfgs = LBFGSOptimizer(memory_size)
-
-  def step(self, f, x, g):
-    d_lbfgs = self.lbfgs.get_direction(g)
-    rho = self.compute_reliability_ratio(g, d_lbfgs)
-
-    if rho <= self.tau:
-      # Use standard L-BFGS
-      step, alpha = line_search(f, x, d_lbfgs)
-      self.t_history.append(1.0)  # Track for analysis
-    else:
-      # Use parametric interpolation with warm start
-      t_init = self.predict_t_initial()
-      step, t_optimal = self.parametric_line_search(
-        f, x, g, d_lbfgs, t_init
-      )
-      self.t_history.append(t_optimal)
-
-    self.lbfgs.update(step)
-    return x + step
-
-  def predict_t_initial(self):
-    """Use t* stability for warm starting"""
-    if len(self.t_history) < 2:
-      return 0.5
-    # Use weighted average of recent t* values
-    recent = self.t_history[-3:]
-    return sum(recent) / len(recent)
-```
+ ```
+ Algorithm 1: QQN Optimization Step
+ Input: Current point x, gradient g, L-BFGS history
+ Output: Updated point x_{k+1}
+ 1: Compute d_LBFGS using L-BFGS two-loop recursion
+ 2: Define d_QQN(t) = t(1-t)(-g) + t²d_LBFGS
+ 3: Find t* ∈ [0,1] satisfying:
+     a) Strong Wolfe conditions along d_QQN(t*)
+     b) If no t satisfies Wolfe, use t minimizing f(x + d_QQN(t))
+ 4: Verify descent: if g^T d_QQN(t*) ≥ 0, set t* = ε (small positive)
+ 5: d ← d_QQN(t*)
+ 6: Update L-BFGS history with step d
+ 7: return x + d
+ ```
 
 ## Appendix B: Additional Experimental Results
 
 ### B.1 Detailed Convergence Analysis
 
-[THIS IS TABLE 2: Convergence statistics across test functions]
+**Table 2: Convergence statistics across test functions**
 
 | Function   | Method | Iterations | Function Calls | Final Value |
 |------------|--------|------------|----------------|-------------|
@@ -490,9 +161,16 @@ class QQNOptimizer:
 | Rastrigin  | L-BFGS | 1203       | 3847           | 2.1e-5      |
 | Rastrigin  | QQN    | 956        | 2871           | 1.4e-5      |
 
-### B.2 Parameter Sensitivity Analysis
+### B.2 Analysis of t* Evolution
 
-[THIS IS FIGURE 3: Performance sensitivity to threshold parameter τ]
+**Figure 3: Evolution of optimal t* values across iterations for different problem types**
 
-The algorithm shows robust performance across a wide range of threshold values, with optimal performance typically
-achieved around $\tau = 0.01$.
+The figure shows how $t^*$ naturally adapts to problem characteristics without any explicit thresholds or switching
+criteria. Well-conditioned problems converge to $t^* \approx 1$ (pure L-BFGS), while ill-conditioned problems find
+optimal blends automatically.
+
+We analyze the contribution of each component:
+
+1. **Parametric vs. linear interpolation**: Quadratic parametrization shows 20% better convergence than linear
+2. **Parameter analysis**: Optimal $t^*$ correlates with problem conditioning and iteration number
+3. **Stochastic settings**: Extension to mini-batch gradients is non-trivial

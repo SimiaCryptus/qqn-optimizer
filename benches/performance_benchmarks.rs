@@ -1,10 +1,10 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use candle_core::{Device, Tensor};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFunction};
+use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::Optimizer;
-use qqn_optimizer::core::qqn::{QQNOptimizer, QQNConfig};
-use qqn_optimizer::core::lbfgs::{LBFGSOptimizer, LBFGSConfig};
-use qqn_optimizer::benchmarks::functions::{RosenbrockFunction, SphereFunction, OptimizationProblem};
+use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::utils::math::compute_magnitude;
-use candle_core::{Tensor, Device};
 
 fn tensor_from_vec(values: Vec<f64>) -> Tensor {
     Tensor::from_slice(&values, &[values.len()], &Device::Cpu).unwrap()
@@ -38,7 +38,7 @@ fn benchmark_qqn_step(c: &mut Criterion) {
             dimension,
             |b, _| {
                 b.iter(|| {
-                    let _ = optimizer.step_with_objective(black_box(&mut params), black_box(&gradients), &objective_fn);
+                    let _ = optimizer.step(black_box(&mut params), black_box(&gradients), &objective_fn);
                 })
             },
         );
@@ -68,7 +68,7 @@ fn benchmark_optimizer_comparison(c: &mut Criterion) {
         
         group.bench_function("QQN_100d", |b| {
             b.iter(|| {
-                let _ = optimizer.step_with_objective(black_box(&mut params), black_box(&gradients), &objective_fn);
+                let _ = optimizer.step(black_box(&mut params), black_box(&gradients), &objective_fn);
             })
         });
     }
@@ -82,7 +82,7 @@ fn benchmark_optimizer_comparison(c: &mut Criterion) {
         
         group.bench_function("LBFGS_100d", |b| {
             b.iter(|| {
-                let _ = optimizer.step_with_objective(black_box(&mut params), black_box(&gradients), &objective_fn);
+                let _ = optimizer.step(black_box(&mut params), black_box(&gradients), &objective_fn);
             })
         });
     }
@@ -164,8 +164,8 @@ fn benchmark_full_optimization(c: &mut Criterion) {
             for _ in 0..max_iterations {
                 let gradient_vec = problem.gradient(&x).unwrap();
                 let gradients = vec![tensor_from_vec(gradient_vec)];
-                
-                let _ = optimizer.step_with_objective(&mut params, &gradients, &objective_fn);
+
+                let _ = optimizer.step(&mut params, &gradients, &objective_fn);
                 x = tensors_to_vec(&params);
                 
                 let current_value = problem.evaluate(&x).unwrap();
@@ -193,8 +193,8 @@ fn benchmark_full_optimization(c: &mut Criterion) {
             for _ in 0..max_iterations {
                 let gradient_vec = problem.gradient(&x).unwrap();
                 let gradients = vec![tensor_from_vec(gradient_vec)];
-                
-                let _ = optimizer.step_with_objective(&mut params, &gradients, &objective_fn);
+
+                let _ = optimizer.step(&mut params, &gradients, &objective_fn);
                 x = tensors_to_vec(&params);
                 
                 let current_value = problem.evaluate(&x).unwrap();
