@@ -52,8 +52,6 @@ async fn test_qqn_rosenbrock_optimization() {
             debug!("Converged at iteration {} with grad_norm={:.6e}", iterations, grad_norm);
             break;
         }
-        
-        
         let step_result = optimizer.step(&mut params, &gradients).unwrap();
         
         // Update x for next iteration
@@ -63,9 +61,6 @@ async fn test_qqn_rosenbrock_optimization() {
             debug!("Iteration {}: f_val={:.6e}, grad_norm={:.6e}, step_size={:.6e}", 
                    iterations, f_val, grad_norm, step_result.step_size);
         }
-        
-        
-
         iterations += 1;
     }
 
