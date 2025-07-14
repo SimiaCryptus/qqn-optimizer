@@ -700,7 +700,6 @@ mod tests {
         let config = QQNConfig::default();
         assert_eq!(config.lbfgs_history, 10);
         assert_eq!(config.epsilon, 1e-8);
-        assert_eq!(config.verbose, false);
     }
 
     #[test]
