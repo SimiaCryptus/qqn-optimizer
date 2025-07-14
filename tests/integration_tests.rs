@@ -70,7 +70,7 @@ async fn test_qqn_rosenbrock_optimization() {
             debug!("Converged at iteration {} with grad_norm={:.6e}", iterations, grad_norm);
             break;
         }
-        
+
         let step_result = match optimizer.step(&mut params, &problem) {
             Ok(result) => result,
             Err(e) => {

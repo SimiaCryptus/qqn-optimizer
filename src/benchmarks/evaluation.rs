@@ -349,7 +349,7 @@ impl BenchmarkRunner {
                     continue;
                 }
             };
-            
+
             if !f_val.is_finite() {
                 warn!("Non-finite function value at iteration {}: {}", iteration, f_val);
                 numerical_error_count += 1;
@@ -371,7 +371,7 @@ impl BenchmarkRunner {
                     continue;
                 }
             };
-            
+
             *gradient_evaluations += 1;
             // Check for non-finite gradients
             if gradient.iter().any(|&g| !g.is_finite()) {
@@ -601,9 +601,9 @@ mod tests {
             // Be more lenient - check if optimizer made any progress from initial value of 2.0
             // The sphere function with initial point [1.0, 1.0] has f(x) = 2.0
             // We should see some improvement or small gradients or convergence
-            let made_progress = result.final_value < 1.9 || 
-                               result.final_gradient_norm < 0.1 ||
-                               result.convergence_achieved;
+            let made_progress = result.final_value < 1.9 ||
+                result.final_gradient_norm < 0.1 ||
+                result.convergence_achieved;
             if !made_progress {
                 println!("Warning: Optimizer made limited progress: final_value={:.6e}, grad_norm={:.6e}, iterations={}, reason={:?}",
                          result.final_value, result.final_gradient_norm, result.iterations, result.convergence_reason);

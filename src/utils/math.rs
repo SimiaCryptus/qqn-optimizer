@@ -15,7 +15,7 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
     if tensors.is_empty() {
         return Ok(0.0);
     }
-    
+
     let mut sum_of_squares = 0.0;
 
     for tensor in tensors {

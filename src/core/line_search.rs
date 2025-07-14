@@ -1,8 +1,8 @@
 use crate::utils::math::dot_product_f64;
 use anyhow::{anyhow, Result};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use log::debug;
 
 /// Trait for 1-D differentiable parametric curves
 /// Represents a curve x(t) where t is a scalar parameter
@@ -144,7 +144,7 @@ pub struct StrongWolfeConfig {
     pub min_step: f64,         // Minimum step size
     pub max_step: f64,         // Maximum step size
     pub initial_step: f64,     // Initial step size
-   pub verbose: bool,         // Enable verbose logging
+    pub verbose: bool,         // Enable verbose logging
 }
 
 impl Default for StrongWolfeConfig {
@@ -156,7 +156,7 @@ impl Default for StrongWolfeConfig {
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
-           verbose: false,
+            verbose: false,
         }
     }
 }
@@ -171,12 +171,12 @@ impl StrongWolfeLineSearch {
     pub fn new(config: StrongWolfeConfig) -> Self {
         Self { config }
     }
-   /// Log line search details if verbose mode is enabled
-   fn log_verbose(&self, message: &str) {
-       if self.config.verbose {
-           debug!("StrongWolfe: {}", message);
-       }
-   }
+    /// Log line search details if verbose mode is enabled
+    fn log_verbose(&self, message: &str) {
+        if self.config.verbose {
+            debug!("StrongWolfe: {}", message);
+        }
+    }
 
     /// Check Armijo condition: f(x + α*p) ≤ f(x) + c1*α*∇f(x)ᵀp
     fn armijo_condition(
@@ -186,24 +186,24 @@ impl StrongWolfeLineSearch {
         alpha: f64,
         directional_derivative: f64,
     ) -> bool {
-       let threshold = f0 + self.config.c1 * alpha * directional_derivative;
-       let satisfied = f_alpha <= threshold;
-       if self.config.verbose {
-           debug!("  Armijo: f({:.6e})={:.6e} <= {:.6e} + {:.6e}*{:.6e}*{:.6e} = {:.6e}? {}",
+        let threshold = f0 + self.config.c1 * alpha * directional_derivative;
+        let satisfied = f_alpha <= threshold;
+        if self.config.verbose {
+            debug!("  Armijo: f({:.6e})={:.6e} <= {:.6e} + {:.6e}*{:.6e}*{:.6e} = {:.6e}? {}",
                   alpha, f_alpha, f0, self.config.c1, alpha, directional_derivative, threshold, satisfied);
-       }
-       satisfied
+        }
+        satisfied
     }
 
     /// Check curvature condition: |∇f(x + α*p)ᵀp| ≤ c2*|∇f(x)ᵀp|
     fn curvature_condition(&self, grad_alpha_dot_p: f64, directional_derivative: f64) -> bool {
-       let threshold = self.config.c2 * directional_derivative.abs();
-       let satisfied = grad_alpha_dot_p.abs() <= threshold;
-       if self.config.verbose {
-           debug!("  Curvature: |{:.6e}| <= {:.6e}*|{:.6e}| = {:.6e}? {}",
+        let threshold = self.config.c2 * directional_derivative.abs();
+        let satisfied = grad_alpha_dot_p.abs() <= threshold;
+        if self.config.verbose {
+            debug!("  Curvature: |{:.6e}| <= {:.6e}*|{:.6e}| = {:.6e}? {}",
                   grad_alpha_dot_p, self.config.c2, directional_derivative, threshold, satisfied);
-       }
-       satisfied
+        }
+        satisfied
     }
 
     /// Zoom phase of Strong Wolfe line search
@@ -272,15 +272,15 @@ impl LineSearch for StrongWolfeLineSearch {
         objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
         gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
     ) -> Result<LineSearchResult> {
-       self.log_verbose(&format!("Starting line search with current_value={:.6e}", current_value));
-       
+        self.log_verbose(&format!("Starting line search with current_value={:.6e}", current_value));
+
         // Get initial curve derivative
         let initial_derivative = curve.initial_derivative()?;
 
         // Check that direction is a descent direction
         let directional_derivative = dot_product_f64(current_gradient, &initial_derivative)?;
-       self.log_verbose(&format!("Directional derivative: {:.6e}", directional_derivative));
-       
+        self.log_verbose(&format!("Directional derivative: {:.6e}", directional_derivative));
+
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
@@ -290,23 +290,23 @@ impl LineSearch for StrongWolfeLineSearch {
         let mut f_prev = current_value;
         let mut f_evals = 0;
         let mut g_evals = 0;
-       self.log_verbose(&format!("Initial step size: {:.6e}", alpha));
+        self.log_verbose(&format!("Initial step size: {:.6e}", alpha));
 
         for i in 0..self.config.max_iterations {
-           self.log_verbose(&format!("Iteration {}: trying alpha={:.6e}", i, alpha));
-           
+            self.log_verbose(&format!("Iteration {}: trying alpha={:.6e}", i, alpha));
+
             // Evaluate function at current step size
             let trial_point = curve.evaluate(alpha)?;
 
             let f_alpha = objective_fn(&trial_point)?;
             f_evals += 1;
-           self.log_verbose(&format!("  f({:.6e}) = {:.6e}", alpha, f_alpha));
+            self.log_verbose(&format!("  f({:.6e}) = {:.6e}", alpha, f_alpha));
 
             // Check Armijo condition and sufficient decrease
             if !self.armijo_condition(current_value, f_alpha, alpha, directional_derivative)
                 || (i > 0 && f_alpha >= f_prev)
             {
-               self.log_verbose(&format!("  Armijo failed or insufficient decrease, zooming between {:.6e} and {:.6e}", alpha_prev, alpha));
+                self.log_verbose(&format!("  Armijo failed or insufficient decrease, zooming between {:.6e} and {:.6e}", alpha_prev, alpha));
                 // Zoom between alpha_prev and alpha
                 let (final_alpha, zoom_f_evals, zoom_g_evals) = self.zoom(
                     alpha_prev,
@@ -317,7 +317,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     objective_fn,
                     gradient_fn,
                 )?;
-               self.log_verbose(&format!("Zoom completed with alpha={:.6e}", final_alpha));
+                self.log_verbose(&format!("Zoom completed with alpha={:.6e}", final_alpha));
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -335,11 +335,11 @@ impl LineSearch for StrongWolfeLineSearch {
             // Get curve derivative at alpha
             let curve_derivative = curve.derivative(alpha)?;
             let grad_alpha_dot_p = dot_product_f64(&grad_alpha, &curve_derivative)?;
-           self.log_verbose(&format!("  grad_alpha_dot_p = {:.6e}", grad_alpha_dot_p));
+            self.log_verbose(&format!("  grad_alpha_dot_p = {:.6e}", grad_alpha_dot_p));
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_dot_p, directional_derivative) {
-               self.log_verbose(&format!("Both Wolfe conditions satisfied at alpha={:.6e}", alpha));
+                self.log_verbose(&format!("Both Wolfe conditions satisfied at alpha={:.6e}", alpha));
                 return Ok(LineSearchResult {
                     step_size: alpha,
                     function_evaluations: f_evals,
@@ -351,7 +351,7 @@ impl LineSearch for StrongWolfeLineSearch {
 
             // Check if gradient indicates we should look further
             if grad_alpha_dot_p >= 0.0 {
-               self.log_verbose(&format!("  Gradient indicates overshoot, zooming between {:.6e} and {:.6e}", alpha, alpha_prev));
+                self.log_verbose(&format!("  Gradient indicates overshoot, zooming between {:.6e} and {:.6e}", alpha, alpha_prev));
                 let (final_alpha, zoom_f_evals, zoom_g_evals) = self.zoom(
                     alpha,
                     alpha_prev,
@@ -375,16 +375,16 @@ impl LineSearch for StrongWolfeLineSearch {
             alpha_prev = alpha;
             f_prev = f_alpha;
             alpha = alpha.min(self.config.max_step) * 2.0; // Expand step size
-           self.log_verbose(&format!("  Expanding step size to {:.6e}", alpha));
+            self.log_verbose(&format!("  Expanding step size to {:.6e}", alpha));
 
             if alpha < self.config.min_step {
-               self.log_verbose("Step size below minimum, terminating");
+                self.log_verbose("Step size below minimum, terminating");
                 break;
             }
         }
 
         // Line search failed to converge
-       self.log_verbose(&format!("Line search failed to converge, returning alpha={:.6e}", alpha_prev));
+        self.log_verbose(&format!("Line search failed to converge, returning alpha={:.6e}", alpha_prev));
         Ok(LineSearchResult {
             step_size: alpha_prev,
             function_evaluations: f_evals,

@@ -136,12 +136,12 @@ impl QQNOptimizer {
                             &values[values.len() - 5..]
                         );
                     }
-                   // Log statistics
-                   let mean = values.iter().sum::<f64>() / values.len() as f64;
-                   let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
-                   let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-                   let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                   debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}", 
+                    // Log statistics
+                    let mean = values.iter().sum::<f64>() / values.len() as f64;
+                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+                    let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                    let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                    debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
                           mean, variance.sqrt(), min_val, max_val);
                 }
                 Err(e) => {
@@ -161,26 +161,26 @@ impl QQNOptimizer {
             debug!("  {}: {:.12e}", name, value);
         }
     }
-   /// Log optimization state if verbose mode is enabled
-   fn log_optimization_state(&self, iteration: usize, additional_info: &str) {
-       if !self.config.verbose {
-           return;
-       }
-       debug!("=== QQN Optimization State (Iteration {}) ===", iteration);
-       debug!("  L-BFGS History Length: {}", self.state.lbfgs_state.history_length());
-       debug!("  L-BFGS Gamma: {:.6e}", self.state.lbfgs_state.gamma());
-       debug!("  Additional Info: {}", additional_info);
-   }
-   /// Log line search details if verbose mode is enabled
-   fn log_line_search_details(&self, optimal_t: f64, f_evals: usize, g_evals: usize) {
-       if !self.config.verbose {
-           return;
-       }
-       debug!("=== Line Search Results ===");
-       debug!("  Optimal t: {:.12e}", optimal_t);
-       debug!("  Function evaluations: {}", f_evals);
-       debug!("  Gradient evaluations: {}", g_evals);
-   }
+    /// Log optimization state if verbose mode is enabled
+    fn log_optimization_state(&self, iteration: usize, additional_info: &str) {
+        if !self.config.verbose {
+            return;
+        }
+        debug!("=== QQN Optimization State (Iteration {}) ===", iteration);
+        debug!("  L-BFGS History Length: {}", self.state.lbfgs_state.history_length());
+        debug!("  L-BFGS Gamma: {:.6e}", self.state.lbfgs_state.gamma());
+        debug!("  Additional Info: {}", additional_info);
+    }
+    /// Log line search details if verbose mode is enabled
+    fn log_line_search_details(&self, optimal_t: f64, f_evals: usize, g_evals: usize) {
+        if !self.config.verbose {
+            return;
+        }
+        debug!("=== Line Search Results ===");
+        debug!("  Optimal t: {:.12e}", optimal_t);
+        debug!("  Function evaluations: {}", f_evals);
+        debug!("  Gradient evaluations: {}", g_evals);
+    }
 
     pub fn create_quadratic_path(
         &self,
@@ -338,8 +338,8 @@ impl Optimizer for QQNOptimizer {
             "QQN step {}: starting optimization step",
             self.state.iteration
         );
-       self.log_optimization_state(self.state.iteration, "Starting step");
-       
+        self.log_optimization_state(self.state.iteration, "Starting step");
+
         // Log initial state in verbose mode
         self.log_tensor_data("Initial Parameters", params);
 
@@ -438,7 +438,7 @@ impl Optimizer for QQNOptimizer {
             self.find_optimal_t_line_search(params, &quadratic_path, &gradients, function)?;
         info!("Found optimal t = {:.6}", optimal_t);
         self.log_scalar("Optimal t", optimal_t);
-       self.log_line_search_details(optimal_t, f_evals, g_evals);
+        self.log_line_search_details(optimal_t, f_evals, g_evals);
 
         let direction = quadratic_path.evaluate(optimal_t)?;
         // Log final direction in verbose mode
@@ -724,7 +724,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
     use candle_core::Device;
-    
+
     #[test]
     fn test_quadratic_path_evaluation() -> CandleResult<()> {
         let device = Device::Cpu;

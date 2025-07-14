@@ -1,7 +1,7 @@
 use crate::benchmarks::evaluation::{BenchmarkResults, SingleResult};
 use serde::{Deserialize, Serialize};
+use statrs::distribution::{ContinuousCDF, StudentsT};
 use std::collections::HashMap;
-use statrs::distribution::{StudentsT, ContinuousCDF};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticalAnalysis {

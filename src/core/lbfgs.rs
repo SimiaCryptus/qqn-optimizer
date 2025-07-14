@@ -32,8 +32,8 @@ pub struct LBFGSConfig {
     pub max_step_size: f64,
     /// Minimum allowed step size
     pub min_step_size: f64,
-   /// Enable verbose logging of tensor data and internal state
-   pub verbose: bool,
+    /// Enable verbose logging of tensor data and internal state
+    pub verbose: bool,
 }
 
 impl Default for LBFGSConfig {
@@ -45,7 +45,7 @@ impl Default for LBFGSConfig {
             max_correction_pairs: 10,
             max_step_size: 1e3,
             min_step_size: 1e-16,
-           verbose: false,
+            verbose: false,
         }
     }
 }
@@ -108,7 +108,7 @@ impl LBFGSState {
                 .map(|g| g.neg())
                 .collect::<CandleResult<Vec<_>>>()?);
         }
-        
+
         // Check for NaN/Inf in gradient
         for (i, grad) in gradient.iter().enumerate() {
             let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
@@ -358,11 +358,11 @@ impl Clone for LBFGSOptimizer {
 impl LBFGSOptimizer {
     /// Create a new L-BFGS optimizer with the given configuration.
     pub fn new(config: LBFGSConfig) -> Self {
-       if config.verbose {
-           info!("Creating L-BFGS optimizer with verbose logging enabled");
-           debug!("L-BFGS Config: history_size={}, epsilon={:.6e}, max_step_size={:.6e}, min_step_size={:.6e}",
+        if config.verbose {
+            info!("Creating L-BFGS optimizer with verbose logging enabled");
+            debug!("L-BFGS Config: history_size={}, epsilon={:.6e}, max_step_size={:.6e}, min_step_size={:.6e}",
                   config.history_size, config.epsilon, config.max_step_size, config.min_step_size);
-       }
+        }
         let state = LBFGSState::new(config.history_size);
         let line_search = Box::new(StrongWolfeLineSearch::new(
             crate::core::line_search::StrongWolfeConfig {
@@ -382,52 +382,52 @@ impl LBFGSOptimizer {
             line_search,
         }
     }
-   /// Log tensor data if verbose mode is enabled
-   fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
-       if !self.config.verbose {
-           return;
-       }
-       debug!("=== L-BFGS: {} ===", name);
-       for (i, tensor) in tensors.iter().enumerate() {
-           match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
-               Ok(values) => {
-                   debug!("  Tensor[{}]: shape={:?}, length={}", i, tensor.shape(), values.len());
-                   if values.len() <= 10 {
-                       debug!("    Full data: {:?}", values);
-                   } else {
-                       debug!("    First 5: {:?}, Last 5: {:?}", &values[..5], &values[values.len() - 5..]);
-                   }
-                   // Log statistics
-                   let mean = values.iter().sum::<f64>() / values.len() as f64;
-                   let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
-                   let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-                   let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                   debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}", 
+    /// Log tensor data if verbose mode is enabled
+    fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
+        if !self.config.verbose {
+            return;
+        }
+        debug!("=== L-BFGS: {} ===", name);
+        for (i, tensor) in tensors.iter().enumerate() {
+            match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
+                Ok(values) => {
+                    debug!("  Tensor[{}]: shape={:?}, length={}", i, tensor.shape(), values.len());
+                    if values.len() <= 10 {
+                        debug!("    Full data: {:?}", values);
+                    } else {
+                        debug!("    First 5: {:?}, Last 5: {:?}", &values[..5], &values[values.len() - 5..]);
+                    }
+                    // Log statistics
+                    let mean = values.iter().sum::<f64>() / values.len() as f64;
+                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+                    let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                    let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                    debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
                           mean, variance.sqrt(), min_val, max_val);
-               }
-               Err(e) => {
-                   debug!("  Tensor[{}]: shape={:?}, error reading values: {}", i, tensor.shape(), e);
-               }
-           }
-       }
-   }
-   /// Log scalar value if verbose mode is enabled
-   fn log_scalar(&self, name: &str, value: f64) {
-       if self.config.verbose {
-           debug!("  L-BFGS {}: {:.12e}", name, value);
-       }
-   }
-   /// Log L-BFGS state if verbose mode is enabled
-   fn log_lbfgs_state(&self, additional_info: &str) {
-       if !self.config.verbose {
-           return;
-       }
-       debug!("=== L-BFGS State ===");
-       debug!("  Iteration: {}", self.state.iteration());
-       debug!("  History Length: {}", self.state.history_length());
-       debug!("  Gamma: {:.6e}", self.state.gamma());
-       debug!("  Additional Info: {}", additional_info);
-   }
+                }
+                Err(e) => {
+                    debug!("  Tensor[{}]: shape={:?}, error reading values: {}", i, tensor.shape(), e);
+                }
+            }
+        }
+    }
+    /// Log scalar value if verbose mode is enabled
+    fn log_scalar(&self, name: &str, value: f64) {
+        if self.config.verbose {
+            debug!("  L-BFGS {}: {:.12e}", name, value);
+        }
+    }
+    /// Log L-BFGS state if verbose mode is enabled
+    fn log_lbfgs_state(&self, additional_info: &str) {
+        if !self.config.verbose {
+            return;
+        }
+        debug!("=== L-BFGS State ===");
+        debug!("  Iteration: {}", self.state.iteration());
+        debug!("  History Length: {}", self.state.history_length());
+        debug!("  Gamma: {:.6e}", self.state.gamma());
+        debug!("  Additional Info: {}", additional_info);
+    }
 
     /// Get a reference to the internal L-BFGS state.
     pub fn lbfgs_state(&self) -> &LBFGSState {
@@ -465,15 +465,15 @@ impl Optimizer for LBFGSOptimizer {
         function: &dyn crate::core::optimizer::DifferentiableFunction,
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
-       if self.config.verbose {
-           debug!("=== L-BFGS Step {} Starting ===", self.state.iteration());
-       }
-       
+        if self.config.verbose {
+            debug!("=== L-BFGS Step {} Starting ===", self.state.iteration());
+        }
+
         // Compute gradients at current parameters
         let gradients = function.gradient(params)?;
-       // Log initial state in verbose mode
-       self.log_tensor_data("Initial Parameters", params);
-       self.log_tensor_data("Computed Gradients", &gradients);
+        // Log initial state in verbose mode
+        self.log_tensor_data("Initial Parameters", params);
+        self.log_tensor_data("Computed Gradients", &gradients);
 
         // Input validation
         if params.is_empty() || gradients.is_empty() {
@@ -487,14 +487,14 @@ impl Optimizer for LBFGSOptimizer {
         }
 
         // Compute L-BFGS search direction
-       self.log_lbfgs_state("Before computing direction");
+        self.log_lbfgs_state("Before computing direction");
         let search_direction = self.state.compute_direction(&gradients)?;
-       self.log_tensor_data("L-BFGS Search Direction", &search_direction);
-       
+        self.log_tensor_data("L-BFGS Search Direction", &search_direction);
+
         // Validate search direction
         let direction_norm = compute_magnitude(&search_direction)?;
-       self.log_scalar("Direction Norm", direction_norm);
-       
+        self.log_scalar("Direction Norm", direction_norm);
+
         if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
             warn!("L-BFGS: Invalid search direction norm: {}, using steepest descent", direction_norm);
             // Fall back to steepest descent
@@ -504,8 +504,8 @@ impl Optimizer for LBFGSOptimizer {
                 .collect::<CandleResult<Vec<_>>>()?;
             let direction_norm = compute_magnitude(&search_direction)?;
             let step_size = 0.01 / (direction_norm + 1.0);
-           self.log_scalar("Fallback Step Size", step_size);
-           self.log_tensor_data("Fallback Direction", &search_direction);
+            self.log_scalar("Fallback Step Size", step_size);
+            self.log_tensor_data("Fallback Direction", &search_direction);
 
             // Update parameters with conservative step
             for (param, dir) in params.iter_mut().zip(search_direction.iter()) {
@@ -513,7 +513,7 @@ impl Optimizer for LBFGSOptimizer {
                 let update = dir.broadcast_mul(&step_size_tensor)?;
                 *param = param.add(&update)?;
             }
-           self.log_tensor_data("Updated Parameters (Fallback)", params);
+            self.log_tensor_data("Updated Parameters (Fallback)", params);
 
             // Update L-BFGS state
             // Don't update state with invalid steps
@@ -538,7 +538,7 @@ impl Optimizer for LBFGSOptimizer {
 
         // Use adaptive step size based on gradient magnitude
         let grad_norm = compute_magnitude(&gradients)?;
-       self.log_scalar("Gradient Norm", grad_norm);
+        self.log_scalar("Gradient Norm", grad_norm);
         debug!("L-BFGS step {}: grad_norm={:.6e}", self.state.iteration(), grad_norm);
 
         // Much more conservative step size initialization
@@ -613,15 +613,14 @@ impl Optimizer for LBFGSOptimizer {
                 step_size *= backtrack_factor;
                 backtrack_count += 1;
             }
-
         }
         // Use the best step size found
         step_size = best_step_size;
 
         if backtrack_count > 0 {
             debug!("L-BFGS: Backtracked {} times to step_size={:.6e}", backtrack_count, step_size);
-           self.log_scalar("Final Step Size After Backtracking", step_size);
-           self.log_scalar("Backtrack Count", backtrack_count as f64);
+            self.log_scalar("Final Step Size After Backtracking", step_size);
+            self.log_scalar("Backtrack Count", backtrack_count as f64);
         }
 
 
@@ -639,13 +638,13 @@ impl Optimizer for LBFGSOptimizer {
             success,
             termination_reason: crate::core::line_search::TerminationReason::WolfeConditionsSatisfied,
         };
-       if self.config.verbose {
-           debug!("=== Line Search Result ===");
-           debug!("  Step Size: {:.12e}", line_search_result.step_size);
-           debug!("  Success: {}", line_search_result.success);
-           debug!("  Function Evaluations: {}", line_search_result.function_evaluations);
-           debug!("  Gradient Evaluations: {}", line_search_result.gradient_evaluations);
-       }
+        if self.config.verbose {
+            debug!("=== Line Search Result ===");
+            debug!("  Step Size: {:.12e}", line_search_result.step_size);
+            debug!("  Success: {}", line_search_result.success);
+            debug!("  Function Evaluations: {}", line_search_result.function_evaluations);
+            debug!("  Gradient Evaluations: {}", line_search_result.gradient_evaluations);
+        }
 
         // Update parameters: x_{k+1} = x_k + alpha * p_k
         for (param, direction) in params.iter_mut().zip(&search_direction) {
@@ -660,22 +659,22 @@ impl Optimizer for LBFGSOptimizer {
                 ));
             }
         }
-       self.log_tensor_data("Updated Parameters", params);
+        self.log_tensor_data("Updated Parameters", params);
 
         // Update L-BFGS state with new information
         self.state
             .update(&gradients, &search_direction, line_search_result.step_size)?;
-       self.log_lbfgs_state("After state update");
+        self.log_lbfgs_state("After state update");
 
         // Compute convergence information
         let convergence_info = self.compute_convergence_info(&gradients)?;
         let step_duration = start_time.elapsed();
-       if self.config.verbose {
-           debug!("=== L-BFGS Step {} Completed ===", self.state.iteration() - 1);
-           debug!("  Step Duration: {:?}", step_duration);
-           debug!("  Converged: {}", convergence_info.converged);
-       }
-       
+        if self.config.verbose {
+            debug!("=== L-BFGS Step {} Completed ===", self.state.iteration() - 1);
+            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Converged: {}", convergence_info.converged);
+        }
+
         let mut metadata = OptimizationMetadata::default();
         metadata.timing_info.step_duration = step_duration;
         metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);

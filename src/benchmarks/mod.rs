@@ -14,8 +14,8 @@ pub mod runner;
 // Re-export commonly used types
 
 pub use evaluation::{
-    BenchmarkConfig, BenchmarkResults, BenchmarkRunner, OptimizationTrace, SingleResult,
-    ConvergenceReason,
+    BenchmarkConfig, BenchmarkResults, BenchmarkRunner, ConvergenceReason, OptimizationTrace,
+    SingleResult,
 };
 pub use functions::{
     AckleyFunction, BealeFunction, BoothFunction, HimmelblauFunction, RastriginFunction,
