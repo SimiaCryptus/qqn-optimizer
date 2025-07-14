@@ -27,6 +27,7 @@ fn main() -> Result<()> {
             max_step: 1e16,
         },
         epsilon: 1e-8,             // Numerical stability constant
+        verbose: true,          // Enable verbose output
     };
 
     let mut optimizer = QQNOptimizer::new(config);

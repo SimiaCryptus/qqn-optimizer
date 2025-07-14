@@ -98,7 +98,7 @@ impl LBFGSState {
         }
         // Check gradient magnitude to avoid numerical issues
         let grad_norm = compute_magnitude(gradient)?;
-        if grad_norm < 1e-12 {
+        if grad_norm < 1e-10 {
             debug!("L-BFGS: Very small gradient norm {:.6e}, using steepest descent", grad_norm);
             return Ok(gradient
                 .iter()
@@ -267,7 +267,7 @@ impl LBFGSState {
             debug!("L-BFGS: s_dot_y = {:.6e}", s_dot_y);
 
             // Only update if curvature condition is satisfied (positive definiteness)
-            if s_dot_y > self.epsilon() * 10.0 { // Be more strict about curvature condition
+            if s_dot_y > self.epsilon() * 100.0 { // Be much more strict about curvature condition
                 let rho_k = 1.0 / s_dot_y;
                 if !rho_k.is_finite() {
                     warn!("L-BFGS: Non-finite rho_k, skipping update");
@@ -292,8 +292,8 @@ impl LBFGSState {
                     let new_gamma = s_dot_y / y_dot_y;
                     // Ensure gamma is finite before updating
                     if new_gamma.is_finite() && new_gamma > 0.0 {
-                        // Clamp gamma to more conservative range to prevent instability
-                        self.gamma = new_gamma.max(1e-4).min(1e2);
+                        // Much more conservative gamma clamping
+                        self.gamma = new_gamma.max(1e-6).min(10.0);
                         if (new_gamma - self.gamma).abs() > 1e-10 {
                             debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
                         }
@@ -470,20 +470,19 @@ impl Optimizer for LBFGSOptimizer {
         let grad_norm = compute_magnitude(&gradients)?;
         debug!("L-BFGS step {}: grad_norm={:.6e}", self.state.iteration(), grad_norm);
 
-        // Adaptive step size with backtracking line search
+        // Much more conservative step size initialization
         let mut step_size = if self.state.iteration() == 0 {
-            // First iteration: use a conservative step size
-            // Scale based on gradient magnitude to avoid overshooting
-            (0.01 / (grad_norm + 1.0)).min(0.1).max(0.0001)
+            // First iteration: very conservative step size
+            let conservative_step = 1e-3 / (grad_norm + 1.0);
+            conservative_step.min(1e-3).max(1e-8)
         } else {
-            // Better step size initialization based on both gradient and direction norms
+            // Subsequent iterations: base on previous success but be conservative
             let dir_norm = compute_magnitude(&search_direction)?;
             if dir_norm > 0.0 {
-                // Use the ratio of norms as a guide, capped by gamma
-                let norm_ratio = grad_norm / dir_norm;
-                (norm_ratio * self.state.gamma())
-                    .max(self.config.min_step_size)
-                    .min(1.0)
+                // Much more conservative scaling
+                let base_step = 1e-3 / (grad_norm + 1.0);
+                let gamma_scaled = base_step * self.state.gamma().min(1.0);
+                gamma_scaled.max(self.config.min_step_size).min(1e-2)
             } else {
                 self.config.min_step_size
             }
@@ -492,18 +491,22 @@ impl Optimizer for LBFGSOptimizer {
 
         // Simple backtracking line search
         let mut success = false;
-        let backtrack_factor = 0.5;
-        let max_backtracks = 50; // Increase to allow more backtracking
+        let backtrack_factor = 0.1; // Much more aggressive backtracking
+        let max_backtracks = 100; // More backtracking attempts
         let mut backtrack_count = 0;
         let mut best_step_size = step_size;
-        let best_value = f64::INFINITY;
+        let mut best_value = f64::INFINITY;
+        
+        // Get current function value for comparison
+        let current_value = function.evaluate(params).unwrap_or(f64::INFINITY);
+        best_value = current_value;
 
         for _ in 0..max_backtracks {
             // Check if step size is reasonable
             let step_norm = step_size * compute_magnitude(&search_direction)?;
 
-            // If step is very small relative to parameters, accept it
-            if step_norm < 1e-10 || step_size < self.config.min_step_size {
+            // If step is very small, accept it
+            if step_norm < 1e-12 || step_size < self.config.min_step_size {
                 debug!("L-BFGS: Accepting small step (norm={:.6e})", step_norm);
                 success = true;
                 best_step_size = step_size;
@@ -523,31 +526,32 @@ impl Optimizer for LBFGSOptimizer {
                 Ok(val) => val,
                 Err(_) => {
                     // If evaluation fails, backtrack
-                    step_size *= backtrack_factor;
+                    step_size *= backtrack_factor * backtrack_factor; // More aggressive
                     backtrack_count += 1;
                     continue;
                 }
             };
 
-            // Check Armijo condition for sufficient decrease
-            let directional_derivative = -grad_norm * grad_norm; // For steepest descent, this is -||g||^2
-            let expected_decrease = self.config.line_search.c1 * step_size * directional_derivative;
+            // Much stricter acceptance criteria
+            let directional_derivative = crate::utils::math::dot_product(&gradients, &search_direction).unwrap_or(0.0);
+            let armijo_threshold = current_value + 1e-4 * step_size * directional_derivative;
 
-            // Also check that the trial value is finite and reasonable
-            if trial_value.is_finite() && trial_value <= best_value + expected_decrease {
+            // Accept only if we have strict improvement and finite values
+            if trial_value.is_finite() && trial_value < current_value && trial_value <= armijo_threshold {
                 success = true;
                 best_step_size = step_size;
+                best_value = trial_value;
                 break;
-            } else if !trial_value.is_finite() {
-                // If we get non-finite values, backtrack more aggressively
-                step_size *= backtrack_factor * backtrack_factor;
-                backtrack_count += 2;
-                continue;
+            } else if !trial_value.is_finite() || trial_value > current_value * 1.1 {
+                // If we get non-finite values or significant increase, backtrack very aggressively
+                step_size *= backtrack_factor * backtrack_factor * backtrack_factor;
+                backtrack_count += 3;
+            } else {
+                // Normal backtrack
+                step_size *= backtrack_factor;
+                backtrack_count += 1;
             }
 
-            // Backtrack
-            step_size *= backtrack_factor;
-            backtrack_count += 1;
         }
         // Use the best step size found
         step_size = best_step_size;
