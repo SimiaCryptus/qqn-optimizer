@@ -1,0 +1,167 @@
+warning: use of deprecated function `rand::thread_rng`: Renamed to `rng`
+  --> src/benchmarks/ml_problems.rs:23:29
+   |
+23 |         let mut rng = rand::thread_rng();
+   |                             ^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated function `rand::thread_rng`: Renamed to `rng`
+   --> src/benchmarks/ml_problems.rs:129:29
+    |
+129 |         let mut rng = rand::thread_rng();
+    |                             ^^^^^^^^^^
+
+warning: use of deprecated function `rand::thread_rng`: Renamed to `rng`
+   --> src/benchmarks/ml_problems.rs:253:29
+    |
+253 |         let mut rng = rand::thread_rng();
+    |                             ^^^^^^^^^^
+
+warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+  --> src/benchmarks/ml_problems.rs:29:59
+   |
+29 |             let x: Vec<f64> = (0..n_features).map(|_| rng.gen_range(-1.0..1.0)).collect();
+   |                                                           ^^^^^^^^^
+
+warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+   --> src/benchmarks/ml_problems.rs:139:59
+    |
+139 |             let x: Vec<f64> = (0..input_size).map(|_| rng.gen_range(-1.0..1.0)).collect();
+    |                                                           ^^^^^^^^^
+
+warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+   --> src/benchmarks/ml_problems.rs:141:29
+    |
+141 |             let class = rng.gen_range(0..output_size);
+    |                             ^^^^^^^^^
+
+warning: use of deprecated method `rand::Rng::gen_range`: Renamed to `random_range`
+   --> src/benchmarks/ml_problems.rs:255:26
+    |
+255 |             .map(|_| rng.gen_range(-0.1..0.1))
+    |                          ^^^^^^^^^
+
+warning: unused variable: `problem_name`
+   --> src/analysis/plotting.rs:265:18
+    |
+265 |         for (i, (problem_name, optimizer_data)) in chart_data.iter().enumerate() {
+    |                  ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_problem_name`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: field `config` is never read
+ --> src/analysis/reporting.rs:8:5
+  |
+7 | pub struct ReportGenerator {
+  |            --------------- field in this struct
+8 |     config: ReportConfig,
+  |     ^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: `qqn-optimizer` (lib) generated 9 warnings
+warning: `qqn-optimizer` (lib test) generated 9 warnings (9 duplicates)
+warning: unused import: `PerformanceProfiles`
+ --> tests/performance_analysis.rs:1:64
+  |
+1 | use qqn_optimizer::analysis::statistics::{StatisticalAnalysis, PerformanceProfiles};
+  |                                                                ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `std::path::Path`
+ --> tests/performance_analysis.rs:6:5
+  |
+6 | use std::path::Path;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `PerformanceProfiles`
+ --> tests/benchmark_experiments.rs:4:64
+  |
+4 | use qqn_optimizer::analysis::statistics::{StatisticalAnalysis, PerformanceProfiles};
+  |                                                                ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `AckleyFunction` and `RastriginFunction`
+ --> tests/benchmark_experiments.rs:7:5
+  |
+7 |     AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
+  |     ^^^^^^^^^^^^^^                                      ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `tempfile::tempdir`
+  --> tests/benchmark_experiments.rs:18:5
+   |
+18 | use tempfile::tempdir;
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Optimizer`
+  --> tests/benchmark_experiments.rs:11:62
+   |
+11 | use qqn_optimizer::core::optimizer::{DifferentiableFunction, Optimizer, OptimizerBox};
+   |                                                              ^^^^^^^^^
+
+warning: unused variable: `opt_name`
+   --> tests/benchmark_experiments.rs:836:14
+    |
+836 |         for (opt_name, optimizer) in &optimizers {
+    |              ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_opt_name`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: struct `BenchmarkFunctionWrapper` is never constructed
+  --> tests/benchmark_experiments.rs:21:8
+   |
+21 | struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: associated function `new` is never used
+  --> tests/benchmark_experiments.rs:26:8
+   |
+25 | impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {
+   | -------------------------------------------------------- associated function in this implementation
+26 |     fn new(problem: T) -> Self {
+   |        ^^^
+
+warning: function `tensor_from_vec` is never used
+  --> tests/benchmark_experiments.rs:49:4
+   |
+49 | fn tensor_from_vec(values: Vec<f64>) -> Tensor {
+   |    ^^^^^^^^^^^^^^^
+
+warning: function `tensors_to_vec` is never used
+  --> tests/benchmark_experiments.rs:53:4
+   |
+53 | fn tensors_to_vec(tensors: &[Tensor]) -> Vec<f64> {
+   |    ^^^^^^^^^^^^^^
+
+warning: `qqn-optimizer` (test "performance_analysis") generated 2 warnings (run `cargo fix --test "performance_analysis"` to apply 2 suggestions)
+warning: `qqn-optimizer` (test "benchmark_experiments") generated 9 warnings (run `cargo fix --test "benchmark_experiments"` to apply 3 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.12s
+     Running unittests src/lib.rs (target/release/deps/qqn_optimizer-a9a0acf8b4e00aed)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out; finished in 0.00s
+
+     Running tests/benchmark_experiments.rs (target/release/deps/benchmark_experiments-237aeabd6ba21ea0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/integration_tests.rs (target/release/deps/integration_tests-6d4afbc31e78f6b2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/performance_analysis.rs (target/release/deps/performance_analysis-4d0b5826da042c6f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+

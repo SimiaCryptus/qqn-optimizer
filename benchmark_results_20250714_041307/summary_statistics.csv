@@ -1,0 +1,7 @@
+Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,SuccessRate
+Sphere_2D,L-BFGS,2.000000e0,0.000000e0,51.0,1.000
+Sphere_2D,QQN,2.000000e0,0.000000e0,10.0,0.000
+Rosenbrock_2D,L-BFGS,7.018000e2,0.000000e0,51.0,1.000
+Rosenbrock_2D,QQN,7.018000e2,0.000000e0,10.0,0.000
+Beale_2D,QQN,1.420312e1,0.000000e0,10.0,0.000
+Beale_2D,L-BFGS,1.420312e1,1.776357e-15,51.0,1.000

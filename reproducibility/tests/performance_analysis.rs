@@ -88,15 +88,12 @@ Comparison & Test Statistic & p-value & Significant \\
 
 #[test]
 fn test_latex_table_generation() {
-    println!("Starting LaTeX table generation test...");
-    
     // Create mock results
     let config = BenchmarkConfig::default();
     let mut results = BenchmarkResults::new(config);
 
     // Add some mock results
     for i in 0..10 {
-        println!("Adding mock result {} for QQN", i);
         results.add_result(SingleResult {
             problem_name: "test_problem".to_string(),
             optimizer_name: "QQN".to_string(),
@@ -111,7 +108,6 @@ fn test_latex_table_generation() {
             trace: OptimizationTrace::new(),
             convergence_reason: ConvergenceReason::GradientTolerance,
         });
-        println!("Adding mock result {} for L-BFGS", i);
 
         results.add_result(SingleResult {
             problem_name: "test_problem".to_string(),
@@ -128,7 +124,6 @@ fn test_latex_table_generation() {
             convergence_reason: if i < 8 { ConvergenceReason::GradientTolerance } else { ConvergenceReason::MaxIterations },
         });
     }
-    println!("Generating LaTeX performance table...");
 
     let latex_table = LaTeXTableGenerator::generate_performance_table(&results);
     
@@ -140,7 +135,6 @@ fn test_latex_table_generation() {
     assert!(latex_table.contains("Mean Final Value"));
 
     // Generate statistical analysis
-    println!("Generating statistical analysis...");
     let analysis = StatisticalAnalysis::new(&results);
     let significance_table = LaTeXTableGenerator::generate_significance_table(&analysis);
     
@@ -149,24 +143,12 @@ fn test_latex_table_generation() {
 
     println!("Generated LaTeX table:\n{}", latex_table);
     println!("Generated significance table:\n{}", significance_table);
-    // Save to files for verification
-    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("latex_output_{}", timestamp);
-    let output_dir = std::path::Path::new(&output_dir_name);
-    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
-    std::fs::write(output_dir.join("performance_table.tex"), &latex_table)
-        .expect("Failed to write performance table");
-    std::fs::write(output_dir.join("significance_table.tex"), &significance_table)
-        .expect("Failed to write significance table");
-    println!("LaTeX tables saved to: {}", output_dir.display());
 }
 
 #[test]
 fn test_export_academic_formats() -> std::io::Result<()> {
-    // Use a timestamped directory to avoid conflicts
-    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir = format!("academic_exports_{}", timestamp);
-    let output_path = std::path::Path::new(&output_dir);
+    // Use a persistent directory instead of temp
+    let output_path = std::path::Path::new("academic_exports");
     std::fs::create_dir_all(output_path)?;
     
     println!("Exporting academic formats to: {}", output_path.display());

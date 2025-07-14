@@ -66,12 +66,12 @@ pub struct ExperimentRunner {
 impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
-            max_iterations: 100,  // Reduce for faster testing
+            max_iterations: 1000,
             tolerance: 1e-6,
-            max_function_evaluations: 500,  // Reduce for faster testing
+            max_function_evaluations: 5000,
             time_limit: Duration::from_secs(300).into(), // 5 minutes
             random_seed: 42,
-            num_runs: 3,  // Reduce for faster testing
+            num_runs: 10,
         };
 
         Self { output_dir, config }
@@ -110,8 +110,14 @@ impl ExperimentRunner {
     fn create_test_problems(&self) -> Vec<Box<dyn OptimizationProblem>> {
         vec![
             Box::new(SphereFunction::new(2)),
+            Box::new(SphereFunction::new(10)),
             Box::new(RosenbrockFunction::new(2)),
+            Box::new(RosenbrockFunction::new(10)),
+            Box::new(RastriginFunction::new(2)),
+            Box::new(RastriginFunction::new(5)),
             Box::new(BealeFunction::new()),
+            Box::new(AckleyFunction::new(2)),
+            Box::new(AckleyFunction::new(5)),
         ]
     }
 
@@ -151,7 +157,8 @@ impl ExperimentRunner {
         let runner = BenchmarkRunner::new(self.config.clone());
         let mut results = BenchmarkResults::new(self.config.clone());
 
-        for (_opt_name, optimizer) in optimizers {
+        for (opt_name, optimizer) in optimizers {
+            info!("Testing optimizer: {} on problem: {}", opt_name, problem.name());
             
             for run_id in 0..self.config.num_runs {
                 let result = runner
@@ -168,13 +175,7 @@ impl ExperimentRunner {
        // Ensure output directory exists before generating any files
        fs::create_dir_all(&self.output_dir)?;
        println!("Generating report in directory: {}", self.output_dir);
-        // Debug: Print what we're working with
-        println!("Processing {} problems with results", all_results.len());
-        for (problem_name, results) in all_results {
-            println!("  Problem '{}': {} results", problem_name, results.results.len());
-        }
        
-        
         let mut html_content = self.generate_html_header();
         
         // Executive Summary
@@ -283,7 +284,7 @@ impl ExperimentRunner {
             }
         }
 
-        let mut summary = format!(r#"
+        let mut summary = String::from(r#"
     <div class="section">
         <h2>Executive Summary</h2>
         <div class="summary-box">
@@ -305,8 +306,11 @@ impl ExperimentRunner {
         <h3>Success Rates by Optimizer</h3>
         <table>
             <tr><th>Optimizer</th><th>Successful Runs</th><th>Total Runs</th><th>Success Rate</th></tr>
+"#);
 
-"#, total_problems, total_runs, optimizer_stats.len());
+        summary = summary.replace("{}", &total_problems.to_string());
+        summary = summary.replace("{}", &total_runs.to_string());
+        summary = summary.replace("{}", &optimizer_stats.len().to_string());
 
         let mut sorted_optimizers: Vec<_> = optimizer_stats.iter().collect();
         sorted_optimizers.sort_by(|a, b| {
@@ -775,14 +779,11 @@ impl ExperimentRunner {
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
-    // Use a persistent directory with timestamp to avoid conflicts
-    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("benchmark_results_{}", timestamp);
-    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    // Use a persistent directory instead of temp
+    let output_dir = std::path::PathBuf::from("benchmark_results");
     
     // Create the directory if it doesn't exist
     std::fs::create_dir_all(&output_dir)?;
-    println!("Creating benchmark results in: {}", output_dir.display());
     
     let runner = ExperimentRunner::new(output_dir.to_string_lossy().to_string());
     runner.run_comparative_benchmarks().await?;
@@ -806,10 +807,8 @@ async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_academic_citation_format() -> anyhow::Result<()> {
     init_logging()?;
-    // Use a timestamped directory to avoid conflicts
-    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("citation_test_{}", timestamp);
-    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    // Use a persistent directory instead of temp
+    let output_dir = std::path::PathBuf::from("citation_test");
     // Ensure the output directory exists
     fs::create_dir_all(&output_dir)?;
     
