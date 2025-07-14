@@ -4,9 +4,7 @@ use crate::core::optimizer::OptimizationMetadata;
 use crate::core::ConvergenceInfo;
 use crate::core::Optimizer;
 use crate::core::StepResult;
-use crate::utils::math::{
-    combine_tensors, compute_magnitude, scale_tensors
-};
+use crate::utils::math::{combine_tensors, compute_magnitude, scale_tensors};
 use anyhow::Result as AnyhowResult;
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info, trace, warn};
@@ -51,6 +49,8 @@ pub struct QQNConfig {
     pub line_search: crate::core::line_search::StrongWolfeConfig,
     /// Numerical stability constant
     pub epsilon: f64,
+    /// Enable verbose logging of tensor data and internal state
+    pub verbose: bool,
 }
 
 impl Default for QQNConfig {
@@ -59,6 +59,7 @@ impl Default for QQNConfig {
             lbfgs_history: 10,
             line_search: crate::core::line_search::StrongWolfeConfig::default(),
             epsilon: 1e-8,
+            verbose: true,
         }
     }
 }
@@ -97,17 +98,60 @@ impl Clone for QQNOptimizer {
     }
 }
 
-
 impl QQNOptimizer {
     /// Create a new QQN optimizer with the given configuration
     pub fn new(config: QQNConfig) -> Self {
-        info!("Creating QQN optimizer with config: lbfgs_history={}, epsilon={}", 
-              config.lbfgs_history, config.epsilon);
+        info!(
+            "Creating QQN optimizer with config: lbfgs_history={}, epsilon={}, verbose={}",
+            config.lbfgs_history, config.epsilon, config.verbose
+        );
         let line_search = Box::new(StrongWolfeLineSearch::new(config.line_search.clone()));
         Self {
             state: QQNState::new(config.lbfgs_history),
             config,
             line_search,
+        }
+    }
+    /// Log tensor data if verbose mode is enabled
+    fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
+        if !self.config.verbose {
+            return;
+        }
+        debug!("=== {} ===", name);
+        for (i, tensor) in tensors.iter().enumerate() {
+            match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
+                Ok(values) => {
+                    debug!(
+                        "  Tensor[{}]: shape={:?}, values={:?}",
+                        i,
+                        tensor.shape(),
+                        values
+                    );
+                    if values.len() <= 10 {
+                        debug!("    Full data: {:?}", values);
+                    } else {
+                        debug!(
+                            "    First 5: {:?}, Last 5: {:?}",
+                            &values[..5],
+                            &values[values.len() - 5..]
+                        );
+                    }
+                }
+                Err(e) => {
+                    debug!(
+                        "  Tensor[{}]: shape={:?}, error reading values: {}",
+                        i,
+                        tensor.shape(),
+                        e
+                    );
+                }
+            }
+        }
+    }
+    /// Log scalar value if verbose mode is enabled
+    fn log_scalar(&self, name: &str, value: f64) {
+        if self.config.verbose {
+            debug!("  {}: {:.12e}", name, value);
         }
     }
 
@@ -117,30 +161,44 @@ impl QQNOptimizer {
         lbfgs_direction: &[Tensor],
     ) -> CandleResult<QuadraticPath> {
         debug!("Creating quadratic path between gradient and L-BFGS direction");
+        // Log input tensors in verbose mode
+        self.log_tensor_data("Input Gradient", gradient);
+        self.log_tensor_data("Input L-BFGS Direction", lbfgs_direction);
 
         // Validate inputs
         if gradient.is_empty() || lbfgs_direction.is_empty() {
             warn!("Empty gradient or direction vectors provided to create_quadratic_path");
-            return Err(candle_core::Error::Msg("Empty gradient or direction vectors".into()));
-        }
-        if gradient.len() != lbfgs_direction.len() {
-            warn!("Dimension mismatch in create_quadratic_path: gradient={}, direction={}", 
-                  gradient.len(), lbfgs_direction.len());
             return Err(candle_core::Error::Msg(
-                format!("Gradient and direction dimension mismatch: {} vs {}",
-                        gradient.len(), lbfgs_direction.len())
+                "Empty gradient or direction vectors".into(),
             ));
         }
-
+        if gradient.len() != lbfgs_direction.len() {
+            warn!(
+                "Dimension mismatch in create_quadratic_path: gradient={}, direction={}",
+                gradient.len(),
+                lbfgs_direction.len()
+            );
+            return Err(candle_core::Error::Msg(format!(
+                "Gradient and direction dimension mismatch: {} vs {}",
+                gradient.len(),
+                lbfgs_direction.len()
+            )));
+        }
 
         // Create negative gradient as per paper formula
         let negative_gradient = scale_tensors(gradient, -1.0)?;
+        // Log created tensors in verbose mode
+        self.log_tensor_data("Negative Gradient", &negative_gradient);
 
         // Log norms for debugging
         let grad_norm = compute_magnitude(gradient)?;
         let lbfgs_norm = compute_magnitude(lbfgs_direction)?;
-        debug!("Quadratic path created: ||gradient||={:.6e}, ||lbfgs_dir||={:.6e}", 
-               grad_norm, lbfgs_norm);
+        debug!(
+            "Quadratic path created: ||gradient||={:.6e}, ||lbfgs_dir||={:.6e}",
+            grad_norm, lbfgs_norm
+        );
+        self.log_scalar("Gradient Norm", grad_norm);
+        self.log_scalar("L-BFGS Direction Norm", lbfgs_norm);
         trace!("Quadratic path formula: d(t) = t(1-t)(-g) + t²d_lbfgs");
 
         Ok(QuadraticPath::new(
@@ -160,10 +218,12 @@ impl QQNOptimizer {
         debug!("Starting line search for optimal t along quadratic path");
 
         // Convert current parameters and gradients to f64 vectors
-        let current_point_f64: Vec<f64> = params.iter()
+        let current_point_f64: Vec<f64> = params
+            .iter()
             .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
             .collect();
-        let current_gradient_f64: Vec<f64> = gradients.iter()
+        let current_gradient_f64: Vec<f64> = gradients
+            .iter()
             .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
             .collect();
 
@@ -171,10 +231,8 @@ impl QQNOptimizer {
         let current_value = function.evaluate(params)?;
 
         // Create a parametric curve adapter for the quadratic path
-        let curve_adapter = QuadraticCurveAdapter::new(
-            current_point_f64.clone(),
-            quadratic_path.clone(),
-        );
+        let curve_adapter =
+            QuadraticCurveAdapter::new(current_point_f64.clone(), quadratic_path.clone());
 
         // Create objective and gradient functions that work with f64 vectors
         let objective_fn = |x: &[f64]| -> AnyhowResult<f64> {
@@ -188,24 +246,34 @@ impl QQNOptimizer {
             let tensors = self.f64_to_tensors(x, params)?;
             let grad_tensors = function.gradient(&tensors)?;
             // Convert gradients back to f64
-            Ok(grad_tensors.iter()
+            Ok(grad_tensors
+                .iter()
                 .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
                 .collect())
         };
 
         // Perform line search along the curve
         let mut line_search = self.line_search.clone_box();
-        let result = line_search.search_along_curve(
-            &curve_adapter,
-            current_value,
-            &current_gradient_f64,
-            &objective_fn,
-            &gradient_fn,
-        ).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+        let result = line_search
+            .search_along_curve(
+                &curve_adapter,
+                current_value,
+                &current_gradient_f64,
+                &objective_fn,
+                &gradient_fn,
+            )
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
 
-        debug!("Line search completed: t*={:.6}, success={}", result.step_size, result.success);
+        debug!(
+            "Line search completed: t*={:.6}, success={}",
+            result.step_size, result.success
+        );
 
-        Ok((result.step_size, result.function_evaluations, result.gradient_evaluations))
+        Ok((
+            result.step_size,
+            result.function_evaluations,
+            result.gradient_evaluations,
+        ))
     }
 
     /// Helper function to convert f64 vector to tensors
@@ -239,39 +307,57 @@ impl Optimizer for QQNOptimizer {
         params: &mut [Tensor],
         function: &dyn crate::core::optimizer::DifferentiableFunction,
     ) -> CandleResult<StepResult> {
-        info!("QQN step {}: starting optimization step", self.state.iteration);
+        info!(
+            "QQN step {}: starting optimization step",
+            self.state.iteration
+        );
+        // Log initial state in verbose mode
+        self.log_tensor_data("Initial Parameters", params);
+
         // Compute gradients at current parameters
         let gradients = function.gradient(params)?;
+        // Log computed gradients in verbose mode
+        self.log_tensor_data("Computed Gradients", &gradients);
 
         // Input validation
         if params.is_empty() || gradients.is_empty() {
             warn!("Empty parameters or gradients provided to QQN step");
-            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+            return Err(candle_core::Error::Msg(
+                "Empty parameters or gradients".into(),
+            ));
         }
         if params.len() != gradients.len() {
-            warn!("Parameter/gradient dimension mismatch: {} vs {}", params.len(), gradients.len());
-            return Err(candle_core::Error::Msg(
-                format!("Parameter and gradient dimension mismatch: {} vs {}",
-                        params.len(), gradients.len())
-            ));
+            warn!(
+                "Parameter/gradient dimension mismatch: {} vs {}",
+                params.len(),
+                gradients.len()
+            );
+            return Err(candle_core::Error::Msg(format!(
+                "Parameter and gradient dimension mismatch: {} vs {}",
+                params.len(),
+                gradients.len()
+            )));
         }
         // Check for NaN/Inf in inputs
         for (i, grad) in gradients.iter().enumerate() {
             let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
             if grad_vec.iter().any(|&x| !x.is_finite()) {
-                return Err(candle_core::Error::Msg(
-                    format!("Non-finite gradient detected at index {}", i)
-                ));
+                return Err(candle_core::Error::Msg(format!(
+                    "Non-finite gradient detected at index {}",
+                    i
+                )));
             }
         }
         // Compute gradient norm for logging
         let grad_norm = compute_magnitude(&gradients)?;
         debug!("Gradient norm: {:.6e}", grad_norm);
-
+        self.log_scalar("Gradient Norm", grad_norm);
 
         // 1. Compute L-BFGS direction
         debug!("Computing L-BFGS direction");
         let lbfgs_direction = self.state.lbfgs_state.compute_direction(&gradients)?;
+        // Log L-BFGS direction in verbose mode
+        self.log_tensor_data("L-BFGS Direction", &lbfgs_direction);
 
         // Check if L-BFGS direction is valid (i.e., all finite)
         let lbfgs_valid = lbfgs_direction.iter().all(|d| {
@@ -306,7 +392,9 @@ impl Optimizer for QQNOptimizer {
                 convergence_criterion: None,
             };
             let mut metadata = OptimizationMetadata::default();
-            metadata.optimizer_data.insert("invalid_magnitude_ratio".to_string(), 1.0);
+            metadata
+                .optimizer_data
+                .insert("invalid_magnitude_ratio".to_string(), 1.0);
             return Ok(StepResult {
                 step_size,
                 function_evaluations: 0,
@@ -317,28 +405,47 @@ impl Optimizer for QQNOptimizer {
         }
 
         let quadratic_path = self.create_quadratic_path(&gradients, &lbfgs_direction)?;
-        let (optimal_t, f_evals, g_evals) = self.find_optimal_t_line_search(params, &quadratic_path, &gradients, function)?;
+        let (optimal_t, f_evals, g_evals) =
+            self.find_optimal_t_line_search(params, &quadratic_path, &gradients, function)?;
         info!("Found optimal t = {:.6}", optimal_t);
+        self.log_scalar("Optimal t", optimal_t);
+
         let direction = quadratic_path.evaluate(optimal_t)?;
+        // Log final direction in verbose mode
+        self.log_tensor_data("Final Direction", &direction);
 
         let direction_norm = compute_magnitude(&direction)?;
         let dot_product = crate::utils::math::dot_product(&gradients, &direction)?;
-        debug!("Final direction: ||d||={:.6e}, g^T d={:.6e}", direction_norm, dot_product);
+        debug!(
+            "Final direction: ||d||={:.6e}, g^T d={:.6e}",
+            direction_norm, dot_product
+        );
+        self.log_scalar("Direction Norm", direction_norm);
+        self.log_scalar("Descent Dot Product", dot_product);
         if dot_product >= 0.0 {
-            warn!("Non-descent direction detected! g^T d = {:.6e} >= 0", dot_product);
+            warn!(
+                "Non-descent direction detected! g^T d = {:.6e} >= 0",
+                dot_product
+            );
         }
 
         // Apply the step
         trace!("Applying step to parameters");
         let step_norm = compute_magnitude(&direction)?;
         debug!("Step norm before application: {:.6e}", step_norm);
-        
+        self.log_scalar("Step Norm", step_norm);
+
         // Safety check: if step is too large, scale it down
         let max_step_norm = 10.0; // Conservative maximum step size
         let scaling_factor = if step_norm > max_step_norm {
-            warn!("Step norm {:.6e} exceeds maximum {:.6e}, scaling down", step_norm, max_step_norm);
+            warn!(
+                "Step norm {:.6e} exceeds maximum {:.6e}, scaling down",
+                step_norm, max_step_norm
+            );
+            self.log_scalar("Scaling Factor", max_step_norm / step_norm);
             max_step_norm / step_norm
         } else {
+            self.log_scalar("Scaling Factor", 1.0);
             1.0
         };
 
@@ -350,50 +457,65 @@ impl Optimizer for QQNOptimizer {
                 *param = param.add(dir)?;
             }
         }
-        
+        // Log updated parameters in verbose mode
+        self.log_tensor_data("Updated Parameters", params);
+
         // Check for NaN/Inf in updated parameters
         for (i, param) in params.iter().enumerate() {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
                 warn!("Non-finite parameter detected at index {} after update", i);
                 return Err(candle_core::Error::Msg(
-                    "Non-finite parameter detected after update".into()
+                    "Non-finite parameter detected after update".into(),
                 ));
             }
             // Also check for extremely large values
             if param_vec.iter().any(|&x| x.abs() > 1e10) {
-                warn!("Extremely large parameter detected at index {} after update", i);
+                warn!(
+                    "Extremely large parameter detected at index {} after update",
+                    i
+                );
                 return Err(candle_core::Error::Msg(
-                    "Parameter values too large after update".into()
+                    "Parameter values too large after update".into(),
                 ));
             }
         }
-        
+
         // Update L-BFGS state with gradients at old parameters
         // This is the correct way - we need gradient difference between old and new points
         debug!("Updating L-BFGS history");
         self.state.lbfgs_state.update(
             &gradients, // Use gradients at old parameters
-            &direction,
-            1.0, // We've already applied the full direction
+            &direction, 1.0, // We've already applied the full direction
         )?;
 
         // Increment iteration counter AFTER all operations complete successfully
         self.state.iteration += 1;
-        info!("QQN step {} completed successfully", self.state.iteration - 1);
+        info!(
+            "QQN step {} completed successfully",
+            self.state.iteration - 1
+        );
 
         // 7. Create convergence info
         let convergence_info = ConvergenceInfo {
-            converged: false, // QQN does not have a convergence criterion like L-BFGS
+            converged: false,      // QQN does not have a convergence criterion like L-BFGS
             function_change: None, // Would need previous function value
             convergence_criterion: None,
         };
 
         let mut metadata = OptimizationMetadata::default();
-        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
-        metadata.optimizer_data.insert("direction_norm".to_string(), compute_magnitude(&direction)?);
-        metadata.optimizer_data.insert("optimal_t".to_string(), optimal_t);
-        metadata.optimizer_data.insert("dot_product".to_string(), dot_product);
+        metadata
+            .optimizer_data
+            .insert("gradient_norm".to_string(), grad_norm);
+        metadata
+            .optimizer_data
+            .insert("direction_norm".to_string(), compute_magnitude(&direction)?);
+        metadata
+            .optimizer_data
+            .insert("optimal_t".to_string(), optimal_t);
+        metadata
+            .optimizer_data
+            .insert("dot_product".to_string(), dot_product);
 
         Ok(StepResult {
             step_size: optimal_t, // This is the t value used for the step
@@ -460,18 +582,32 @@ impl QuadraticPath {
         // Clamp t to valid range
         let t_clamped = t.max(0.0).min(1.0);
         if (t - t_clamped).abs() > 1e-10 {
-            trace!("QuadraticPath::evaluate: clamped t from {} to {}", t, t_clamped);
+            trace!(
+                "QuadraticPath::evaluate: clamped t from {} to {}",
+                t,
+                t_clamped
+            );
         }
         let t = t_clamped;
 
         // Coefficients for the quadratic path formula as per paper
         let gradient_coeff = t * (1.0 - t);
         let lbfgs_coeff = t * t;
-        trace!("QuadraticPath::evaluate(t={}): gradient_coeff={}, lbfgs_coeff={}", 
-               t, gradient_coeff, lbfgs_coeff);
+        trace!(
+            "QuadraticPath::evaluate(t={}): gradient_coeff={}, lbfgs_coeff={}",
+            t,
+            gradient_coeff,
+            lbfgs_coeff
+        );
 
         let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
         let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
+        // Log intermediate terms for debugging
+        trace!(
+            "QuadraticPath::evaluate: gradient_term magnitude={:.6e}, lbfgs_term magnitude={:.6e}",
+            compute_magnitude(&gradient_term).unwrap_or(0.0),
+            compute_magnitude(&lbfgs_term).unwrap_or(0.0)
+        );
 
         combine_tensors(&gradient_term, &lbfgs_term)
     }
@@ -484,8 +620,11 @@ impl QuadraticPath {
 
         let gradient_coeff = 1.0 - 2.0 * t;
         let lbfgs_coeff = 2.0 * t;
-        trace!("QuadraticPath::derivative: gradient_coeff={}, lbfgs_coeff={}", 
-               gradient_coeff, lbfgs_coeff);
+        trace!(
+            "QuadraticPath::derivative: gradient_coeff={}, lbfgs_coeff={}",
+            gradient_coeff,
+            lbfgs_coeff
+        );
 
         let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
         let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
@@ -537,7 +676,8 @@ impl ParametricCurve for QuadraticCurveAdapter {
         // Get the derivative of the quadratic path
         let deriv = self.quadratic_path.derivative(t)?;
         // Convert to f64 vector
-        Ok(deriv.iter()
+        Ok(deriv
+            .iter()
             .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
             .collect())
     }
@@ -548,7 +688,6 @@ impl ParametricCurve for QuadraticCurveAdapter {
         Box::new(self.clone())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -561,6 +700,7 @@ mod tests {
         let config = QQNConfig::default();
         assert_eq!(config.lbfgs_history, 10);
         assert_eq!(config.epsilon, 1e-8);
+        assert_eq!(config.verbose, false);
     }
 
     #[test]
@@ -588,7 +728,7 @@ mod tests {
         let result_half = path.evaluate(0.5)?;
         let values_half = result_half[0].to_vec1::<f64>()?;
         assert_relative_eq!(values_half[0], -0.25, epsilon = 1e-10); // 0.25 * (-1.0)
-        assert_relative_eq!(values_half[1], 0.25, epsilon = 1e-10);  // 0.25 * 1.0
+        assert_relative_eq!(values_half[1], 0.25, epsilon = 1e-10); // 0.25 * 1.0
 
         Ok(())
     }
@@ -611,8 +751,8 @@ mod tests {
         // At t=1, derivative should be: d'(1) = (1-2)*(-g) + 2*d_lbfgs = g + 2*d_lbfgs
         let deriv_1 = path.derivative(1.0)?;
         let deriv_1_values = deriv_1[0].to_vec1::<f64>()?;
-        assert_relative_eq!(deriv_1_values[0], 1.0, epsilon = 1e-10);  // -1*(-1.0) + 2*0.0
-        assert_relative_eq!(deriv_1_values[1], 2.0, epsilon = 1e-10);  // -1*0.0 + 2*1.0
+        assert_relative_eq!(deriv_1_values[0], 1.0, epsilon = 1e-10); // -1*(-1.0) + 2*0.0
+        assert_relative_eq!(deriv_1_values[1], 2.0, epsilon = 1e-10); // -1*0.0 + 2*1.0
 
         Ok(())
     }
