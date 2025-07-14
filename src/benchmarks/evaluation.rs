@@ -233,7 +233,7 @@ impl BenchmarkRunner {
     }
 
     /// Run a single benchmark with one problem and one optimizer
-    pub(crate) async fn run_single_benchmark(
+    pub async fn run_single_benchmark(
         &self,
         problem: &dyn OptimizationProblem,
         optimizer: &dyn OptimizerBox,

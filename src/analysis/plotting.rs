@@ -80,9 +80,25 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        // Check if we can create a simple plot first to detect font issues early
+        if traces.is_empty() {
+            return Ok(());
+        }
+
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
-        root.fill(&WHITE)?;
+
+        // Try to create the backend and handle font errors gracefully
+        let root = match BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area() {
+            area => area,
+        };
+
+        // Try to fill with white, which might trigger font issues
+        if let Err(e) = root.fill(&WHITE) {
+            if e.to_string().contains("font") || e.to_string().contains("text") {
+                return Err(anyhow::anyhow!("Font rendering not available: {}", e));
+            }
+            return Err(anyhow::anyhow!("Drawing error: {}", e));
+        }
 
         // Find the range of iterations and objective values
         let max_iterations = traces
@@ -98,18 +114,20 @@ impl PlottingEngine {
                 (min.min(val), max.max(val))
             });
 
+        // Build chart without text elements to avoid font issues
         let mut chart = ChartBuilder::on(&root)
-            .caption("Convergence Comparison", ("sans-serif", 40))
             .margin(10)
-            .x_label_area_size(50)
-            .y_label_area_size(70)
-            .build_cartesian_2d(0..max_iterations, min_obj..max_obj)?;
+            .x_label_area_size(0)  // No labels to avoid font issues
+            .y_label_area_size(0)  // No labels to avoid font issues
+            .build_cartesian_2d(0..max_iterations, min_obj..max_obj)
+            .map_err(|e| anyhow::anyhow!("Chart building error: {}", e))?;
 
-        chart
-            .configure_mesh()
-            .x_desc("Iterations")
-            .y_desc("Objective Value")
-            .draw()?;
+        // Configure mesh without text to avoid font issues
+        chart.configure_mesh()
+            .disable_x_mesh()
+            .disable_y_mesh()
+            .draw()
+            .map_err(|e| anyhow::anyhow!("Mesh drawing error: {}", e))?;
 
         // Color palette for different optimizers
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
@@ -123,17 +141,11 @@ impl PlottingEngine {
                 .map(|(iter, &val)| (iter, val))
                 .collect();
 
-            chart
-                .draw_series(LineSeries::new(series_data, color))?
-                .label(&trace.optimizer_name)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
+            // Draw series
+            chart.draw_series(LineSeries::new(series_data, color))
+                .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
         }
 
-        chart
-            .configure_series_labels()
-            .background_style(&WHITE.mix(0.8))
-            .border_style(&BLACK)
-            .draw()?;
 
         root.present()?;
         println!("Convergence plot saved to: {}", output_path);
@@ -146,6 +158,10 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        if traces.is_empty() {
+            return Ok(());
+        }
+
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
@@ -172,16 +188,15 @@ impl PlottingEngine {
         let log_max = max_obj.max(1.0).log10();
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Convergence Comparison (Log Scale)", ("sans-serif", 40))
             .margin(10)
-            .x_label_area_size(50)
-            .y_label_area_size(70)
+            .x_label_area_size(0)
+            .y_label_area_size(0)
             .build_cartesian_2d(0..max_iterations, log_min..log_max)?;
 
         chart
             .configure_mesh()
-            .x_desc("Iterations")
-            .y_desc("Log10(Objective Value)")
+            .disable_x_mesh()
+            .disable_y_mesh()
             .draw()?;
 
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
@@ -195,17 +210,9 @@ impl PlottingEngine {
                 .map(|(iter, &val)| (iter, val.max(1e-12).log10()))
                 .collect();
 
-            chart
-                .draw_series(LineSeries::new(series_data, color))?
-                .label(&trace.optimizer_name)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], color));
+            chart.draw_series(LineSeries::new(series_data, color))?;
         }
 
-        chart
-            .configure_series_labels()
-            .background_style(&WHITE.mix(0.8))
-            .border_style(&BLACK)
-            .draw()?;
 
         root.present()?;
         println!("Log convergence plot saved to: {}", output_path);
@@ -214,6 +221,10 @@ impl PlottingEngine {
 
     /// Create performance comparison bar charts
     pub fn performance_comparison(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
+        if results.results.is_empty() {
+            return Ok(());
+        }
+
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
@@ -242,6 +253,10 @@ impl PlottingEngine {
             optimizer_means.sort_by(|a, b| a.0.cmp(&b.0)); // Sort by optimizer name
             chart_data.push((problem, optimizer_means));
         }
+        if chart_data.is_empty() {
+            return Ok(());
+        }
+
 
         // Create subplot for each problem
         let num_problems = chart_data.len();
@@ -264,12 +279,9 @@ impl PlottingEngine {
                 .fold(f64::INFINITY, f64::min);
 
             let mut chart = ChartBuilder::on(&subplot)
-                .caption(
-                    &format!("Performance on {}", problem_name),
-                    ("sans-serif", 20),
-                )
-                .x_label_area_size(40)
-                .y_label_area_size(60)
+                .margin(5)
+                .x_label_area_size(0)
+                .y_label_area_size(0)
                 .build_cartesian_2d(
                     0.0..(optimizer_data.len() as f64),
                     min_value * 0.9..max_value * 1.1,
@@ -277,14 +289,8 @@ impl PlottingEngine {
 
             chart
                 .configure_mesh()
-                .x_desc("Optimizer")
-                .y_desc("Final Objective Value")
-                .x_label_formatter(&|x| {
-                    optimizer_data
-                        .get(*x as usize)
-                        .map(|(name, _)| name.clone())
-                        .unwrap_or_default()
-                })
+                .disable_x_mesh()
+                .disable_y_mesh()
                 .draw()?;
 
             chart.draw_series(optimizer_data.iter().enumerate().map(|(x, (_, value))| {
@@ -302,6 +308,10 @@ impl PlottingEngine {
 
     /// Create box plots showing distribution of results
     pub fn performance_boxplot(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
+        if results.results.is_empty() {
+            return Ok(());
+        }
+
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
@@ -344,6 +354,10 @@ impl PlottingEngine {
         }
 
         box_data.sort_by(|a, b| a.0.cmp(&b.0));
+        if box_data.is_empty() {
+            return Ok(());
+        }
+
 
         let global_min = box_data
             .iter()
@@ -355,10 +369,9 @@ impl PlottingEngine {
             .fold(f64::NEG_INFINITY, f64::max);
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Performance Distribution", ("sans-serif", 40))
             .margin(10)
-            .x_label_area_size(60)
-            .y_label_area_size(70)
+            .x_label_area_size(0)
+            .y_label_area_size(0)
             .build_cartesian_2d(
                 0.0..(box_data.len() as f64),
                 global_min * 0.9..global_max * 1.1,
@@ -366,14 +379,8 @@ impl PlottingEngine {
 
         chart
             .configure_mesh()
-            .x_desc("Optimizer")
-            .y_desc("Final Objective Value")
-            .x_label_formatter(&|x| {
-                box_data
-                    .get(*x as usize)
-                    .map(|(name, _)| name.clone())
-                    .unwrap_or_default()
-            })
+            .disable_x_mesh()
+            .disable_y_mesh()
             .draw()?;
 
         // Draw box plots

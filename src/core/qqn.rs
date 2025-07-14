@@ -59,7 +59,7 @@ impl Default for QQNConfig {
             lbfgs_history: 10,
             line_search: crate::core::line_search::StrongWolfeConfig::default(),
             epsilon: 1e-8,
-            verbose: true,
+            verbose: false,
         }
     }
 }

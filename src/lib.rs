@@ -47,7 +47,7 @@ pub fn init_logging() -> Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "qqn_optimizer=debug".into()),
+                .unwrap_or_else(|_| "qqn_optimizer=info".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .try_init()
