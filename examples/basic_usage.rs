@@ -25,6 +25,7 @@ fn main() -> Result<()> {
             initial_step: 1.0,
             min_step: 1e-16,
             max_step: 1e16,
+            verbose: true, // Enable verbose output for line search
         },
         epsilon: 1e-8,             // Numerical stability constant
         verbose: true,          // Enable verbose output

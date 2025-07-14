@@ -1,4 +1,3 @@
-use approx::assert_relative_eq;
 use candle_core::{Device, Tensor};
 use log::{debug, warn};
 use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFunction, SphereFunction};
@@ -111,7 +110,8 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
     let problem = BenchmarkFunctionWrapper::new(SphereFunction::new(3)); // Use even smaller dimension for more reliable convergence
 
     // Test QQN
-    let qqn_config = QQNConfig::default();
+    let mut qqn_config = QQNConfig::default();
+    qqn_config.verbose = false; // Disable verbose logging for cleaner test output
     let mut qqn_optimizer = QQNOptimizer::new(qqn_config);
 
     let mut qqn_x = problem.problem.initial_point();
@@ -135,7 +135,8 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
     }
 
     // Test L-BFGS
-    let lbfgs_config = LBFGSConfig::default();
+    let mut lbfgs_config = LBFGSConfig::default();
+    lbfgs_config.verbose = false; // Disable verbose logging for cleaner test output
     let mut lbfgs_optimizer = LBFGSOptimizer::new(lbfgs_config);
 
     let mut lbfgs_x = problem.problem.initial_point();
