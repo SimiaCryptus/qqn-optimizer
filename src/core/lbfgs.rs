@@ -446,7 +446,6 @@ impl LBFGSOptimizer {
         Ok(ConvergenceInfo {
             converged: gradient_norm < 1e-6, // Default tolerance
             function_change: None,
-            convergence_criterion: None,
         })
     }
 }

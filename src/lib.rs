@@ -35,11 +35,6 @@ pub use anyhow::{Error, Result};
 /// Current version of the QQN optimizer framework
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Default configuration for academic research
-pub fn default_research_config() -> config::ExperimentConfig {
-    config::ExperimentConfig::default_research()
-}
-
 /// Initialize logging for the framework
 pub fn init_logging() -> Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -66,11 +61,4 @@ mod tests {
         assert!(VERSION.contains('.'));
     }
 
-    #[test]
-    fn test_default_config() {
-        let config = default_research_config();
-        assert!(!config.name.is_empty());
-        assert!(!config.problems.is_empty());
-        assert!(!config.optimizers.is_empty());
-    }
 }

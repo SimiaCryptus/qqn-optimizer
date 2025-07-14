@@ -418,7 +418,6 @@ impl Optimizer for QQNOptimizer {
             let convergence_info = ConvergenceInfo {
                 converged: false,
                 function_change: None,
-                convergence_criterion: None,
             };
             let mut metadata = OptimizationMetadata::default();
             metadata
@@ -530,7 +529,6 @@ impl Optimizer for QQNOptimizer {
         let convergence_info = ConvergenceInfo {
             converged: false,      // QQN does not have a convergence criterion like L-BFGS
             function_change: None, // Would need previous function value
-            convergence_criterion: None,
         };
 
         let mut metadata = OptimizationMetadata::default();

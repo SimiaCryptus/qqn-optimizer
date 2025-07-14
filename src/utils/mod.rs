@@ -6,20 +6,11 @@
 //! - Serialization helpers
 //! - Common data structures
 
-pub mod logging;
 pub mod math;
-pub mod serialization;
 
-pub use logging::{
-    log_convergence_info, log_optimization_step, setup_tracing, OptimizationLogger,
-    PerformanceTimer,
-};
 pub use math::{
     clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, lerp,
     norm_inf, norm_l1, norm_l2, vector_add, vector_scale, vector_subtract,
-};
-pub use serialization::{
-    load_config, load_results, save_config, save_results, ConfigSerializer, ResultsSerializer,
 };
 
 /// Common mathematical constants

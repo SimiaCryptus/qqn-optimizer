@@ -327,9 +327,6 @@ pub struct ConvergenceInfo {
 
     /// Change in function value from previous iteration
     pub function_change: Option<f64>,
-
-    /// Convergence criterion that was satisfied (if any)
-    pub convergence_criterion: Option<ConvergenceCriterion>,
 }
 
 impl Default for ConvergenceInfo {
@@ -337,7 +334,6 @@ impl Default for ConvergenceInfo {
         Self {
             converged: false,
             function_change: None,
-            convergence_criterion: None,
         }
     }
 }
@@ -535,22 +531,6 @@ impl ConvergenceChecker {
             gradient_converged || function_converged || parameter_converged
         } || max_iterations_reached
             || max_time_reached;
-
-        // Determine convergence criterion
-        let convergence_criterion = if max_iterations_reached {
-            Some(ConvergenceCriterion::MaxIterations)
-        } else if max_time_reached {
-            Some(ConvergenceCriterion::MaxTime)
-        } else if gradient_converged {
-            Some(ConvergenceCriterion::GradientNorm)
-        } else if function_converged {
-            Some(ConvergenceCriterion::FunctionChange)
-        } else if parameter_converged {
-            Some(ConvergenceCriterion::ParameterChange)
-        } else {
-            None
-        };
-
         // Update state for next iteration
         self.previous_function_value = Some(function_value);
         self.previous_parameters = Some(parameters.to_vec());
@@ -558,7 +538,6 @@ impl ConvergenceChecker {
         Ok(ConvergenceInfo {
             converged,
             function_change,
-            convergence_criterion,
         })
     }
 

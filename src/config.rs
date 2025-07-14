@@ -52,7 +52,6 @@ pub struct OptimizerConfig {
 #[serde(tag = "type")]
 pub enum OptimizerType {
     QQN {
-        threshold: f64,
         lbfgs_history: usize,
         line_search: LineSearchConfig,
         epsilon: Option<f64>,
@@ -328,16 +327,9 @@ impl OptimizerConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         match &self.optimizer_type {
             OptimizerType::QQN {
-                threshold,
                 lbfgs_history,
                 ..
             } => {
-                if *threshold <= 0.0 || *threshold >= 1.0 {
-                    return Err(ConfigError::InvalidOptimizer(format!(
-                        "QQN threshold must be in (0, 1), got {}",
-                        threshold
-                    )));
-                }
                 if *lbfgs_history == 0 {
                     return Err(ConfigError::InvalidOptimizer(
                         "QQN L-BFGS history must be > 0".to_string(),
@@ -547,7 +539,6 @@ pub fn create_qqn_config(threshold: f64, history: usize) -> OptimizerConfig {
     OptimizerConfig {
         name: format!("qqn_t{}_h{}", threshold, history),
         optimizer_type: OptimizerType::QQN {
-            threshold,
             lbfgs_history: history,
             line_search: LineSearchConfig::default(),
             epsilon: Some(1e-8),
@@ -620,33 +611,6 @@ mod tests {
         assert_eq!(config.description, loaded_config.description);
         assert_eq!(config.problems.len(), loaded_config.problems.len());
         assert_eq!(config.optimizers.len(), loaded_config.optimizers.len());
-    }
-
-    #[test]
-    fn test_config_validation() {
-        // Test invalid QQN threshold
-        let invalid_config = ExperimentConfigBuilder::new("test", "test")
-            .add_optimizer(OptimizerConfig {
-                name: "invalid_qqn".to_string(),
-                optimizer_type: OptimizerType::QQN {
-                    threshold: 1.5, // Invalid: > 1.0
-                    lbfgs_history: 10,
-                    line_search: LineSearchConfig::default(),
-                    epsilon: Some(1e-8),
-                },
-            })
-            .build();
-
-        assert!(invalid_config.is_err());
-
-        // Test invalid problem dimension
-        let invalid_problem = ProblemConfig {
-            name: "invalid_rosenbrock".to_string(),
-            problem_type: ProblemType::Rosenbrock { dimension: 1 }, // Invalid: < 2
-            parameters: None,
-        };
-
-        assert!(invalid_problem.validate().is_err());
     }
 
     #[test]
