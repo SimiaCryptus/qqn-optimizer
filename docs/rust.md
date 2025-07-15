@@ -81,8 +81,8 @@ let c = a.matmul(&b)?;  // Matrix multiplication
 ```rust
 use candle_nn::optim::{Optimizer, SGD};
 
-let mut optimizer = SGD::new(params, 0.01)?;
-optimizer.step(&grads)?;
+let mut optimizer = SGD::new(params, 0.01) ?;
+optimizer.step( & grads) ?;
 ```
 
 ### Key Differences from PyTorch

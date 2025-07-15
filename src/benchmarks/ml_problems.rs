@@ -52,9 +52,6 @@ impl OptimizationProblem for LogisticRegression {
     fn convergence_tolerance(&self) -> f64 {
         1e-6
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        None // No bounds by default
-    }
 
     fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {
         let mut loss = 0.0;
@@ -162,14 +159,15 @@ impl OptimizationProblem for NeuralNetworkTraining {
     fn name(&self) -> &str {
         "Neural Network Training"
     }
-    fn optimal_value(&self) -> Option<f64> {
-        None // Neural network training doesn't have a known global optimum
+    fn dimension(&self) -> usize {
+        self.count_parameters()
     }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-5
-    }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        None // No bounds by default for neural network weights
+    fn initial_point(&self) -> Vec<f64> {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        (0..self.dimension())
+            .map(|_| rng.gen_range(-0.1..0.1))
+            .collect()
     }
 
     fn evaluate(&self, params: &[f64]) -> OptResult<f64> {
@@ -244,16 +242,12 @@ impl OptimizationProblem for NeuralNetworkTraining {
         Ok(grad)
     }
 
-    fn dimension(&self) -> usize {
-        self.count_parameters()
+    fn optimal_value(&self) -> Option<f64> {
+        None // Neural network training doesn't have a known global optimum
     }
 
-    fn initial_point(&self) -> Vec<f64> {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        (0..self.dimension())
-            .map(|_| rng.gen_range(-0.1..0.1))
-            .collect()
+    fn convergence_tolerance(&self) -> f64 {
+        1e-5
     }
 }
 
@@ -283,9 +277,6 @@ impl OptimizationProblem for LinearRegression {
     }
     fn convergence_tolerance(&self) -> f64 {
         1e-6
-    }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        None // No bounds by default
     }
 
     fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {
@@ -360,9 +351,6 @@ impl OptimizationProblem for SupportVectorMachine {
     }
     fn convergence_tolerance(&self) -> f64 {
         1e-6
-    }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        None // No bounds by default
     }
 
     fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {

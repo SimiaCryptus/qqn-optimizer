@@ -42,7 +42,7 @@ pub fn init_logging() -> Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "qqn_optimizer=info".into()),
+                .unwrap_or_else(|_| "qqn_optimizer=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .try_init()
@@ -60,5 +60,4 @@ mod tests {
         assert!(!VERSION.is_empty());
         assert!(VERSION.contains('.'));
     }
-
 }

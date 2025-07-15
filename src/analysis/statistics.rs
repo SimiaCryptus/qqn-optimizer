@@ -716,6 +716,20 @@ impl StatisticalAnalysis {
         let var_b = Self::std_dev(group_b).powi(2);
         let n_a = group_a.len() as f64;
         let n_b = group_b.len() as f64;
+        // Handle edge cases
+        if n_a < 2.0 || n_b < 2.0 {
+            return (0.0, 1.0); // No test possible with insufficient data
+        }
+        // Check for zero variance (identical values)
+        if var_a == 0.0 && var_b == 0.0 {
+            // If both groups have identical values, check if means are different
+            if (mean_a - mean_b).abs() < 1e-15 {
+                return (0.0, 1.0); // No difference
+            } else {
+                return (f64::INFINITY, 0.0); // Perfect separation
+            }
+        }
+
 
         let se = ((var_a / n_a) + (var_b / n_b)).sqrt();
         let t_stat = if se == 0.0 {
@@ -725,23 +739,38 @@ impl StatisticalAnalysis {
         };
 
         // Degrees of freedom for Welch's t-test (Welch-Satterthwaite equation)
-        let df = if var_a == 0.0 && var_b == 0.0 {
-            n_a + n_b - 2.0
+        let df = if var_a <= 1e-15 || var_b <= 1e-15 {
+            // Fall back to pooled t-test degrees of freedom for near-zero variance
+            (n_a + n_b - 2.0).max(1.0)
         } else {
             let numerator = ((var_a / n_a) + (var_b / n_b)).powi(2);
             let denominator =
                 (var_a / n_a).powi(2) / (n_a - 1.0) + (var_b / n_b).powi(2) / (n_b - 1.0);
             if denominator > 0.0 {
-                numerator / denominator
+                (numerator / denominator).max(1.0) // Ensure df >= 1
             } else {
-                n_a + n_b - 2.0
+                (n_a + n_b - 2.0).max(1.0)
             }
         };
+        // Validate degrees of freedom
+        if !df.is_finite() || df < 1.0 {
+            return (t_stat, 0.5); // Return neutral p-value for invalid df
+        }
+
 
         // Calculate p-value using t-distribution
-        let p_value = if df > 0.0 {
-            let t_dist = StudentsT::new(0.0, 1.0, df).unwrap();
-            2.0 * (1.0 - t_dist.cdf(t_stat.abs()))
+        let p_value = if df >= 1.0 && t_stat.is_finite() {
+            match StudentsT::new(0.0, 1.0, df) {
+                Ok(t_dist) => {
+                    let cdf_result = t_dist.cdf(t_stat.abs());
+                    if cdf_result.is_finite() && cdf_result >= 0.0 && cdf_result <= 1.0 {
+                        2.0 * (1.0 - cdf_result)
+                    } else {
+                        0.5 // Fallback for invalid CDF result
+                    }
+                }
+                Err(_) => 0.5 // Fallback for invalid distribution parameters
+            }
         } else {
             0.5
         };
@@ -750,6 +779,11 @@ impl StatisticalAnalysis {
     }
 
     fn mann_whitney_u_test(group_a: &[f64], group_b: &[f64]) -> (f64, f64) {
+        // Handle edge cases
+        if group_a.is_empty() || group_b.is_empty() {
+            return (0.0, 1.0);
+        }
+
         let mut combined: Vec<(f64, usize)> = Vec::new();
 
         for &value in group_a {
@@ -785,7 +819,17 @@ impl StatisticalAnalysis {
         } else {
             (u_stat - expected_u) / std_u
         };
-        let p_value = if z_score.abs() > 1.96 { 0.05 } else { 0.5 };
+
+        // More robust p-value calculation
+        let p_value = if !z_score.is_finite() {
+            0.5
+        } else if z_score.abs() > 2.58 {
+            0.01 // Very significant
+        } else if z_score.abs() > 1.96 {
+            0.05 // Significant
+        } else {
+            0.5 // Not significant
+        };
 
         (u_stat, p_value)
     }

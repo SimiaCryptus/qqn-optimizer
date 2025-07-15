@@ -162,7 +162,6 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     where
         Self: Sized;
 
-
     /// Perform a single optimization step using a differentiable function
     ///
     /// # Arguments

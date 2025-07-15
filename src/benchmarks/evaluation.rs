@@ -36,7 +36,6 @@ impl From<DurationWrapper> for Duration {
 pub struct BenchmarkConfig {
     pub max_iterations: usize,
     pub tolerance: f64,
-    pub max_function_evaluations: usize,
     pub time_limit: DurationWrapper,
     pub random_seed: u64,
     pub num_runs: usize,
@@ -46,8 +45,7 @@ impl Default for BenchmarkConfig {
     fn default() -> Self {
         Self {
             max_iterations: 10000,
-            tolerance: 1e-6,
-            max_function_evaluations: 10000,
+            tolerance: 1e-12,
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             random_seed: 42,
             num_runs: 10,
@@ -431,12 +429,6 @@ impl BenchmarkRunner {
             }
             previous_f_val = Some(f_val);
 
-            // Check function evaluation limit
-            if *function_evaluations >= self.config.max_function_evaluations {
-                info!("Maximum function evaluations reached");
-                return Ok(ConvergenceReason::MaxFunctionEvaluations);
-            }
-
             // Perform optimization step
             let step_result = optimizer
                 .step_slice(x, &gradient)
@@ -570,7 +562,6 @@ mod tests {
             max_iterations: 100,  // Reduced for testing
             tolerance: 1e-6,
             num_runs: 2,
-            max_function_evaluations: 1000,  // Ensure we have enough evaluations
             ..Default::default()
         };
 

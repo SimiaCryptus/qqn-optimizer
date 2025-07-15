@@ -1,2 +1,6 @@
 /target
 .idea
+results/
+reproducibility/
+*.zip
+*.log

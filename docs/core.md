@@ -15,7 +15,8 @@
 
 ## Architecture Overview
 
-The QQN optimizer framework is built around a modular, trait-based architecture that enables easy extension and benchmarking of optimization algorithms. The core design principles include:
+The QQN optimizer framework is built around a modular, trait-based architecture that enables easy extension and
+benchmarking of optimization algorithms. The core design principles include:
 
 - **Type Safety**: Extensive use of Rust's type system to prevent runtime errors
 - **Memory Safety**: Zero-copy operations where possible, careful memory management
@@ -52,7 +53,7 @@ The QQN optimizer framework is built around a modular, trait-based architecture 
 
 ```rust
 src/core/
-├── mod.rs              // Public API and re-exports
+├── mod .rs              // Public API and re-exports
 ├── optimizer.rs        // Core optimizer traits and types
 ├── lbfgs.rs           // L-BFGS implementation
 ├── qqn.rs             // QQN algorithm implementation
@@ -87,7 +88,8 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     type State: Clone + Debug + Send + Sync;
 
     /// Create a new optimizer instance
-    fn new(config: Self::Config) -> Self where Self: Sized;
+    fn new(config: Self::Config) -> Self where
+        Self: Sized;
 
     /// Perform a single optimization step
     fn step(
@@ -166,7 +168,8 @@ pub struct StepResult {
 
 ### Algorithm Overview
 
-The L-BFGS (Limited-memory BFGS) implementation serves as both a baseline optimizer and a core component of the QQN algorithm. It maintains a limited history of gradient and parameter changes to approximate the inverse Hessian matrix.
+The L-BFGS (Limited-memory BFGS) implementation serves as both a baseline optimizer and a core component of the QQN
+algorithm. It maintains a limited history of gradient and parameter changes to approximate the inverse Hessian matrix.
 
 ### Configuration
 
@@ -356,7 +359,8 @@ impl LBFGSState {
 
 ### Core Innovation
 
-The QQN (Quadratic Quasi-Newton) algorithm introduces a novel quadratic interpolation path between the steepest descent direction and the L-BFGS direction:
+The QQN (Quadratic Quasi-Newton) algorithm introduces a novel quadratic interpolation path between the steepest descent
+direction and the L-BFGS direction:
 
 ```
 d(t) = t(1-t)(-∇f) + t²d_LBFGS
@@ -535,7 +539,7 @@ impl LineSearch for StrongWolfeLineSearch {
             if !self.armijo_condition(current_value, f_alpha, alpha, directional_derivative)
                 || (i > 0 && f_alpha >= f_prev) {
                 return self.zoom(alpha_prev, alpha, current_value, directional_derivative,
-                               curve, objective_fn, gradient_fn);
+                                 curve, objective_fn, gradient_fn);
             }
 
             let grad_alpha = gradient_fn(&trial_point)?;
@@ -554,7 +558,7 @@ impl LineSearch for StrongWolfeLineSearch {
 
             if grad_alpha_dot_p >= 0.0 {
                 return self.zoom(alpha, alpha_prev, current_value, directional_derivative,
-                               curve, objective_fn, gradient_fn);
+                                 curve, objective_fn, gradient_fn);
             }
 
             alpha_prev = alpha;
@@ -710,7 +714,7 @@ pub enum OptimizationError {
 ```rust
 impl LBFGSOptimizer {
     fn step(&mut self, params: &mut [Tensor], function: &dyn DifferentiableFunction)
-        -> CandleResult<StepResult> {
+            -> CandleResult<StepResult> {
 
         // Input validation
         if params.is_empty() {
@@ -791,7 +795,7 @@ impl Optimizer for MyOptimizer {
 
     fn new(config: Self::Config) -> Self { /* ... */ }
     fn step(&mut self, params: &mut [Tensor], function: &dyn DifferentiableFunction)
-        -> CandleResult<StepResult> { /* ... */ }
+            -> CandleResult<StepResult> { /* ... */ }
     // ... other required methods
 }
 ```
@@ -842,4 +846,6 @@ impl DifferentiableFunction for MyProblem {
 2. Add to benchmark suite
 3. Update configuration system
 
-This comprehensive technical documentation provides the foundation for understanding, using, and extending the QQN optimizer framework. The modular design and robust error handling make it suitable for both research and production use cases.
+This comprehensive technical documentation provides the foundation for understanding, using, and extending the QQN
+optimizer framework. The modular design and robust error handling make it suitable for both research and production use
+cases.

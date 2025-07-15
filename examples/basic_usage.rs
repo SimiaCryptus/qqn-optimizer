@@ -10,22 +10,23 @@ use anyhow::Result;
 use candle_core::{Device, Tensor};
 use qqn_optimizer::core::optimizer::SeparateFunctions;
 use qqn_optimizer::{
-    OptimizationProblem, Optimizer, QQNConfig, QQNOptimizer, RosenbrockFunction,
-    StrongWolfeConfig,
+    LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig,
+    QQNOptimizer, RosenbrockFunction,
 };
 
 fn main() -> Result<()> {
     // Configure the QQN optimizer
     let config = QQNConfig {
         lbfgs_history: 10,         // L-BFGS history length
-        line_search: StrongWolfeConfig {
+        min_lbfgs_iterations: 2,
+        line_search: LineSearchConfig {
+            method: LineSearchMethod::StrongWolfe,
             c1: 1e-4,
             c2: 0.9,
             max_iterations: 20,
             initial_step: 1.0,
             min_step: 1e-16,
             max_step: 1e16,
-            verbose: true, // Enable verbose output for line search
         },
         epsilon: 1e-8,             // Numerical stability constant
         verbose: true,          // Enable verbose output

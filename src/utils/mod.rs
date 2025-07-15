@@ -1,11 +1,3 @@
-//! Utility functions and shared components.
-//!
-//! This module provides:
-//! - Mathematical operations and tensor utilities
-//! - Logging and debugging tools
-//! - Serialization helpers
-//! - Common data structures
-
 pub mod math;
 
 pub use math::{

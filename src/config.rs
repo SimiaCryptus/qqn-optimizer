@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
-
 // Note: bincode serialization can be added later if needed
 // For now, we'll focus on serde-based serialization
 
@@ -33,6 +32,11 @@ pub enum ProblemType {
     Beale,
     LogisticRegression { dataset: String },
     NeuralNetwork { architecture: NetworkConfig },
+    Griewank { dimension: usize },
+    Schwefel { dimension: usize },
+    Levy { dimension: usize },
+    Zakharov { dimension: usize },
+    Michalewicz { dimension: usize, steepness: Option<i32> },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -316,6 +320,54 @@ impl ProblemConfig {
                     return Err(ConfigError::InvalidProblem(
                         "Neural network layer sizes must be > 0".to_string(),
                     ));
+                }
+            }
+            ProblemType::Griewank { dimension } => {
+                if *dimension < 1 {
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Griewank dimension must be >= 1, got {}",
+                        dimension
+                    )));
+                }
+            }
+            ProblemType::Schwefel { dimension } => {
+                if *dimension < 1 {
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Schwefel dimension must be >= 1, got {}",
+                        dimension
+                    )));
+                }
+            }
+            ProblemType::Levy { dimension } => {
+                if *dimension < 1 {
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Levy dimension must be >= 1, got {}",
+                        dimension
+                    )));
+                }
+            }
+            ProblemType::Zakharov { dimension } => {
+                if *dimension < 1 {
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Zakharov dimension must be >= 1, got {}",
+                        dimension
+                    )));
+                }
+            }
+            ProblemType::Michalewicz { dimension, steepness } => {
+                if *dimension < 1 {
+                    return Err(ConfigError::InvalidProblem(format!(
+                        "Michalewicz dimension must be >= 1, got {}",
+                        dimension
+                    )));
+                }
+                if let Some(m) = steepness {
+                    if *m < 1 {
+                        return Err(ConfigError::InvalidProblem(format!(
+                            "Michalewicz steepness must be >= 1, got {}",
+                            m
+                        )));
+                    }
                 }
             }
         }
@@ -633,5 +685,34 @@ mod tests {
         assert_eq!(config.optimizers.len(), 3);
         assert_eq!(config.benchmark_settings.max_iterations, 500);
         assert_eq!(config.benchmark_settings.num_runs, 5);
+    }
+}
+
+// Add helper function
+pub fn create_sgd_config(lr: f64, momentum: Option<f64>) -> OptimizerConfig {
+    OptimizerConfig {
+        name: format!("sgd_lr{}{}", lr,
+                      momentum.map(|m| format!("_mom{}", m)).unwrap_or_default()),
+        optimizer_type: OptimizerType::SGD {
+            learning_rate: lr,
+            momentum,
+        },
+    }
+}
+
+// Add problem creation helpers
+pub fn create_griewank_problem(dimension: usize) -> ProblemConfig {
+    ProblemConfig {
+        name: format!("griewank_{}d", dimension),
+        problem_type: ProblemType::Griewank { dimension },
+        parameters: None,
+    }
+}
+
+pub fn create_schwefel_problem(dimension: usize) -> ProblemConfig {
+    ProblemConfig {
+        name: format!("schwefel_{}d", dimension),
+        problem_type: ProblemType::Schwefel { dimension },
+        parameters: None,
     }
 }

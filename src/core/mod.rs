@@ -1,12 +1,3 @@
-//! Core optimization algorithms and traits.
-//!
-//! This module contains the fundamental building blocks for optimization algorithms,
-//! - Base traits for optimizers and problems
-//! - QQN algorithm implementation
-//! - Baseline optimizers (L-BFGS, Adam, SGD)
-//! - Line search algorithms
-//! - Mathematical utilities
-/// Core result type used throughout the optimization framework
 pub type OptResult<T> = anyhow::Result<T>;
 
 pub mod lbfgs;
@@ -30,6 +21,9 @@ pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
 
 /// Default L-BFGS history size
 pub const DEFAULT_LBFGS_HISTORY: usize = 10;
+pub mod sgd;
+
+pub use sgd::{SGDConfig, SGDOptimizer, SGDState};
 
 #[cfg(test)]
 mod tests {

@@ -1,9 +1,8 @@
-use qqn_optimizer::analysis::statistics::{StatisticalAnalysis, PerformanceProfiles};
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkResults, SingleResult, ConvergenceReason};
+use qqn_optimizer::analysis::statistics::StatisticalAnalysis;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, OptimizationTrace};
-use std::time::Duration;
+use qqn_optimizer::benchmarks::evaluation::{BenchmarkResults, ConvergenceReason, SingleResult};
 use std::fs;
-use std::path::Path;
+use std::time::Duration;
 
 /// Generate LaTeX tables for academic papers
 pub struct LaTeXTableGenerator;
@@ -89,7 +88,7 @@ Comparison & Test Statistic & p-value & Significant \\
 #[test]
 fn test_latex_table_generation() {
     println!("Starting LaTeX table generation test...");
-    
+
     // Create mock results
     let config = BenchmarkConfig::default();
     let mut results = BenchmarkResults::new(config);
@@ -131,7 +130,7 @@ fn test_latex_table_generation() {
     println!("Generating LaTeX performance table...");
 
     let latex_table = LaTeXTableGenerator::generate_performance_table(&results);
-    
+
     // Verify LaTeX structure
     assert!(latex_table.contains("\\begin{table}"));
     assert!(latex_table.contains("\\end{table}"));
@@ -143,7 +142,7 @@ fn test_latex_table_generation() {
     println!("Generating statistical analysis...");
     let analysis = StatisticalAnalysis::new(&results);
     let significance_table = LaTeXTableGenerator::generate_significance_table(&analysis);
-    
+
     assert!(significance_table.contains("Statistical significance"));
     assert!(significance_table.contains("p-value"));
 
@@ -165,10 +164,10 @@ fn test_latex_table_generation() {
 fn test_export_academic_formats() -> std::io::Result<()> {
     // Use a timestamped directory to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir = format!("academic_exports_{}", timestamp);
+    let output_dir = format!("results/academic_exports_{}", timestamp);
     let output_path = std::path::Path::new(&output_dir);
     std::fs::create_dir_all(output_path)?;
-    
+
     println!("Exporting academic formats to: {}", output_path.display());
 
     // Create mock results (same as above)
@@ -205,11 +204,11 @@ fn test_export_academic_formats() -> std::io::Result<()> {
     // Export raw data for external analysis
     let csv_data = results.results.iter()
         .map(|r| format!("{},{},{},{:.6e},{},{:.3}",
-            r.problem_name, r.optimizer_name, r.run_id, 
-            r.final_value, r.iterations, r.execution_time.as_secs_f64()))
+                         r.problem_name, r.optimizer_name, r.run_id,
+                         r.final_value, r.iterations, r.execution_time.as_secs_f64()))
         .collect::<Vec<_>>()
         .join("\n");
-    
+
     let csv_header = "Problem,Optimizer,Run,FinalValue,Iterations,Time\n";
     fs::write(output_path.join("raw_results.csv"), format!("{}{}", csv_header, csv_data))?;
 

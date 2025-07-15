@@ -81,7 +81,7 @@ pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
 /// Compute dot product between two f64 slices
 pub fn dot_product_f64(a: &[f64], b: &[f64]) -> Result<f64> {
     if a.len() != b.len() {
-        return Err(anyhow!("Vectors must have same length for dot product"));
+        return Err(anyhow!("Vectors must have same length for dot product: {} != {}", a.len(), b.len()));
     }
     let result = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     Ok(result)

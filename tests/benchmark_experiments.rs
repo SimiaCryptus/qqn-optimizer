@@ -1,61 +1,21 @@
 use candle_core::{Device, Tensor};
 use log::{info, warn};
 use qqn_optimizer::analysis::plotting::{ExtendedOptimizationTrace, PlottingEngine};
-use qqn_optimizer::analysis::statistics::{StatisticalAnalysis, PerformanceProfiles};
+use qqn_optimizer::analysis::statistics::{PerformanceProfiles, StatisticalAnalysis};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner};
 use qqn_optimizer::benchmarks::functions::{
-    AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
-    SphereFunction,
+    AckleyFunction, BealeFunction, GoldsteinPriceFunction, LeviFunction, MatyasFunction,
+    MichalewiczFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
+    SphereFunction, StyblinskiTangFunction,
 };
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::{DifferentiableFunction, Optimizer, OptimizerBox};
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
-use qqn_optimizer::init_logging;
+use qqn_optimizer::core::sgd::{SGDConfig, SGDOptimizer};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use tempfile::tempdir;
-
-/// Wrapper to make benchmark functions work with the new DifferentiableFunction trait
-struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
-    problem: T,
-}
-
-impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {
-    fn new(problem: T) -> Self {
-        Self { problem }
-    }
-}
-
-impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
-    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
-        let x_vec = tensors_to_vec(params);
-        self.problem
-            .evaluate(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))
-    }
-
-    fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
-        let x_vec = tensors_to_vec(params);
-        let grad_vec = self
-            .problem
-            .gradient(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        Ok(vec![tensor_from_vec(grad_vec)])
-    }
-}
-
-fn tensor_from_vec(values: Vec<f64>) -> Tensor {
-    Tensor::from_vec(values.clone(), values.len(), &Device::Cpu).unwrap()
-}
-
-fn tensors_to_vec(tensors: &[Tensor]) -> Vec<f64> {
-    tensors
-        .iter()
-        .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-        .collect()
-}
 
 /// Comprehensive benchmark experiment runner
 pub struct ExperimentRunner {
@@ -68,7 +28,6 @@ impl ExperimentRunner {
         let config = BenchmarkConfig {
             max_iterations: 100,  // Reduce for faster testing
             tolerance: 1e-6,
-            max_function_evaluations: 500,  // Reduce for faster testing
             time_limit: Duration::from_secs(300).into(), // 5 minutes
             random_seed: 42,
             num_runs: 3,  // Reduce for faster testing
@@ -79,7 +38,6 @@ impl ExperimentRunner {
 
     /// Run comprehensive comparative benchmarks
     pub async fn run_comparative_benchmarks(&self) -> anyhow::Result<()> {
-        let _ = init_logging();
         info!("Starting comprehensive comparative benchmarks");
 
         // Ensure output directory exists
@@ -87,13 +45,13 @@ impl ExperimentRunner {
 
         // Define test problems
         let problems = self.create_test_problems();
-        
+
         // Define optimizers to compare
         let optimizers = self.create_optimizers();
 
         // Run benchmarks for each problem
         let mut all_results = Vec::new();
-        
+
         for problem in &problems {
             info!("Running benchmarks for problem: {}", problem.name());
             let results = self.run_problem_benchmarks(problem.as_ref(), &optimizers).await?;
@@ -102,7 +60,7 @@ impl ExperimentRunner {
 
         // Generate comprehensive analysis and HTML report
         self.generate_html_report(&all_results).await?;
-        
+
         info!("Benchmark experiments completed. Results saved to: {}", self.output_dir);
         Ok(())
     }
@@ -112,6 +70,10 @@ impl ExperimentRunner {
             Box::new(SphereFunction::new(2)),
             Box::new(RosenbrockFunction::new(2)),
             Box::new(BealeFunction::new()),
+            Box::new(MatyasFunction::new()),
+            Box::new(LeviFunction::new()),
+            Box::new(GoldsteinPriceFunction::new()),
+            Box::new(MichalewiczFunction::new(2)),
         ]
     }
 
@@ -140,6 +102,30 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
+            (
+                "SGD".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Momentum".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.9,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Nesterov".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.9,
+                    nesterov: true,
+                    ..Default::default()
+                })),
+            ),
         ]
     }
 
@@ -152,7 +138,6 @@ impl ExperimentRunner {
         let mut results = BenchmarkResults::new(self.config.clone());
 
         for (_opt_name, optimizer) in optimizers {
-            
             for run_id in 0..self.config.num_runs {
                 let result = runner
                     .run_single_benchmark(problem, optimizer.as_ref(), run_id)
@@ -165,40 +150,40 @@ impl ExperimentRunner {
     }
 
     async fn generate_html_report(&self, all_results: &[(String, BenchmarkResults)]) -> anyhow::Result<()> {
-       // Ensure output directory exists before generating any files
-       fs::create_dir_all(&self.output_dir)?;
-       println!("Generating report in directory: {}", self.output_dir);
+        // Ensure output directory exists before generating any files
+        fs::create_dir_all(&self.output_dir)?;
+        println!("Generating report in directory: {}", self.output_dir);
         // Debug: Print what we're working with
         println!("Processing {} problems with results", all_results.len());
         for (problem_name, results) in all_results {
             println!("  Problem '{}': {} results", problem_name, results.results.len());
         }
-       
-        
+
+
         let mut html_content = self.generate_html_header();
-        
+
         // Executive Summary
         html_content.push_str(&self.generate_executive_summary(all_results));
-        
+
         // Detailed Results for Each Problem
         for (problem_name, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem_name, results)?);
         }
-        
-        
+
+
         // Statistical Analysis (skip if no data)
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.generate_statistical_analysis(all_results)?);
         }
-        
+
         // Performance Profiles (skip if no data)
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.generate_performance_profiles(all_results)?);
         }
-        
+
         // Conclusions and Recommendations
         html_content.push_str(&self.generate_conclusions(all_results));
-        
+
         html_content.push_str(&self.generate_html_footer());
 
         // Save HTML report
@@ -208,7 +193,7 @@ impl ExperimentRunner {
 
         // Generate additional outputs
         self.generate_csv_exports(all_results)?;
-        
+
         // Generate plots only if we have data and plotting is available
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             match self.generate_plots(all_results).await {
@@ -270,7 +255,7 @@ impl ExperimentRunner {
     fn generate_executive_summary(&self, all_results: &[(String, BenchmarkResults)]) -> String {
         let total_problems = all_results.len();
         let total_runs = all_results.iter().map(|(_, r)| r.results.len()).sum::<usize>();
-        
+
         // Calculate success rates
         let mut optimizer_stats = HashMap::new();
         for (_, results) in all_results {
@@ -437,7 +422,7 @@ impl ExperimentRunner {
 "#);
             return Ok(section);
         }
-        
+
         // Generate significance test table
         section.push_str(r#"            <table>
                 <tr>
@@ -449,30 +434,38 @@ impl ExperimentRunner {
                 </tr>
 "#);
 
-            
+
         // Try to create statistical analysis, but handle errors gracefully
-                    
-        let stats_analysis = StatisticalAnalysis::new(&combined_results);
-        for test in stats_analysis.significance_tests() {
-            let significant = if test.is_significant() { "✓" } else { "✗" };
-            let significance_class = if test.is_significant() { "best" } else { "" };
-            
-            section.push_str(&format!(
-                r#"                <tr class="{}">
-                    <td>{} vs {}</td>
-                    <td>{:.4}</td>
-                    <td>{:.4}</td>
-                    <td>{}</td>
-                    <td>-</td>
-                </tr>
+        match std::panic::catch_unwind(|| StatisticalAnalysis::new(&combined_results)) {
+            Ok(stats_analysis) => {
+                for test in stats_analysis.significance_tests() {
+                    let significant = if test.is_significant() { "✓" } else { "✗" };
+                    let significance_class = if test.is_significant() { "best" } else { "" };
+
+                    section.push_str(&format!(
+                        r#"                <tr class="{}">
+                            <td>{} vs {}</td>
+                            <td>{:.4}</td>
+                            <td>{:.4}</td>
+                            <td>{}</td>
+                            <td>-</td>
+                        </tr>
 "#,
-                significance_class,
-                test.optimizer_a,
-                test.optimizer_b,
-                test.statistic,
-                test.p_value,
-                significant
-            ));
+                        significance_class,
+                        test.optimizer_a,
+                        test.optimizer_b,
+                        test.statistic,
+                        test.p_value,
+                        significant
+                    ));
+                }
+            }
+            Err(_) => {
+                section.push_str(r#"                <tr>
+                    <td colspan="5"><em>Statistical analysis failed due to numerical issues. This can occur with identical or near-identical results.</em></td>
+                </tr>
+"#);
+            }
         }
 
         section.push_str(r#"            </table>
@@ -632,13 +625,13 @@ impl ExperimentRunner {
     }
 
     fn generate_csv_exports(&self, all_results: &[(String, BenchmarkResults)]) -> anyhow::Result<()> {
-       // Ensure output directory exists
-       fs::create_dir_all(&self.output_dir)?;
-       println!("Exporting CSV files to: {}", self.output_dir);
-       
+        // Ensure output directory exists
+        fs::create_dir_all(&self.output_dir)?;
+        println!("Exporting CSV files to: {}", self.output_dir);
+
         // Export detailed results to CSV
         let mut csv_content = String::from("Problem,Optimizer,Run,FinalValue,Iterations,Time,Converged\n");
-        
+
         for (problem_name, results) in all_results {
             for result in &results.results {
                 csv_content.push_str(&format!(
@@ -660,7 +653,7 @@ impl ExperimentRunner {
 
         // Export summary statistics
         let mut summary_csv = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,SuccessRate\n");
-        
+
         for (problem_name, results) in all_results {
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
@@ -700,9 +693,9 @@ impl ExperimentRunner {
     }
 
     async fn generate_plots(&self, all_results: &[(String, BenchmarkResults)]) -> anyhow::Result<()> {
-       // Ensure output directory exists
-       fs::create_dir_all(&self.output_dir)?;
-       
+        // Ensure output directory exists
+        fs::create_dir_all(&self.output_dir)?;
+
         // Create plotting engine with error handling for font issues
         let plotting_engine = PlottingEngine::new(self.output_dir.clone());
 
@@ -777,13 +770,13 @@ impl ExperimentRunner {
 async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("benchmark_results_{}", timestamp);
+    let output_dir_name = format!("results/benchmark_results_{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
-    
+
     // Create the directory if it doesn't exist
     std::fs::create_dir_all(&output_dir)?;
     println!("Creating benchmark results in: {}", output_dir.display());
-    
+
     let runner = ExperimentRunner::new(output_dir.to_string_lossy().to_string());
     runner.run_comparative_benchmarks().await?;
 
@@ -805,24 +798,23 @@ async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_academic_citation_format() -> anyhow::Result<()> {
-    init_logging()?;
     // Use a timestamped directory to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("citation_test_{}", timestamp);
+    let output_dir_name = format!("results/citation_test_{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
     // Ensure the output directory exists
     fs::create_dir_all(&output_dir)?;
-    
+
     println!("Running citation format test in: {}", output_dir.display());
-    
+
     let runner = ExperimentRunner::new(output_dir.to_string_lossy().to_string());
-    
+
     // Run a smaller subset for testing
     let problems = vec![
         Box::new(SphereFunction::new(2)) as Box<dyn OptimizationProblem>,
         Box::new(RosenbrockFunction::new(2)),
     ];
-    
+
     let optimizers = vec![
         ("QQN".to_string(), Box::new(QQNOptimizer::new(QQNConfig::default())) as Box<dyn OptimizerBox>),
         ("L-BFGS".to_string(), Box::new(LBFGSOptimizer::new(LBFGSConfig::default()))),
@@ -831,13 +823,13 @@ async fn test_academic_citation_format() -> anyhow::Result<()> {
     let mut all_results = Vec::new();
     for problem in &problems {
         let mut results = BenchmarkResults::new(runner.config.clone());
-        
+
         // Run a few iterations for testing
-        for (opt_name, optimizer) in &optimizers {
+        for (_name, optimizer) in &optimizers {
             for run_id in 0..3 {
                 let benchmark_runner = BenchmarkRunner::new(runner.config.clone());
                 let result = benchmark_runner
-                        .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id)
+                    .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id)
                     .await?;
                 results.add_result(result);
             }

@@ -5,9 +5,10 @@
 //! It serves both as a baseline optimizer for benchmarking and as a core component of the
 //! QQN algorithm.
 
-use crate::core::line_search::{LineSearch, LineSearchConfig, StrongWolfeLineSearch};
-use crate::core::optimizer::OptimizationMetadata;
+use crate::core::line_search::create_line_search;
+use crate::core::line_search::{LineSearch, LineSearchConfig};
 use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
+use crate::core::optimizer::{DifferentiableFunction, OptimizationMetadata};
 use crate::utils::math::{
     compute_magnitude, dot_product, vector_add, vector_scale, vector_subtract,
 };
@@ -274,6 +275,7 @@ impl LBFGSState {
                 let rho_k = 1.0 / s_dot_y;
                 if !rho_k.is_finite() {
                     warn!("L-BFGS: Non-finite rho_k, skipping update");
+                    self.prev_gradient = Some(new_gradient.to_vec());
                     return Ok(());
                 }
 
@@ -364,17 +366,7 @@ impl LBFGSOptimizer {
                   config.history_size, config.epsilon, config.max_step_size, config.min_step_size);
         }
         let state = LBFGSState::new(config.history_size);
-        let line_search = Box::new(StrongWolfeLineSearch::new(
-            crate::core::line_search::StrongWolfeConfig {
-                c1: config.line_search.c1,
-                c2: config.line_search.c2,
-                max_iterations: config.line_search.max_iterations,
-                min_step: 1e-16,
-                max_step: 1e16,
-                initial_step: config.line_search.initial_step,
-                verbose: config.verbose,
-            },
-        ));
+        let line_search = create_line_search(config.line_search.clone());
 
         Self {
             config,
@@ -461,7 +453,7 @@ impl Optimizer for LBFGSOptimizer {
     fn step(
         &mut self,
         params: &mut [Tensor],
-        function: &dyn crate::core::optimizer::DifferentiableFunction,
+        function: &dyn DifferentiableFunction,
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
         if self.config.verbose {
@@ -556,87 +548,15 @@ impl Optimizer for LBFGSOptimizer {
             }
         };
         debug!("L-BFGS: Initial step size = {:.6e}", step_size);
+        // Use the configured line search
+        let mut line_search = self.line_search.clone_box();
+        let line_search_result = line_search.search(
+            params,
+            &search_direction,
+            &gradients,
+            function,
+        ).map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?;
 
-        // Simple backtracking line search
-        let mut success = false;
-        let backtrack_factor = 0.5; // Standard backtracking factor
-        let max_backtracks = 100; // More backtracking attempts
-        let mut backtrack_count = 0;
-        let mut best_step_size = step_size;
-
-        // Get current function value for comparison
-        let current_value = function.evaluate(params).unwrap_or(f64::INFINITY);
-
-        for _ in 0..max_backtracks {
-            // Check if step size is reasonable
-            let step_norm = step_size * compute_magnitude(&search_direction)?;
-
-            // If step is very small, accept it
-            if step_norm < 1e-12 || step_size < self.config.min_step_size {
-                debug!("L-BFGS: Accepting small step (norm={:.6e})", step_norm);
-                success = true;
-                best_step_size = step_size;
-                break;
-            }
-
-            // Try the step and check if it reduces the function value
-            let mut trial_params = params.to_vec();
-            for (param, direction) in trial_params.iter_mut().zip(&search_direction) {
-                let step_size_tensor = Tensor::new(step_size, param.device())?;
-                let step = direction.broadcast_mul(&step_size_tensor)?;
-                *param = param.add(&step)?;
-            }
-
-            // Evaluate function at trial point
-            let trial_value = match function.evaluate(&trial_params) {
-                Ok(val) => val,
-                Err(_) => {
-                    // If evaluation fails, backtrack
-                    step_size *= backtrack_factor * backtrack_factor; // More aggressive
-                    backtrack_count += 1;
-                    continue;
-                }
-            };
-
-            // Much stricter acceptance criteria
-            let directional_derivative = crate::utils::math::dot_product(&gradients, &search_direction).unwrap_or(0.0);
-            let armijo_threshold = current_value + 1e-4 * step_size * directional_derivative;
-
-            // Accept only if we have strict improvement and finite values
-            if trial_value.is_finite() && trial_value <= armijo_threshold {
-                success = true;
-                best_step_size = step_size;
-                break;
-            } else {
-                // Normal backtrack
-                step_size *= backtrack_factor;
-                backtrack_count += 1;
-            }
-        }
-        // Use the best step size found
-        step_size = best_step_size;
-
-        if backtrack_count > 0 {
-            debug!("L-BFGS: Backtracked {} times to step_size={:.6e}", backtrack_count, step_size);
-            self.log_scalar("Final Step Size After Backtracking", step_size);
-            self.log_scalar("Backtrack Count", backtrack_count as f64);
-        }
-
-
-        // Ensure minimum step size
-        step_size = step_size.max(self.config.min_step_size);
-
-        if !success {
-            warn!("L-BFGS: Line search failed to find acceptable step size");
-        }
-
-        let line_search_result = crate::core::line_search::LineSearchResult {
-            step_size,
-            function_evaluations: 0,
-            gradient_evaluations: 0,
-            success,
-            termination_reason: crate::core::line_search::TerminationReason::WolfeConditionsSatisfied,
-        };
         if self.config.verbose {
             debug!("=== Line Search Result ===");
             debug!("  Step Size: {:.12e}", line_search_result.step_size);

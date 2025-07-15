@@ -18,8 +18,9 @@ pub use evaluation::{
     SingleResult,
 };
 pub use functions::{
-    AckleyFunction, BealeFunction, BoothFunction, HimmelblauFunction, RastriginFunction,
-    RosenbrockFunction, SphereFunction,
+    AckleyFunction, BealeFunction, BoothFunction, GriewankFunction, HimmelblauFunction,
+    LevyFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SchwefelFunction,
+    SphereFunction, ZakharovFunction,
 };
 pub use ml_problems::{
     LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,

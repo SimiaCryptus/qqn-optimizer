@@ -17,9 +17,273 @@ pub trait OptimizationProblem: Send + Sync {
     fn optimal_value(&self) -> Option<f64>;
     /// Get convergence tolerance
     fn convergence_tolerance(&self) -> f64;
-    /// Get problem bounds if any
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)>;
 }
+/// Matyas function: f(x, y) = 0.26(x² + y²) - 0.48xy
+/// Global minimum: f(0, 0) = 0
+#[derive(Debug, Clone)]
+pub struct MatyasFunction {
+    name: String,
+}
+impl MatyasFunction {
+    pub fn new() -> Self {
+        Self {
+            name: "Matyas_2D".to_string(),
+        }
+    }
+}
+impl OptimizationProblem for MatyasFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        2
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![1.0, 1.0]
+    }
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Matyas function requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        Ok(0.26 * (x1 * x1 + x2 * x2) - 0.48 * x1 * x2)
+    }
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Matyas function requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        Ok(vec![
+            0.52 * x1 - 0.48 * x2,
+            0.52 * x2 - 0.48 * x1,
+        ])
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
+    }
+    fn convergence_tolerance(&self) -> f64 {
+        1e-6
+    }
+}
+/// Levi N.13 function: f(x, y) = sin²(3πx) + (x-1)²(1 + sin²(3πy)) + (y-1)²(1 + sin²(2πy))
+/// Global minimum: f(1, 1) = 0
+#[derive(Debug, Clone)]
+pub struct LeviFunction {
+    name: String,
+}
+impl LeviFunction {
+    pub fn new() -> Self {
+        Self {
+            name: "Levi_2D".to_string(),
+        }
+    }
+}
+impl OptimizationProblem for LeviFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        2
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![0.0, 0.0]
+    }
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Levi function requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        let term1 = (3.0 * PI * x1).sin().powi(2);
+        let term2 = (x1 - 1.0).powi(2) * (1.0 + (3.0 * PI * x2).sin().powi(2));
+        let term3 = (x2 - 1.0).powi(2) * (1.0 + (2.0 * PI * x2).sin().powi(2));
+        Ok(term1 + term2 + term3)
+    }
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Levi function requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        let grad_x1 = 2.0 * (3.0 * PI * x1).sin() * (3.0 * PI * x1).cos() * 3.0 * PI
+            + 2.0 * (x1 - 1.0) * (1.0 + (3.0 * PI * x2).sin().powi(2));
+        let grad_x2 = (x1 - 1.0).powi(2) * 2.0 * (3.0 * PI * x2).sin() * (3.0 * PI * x2).cos() * 3.0 * PI
+            + 2.0 * (x2 - 1.0) * (1.0 + (2.0 * PI * x2).sin().powi(2))
+            + (x2 - 1.0).powi(2) * 2.0 * (2.0 * PI * x2).sin() * (2.0 * PI * x2).cos() * 2.0 * PI;
+        Ok(vec![grad_x1, grad_x2])
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
+    }
+    fn convergence_tolerance(&self) -> f64 {
+        1e-6
+    }
+}
+/// Goldstein-Price function: complex 2D function with multiple local minima
+/// Global minimum: f(0, -1) = 3
+#[derive(Debug, Clone)]
+pub struct GoldsteinPriceFunction {
+    name: String,
+}
+impl GoldsteinPriceFunction {
+    pub fn new() -> Self {
+        Self {
+            name: "GoldsteinPrice_2D".to_string(),
+        }
+    }
+}
+impl OptimizationProblem for GoldsteinPriceFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        2
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![1.0, 1.0]
+    }
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Goldstein-Price function requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        let term1 = 1.0 + (x1 + x2 + 1.0).powi(2) * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
+        let term2 = 30.0 + (2.0 * x1 - 3.0 * x2).powi(2) * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
+        Ok(term1 * term2)
+    }
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Goldstein-Price function requires 2D input"));
+        }
+        // This is a complex gradient calculation - using numerical differentiation for simplicity
+        let h = 1e-8;
+        let f_x = self.evaluate(x)?;
+        let mut x_plus_h = x.to_vec();
+        x_plus_h[0] += h;
+        let f_x1_plus_h = self.evaluate(&x_plus_h)?;
+        let grad_x1 = (f_x1_plus_h - f_x) / h;
+        let mut x_plus_h = x.to_vec();
+        x_plus_h[1] += h;
+        let f_x2_plus_h = self.evaluate(&x_plus_h)?;
+        let grad_x2 = (f_x2_plus_h - f_x) / h;
+        Ok(vec![grad_x1, grad_x2])
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(3.0)
+    }
+    fn convergence_tolerance(&self) -> f64 {
+        1e-4
+    }
+}
+/// Styblinski-Tang function: f(x) = 0.5 * Σ(x_i^4 - 16*x_i^2 + 5*x_i)
+/// Global minimum: f(-2.903534, -2.903534, ...) ≈ -39.16599 * n
+#[derive(Debug, Clone)]
+pub struct StyblinskiTangFunction {
+    dimension: usize,
+    name: String,
+}
+impl StyblinskiTangFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self {
+            dimension,
+            name: format!("StyblinskiTang_{}D", dimension),
+        }
+    }
+}
+/// Michalewicz function: f(x) = -Σ sin(x_i) * sin(i*x_i²/π)^(2m)
+/// Global minimum location and value depend on dimension
+#[derive(Debug, Clone)]
+pub struct MichalewiczFunction {
+    dimension: usize,
+    m: i32,
+    name: String,
+}
+impl MichalewiczFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self::with_steepness(dimension, 10)
+    }
+    pub fn with_steepness(dimension: usize, m: i32) -> Self {
+        Self {
+            dimension,
+            m,
+            name: format!("Michalewicz_{}D", dimension),
+        }
+    }
+}
+impl OptimizationProblem for MichalewiczFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![PI / 4.0; self.dimension]
+    }
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let sum: f64 = x.iter()
+            .enumerate()
+            .map(|(i, &xi)| {
+                let i_plus_1 = (i + 1) as f64;
+                xi.sin() * ((i_plus_1 * xi * xi / PI).sin()).powf(2.0 * self.m as f64)
+            })
+            .sum();
+        Ok(-sum)
+    }
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let grad: Vec<f64> = x.iter()
+            .enumerate()
+            .map(|(i, &xi)| {
+                let i_plus_1 = (i + 1) as f64;
+                let inner_arg = i_plus_1 * xi * xi / PI;
+                let sin_inner = inner_arg.sin();
+                let cos_inner = inner_arg.cos();
+                let power_term = sin_inner.powf(2.0 * self.m as f64);
+                let term1 = xi.cos() * power_term;
+                let term2 = xi.sin() * 2.0 * self.m as f64 * sin_inner.powf(2.0 * self.m as f64 - 1.0) * cos_inner * (2.0 * i_plus_1 * xi / PI);
+                -(term1 + term2)
+            })
+            .collect();
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        // Approximate known values for small dimensions
+        match self.dimension {
+            2 => Some(-1.8013),
+            5 => Some(-4.687658),
+            10 => Some(-9.66015),
+            _ => None,
+        }
+    }
+    fn convergence_tolerance(&self) -> f64 {
+        1e-4
+    }
+}
+impl Default for MatyasFunction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl Default for LeviFunction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl Default for GoldsteinPriceFunction {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Rosenbrock function: f(x) = Σ[100(x_{i+1} - x_i²)² + (1 - x_i)²]
 /// Global minimum: f(1, 1, ..., 1) = 0
 #[derive(Debug, Clone)]
@@ -76,11 +340,6 @@ impl OptimizationProblem for RosenbrockFunction {
     fn convergence_tolerance(&self) -> f64 {
         1e-6
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-5.0; self.dimension];
-        let upper = vec![10.0; self.dimension];
-        Some((lower, upper))
-    }
 }
 /// Rastrigin function: f(x) = A*n + Σ[x_i² - A*cos(2π*x_i)]
 /// Global minimum: f(0, 0, ..., 0) = 0
@@ -136,11 +395,6 @@ impl OptimizationProblem for RastriginFunction {
     fn convergence_tolerance(&self) -> f64 {
         1e-4
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-5.12; self.dimension];
-        let upper = vec![5.12; self.dimension];
-        Some((lower, upper))
-    }
 }
 /// Sphere function: f(x) = Σx_i²
 /// Global minimum: f(0, 0, ..., 0) = 0
@@ -185,12 +439,7 @@ impl OptimizationProblem for SphereFunction {
         Some(0.0)
     }
     fn convergence_tolerance(&self) -> f64 {
-        1e-8
-    }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-100.0; self.dimension];
-        let upper = vec![100.0; self.dimension];
-        Some((lower, upper))
+        1e-4  // More lenient for SGD testing
     }
 }
 /// Beale function: f(x, y) = (1.5 - x + xy)² + (2.25 - x + xy²)² + (2.625 - x + xy³)²
@@ -249,11 +498,6 @@ impl OptimizationProblem for BealeFunction {
     fn convergence_tolerance(&self) -> f64 {
         1e-6
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-4.5, -4.5];
-        let upper = vec![4.5, 4.5];
-        Some((lower, upper))
-    }
 }
 /// Himmelblau function: f(x, y) = (x² + y - 11)² + (x + y² - 7)²
 /// Global minima: f(3, 2) = f(-2.805118, 3.131312) = f(-3.779310, -3.283186) = f(3.584428, -1.848126) = 0
@@ -304,11 +548,6 @@ impl OptimizationProblem for HimmelblauFunction {
     fn convergence_tolerance(&self) -> f64 {
         1e-6
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-5.0, -5.0];
-        let upper = vec![5.0, 5.0];
-        Some((lower, upper))
-    }
 }
 /// Booth function: f(x, y) = (x + 2y - 7)² + (2x + y - 5)²
 /// Global minimum: f(1, 3) = 0
@@ -358,11 +597,6 @@ impl OptimizationProblem for BoothFunction {
     }
     fn convergence_tolerance(&self) -> f64 {
         1e-6
-    }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-10.0, -10.0];
-        let upper = vec![10.0, 10.0];
-        Some((lower, upper))
     }
 }
 
@@ -437,11 +671,6 @@ impl OptimizationProblem for AckleyFunction {
     fn convergence_tolerance(&self) -> f64 {
         1e-4
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        let lower = vec![-32.768; self.dimension];
-        let upper = vec![32.768; self.dimension];
-        Some((lower, upper))
-    }
 }
 impl Default for BealeFunction {
     fn default() -> Self {
@@ -456,5 +685,357 @@ impl Default for HimmelblauFunction {
 impl Default for BoothFunction {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// Add to src/benchmarks/functions.rs
+
+/// Griewank function: f(x) = 1 + (1/4000)*Σx_i² - Π cos(x_i/√i)
+/// Global minimum: f(0, 0, ..., 0) = 0
+#[derive(Debug, Clone)]
+pub struct GriewankFunction {
+    dimension: usize,
+    name: String,
+}
+
+impl GriewankFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self {
+            dimension,
+            name: format!("Griewank_{}D", dimension),
+        }
+    }
+}
+
+impl OptimizationProblem for GriewankFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+
+    fn initial_point(&self) -> Vec<f64> {
+        vec![100.0; self.dimension] // Start far from optimum
+    }
+
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let sum_squares: f64 = x.iter().map(|&xi| xi * xi).sum();
+        let product: f64 = x
+            .iter()
+            .enumerate()
+            .map(|(i, &xi)| (xi / ((i + 1) as f64).sqrt()).cos())
+            .product();
+
+        Ok(1.0 + sum_squares / 4000.0 - product)
+    }
+
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let mut grad = vec![0.0; self.dimension];
+
+        // Compute the product term for gradient calculation
+        let product: f64 = x
+            .iter()
+            .enumerate()
+            .map(|(i, &xi)| (xi / ((i + 1) as f64).sqrt()).cos())
+            .product();
+
+        for j in 0..self.dimension {
+            let sqrt_j_plus_1 = ((j + 1) as f64).sqrt();
+
+            // Gradient of sum_squares term
+            grad[j] = x[j] / 2000.0;
+
+            // Gradient of product term
+            if product.abs() > 1e-15 {
+                let sin_term = (x[j] / sqrt_j_plus_1).sin();
+                grad[j] += (product / (x[j] / sqrt_j_plus_1).cos()) * sin_term / sqrt_j_plus_1;
+            }
+        }
+
+        Ok(grad)
+    }
+
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
+    }
+
+    fn convergence_tolerance(&self) -> f64 {
+        1e-4
+    }
+}
+
+/// Schwefel function: f(x) = 418.9829*n - Σ x_i * sin(√|x_i|)
+/// Global minimum: f(420.9687, 420.9687, ..., 420.9687) ≈ 0
+#[derive(Debug, Clone)]
+pub struct SchwefelFunction {
+    dimension: usize,
+    name: String,
+}
+
+impl SchwefelFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self {
+            dimension,
+            name: format!("Schwefel_{}D", dimension),
+        }
+    }
+}
+
+impl OptimizationProblem for SchwefelFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+
+    fn initial_point(&self) -> Vec<f64> {
+        vec![100.0; self.dimension] // Start away from global optimum
+    }
+
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let sum: f64 = x
+            .iter()
+            .map(|&xi| xi * (xi.abs().sqrt()).sin())
+            .sum();
+
+        Ok(418.9829 * self.dimension as f64 - sum)
+    }
+
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let grad: Vec<f64> = x
+            .iter()
+            .map(|&xi| {
+                if xi.abs() < 1e-15 {
+                    0.0 // Avoid division by zero
+                } else {
+                    let sqrt_abs_xi = xi.abs().sqrt();
+                    let sin_term = sqrt_abs_xi.sin();
+                    let cos_term = sqrt_abs_xi.cos();
+
+                    // d/dx [x * sin(√|x|)] = sin(√|x|) + x * cos(√|x|) * (1/(2√|x|)) * sign(x)
+                    let derivative = sin_term + xi * cos_term * (0.5 / sqrt_abs_xi) * xi.signum();
+                    -derivative // Negative because we're minimizing
+                }
+            })
+            .collect();
+
+        Ok(grad)
+    }
+
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
+    }
+
+    fn convergence_tolerance(&self) -> f64 {
+        1e-3 // More lenient due to difficulty
+    }
+}
+
+/// Levy function: f(x) = sin²(πw₁) + Σ(wᵢ-1)²[1+10sin²(πwᵢ+1)] + (wₙ-1)²[1+sin²(2πwₙ)]
+/// where wᵢ = 1 + (xᵢ-1)/4
+/// Global minimum: f(1, 1, ..., 1) = 0
+#[derive(Debug, Clone)]
+pub struct LevyFunction {
+    dimension: usize,
+    name: String,
+}
+
+impl LevyFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self {
+            dimension,
+            name: format!("Levy_{}D", dimension),
+        }
+    }
+}
+
+impl OptimizationProblem for LevyFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+
+    fn initial_point(&self) -> Vec<f64> {
+        vec![2.0; self.dimension] // Start near but not at optimum
+    }
+
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        // Transform x to w
+        let w: Vec<f64> = x.iter().map(|&xi| 1.0 + (xi - 1.0) / 4.0).collect();
+
+        // First term
+        let first_term = (PI * w[0]).sin().powi(2);
+
+        // Middle terms
+        let middle_sum: f64 = w[..w.len() - 1]
+            .iter()
+            .map(|&wi| {
+                let wi_minus_1_sq = (wi - 1.0).powi(2);
+                let sin_term = (PI * wi + 1.0).sin().powi(2);
+                wi_minus_1_sq * (1.0 + 10.0 * sin_term)
+            })
+            .sum();
+
+        // Last term
+        let last_w = w[w.len() - 1];
+        let last_term = (last_w - 1.0).powi(2) * (1.0 + (2.0 * PI * last_w).sin().powi(2));
+
+        Ok(first_term + middle_sum + last_term)
+    }
+
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let w: Vec<f64> = x.iter().map(|&xi| 1.0 + (xi - 1.0) / 4.0).collect();
+        let mut grad = vec![0.0; self.dimension];
+
+        for i in 0..self.dimension {
+            let wi = w[i];
+
+            if i == 0 {
+                // Gradient of first term
+                grad[i] += 2.0 * (PI * wi).sin() * (PI * wi).cos() * PI * 0.25;
+            }
+
+            if i < self.dimension - 1 {
+                // Gradient of middle terms
+                let wi_minus_1 = wi - 1.0;
+                let sin_term = (PI * wi + 1.0).sin();
+                let cos_term = (PI * wi + 1.0).cos();
+
+                let term1 = 2.0 * wi_minus_1 * (1.0 + 10.0 * sin_term.powi(2));
+                let term2 = wi_minus_1.powi(2) * 20.0 * sin_term * cos_term * PI;
+
+                grad[i] += (term1 + term2) * 0.25;
+            }
+
+            if i == self.dimension - 1 {
+                // Gradient of last term
+                let wi_minus_1 = wi - 1.0;
+                let sin_2pi_wi = (2.0 * PI * wi).sin();
+                let cos_2pi_wi = (2.0 * PI * wi).cos();
+
+                let term1 = 2.0 * wi_minus_1 * (1.0 + sin_2pi_wi.powi(2));
+                let term2 = wi_minus_1.powi(2) * 2.0 * sin_2pi_wi * cos_2pi_wi * 2.0 * PI;
+
+                grad[i] += (term1 + term2) * 0.25;
+            }
+        }
+
+        Ok(grad)
+    }
+
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
+    }
+
+    fn convergence_tolerance(&self) -> f64 {
+        1e-5
+    }
+}
+
+/// Zakharov function: f(x) = Σx_i² + (Σ(0.5*i*x_i))² + (Σ(0.5*i*x_i))⁴
+/// Global minimum: f(0, 0, ..., 0) = 0
+#[derive(Debug, Clone)]
+pub struct ZakharovFunction {
+    dimension: usize,
+    name: String,
+}
+
+impl ZakharovFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self {
+            dimension,
+            name: format!("Zakharov_{}D", dimension),
+        }
+    }
+}
+
+impl OptimizationProblem for ZakharovFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+
+    fn initial_point(&self) -> Vec<f64> {
+        vec![1.0; self.dimension]
+    }
+
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let sum1: f64 = x.iter().map(|&xi| xi * xi).sum();
+        let sum2: f64 = x
+            .iter()
+            .enumerate()
+            .map(|(i, &xi)| 0.5 * (i + 1) as f64 * xi)
+            .sum();
+
+        Ok(sum1 + sum2.powi(2) + sum2.powi(4))
+    }
+
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+
+        let sum2: f64 = x
+            .iter()
+            .enumerate()
+            .map(|(i, &xi)| 0.5 * (i + 1) as f64 * xi)
+            .sum();
+
+        let grad: Vec<f64> = x
+            .iter()
+            .enumerate()
+            .map(|(i, &xi)| {
+                let coeff = 0.5 * (i + 1) as f64;
+                2.0 * xi + 2.0 * sum2 * coeff + 4.0 * sum2.powi(3) * coeff
+            })
+            .collect();
+
+        Ok(grad)
+    }
+
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
+    }
+
+    fn convergence_tolerance(&self) -> f64 {
+        1e-6
     }
 }

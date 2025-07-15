@@ -7,19 +7,19 @@ mkdir -p "$OUTPUT_DIR"
 
 # 1. Run comprehensive benchmarks
 echo "Running comprehensive benchmarks..."
-cargo test --release benchmark_experiments::test_comprehensive_benchmarks -- --nocapture 2>&1 | tee "$OUTPUT_DIR/benchmark_log.txt"
+cargo test --release test_comprehensive_benchmarks -- --nocapture 2>&1 | tee "$OUTPUT_DIR/benchmark_log.txt"
 
 # 2. Run performance analysis tests to generate LaTeX tables
 echo "Generating LaTeX tables..."
-cargo test --release performance_analysis::test_latex_table_generation -- --nocapture 2>&1 | tee "$OUTPUT_DIR/latex_tables_log.txt"
+cargo test --release test_latex_table_generation -- --nocapture 2>&1 | tee "$OUTPUT_DIR/latex_tables_log.txt"
 
 # 3. Export academic formats
 echo "Exporting academic formats..."
-cargo test --release performance_analysis::test_export_academic_formats -- --nocapture 2>&1 | tee "$OUTPUT_DIR/export_log.txt"
+cargo test --release test_export_academic_formats -- --nocapture 2>&1 | tee "$OUTPUT_DIR/export_log.txt"
 
 # 4. Run integration tests for additional validation
 echo "Running integration tests..."
-cargo test --release integration_tests -- --nocapture 2>&1 | tee "$OUTPUT_DIR/integration_log.txt"
+cargo test --release test_qqn_rosenbrock_optimization test_qqn_vs_lbfgs_sphere_function -- --nocapture 2>&1 | tee "$OUTPUT_DIR/integration_log.txt"
 
 # 5. Create paper directory structure
 echo "Creating paper directory structure..."
@@ -31,7 +31,7 @@ echo "Collecting generated artifacts..."
     
     
 # Look for any benchmark_results directories (with timestamps)
-for dir in benchmark_results_*; do
+for dir in results/benchmark_results_*; do
     if [ -d "$dir" ]; then
         echo "Found benchmark results directory: $dir"
         # Copy all contents to output directory
@@ -46,7 +46,7 @@ for dir in benchmark_results_*; do
 done
 
 # Look for academic_exports directories
-for dir in academic_exports_*; do
+for dir in results/academic_exports_*; do
     if [ -d "$dir" ]; then
         echo "Found academic exports directory: $dir"
         cp -r "$dir"/* "$OUTPUT_DIR/" 2>/dev/null || echo "No files to copy from $dir"
@@ -57,14 +57,14 @@ for dir in academic_exports_*; do
     fi
 done
 # Look for citation_test directories
-for dir in citation_test_*; do
+for dir in results/citation_test_*; do
     if [ -d "$dir" ]; then
         echo "Found citation test directory: $dir"
         cp -r "$dir"/* "$OUTPUT_DIR/" 2>/dev/null || echo "No files to copy from $dir"
     fi
 done
 # Look for latex_output directories
-for dir in latex_output_*; do
+for dir in results/latex_output_*; do
     if [ -d "$dir" ]; then
         echo "Found LaTeX output directory: $dir"
         cp -r "$dir"/* "$OUTPUT_DIR/" 2>/dev/null || echo "No files to copy from $dir"
@@ -75,7 +75,7 @@ done
 # List what was actually generated
 echo ""
 echo "Generated files:"
-find . -maxdepth 2 -name "benchmark_results_*" -o -name "academic_exports_*" -o -name "citation_test_*" -o -name "latex_output_*" | head -20
+find . -maxdepth 2 -name "results/benchmark_results_*" -o -name "results/academic_exports_*" -o -name "results/citation_test_*" -o -name "results/latex_output_*" | head -20
 echo ""
 echo "Contents of output directory:"
 ls -la "$OUTPUT_DIR" 2>/dev/null || echo "Output directory is empty"

@@ -1,6 +1,7 @@
 # QQN Optimizer User Guide
 
 ## Table of Contents
+
 1. [Getting Started](#getting-started)
 2. [Basic Usage](#basic-usage)
 3. [Running Benchmarks](#running-benchmarks)
@@ -13,9 +14,9 @@
 ### Installation
 
 1. **Prerequisites**
-   - Rust 1.70 or later
-   - Git
-   - (Optional) LaTeX distribution for PDF generation
+    - Rust 1.70 or later
+    - Git
+    - (Optional) LaTeX distribution for PDF generation
 
 2. **Clone and Build**
    ```bash
@@ -77,7 +78,7 @@ fn main() -> anyhow::Result<()> {
 use qqn_optimizer::{QQNOptimizer, QQNConfig};
 
 // Configure QQN
-let mut config = QQNConfig::default();
+let mut config = QQNConfig::default ();
 config.lbfgs_history = 10;  // L-BFGS memory size
 config.epsilon = 1e-8;      // Numerical stability
 
@@ -86,7 +87,7 @@ let mut optimizer = QQNOptimizer::new(config);
 
 // Optimize with custom function
 let function = MyObjectiveFunction::new();
-optimizer.step(&mut parameters, &function)?;
+optimizer.step( & mut parameters, & function) ?;
 ```
 
 ### Comparing with L-BFGS
@@ -95,12 +96,12 @@ optimizer.step(&mut parameters, &function)?;
 use qqn_optimizer::{LBFGSOptimizer, LBFGSConfig};
 
 // Create L-BFGS for comparison
-let lbfgs_config = LBFGSConfig::default();
+let lbfgs_config = LBFGSConfig::default ();
 let mut lbfgs = LBFGSOptimizer::new(lbfgs_config);
 
 // Run both optimizers
-let qqn_result = run_optimizer(&mut qqn_optimizer, &problem);
-let lbfgs_result = run_optimizer(&mut lbfgs, &problem);
+let qqn_result = run_optimizer( & mut qqn_optimizer, & problem);
+let lbfgs_result = run_optimizer( & mut lbfgs, & problem);
 
 // Compare results
 println!("QQN iterations: {}", qqn_result.iterations);
@@ -190,17 +191,17 @@ cargo test --release benchmark_experiments::test_comprehensive_benchmarks
 use qqn_optimizer::analysis::reporting::LaTeXExporter;
 
 // After running benchmarks
-let results = load_benchmark_results("results/benchmark_results.json")?;
-let analysis = StatisticalAnalysis::new(&results);
+let results = load_benchmark_results("results/benchmark_results.json") ?;
+let analysis = StatisticalAnalysis::new( & results);
 
 // Generate LaTeX tables
 let latex_exporter = LaTeXExporter::new();
-let performance_table = latex_exporter.export_performance_table(&analysis)?;
-let significance_table = latex_exporter.export_significance_table(&analysis)?;
+let performance_table = latex_exporter.export_performance_table( & analysis) ?;
+let significance_table = latex_exporter.export_significance_table( & analysis) ?;
 
 // Save to files
-fs::write("tables/performance.tex", performance_table)?;
-fs::write("tables/significance.tex", significance_table)?;
+fs::write("tables/performance.tex", performance_table) ?;
+fs::write("tables/significance.tex", significance_table) ?;
 ```
 
 ### 3. Publication-Ready Plots
@@ -210,23 +211,23 @@ use qqn_optimizer::analysis::plotting::{PlottingEngine, PlotConfig};
 
 // Configure plotting for publication
 let plot_config = PlotConfig {
-    width: 800,
-    height: 600,
-    output_format: "pdf".to_string(),  // For LaTeX
-    color_scheme: "academic".to_string(),
+width: 800,
+height: 600,
+output_format: "pdf".to_string(),  // For LaTeX
+color_scheme: "academic".to_string(),
 };
 
 let plotter = PlottingEngine::new("plots/".to_string())
-    .with_config(plot_config);
+.with_config(plot_config);
 
 // Generate convergence plots
-plotter.convergence_plot(&traces, "convergence_comparison")?;
+plotter.convergence_plot( & traces, "convergence_comparison") ?;
 
 // Generate performance profiles
-plotter.performance_profiles(&profiles, "performance_profiles")?;
+plotter.performance_profiles( & profiles, "performance_profiles") ?;
 
 // Generate box plots for statistical analysis
-plotter.performance_boxplot(&results, "algorithm_comparison")?;
+plotter.performance_boxplot( & results, "algorithm_comparison") ?;
 ```
 
 ### 4. Statistical Analysis Report
@@ -235,21 +236,21 @@ plotter.performance_boxplot(&results, "algorithm_comparison")?;
 use qqn_optimizer::analysis::statistics::StatisticalAnalysis;
 
 // Perform comprehensive analysis
-let analysis = StatisticalAnalysis::new(&benchmark_results);
+let analysis = StatisticalAnalysis::new( & benchmark_results);
 
 // Generate academic report sections
 let report = AcademicReport::new()
-    .with_title("QQN Optimizer: Experimental Validation")
-    .add_section("Methodology", &methodology_text)
-    .add_section("Results", &analysis.summary())
-    .add_section("Statistical Tests", &analysis.significance_report())
-    .add_section("Performance Profiles", &analysis.performance_analysis());
+.with_title("QQN Optimizer: Experimental Validation")
+.add_section("Methodology", & methodology_text)
+.add_section("Results", & analysis.summary())
+.add_section("Statistical Tests", & analysis.significance_report())
+.add_section("Performance Profiles", & analysis.performance_analysis());
 
 // Export to LaTeX
-report.to_latex_file("paper/results_section.tex")?;
+report.to_latex_file("paper/results_section.tex") ?;
 
 // Export to Markdown for README
-report.to_markdown_file("results_summary.md")?;
+report.to_markdown_file("results_summary.md") ?;
 ```
 
 ### 5. Reproducibility Package
@@ -291,7 +292,7 @@ problems:
   - name: "neural_net_mnist"
     type: NeuralNetwork
     architecture:
-      layers: [784, 128, 64, 10]
+      layers: [ 784, 128, 64, 10 ]
       activation: "relu"
 
 optimizers:
@@ -321,7 +322,7 @@ benchmark:
   random_seed: 42
 
 analysis:
-  statistical_tests: ["TTest", "MannWhitney", "Wilcoxon"]
+  statistical_tests: [ "TTest", "MannWhitney", "Wilcoxon" ]
   confidence_level: 0.95
   performance_profiles: true
   convergence_analysis: true
@@ -329,7 +330,7 @@ analysis:
 output:
   results_dir: "results/comprehensive_study"
   generate_plots: true
-  plot_formats: ["png", "pdf", "svg"]
+  plot_formats: [ "png", "pdf", "svg" ]
   export_csv: true
   latex_tables: true
 ```
