@@ -46,16 +46,38 @@ where
         (self.objective_fn)(params)
     }
     fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-        // Numerical gradient computation using finite differences
-        let h = 1e-8; // Step size for finite differences
+        // Validate input parameters
+        if params.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameter vector".into()));
+        }
+        
+        // Adaptive step size for finite differences
+        let base_h = 1e-8;
         let mut gradients = Vec::new();
 
         for (i, param) in params.iter().enumerate() {
+            // Check for valid tensor
+            if param.rank() == 0 {
+                return Err(candle_core::Error::Msg(
+                    format!("Parameter {} is a scalar, expected tensor", i)
+                ));
+            }
+            
             let param_shape = param.shape();
             let param_data = param.to_vec1::<f64>()?;
+            // Validate parameter data
+            if param_data.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    format!("Non-finite values in parameter {}", i)
+                ));
+            }
+            
             let mut grad_data = vec![0.0; param_data.len()];
 
             for j in 0..param_data.len() {
+                // Adaptive step size based on parameter magnitude
+                let h = base_h * (1.0 + param_data[j].abs());
+                
                 // Forward difference
                 let mut params_plus = params.to_vec();
                 let mut data_plus = param_data.clone();

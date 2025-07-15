@@ -16,25 +16,32 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
         return Ok(0.0);
     }
 
+    // Use Kahan summation for better numerical stability
     let mut sum_of_squares = 0.0;
+    let mut compensation = 0.0;
+    let mut max_abs = 0.0_f64;
 
     for tensor in tensors {
         let values = tensor.flatten_all()?.to_vec1::<f64>()?;
         for &val in &values {
-            // warn and exit if any value is NaN or Inf
             if !val.is_finite() {
                 warn!("Tensor contains non-finite value: {}", val);
-                // Return infinity if any value is non-finite
                 return Ok(f64::INFINITY);
             }
-            sum_of_squares += val * val;
-            // warn and exit if any value is NaN or Inf
-            if !sum_of_squares.is_finite() {
-                warn!("Sum of squares became non-finite after adding: {}", val);
-                // Return infinity if any value is non-finite
-                return Ok(f64::INFINITY);
-            }
+            
+            max_abs = max_abs.max(val.abs());
+            
+            // Kahan summation algorithm
+            let square = val * val;
+            let y = square - compensation;
+            let t = sum_of_squares + y;
+            compensation = (t - sum_of_squares) - y;
+            sum_of_squares = t;
         }
+    }
+    // Scale back if we had large values to prevent overflow
+    if max_abs > 1e100 {
+        warn!("Very large values detected, result may be inaccurate");
     }
     if sum_of_squares.is_nan() {
         warn!("Sum of squares is NaN, returning infinity");

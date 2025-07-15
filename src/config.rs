@@ -250,6 +250,23 @@ impl ExperimentConfig {
     }
 
     pub fn validate(&self) -> Result<(), ConfigError> {
+        // Validate experiment metadata
+        if self.name.trim().is_empty() {
+            return Err(ConfigError::InvalidExperiment(
+                "Experiment name cannot be empty".to_string()
+            ));
+        }
+        if self.problems.is_empty() {
+            return Err(ConfigError::InvalidExperiment(
+                "At least one problem must be specified".to_string()
+            ));
+        }
+        if self.optimizers.is_empty() {
+            return Err(ConfigError::InvalidExperiment(
+                "At least one optimizer must be specified".to_string()
+            ));
+        }
+        
         // Validate problem configurations
         for problem in &self.problems {
             problem.validate()?;
@@ -584,6 +601,8 @@ pub enum ConfigError {
 
     #[error("Invalid output configuration: {0}")]
     InvalidOutput(String),
+    #[error("Invalid experiment configuration: {0}")]
+    InvalidExperiment(String),
 }
 
 // Helper functions for creating common configurations
@@ -714,5 +733,36 @@ pub fn create_schwefel_problem(dimension: usize) -> ProblemConfig {
         name: format!("schwefel_{}d", dimension),
         problem_type: ProblemType::Schwefel { dimension },
         parameters: None,
+    }
+}
+/// Validation trait for configuration objects
+pub trait Validate {
+    type Error;
+    fn validate(&self) -> Result<(), Self::Error>;
+}
+/// Configuration builder with validation
+pub struct ConfigBuilder<T> {
+    config: T,
+    validators: Vec<Box<dyn Fn(&T) -> Result<(), ConfigError>>>,
+}
+impl<T> ConfigBuilder<T> {
+    pub fn new(config: T) -> Self {
+        Self {
+            config,
+            validators: Vec::new(),
+        }
+    }
+    pub fn add_validator<F>(mut self, validator: F) -> Self 
+    where
+        F: Fn(&T) -> Result<(), ConfigError> + 'static,
+    {
+        self.validators.push(Box::new(validator));
+        self
+    }
+    pub fn build(self) -> Result<T, ConfigError> {
+        for validator in &self.validators {
+            validator(&self.config)?;
+        }
+        Ok(self.config)
     }
 }

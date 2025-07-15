@@ -125,6 +125,21 @@ pub struct SingleResult {
     pub execution_time: Duration,
     pub trace: OptimizationTrace,
     pub convergence_reason: ConvergenceReason,
+    pub memory_usage: Option<MemoryUsage>,
+    pub performance_metrics: PerformanceMetrics,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryUsage {
+    pub peak_memory_mb: f64,
+    pub average_memory_mb: f64,
+    pub allocations: usize,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceMetrics {
+    pub iterations_per_second: f64,
+    pub function_evaluations_per_second: f64,
+    pub gradient_evaluations_per_second: f64,
+    pub convergence_rate: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -299,6 +314,30 @@ impl BenchmarkRunner {
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
         info!("Benchmark complete: {} with {} (run {}): final_value={:.6e}, grad_norm={:.6e}, iterations={}", 
               problem.name(), optimizer.name(), run_id, final_value, final_gradient_norm, iteration);
+        let execution_time = start_time.elapsed();
+        // Calculate performance metrics
+        let performance_metrics = PerformanceMetrics {
+            iterations_per_second: if execution_time.as_secs_f64() > 0.0 {
+                iteration as f64 / execution_time.as_secs_f64()
+            } else {
+                0.0
+            },
+            function_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
+                function_evaluations as f64 / execution_time.as_secs_f64()
+            } else {
+                0.0
+            },
+            gradient_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
+                gradient_evaluations as f64 / execution_time.as_secs_f64()
+            } else {
+                0.0
+            },
+            convergence_rate: if iteration > 0 {
+                final_gradient_norm.log10() / iteration as f64
+            } else {
+                0.0
+            },
+        };
 
 
         Ok(SingleResult {
@@ -311,9 +350,11 @@ impl BenchmarkRunner {
             function_evaluations,
             gradient_evaluations,
             convergence_achieved,
-            execution_time: start_time.elapsed(),
+            execution_time,
             trace,
             convergence_reason,
+            memory_usage: None, // Memory tracking not implemented yet
+            performance_metrics,
         })
     }
 
@@ -636,6 +677,13 @@ mod tests {
             execution_time: Duration::from_millis(100),
             trace: OptimizationTrace::new(),
             convergence_reason: ConvergenceReason::GradientTolerance,
+            memory_usage: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 500.0,
+                function_evaluations_per_second: 1000.0,
+                gradient_evaluations_per_second: 500.0,
+                convergence_rate: -0.1,
+            },
         });
 
         let success_rates = results.success_rates();

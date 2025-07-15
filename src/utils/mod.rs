@@ -60,7 +60,9 @@ pub mod validation {
     pub fn validate_finite(values: &[f64]) -> OptResult<()> {
         for (i, &val) in values.iter().enumerate() {
             if !val.is_finite() {
-                return Err(anyhow::anyhow!("Non-finite value {} at index {}", val, i).into());
+                return Err(crate::core::OptError::InvalidInput(
+                    format!("Non-finite value {} at index {}", val, i)
+                ));
             }
         }
         Ok(())
@@ -69,11 +71,8 @@ pub mod validation {
     /// Validate that a value is within reasonable bounds
     pub fn validate_bounds(value: f64, min: f64, max: f64) -> OptResult<()> {
         if value < min || value > max {
-            return Err(anyhow::anyhow!(
-                "Value {} outside bounds [{}, {}]",
-                value,
-                min,
-                max
+            return Err(crate::core::OptError::InvalidInput(
+                format!("Value {} outside bounds [{}, {}]", value, min, max)
             ));
         }
         Ok(())

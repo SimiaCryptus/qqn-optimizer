@@ -211,18 +211,27 @@ pub trait LineSearch: Send + Sync + Debug {
         gradients: &[candle_core::Tensor],
         function: &dyn crate::core::optimizer::DifferentiableFunction,
     ) -> Result<LineSearchResult> {
-        // Convert to f64 for line search
+        // Convert to f64 for line search with proper error handling
         let params_f64: Vec<f64> = params
             .iter()
-            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+            .map(|t| t.flatten_all()?.to_vec1::<f64>())
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
             .collect();
         let direction_f64: Vec<f64> = direction
             .iter()
-            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+            .map(|t| t.flatten_all()?.to_vec1::<f64>())
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
             .collect();
         let gradients_f64: Vec<f64> = gradients
             .iter()
-            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+            .map(|t| t.flatten_all()?.to_vec1::<f64>())
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
             .collect();
         // Create closures with let bindings to ensure they live long enough
         let objective_fn = |x: &[f64]| {

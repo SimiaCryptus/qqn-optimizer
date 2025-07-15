@@ -140,7 +140,7 @@ impl QQNOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== {} ===", name);
+        debug!("=== QQN: {} ===", name);
         for (i, tensor) in tensors.iter().enumerate() {
             match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
                 Ok(values) => {
@@ -150,6 +150,8 @@ impl QQNOptimizer {
                         tensor.shape(),
                         values
                     );
+                    debug!("  Tensor[{}]: shape={:?}, dtype={:?}, device={:?}", 
+                           i, tensor.shape(), tensor.dtype(), tensor.device());
                     if values.len() <= 10 {
                         debug!("    Full data: {:?}", values);
                     } else {
@@ -159,13 +161,16 @@ impl QQNOptimizer {
                             &values[values.len() - 5..]
                         );
                     }
+                    
                     // Log statistics
                     let mean = values.iter().sum::<f64>() / values.len() as f64;
                     let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
                     let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
                     let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                    debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
-                          mean, variance.sqrt(), min_val, max_val);
+                    let l2_norm = values.iter().map(|x| x * x).sum::<f64>().sqrt();
+                    
+                   debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}, norm={:.6e}",
+                          mean, variance.sqrt(), min_val, max_val, l2_norm);
                 }
                 Err(e) => {
                     debug!(

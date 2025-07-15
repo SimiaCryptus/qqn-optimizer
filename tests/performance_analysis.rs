@@ -109,6 +109,13 @@ fn test_latex_table_generation() {
             execution_time: Duration::from_millis(1000 + i as u64 * 100),
             trace: OptimizationTrace::new(),
             convergence_reason: ConvergenceReason::GradientTolerance,
+            memory_usage: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 100.0,
+                function_evaluations_per_second: 200.0,
+                gradient_evaluations_per_second: 100.0,
+                convergence_rate: -0.1,
+            },
         });
         println!("Adding mock result {} for L-BFGS", i);
 

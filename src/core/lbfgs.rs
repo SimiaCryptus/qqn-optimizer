@@ -244,6 +244,22 @@ impl LBFGSState {
         step_direction: &[Tensor],
         step_size: f64,
     ) -> CandleResult<()> {
+        // Early validation to avoid expensive computations
+        if new_gradient.is_empty() || step_direction.is_empty() {
+            return Err(candle_core::Error::Msg("Empty gradient or direction vectors".into()));
+        }
+        if new_gradient.len() != step_direction.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Gradient and direction dimension mismatch: {} vs {}",
+                        new_gradient.len(), step_direction.len())
+            ));
+        }
+        if !step_size.is_finite() || step_size <= 0.0 {
+            warn!("Invalid step size: {}", step_size);
+            return Ok(()); // Skip update but don't fail
+        }
+        // Pre-allocate vectors to avoid repeated allocations
+        let s_k = vector_scale(step_direction, step_size)?;
         // Validate inputs
         if new_gradient.is_empty() || step_direction.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient or direction vectors".into()));
@@ -262,8 +278,16 @@ impl LBFGSState {
         // Compute parameter difference: s_k = step_size * step_direction
         let s_k = vector_scale(step_direction, step_size)?;
 
+
         if let Some(prev_grad) = &self.prev_gradient {
+            // Reserve capacity to avoid reallocations
+            if self.s_history.capacity() == 0 {
+                self.s_history.reserve(self.s_history.capacity());
+                self.y_history.reserve(self.y_history.capacity());
+                self.rho_history.reserve(self.rho_history.capacity());
+            }
             // Compute gradient difference: y_k = new_gradient - prev_gradient
+            
             let y_k = vector_subtract(new_gradient, prev_grad)?;
 
             // Compute curvature condition: s_k^T y_k

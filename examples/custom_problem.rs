@@ -122,10 +122,6 @@ impl OptimizationProblem for QuadraticProblem {
     fn convergence_tolerance(&self) -> f64 {
         1e-8
     }
-    fn bounds(&self) -> Option<(Vec<f64>, Vec<f64>)> {
-        // No bounds for this quadratic problem - allow unconstrained optimization
-        None
-    }
 }
 
 fn main() -> Result<()> {

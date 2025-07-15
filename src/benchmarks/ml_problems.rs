@@ -1,6 +1,6 @@
 //! Machine learning optimization problems for benchmarking.
 use crate::benchmarks::functions::OptimizationProblem;
-use crate::core::OptResult;
+use anyhow::Result;
 
 /// Logistic regression optimization problem
 pub struct LogisticRegression {
@@ -18,7 +18,7 @@ impl LogisticRegression {
         }
     }
 
-    pub fn synthetic(n_samples: usize, n_features: usize) -> OptResult<Self> {
+    pub fn synthetic(n_samples: usize, n_features: usize) -> Result<Self> {
         use rand::Rng;
         let mut rng = rand::thread_rng();
 
@@ -53,7 +53,7 @@ impl OptimizationProblem for LogisticRegression {
         1e-6
     }
 
-    fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {
+    fn evaluate(&self, weights: &[f64]) -> Result<f64> {
         let mut loss = 0.0;
 
         for (x, &y) in self.x_data.iter().zip(self.y_data.iter()) {
@@ -69,7 +69,7 @@ impl OptimizationProblem for LogisticRegression {
         Ok(loss / self.x_data.len() as f64)
     }
 
-    fn gradient(&self, weights: &[f64]) -> OptResult<Vec<f64>> {
+    fn gradient(&self, weights: &[f64]) -> Result<Vec<f64>> {
         let mut grad = vec![0.0; weights.len()];
 
         for (x, &y) in self.x_data.iter().zip(self.y_data.iter()) {
@@ -120,7 +120,7 @@ impl NeuralNetworkTraining {
         }
     }
 
-    pub fn mlp_classification(layer_sizes: Vec<usize>) -> OptResult<Self> {
+    pub fn mlp_classification(layer_sizes: Vec<usize>) -> Result<Self> {
         // Generate synthetic classification data
         use rand::Rng;
         let mut rng = rand::thread_rng();
@@ -170,7 +170,7 @@ impl OptimizationProblem for NeuralNetworkTraining {
             .collect()
     }
 
-    fn evaluate(&self, params: &[f64]) -> OptResult<f64> {
+    fn evaluate(&self, params: &[f64]) -> Result<f64> {
         // Simplified forward pass and loss computation
         // In practice, this would implement full neural network forward pass
         let mut loss = 0.0;
@@ -202,7 +202,7 @@ impl OptimizationProblem for NeuralNetworkTraining {
         Ok(loss / self.x_data.len() as f64)
     }
 
-    fn gradient(&self, params: &[f64]) -> OptResult<Vec<f64>> {
+    fn gradient(&self, params: &[f64]) -> Result<Vec<f64>> {
         let mut grad = vec![0.0; params.len()];
 
         // Simplified gradient computation
@@ -279,7 +279,7 @@ impl OptimizationProblem for LinearRegression {
         1e-6
     }
 
-    fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {
+    fn evaluate(&self, weights: &[f64]) -> Result<f64> {
         let mut loss = 0.0;
 
         for (x, &y) in self.x_data.iter().zip(self.y_data.iter()) {
@@ -295,7 +295,7 @@ impl OptimizationProblem for LinearRegression {
         Ok(loss / self.x_data.len() as f64)
     }
 
-    fn gradient(&self, weights: &[f64]) -> OptResult<Vec<f64>> {
+    fn gradient(&self, weights: &[f64]) -> Result<Vec<f64>> {
         let mut grad = vec![0.0; weights.len()];
 
         for (x, &y) in self.x_data.iter().zip(self.y_data.iter()) {
@@ -353,7 +353,7 @@ impl OptimizationProblem for SupportVectorMachine {
         1e-6
     }
 
-    fn evaluate(&self, weights: &[f64]) -> OptResult<f64> {
+    fn evaluate(&self, weights: &[f64]) -> Result<f64> {
         let mut loss = 0.0;
 
         // Hinge loss
@@ -371,7 +371,7 @@ impl OptimizationProblem for SupportVectorMachine {
         Ok(self.c * loss / self.x_data.len() as f64 + 0.5 * reg_term)
     }
 
-    fn gradient(&self, weights: &[f64]) -> OptResult<Vec<f64>> {
+    fn gradient(&self, weights: &[f64]) -> Result<Vec<f64>> {
         let mut grad = vec![0.0; weights.len()];
 
         for (x, &y) in self.x_data.iter().zip(self.y_data.iter()) {
