@@ -4,6 +4,7 @@ use crate::benchmarks::evaluation::{BenchmarkError, BenchmarkResults, BenchmarkR
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::core::lbfgs::LBFGSOptimizer;
 use crate::core::qqn::QQNOptimizer;
+use crate::Optimizer;
 
 /// Run benchmarks for L-BFGS optimizer
 pub async fn run_lbfgs_benchmarks(
@@ -17,7 +18,7 @@ pub async fn run_lbfgs_benchmarks(
         for optimizer in &optimizers {
             for run_id in 0..runner.config.num_runs {
                 let result = runner
-                    .run_single_benchmark(problem.as_ref(), optimizer, run_id)
+                    .run_single_benchmark(problem.as_ref(), optimizer, run_id, &optimizer.name().to_string())
                     .await?;
 
                 results.add_result(result);
@@ -40,7 +41,7 @@ pub async fn run_qqn_benchmarks(
         for optimizer in &optimizers {
             for run_id in 0..runner.config.num_runs {
                 let result = runner
-                    .run_single_benchmark(problem.as_ref(), optimizer, run_id)
+                    .run_single_benchmark(problem.as_ref(), optimizer, run_id, &optimizer.name().to_string())
                     .await?;
 
                 results.add_result(result);

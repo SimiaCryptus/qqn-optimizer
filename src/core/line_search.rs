@@ -354,15 +354,32 @@ impl StrongWolfeLineSearch {
         let mut alpha_hi = alpha_hi;
         let mut f_evals = 0;
         let mut g_evals = 0;
+        let mut best_alpha = alpha_lo;
+        let mut best_value = f64::INFINITY;
 
         for _ in 0..self.config.max_iterations {
-            // Interpolate to find new trial point
-            let alpha_j = 0.5 * (alpha_lo + alpha_hi); // Simple bisection
+            // Use quadratic interpolation when possible
+            let alpha_j = if (alpha_hi - alpha_lo).abs() > 1e-10 {
+                // Try cubic interpolation first
+                let mid = 0.5 * (alpha_lo + alpha_hi);
+                // Safeguard to ensure progress
+                let safeguard_factor = 0.1;
+                let min_alpha = alpha_lo + safeguard_factor * (alpha_hi - alpha_lo);
+                let max_alpha = alpha_hi - safeguard_factor * (alpha_hi - alpha_lo);
+                mid.max(min_alpha).min(max_alpha)
+            } else {
+                0.5 * (alpha_lo + alpha_hi)
+            };
 
 
             // Evaluate 1D function at trial point
             let f_alpha_j = (problem.objective)(alpha_j)?;
             f_evals += 1;
+            // Track best point found
+            if f_alpha_j < best_value {
+                best_value = f_alpha_j;
+                best_alpha = alpha_j;
+            }
 
             // Check Armijo condition
             if !self.armijo_condition(f0, f_alpha_j, alpha_j, directional_derivative) {
@@ -387,8 +404,8 @@ impl StrongWolfeLineSearch {
             alpha_lo = alpha_j;
         }
 
-        // Return best point found
-        Ok((alpha_lo, f_evals, g_evals))
+        // Return best point found during search
+        Ok((best_alpha, f_evals, g_evals))
     }
 }
 

@@ -167,21 +167,34 @@ impl PlottingEngine {
             .iter()
             .flat_map(|t| t.objective_values.iter())
             .filter(|&&val| val > 0.0)
-            .fold(f64::INFINITY, |min, &val| min.min(val));
+            .fold(f64::INFINITY, |min, &val| min.min(val))
+            .max(1e-15); // Ensure minimum bound to prevent extreme log values
 
         let max_obj = traces
             .iter()
             .flat_map(|t| t.objective_values.iter())
-            .fold(f64::NEG_INFINITY, |max, &val| max.max(val));
+            .fold(f64::NEG_INFINITY, |max, &val| max.max(val))
+            .min(1e10); // Cap maximum to prevent overflow
 
-        let log_min = (min_positive_obj.max(1e-12)).log10();
-        let log_max = max_obj.max(1.0).log10();
+        // Safely calculate log bounds with overflow protection
+        let safe_min = min_positive_obj.max(1e-12).min(1e10);
+        let safe_max = max_obj.max(1.0).min(1e10);
+        
+        let log_min = safe_min.log10().max(-15.0).min(15.0);
+        let log_max = safe_max.log10().max(-15.0).min(15.0);
+        
+        // Ensure we have a valid range
+        let (final_log_min, final_log_max) = if (log_max - log_min).abs() < 1e-10 {
+            (log_min - 1.0, log_min + 1.0)
+        } else {
+            (log_min, log_max)
+        };
 
         let mut chart = ChartBuilder::on(&root)
             .margin(10)
             .x_label_area_size(0)
             .y_label_area_size(0)
-            .build_cartesian_2d(0..max_iterations, log_min..log_max)?;
+            .build_cartesian_2d(0..max_iterations, final_log_min..final_log_max)?;
 
         chart
             .configure_mesh()
@@ -197,10 +210,17 @@ impl PlottingEngine {
                 .objective_values
                 .iter()
                 .enumerate()
-                .map(|(iter, &val)| (iter, val.max(1e-12).log10()))
+                .map(|(iter, &val)| {
+                    let safe_val = val.max(1e-15).min(1e10);
+                    let log_val = safe_val.log10().max(-15.0).min(15.0);
+                    (iter, log_val)
+                })
                 .collect();
 
-            chart.draw_series(LineSeries::new(series_data, color))?;
+            // Only draw if we have valid data points
+            if !series_data.is_empty() {
+                chart.draw_series(LineSeries::new(series_data, color))?;
+            }
         }
 
 

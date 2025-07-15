@@ -1,264 +1,270 @@
-# QQN Optimizer Test Documentation
+# QQN Optimizer Testing and Reporting Documentation
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Test Suite Architecture](#test-suite-architecture)
+3. [Benchmark Framework](#benchmark-framework)
+4. [Statistical Analysis](#statistical-analysis)
+5. [Report Generation](#report-generation)
+6. [Usage Guide](#usage-guide)
+7. [Interpreting Results](#interpreting-results)
+8. [Extending the Framework](#extending-the-framework)
 
 ## Overview
 
-This document provides comprehensive documentation for the test suite of the QQN (Quadratic Quasi-Newton) Optimizer
-project. The test suite is designed to validate the correctness, performance, and robustness of the optimization
-algorithms through various testing methodologies.
+The QQN Optimizer testing and reporting framework provides comprehensive tools for evaluating optimization algorithms,
+performing statistical analysis, and generating publication-ready reports. The framework is designed to support academic
+research and industrial applications requiring rigorous performance validation.
 
-## Test Structure
+### Key Features
 
-### Test Organization
+- **Automated Benchmarking**: Run optimization algorithms on standard test functions
+- **Statistical Analysis**: Perform significance tests and effect size calculations
+- **Visualization**: Generate convergence plots and performance profiles
+- **Academic Reporting**: Create LaTeX tables and HTML reports for publications
+- **Reproducibility**: Ensure consistent results with seed control and detailed logging
 
-```
-tests/
-├── benchmark_experiments.rs    # Comprehensive benchmark experiments
-├── integration_tests.rs       # Integration and end-to-end tests
-└── performance_analysis.rs     # Performance analysis and academic reporting
-```
+## Test Suite Architecture
 
-### Test Categories
+### Core Components
 
-1. **Unit Tests** - Located within individual modules (`src/` files)
-2. **Integration Tests** - Cross-module functionality testing
-3. **Benchmark Tests** - Performance comparison and validation
-4. **Academic Tests** - Publication-quality analysis and reporting
+#### 1. Benchmark Runner (`BenchmarkRunner`)
 
-## Detailed Test Documentation
-
-### 1. Benchmark Experiments (`benchmark_experiments.rs`)
-
-#### Purpose
-
-Comprehensive comparative benchmarks between QQN variants and baseline optimizers for academic validation.
-
-#### Key Components
-
-##### `BenchmarkFunctionWrapper<T>`
+The main orchestrator for running optimization experiments.
 
 ```rust
-struct BenchmarkFunctionWrapper<T: OptimizationProblem>
-```
+pub struct BenchmarkRunner {
+   config: BenchmarkConfig,
+}
 
-**Purpose**: Adapts benchmark functions to work with the `DifferentiableFunction` trait.
-
-**Methods**:
-
-- `evaluate()` - Converts tensor parameters to vectors and evaluates the objective function
-- `gradient()` - Computes gradients and converts back to tensor format
-
-**Usage Example**:
-
-```rust
-let problem = BenchmarkFunctionWrapper::new(RosenbrockFunction::new(2));
-let value = problem.evaluate(¶ms) ?;
-let grad = problem.gradient(¶ms) ?;
-```
-
-##### `ExperimentRunner`
-
-**Purpose**: Orchestrates comprehensive benchmark experiments with academic-quality reporting.
-
-**Configuration**:
-
-```rust
-BenchmarkConfig {
-max_iterations: 1000,
-tolerance: 1e-6,
-max_function_evaluations: 5000,
-time_limit: Duration::from_secs(300),
-random_seed: 42,
-num_runs: 10,
+pub struct BenchmarkConfig {
+   pub max_iterations: usize,      // Maximum iterations per run
+   pub tolerance: f64,             // Convergence tolerance
+   pub time_limit: Duration,       // Time limit per run
+   pub random_seed: u64,           // For reproducibility
+   pub num_runs: usize,            // Runs per configuration
 }
 ```
 
-**Test Problems**:
+#### 2. Optimization Problems
 
-- Sphere Function (2D, 10D)
-- Rosenbrock Function (2D, 10D)
-- Rastrigin Function (2D, 5D)
-- Beale Function
-- Ackley Function (2D, 5D)
+Test problems implement the `OptimizationProblem` trait:
 
-**Optimizers Tested**:
+```rust
+pub trait OptimizationProblem {
+   fn name(&self) -> &str;
+   fn dimension(&self) -> usize;
+   fn initial_point(&self) -> Vec<f64>;
+   fn evaluate(&self, x: &[f64]) -> Result<f64>;
+   fn gradient(&self, x: &[f64]) -> Result<Vec<f64>>;
+   fn optimal_value(&self) -> Option<f64>;
+   fn convergence_tolerance(&self) -> f64;
+}
+```
 
-- QQN-Default
-- QQN-Conservative (increased history, tighter tolerance)
-- L-BFGS
-- L-BFGS-Large (increased history)
+Available test functions include:
 
-#### Test Methods
+- **Convex**: Sphere, Quadratic
+- **Non-convex**: Rosenbrock, Rastrigin, Ackley
+- **Multi-modal**: Griewank, Schwefel, Levy
+- **2D Problems**: Beale, Booth, Himmelblau, Matyas
 
-##### `test_comprehensive_benchmarks()`
+#### 3. Result Storage
 
-**Purpose**: Full benchmark suite execution with HTML report generation.
+Results are stored in structured formats:
 
-**Validation Criteria**:
+```rust
+pub struct SingleResult {
+   pub problem_name: String,
+   pub optimizer_name: String,
+   pub run_id: usize,
+   pub final_value: f64,
+   pub final_gradient_norm: f64,
+   pub iterations: usize,
+   pub convergence_achieved: bool,
+   pub execution_time: Duration,
+   pub trace: OptimizationTrace,
+   pub convergence_reason: ConvergenceReason,
+}
+```
 
-- HTML report generation
-- CSV data export
-- Statistical analysis completion
-- Performance profile generation
+## Benchmark Framework
 
-**Expected Outputs**:
+### Running Benchmarks
 
-- `benchmark_report.html` - Comprehensive HTML report
-- `detailed_results.csv` - Raw experimental data
-- `summary_statistics.csv` - Aggregated statistics
-- Convergence plots (when plotting available)
+#### Basic Usage
+```rust
+use qqn_optimizer::benchmarks::*;
 
-##### `test_academic_citation_format()`
+#[tokio::main]
+async fn main() -> Result<()> {
+   // Configure benchmark
+   let config = BenchmarkConfig {
+      max_iterations: 1000,
+      tolerance: 1e-6,
+      num_runs: 10,
+      ..Default::default()
+   };
 
-**Purpose**: Validates academic-quality formatting and citation standards.
+   // Create runner
+   let runner = BenchmarkRunner::new(config);
 
-**Validation Criteria**:
+   // Define problems
+   let problems = vec![
+      Box::new(SphereFunction::new(10)),
+      Box::new(RosenbrockFunction::new(10)),
+   ];
 
-- Academic citation format
-- Statistical significance reporting
-- Performance profile analysis
-- Reproducibility information
-- Data availability statements
+   // Define optimizers
+   let optimizers = vec![
+      Box::new(QQNOptimizer::new(QQNConfig::default())),
+      Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+   ];
 
-#### Report Generation
+   // Run benchmarks
+   let results = runner.run_benchmarks(problems, optimizers).await?;
 
-##### HTML Report Structure
+   // Save results
+   results.save_to_file(Path::new("results.json"))?;
+
+   Ok(())
+}
+```
+
+#### Comprehensive Experiments
+
+The `ExperimentRunner` provides high-level experiment management:
+
+```rust
+let runner = ExperimentRunner::new("output_directory".to_string());
+runner.run_comparative_benchmarks().await?;
+```
+
+This automatically:
+
+1. Runs multiple optimizers on standard test problems
+2. Performs statistical analysis
+3. Generates plots and visualizations
+4. Creates HTML and LaTeX reports
+
+### Convergence Tracking
+
+The framework tracks detailed optimization progress:
+
+```rust
+pub struct OptimizationTrace {
+   pub iterations: Vec<IterationData>,
+   pub total_function_evaluations: usize,
+   pub total_gradient_evaluations: usize,
+}
+
+pub struct IterationData {
+   pub iteration: usize,
+   pub function_value: f64,
+   pub gradient_norm: f64,
+   pub step_size: f64,
+   pub parameters: Vec<f64>,
+   pub timestamp: Duration,
+}
+```
+
+## Statistical Analysis
+
+### Analysis Components
+
+#### 1. Convergence Comparison
+
+Compares convergence behavior across optimizers:
+
+```rust
+pub struct ConvergenceComparison {
+   pub optimizer_stats: HashMap<String, OptimizerStatistics>,
+   pub pairwise_comparisons: Vec<PairwiseComparison>,
+   pub significance_tests: Vec<SignificanceTest>,
+}
+```
+
+#### 2. Statistical Tests
+
+- **Welch's t-test**: For normally distributed results
+- **Mann-Whitney U test**: Non-parametric alternative
+- **Effect Size**: Cohen's d for practical significance
+
+#### 3. Performance Profiles
+
+Evaluates solver performance across problem sets:
+
+```rust
+pub struct PerformanceProfiles {
+   pub tolerance_levels: Vec<f64>,
+   pub profiles: HashMap<String, ProfileData>,
+}
+```
+
+### Running Statistical Analysis
+
+```rust
+use qqn_optimizer::analysis::statistics::StatisticalAnalysis;
+
+// Create analysis from results
+let analysis = StatisticalAnalysis::new( & benchmark_results);
+
+// Access different analyses
+let convergence = analysis.convergence_comparison();
+let profiles = analysis.performance_profiles();
+let robustness = analysis.robustness_analysis();
+
+// Get significance tests
+for test in analysis.significance_tests() {
+if test.is_significant() {
+println ! ("{} significantly outperforms {}",
+test.optimizer_a, test.optimizer_b);
+}
+}
+```
+
+## Report Generation
+
+### HTML Reports
+
+The framework generates comprehensive HTML reports with:
 
 1. **Executive Summary**
-    - Experimental overview metrics
-    - Success rates by optimizer
-    - Key performance indicators
+   - Total problems tested
+   - Success rates by optimizer
+   - Key findings
 
-2. **Problem-Specific Analysis**
-    - Performance tables with statistical rankings
-    - Convergence analysis
-    - Time complexity comparison
+2. **Detailed Results**
+   - Performance tables for each problem
+   - Convergence statistics
+   - Timing information
 
 3. **Statistical Analysis**
-    - Pairwise significance tests
-    - Effect size calculations
-    - Confidence intervals
+   - Pairwise significance tests
+   - Effect sizes
+   - Confidence intervals
 
-4. **Performance Profiles**
-    - Robustness analysis across problem types
-    - Relative performance visualization
+4. **Visualizations**
+   - Convergence plots
+   - Performance profiles
+   - Box plots
 
-5. **Conclusions and Recommendations**
-    - Best practices for practitioners
-    - Algorithm selection guidelines
+### LaTeX Export
 
-### 2. Integration Tests (`integration_tests.rs`)
-
-#### Purpose
-
-End-to-end testing of optimizer functionality with real optimization problems.
-
-#### Key Test Cases
-
-##### `test_qqn_rosenbrock_optimization()`
-
-**Purpose**: Validates QQN performance on the classic Rosenbrock function.
-
-**Test Configuration**:
+For academic publications:
 
 ```rust
-QQNConfig {
-line_search.initial_step: 0.001,
-line_search.c1: 1e-4,
-line_search.c2: 0.9,
-lbfgs_history: 10,
-epsilon: 1e-8,
-}
+use qqn_optimizer::tests::performance_analysis::LaTeXTableGenerator;
+
+// Generate performance table
+let latex_table = LaTeXTableGenerator::generate_performance_table( & results);
+
+// Generate significance table
+let significance_table = LaTeXTableGenerator::generate_significance_table( & analysis);
 ```
 
-**Validation Criteria**:
-
-- Convergence within 1000 iterations
-- Gradient norm < 1e-2
-- Progress toward optimum (1, 1)
-- Function value reduction > 90%
-
-**Expected Behavior**:
-
-```rust
-// Convergence check
-let grad_norm = gradient_vec.iter().map(|g| g * g).sum::<f64>().sqrt();
-assert!(grad_norm < tolerance);
-
-// Optimum proximity
-assert!((x[0] - 1.0).abs() < 2.0);
-assert!((x[1] - 1.0).abs() < 2.0);
-```
-
-##### `test_qqn_vs_lbfgs_sphere_function()`
-
-**Purpose**: Comparative analysis between QQN and L-BFGS on sphere function.
-
-**Test Methodology**:
-
-1. Run both optimizers on identical 3D sphere function
-2. Compare convergence rates and final values
-3. Validate competitive performance
-
-**Success Criteria**:
-
-- Both algorithms converge to < 1e-2
-- QQN iterations ≤ 10× L-BFGS iterations
-- Both achieve gradient norm < 1e-6
-
-##### `test_qqn_numerical_stability()`
-
-**Purpose**: Validates numerical robustness under extreme conditions.
-
-**Test Scenarios**:
-
-1. **Small Gradients**: Parameters near optimum
-2. **Large Gradients**: Parameters far from optimum
-3. **Finite Value Checks**: All outputs remain finite
-
-**Validation**:
-
-```rust
-// Finite parameter check
-let param_values: Vec<f64> = params[0].to_vec1().unwrap();
-assert!(param_values.iter().all(|&x| x.is_finite()));
-```
-
-##### `test_qqn_reset_functionality()`
-
-**Purpose**: Validates optimizer state reset capability.
-
-**Test Process**:
-
-1. Perform multiple optimization steps
-2. Reset optimizer state
-3. Verify clean state restoration
-
-**Validation**:
-
-```rust
-optimizer.reset();
-let state = optimizer.state();
-assert_eq!(state.iteration, 0);
-```
-
-### 3. Performance Analysis (`performance_analysis.rs`)
-
-#### Purpose
-
-Academic-quality performance analysis with LaTeX table generation for publications.
-
-#### Key Components
-
-##### `LaTeXTableGenerator`
-
-**Purpose**: Generates publication-ready LaTeX tables for academic papers.
-
-**Methods**:
-
-###### `generate_performance_table()`
-
-**Output Format**:
-
+Example LaTeX output:
 ```latex
 \begin{table}[htbp]
 \centering
@@ -268,230 +274,227 @@ Academic-quality performance analysis with LaTeX table generation for publicatio
 \toprule
 Algorithm & Mean Final Value & Std Dev & Mean Iterations & Success Rate \\
 \midrule
-QQN & 1.23e-06 & 4.56e-07 & 125.3 & 95.0\% \\
-L-BFGS & 2.34e-06 & 8.90e-07 & 142.1 & 87.5\% \\
+QQN & 1.23e-08 & 3.45e-09 & 145.3 & 98.5\% \\
+L-BFGS & 2.34e-08 & 5.67e-09 & 167.8 & 95.0\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 ```
 
-###### `generate_significance_table()`
+### CSV Export
 
-**Output Format**:
-
-```latex
-\begin{table}[htbp]
-\centering
-\caption{Statistical significance tests comparing optimization algorithms}
-\label{tab:significance}
-\begin{tabular}{lccc}
-\toprule
-Comparison & Test Statistic & p-value & Significant \\
-\midrule
-QQN vs L-BFGS & 2.1456 & 0.0234 & Yes \\
-\bottomrule
-\end{tabular}
-\end{table}
-```
-
-#### Test Methods
-
-##### `test_latex_table_generation()`
-
-**Purpose**: Validates LaTeX table generation functionality.
-
-**Mock Data Generation**:
-
-- 10 runs each for QQN and L-BFGS
-- Realistic performance metrics
-- Mixed success/failure scenarios
-
-**Validation Criteria**:
-
-- Proper LaTeX structure
-- Correct statistical calculations
-- Algorithm name inclusion
-- Table formatting compliance
-
-##### `test_export_academic_formats()`
-
-**Purpose**: Validates export functionality for academic use.
-
-**Generated Files**:
-
-- `performance_table.tex` - Performance comparison table
-- `significance_table.tex` - Statistical significance tests
-- `raw_results.csv` - Raw experimental data
-
-**File Validation**:
+For further analysis in external tools:
 
 ```rust
-assert!(output_path.join("performance_table.tex").exists());
-assert!(output_path.join("significance_table.tex").exists());
-assert!(output_path.join("raw_results.csv").exists());
+// Export detailed results
+results.save_to_csv(Path::new("detailed_results.csv")) ?;
+
+// Export summary statistics
+let summary = results.summary_statistics();
+summary.save_to_csv(Path::new("summary.csv")) ?;
 ```
 
-## Test Execution
+## Usage Guide
 
-### Running Individual Test Suites
+### Quick Start
+
+1. **Run Basic Benchmarks**
+```bash
+cargo test test_comprehensive_benchmarks -- --nocapture
+```
+
+2. **Generate Academic Report**
 
 ```bash
-# Run benchmark experiments
-cargo test benchmark_experiments --release
-
-# Run integration tests
-cargo test integration_tests
-
-# Run performance analysis
-cargo test performance_analysis
-
-# Run all tests
-cargo test
+cargo test test_academic_citation_format -- --nocapture
 ```
 
-### Environment Requirements
+3. **Export LaTeX Tables**
 
-#### Dependencies
+```bash
+cargo test test_latex_table_generation -- --nocapture
+```
 
-- `tokio` - Async runtime for benchmark experiments
-- `tempfile` - Temporary directory management
-- `chrono` - Timestamp generation
-- `log` - Logging framework
-- `env_logger` - Log output management
-
-#### System Requirements
-
-- Sufficient memory for large-scale benchmarks
-- CPU resources for intensive optimization runs
-- Disk space for report generation (≥100MB recommended)
-
-### Test Configuration
-
-#### Logging Configuration
+### Custom Experiments
 
 ```rust
-fn init_logger() {
-    let _ = env_logger::builder()
-        .filter_level(log::LevelFilter::Warn)
-        .try_init();
+// Define custom problem
+struct MyProblem {
+   dimension: usize,
 }
-```
 
-#### Benchmark Configuration
-
-```rust
-BenchmarkConfig {
-max_iterations: 1000,        // Maximum optimization iterations
-tolerance: 1e-6,             // Convergence tolerance
-max_function_evaluations: 5000, // Function evaluation limit
-time_limit: Duration::from_secs(300), // 5-minute time limit
-random_seed: 42,             // Reproducible random seed
-num_runs: 10,                // Statistical sample size
-}
-```
-
-## Expected Test Outcomes
-
-### Success Criteria
-
-#### Benchmark Experiments
-
-- **HTML Report Generation**: Complete academic-quality report
-- **Statistical Significance**: Proper significance testing
-- **Performance Profiles**: Robustness analysis completion
-- **Data Export**: CSV and LaTeX format generation
-
-#### Integration Tests
-
-- **Convergence Validation**: Algorithms reach specified tolerances
-- **Comparative Performance**: QQN competitive with L-BFGS
-- **Numerical Stability**: No infinite or NaN values
-- **State Management**: Proper reset functionality
-
-#### Performance Analysis
-
-- **LaTeX Generation**: Valid academic table formats
-- **File Export**: All required files created
-- **Statistical Analysis**: Proper significance testing
-
-### Failure Scenarios and Handling
-
-#### Common Failure Modes
-
-1. **Font Rendering Issues** (Plotting)
-   ```rust
-   if e.to_string().contains("font") || e.to_string().contains("text") {
-       warn!("Skipping plot generation due to font rendering issues: {}", e);
+impl OptimizationProblem for MyProblem {
+   fn evaluate(&self, x: &[f64]) -> Result<f64> {
+      // Your objective function
    }
-   ```
 
-2. **Convergence Failures**
-    - Relaxed tolerance for difficult problems
-    - Progress-based success criteria
-    - Graceful degradation
+   fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+      // Your gradient computation
+   }
+   // ... other trait methods
+}
 
-3. **Memory Constraints**
-    - Reduced problem dimensions for CI environments
-    - Configurable benchmark parameters
+// Run custom benchmark
+let problems = vec![Box::new(MyProblem { dimension: 10 })];
+let results = runner.run_benchmarks(problems, optimizers).await?;
+```
 
-#### Error Recovery
+### Configuration Options
 
-- Graceful degradation for non-critical failures
-- Comprehensive error logging
-- Alternative success criteria for edge cases
+```rust
+// Aggressive convergence testing
+let config = BenchmarkConfig {
+max_iterations: 10000,
+tolerance: 1e-12,
+time_limit: Duration::from_secs(3600),
+num_runs: 50,
+random_seed: 42,
+};
 
-## Continuous Integration
+// Quick testing
+let config = BenchmarkConfig {
+max_iterations: 100,
+tolerance: 1e-6,
+time_limit: Duration::from_secs(60),
+num_runs: 3,
+random_seed: 42,
+};
+```
 
-### CI Test Strategy
+## Interpreting Results
 
-- **Fast Tests**: Unit and basic integration tests
-- **Nightly Tests**: Full benchmark suite
-- **Release Tests**: Complete academic validation
+### Performance Metrics
 
-### Performance Monitoring
+1. **Final Value**: Lower is better for minimization
+2. **Gradient Norm**: Indicates convergence quality
+3. **Iterations**: Efficiency measure
+4. **Success Rate**: Robustness indicator
+5. **Execution Time**: Computational efficiency
 
-- Regression detection for optimization performance
-- Memory usage tracking
-- Execution time monitoring
+### Statistical Significance
 
-## Academic Validation
+- **p-value < 0.05**: Statistically significant difference
+- **Effect Size**:
+   - Small: |d| < 0.2
+   - Medium: 0.2 ≤ |d| < 0.8
+   - Large: |d| ≥ 0.8
 
-### Publication Standards
+### Performance Profiles
 
-- Statistical significance testing (α = 0.05)
-- Multiple random seed validation
-- Comprehensive problem suite coverage
-- Reproducibility documentation
+Performance profiles show the fraction of problems solved within a performance ratio τ:
 
-### Citation Format
+- Higher curves indicate better performance
+- Leftmost point: fraction where optimizer was best
+- Rightmost value: robustness (fraction eventually solved)
 
-Generated reports include proper academic citations and methodology descriptions suitable for peer-reviewed
-publications.
+## Extending the Framework
 
-### Data Availability
+### Adding New Test Problems
 
-All test data and analysis scripts are preserved for independent verification and reproduction of results.
+```rust
+use qqn_optimizer::benchmarks::functions::OptimizationProblem;
+
+pub struct CustomFunction {
+   // Your fields
+}
+
+impl OptimizationProblem for CustomFunction {
+   // Implement required methods
+}
+
+// Register in experiment
+let problems = vec![
+   Box::new(CustomFunction::new()),
+   // ... other problems
+];
+```
+
+### Adding New Analysis Metrics
+
+```rust
+impl BenchmarkResults {
+   pub fn custom_metric(&self) -> HashMap<String, f64> {
+      let mut metrics = HashMap::new();
+
+      for (optimizer, results) in self.group_by_optimizer() {
+         // Calculate your metric
+         let metric_value = calculate_custom_metric(results);
+         metrics.insert(optimizer, metric_value);
+      }
+
+      metrics
+   }
+}
+```
+
+### Custom Visualizations
+
+```rust
+use qqn_optimizer::analysis::plotting::PlottingEngine;
+
+impl PlottingEngine {
+   pub fn custom_plot(&self, data: &CustomData) -> Result<()> {
+      // Use plotters crate to create custom visualizations
+   }
+}
+```
+
+## Best Practices
+
+1. **Reproducibility**
+   - Always set random seeds
+   - Document hardware and software versions
+   - Save raw results for future analysis
+
+2. **Statistical Rigor**
+   - Run sufficient repetitions (≥10)
+   - Report confidence intervals
+   - Use appropriate statistical tests
+
+3. **Fair Comparison**
+   - Use same starting points
+   - Apply identical convergence criteria
+   - Consider problem-specific tolerances
+
+4. **Reporting**
+   - Include both tables and visualizations
+   - Report failures and edge cases
+   - Provide interpretation guidelines
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Test Timeouts**
-    - Reduce `num_runs` for faster execution
-    - Increase time limits for complex problems
+1. **Font Rendering Errors in Tests**
+   - The framework handles missing fonts gracefully
+   - Plots are optional for test success
 
-2. **Memory Issues**
-    - Use smaller problem dimensions
-    - Reduce history size in optimizer configs
+2. **Numerical Instabilities**
+   - Check gradient implementations
+   - Verify function continuity
+   - Use appropriate scaling
 
-3. **Plotting Failures**
-    - Tests continue without plots in headless environments
-    - Font dependencies handled gracefully
+3. **Memory Issues**
+   - Reduce trace storage frequency
+   - Limit problem dimensions
+   - Use streaming analysis for large datasets
 
-### Debug Information
+### Debug Mode
 
-Enable detailed logging for troubleshooting:
+Enable detailed logging:
 
-```bash
-RUST_LOG=debug cargo test
+```rust
+env_logger::builder()
+.filter_level(log::LevelFilter::Debug)
+.init();
 ```
+
+## References
+
+1. Dolan, E. D., & Moré, J. J. (2002). Benchmarking optimization software with performance profiles. Mathematical
+   Programming, 91(2), 201-213.
+
+2. Moré, J. J., Garbow, B. S., & Hillstrom, K. E. (1981). Testing unconstrained optimization software. ACM Transactions
+   on Mathematical Software, 7(1), 17-41.
+
+3. Nocedal, J., & Wright, S. (2006). Numerical Optimization. Springer Science & Business Media.

@@ -234,7 +234,7 @@ impl BenchmarkRunner {
             for optimizer in &optimizers {
                 for run_id in 0..self.config.num_runs {
                     let result = self
-                        .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id)
+                        .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id, &optimizer.name().to_string())
                         .await?;
 
                     results.add_result(result);
@@ -251,6 +251,7 @@ impl BenchmarkRunner {
         problem: &dyn OptimizationProblem,
         optimizer: &dyn OptimizerBox,
         run_id: usize,
+        opt_name: &String,
     ) -> Result<SingleResult, BenchmarkError> {
         info!("Starting benchmark: {} with {} (run {})", 
               problem.name(), optimizer.name(), run_id);
@@ -342,7 +343,7 @@ impl BenchmarkRunner {
 
         Ok(SingleResult {
             problem_name: problem.name().to_string(),
-            optimizer_name: opt.name().to_string(),
+            optimizer_name: opt_name.clone(),
             run_id,
             final_value,
             final_gradient_norm,
@@ -374,6 +375,10 @@ impl BenchmarkRunner {
         let mut numerical_error_count = 0;
         const MAX_NUMERICAL_ERRORS: usize = 3;
         const MAX_STAGNATION_COUNT: usize = 50;
+        const MIN_FUNCTION_CHANGE: f64 = 1e-16;
+        let mut best_f_val = f64::INFINITY;
+        let mut no_improvement_count = 0;
+        const MAX_NO_IMPROVEMENT: usize = 100;
 
         while *iteration < self.config.max_iterations {
             // Evaluate function and gradient
@@ -396,6 +401,17 @@ impl BenchmarkRunner {
                     return Ok(ConvergenceReason::NumericalError);
                 }
                 continue;
+            }
+            // Track best value and improvement
+            if f_val < best_f_val - MIN_FUNCTION_CHANGE {
+                best_f_val = f_val;
+                no_improvement_count = 0;
+            } else {
+                no_improvement_count += 1;
+                if no_improvement_count >= MAX_NO_IMPROVEMENT {
+                    info!("No improvement for {} iterations, terminating", MAX_NO_IMPROVEMENT);
+                    return Ok(ConvergenceReason::FunctionTolerance);
+                }
             }
 
             *function_evaluations += 1;

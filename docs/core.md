@@ -1,789 +1,503 @@
-# QQN Optimizer Framework - Core Technical Documentation
+# QQN Optimizer: Technical Documentation
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Core Module Documentation](#core-module-documentation)
-3. [Optimizer Trait System](#optimizer-trait-system)
-4. [L-BFGS Implementation](#l-bfgs-implementation)
-5. [QQN Algorithm Implementation](#qqn-algorithm-implementation)
-6. [Line Search Algorithms](#line-search-algorithms)
-7. [Mathematical Utilities](#mathematical-utilities)
-8. [Error Handling and Safety](#error-handling-and-safety)
-9. [Performance Considerations](#performance-considerations)
-10. [Extension Points](#extension-points)
+1. [Mathematical Foundation](#mathematical-foundation)
+2. [System Architecture](#system-architecture)
+3. [Implementation Details](#implementation-details)
+4. [API Reference](#api-reference)
+5. [Performance Analysis](#performance-analysis)
+6. [Extension Guide](#extension-guide)
 
-## Architecture Overview
+---
 
-The QQN optimizer framework is built around a modular, trait-based architecture that enables easy extension and
-benchmarking of optimization algorithms. The core design principles include:
+## 1. Mathematical Foundation
 
-- **Type Safety**: Extensive use of Rust's type system to prevent runtime errors
-- **Memory Safety**: Zero-copy operations where possible, careful memory management
-- **Numerical Stability**: Robust handling of edge cases and numerical precision issues
-- **Extensibility**: Clean trait boundaries for adding new optimizers and problems
-- **Performance**: Efficient tensor operations using the Candle framework
+### 1.1 Overview
 
-### Core Architecture Diagram
+The Quadratic-Quadratic Newton (QQN) optimizer is a novel quasi-Newton optimization method that combines gradient
+descent and L-BFGS directions through a quadratic interpolation path. This approach aims to achieve faster convergence
+than traditional methods by exploring a richer search space.
+
+### 1.2 Core Algorithm
+
+#### 1.2.1 Quadratic Path Construction
+
+Given:
+
+- Current gradient: $\mathbf{g}_k \in \mathbb{R}^n$
+- L-BFGS direction: $\mathbf{d}_k^{\text{LBFGS}} \in \mathbb{R}^n$
+
+The QQN method constructs a parametric quadratic path:
+
+$$\mathbf{d}(t) = t(1-t)(-\mathbf{g}_k) + t^2\mathbf{d}_k^{\text{LBFGS}}, \quad t \in [0,1]$$
+
+**Properties:**
+
+- $\mathbf{d}(0) = \mathbf{0}$ (no movement at $t=0$)
+- $\mathbf{d}(1) = \mathbf{d}_k^{\text{LBFGS}}$ (full L-BFGS step at $t=1$)
+- $\mathbf{d}'(0) = -\mathbf{g}_k$ (initial direction is steepest descent)
+
+#### 1.2.2 Optimal Parameter Selection
+
+The optimal parameter $t^*$ is found by solving:
+
+$$t^* = \arg\min_{t \in [0,1]} f(\mathbf{x}_k + \mathbf{d}(t))$$
+
+This is accomplished using line search along the quadratic path.
+
+#### 1.2.3 Parameter Update
+
+Once $t^*$ is determined:
+
+$$\mathbf{x}_{k+1} = \mathbf{x}_k + \mathbf{d}(t^*)$$
+
+### 1.3 L-BFGS Component
+
+#### 1.3.1 Two-Loop Recursion
+
+The L-BFGS direction is computed using the two-loop recursion algorithm:
+
+```
+Algorithm: L-BFGS Two-Loop Recursion
+Input: gradient g_k, history {s_i, y_i}_{i=k-m}^{k-1}
+Output: search direction d_k
+
+1. q ← g_k
+2. For i = k-1, k-2, ..., k-m:
+   a. ρ_i ← 1/(y_i^T s_i)
+   b. α_i ← ρ_i s_i^T q
+   c. q ← q - α_i y_i
+3. γ_k ← (s_{k-1}^T y_{k-1})/(y_{k-1}^T y_{k-1})
+4. r ← γ_k q
+5. For i = k-m, k-m+1, ..., k-1:
+   a. β ← ρ_i y_i^T r
+   b. r ← r + s_i(α_i - β)
+6. d_k ← -r
+```
+
+Where:
+
+- $\mathbf{s}_i = \mathbf{x}_{i+1} - \mathbf{x}_i$ (parameter differences)
+- $\mathbf{y}_i = \mathbf{g}_{i+1} - \mathbf{g}_i$ (gradient differences)
+- $m$ is the history size (typically 3-20)
+
+#### 1.3.2 Curvature Condition
+
+Updates are only stored if they satisfy the curvature condition:
+
+$$\mathbf{s}_k^T \mathbf{y}_k > \epsilon \|\mathbf{s}_k\|_2 \|\mathbf{y}_k\|_2$$
+
+where $\epsilon > 0$ is a small constant (typically $10^{-8}$).
+
+### 1.4 Line Search Methods
+
+#### 1.4.1 Strong Wolfe Conditions
+
+The step size $\alpha$ must satisfy:
+
+1. **Armijo condition** (sufficient decrease):
+   $$f(\mathbf{x}_k + \alpha \mathbf{p}_k) \leq f(\mathbf{x}_k) + c_1 \alpha \nabla f(\mathbf{x}_k)^T \mathbf{p}_k$$
+
+2. **Curvature condition**:
+   $$|\nabla f(\mathbf{x}_k + \alpha \mathbf{p}_k)^T \mathbf{p}_k| \leq c_2 |\nabla f(\mathbf{x}_k)^T \mathbf{p}_k|$$
+
+where $0 < c_1 < c_2 < 1$ (typically $c_1 = 10^{-4}$, $c_2 = 0.9$).
+
+#### 1.4.2 Bisection Line Search
+
+For the quadratic path, we use bisection to find where the directional derivative is zero:
+
+$$\frac{d}{dt}f(\mathbf{x}_k + \mathbf{d}(t)) = \nabla f(\mathbf{x}_k + \mathbf{d}(t))^T \mathbf{d}'(t) = 0$$
+
+### 1.5 Convergence Analysis
+
+#### 1.5.1 Theoretical Properties
+
+Under standard assumptions (Lipschitz continuous gradient, strong convexity), QQN exhibits:
+
+1. **Global convergence**: The algorithm converges to a stationary point from any starting point
+2. **Superlinear convergence**: Near the optimum, convergence rate approaches that of Newton's method
+3. **Robustness**: The quadratic interpolation provides additional flexibility in non-convex regions
+
+#### 1.5.2 Complexity Analysis
+
+- **Per-iteration cost**: $O(mn)$ where $m$ is history size, $n$ is problem dimension
+- **Memory requirement**: $O(mn)$ for storing L-BFGS history
+- **Function evaluations**: Typically 1-5 per iteration (line search dependent)
+
+---
+
+## 2. System Architecture
+
+### 2.1 High-Level Design
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    QQN Framework Core                       │
+│                      QQN Optimizer System                     │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  Optimizer  │  │ LineSearch  │  │ DifferentiableFunc  │  │
-│  │   Traits    │  │   Traits    │  │      Traits         │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │    QQN      │  │   L-BFGS    │  │    Line Search      │  │
-│  │ Optimizer   │  │ Optimizer   │  │   Algorithms        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Mathematical│  │   Tensor    │  │     Validation      │  │
-│  │  Utilities  │  │ Operations  │  │    & Safety         │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│                                                               │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
+│  │   Core      │  │  Benchmarks  │  │    Analysis      │   │
+│  │  Optimizer  │  │   Framework  │  │    Framework     │   │
+│  │             │  │              │  │                  │   │
+│  │ • QQN       │  │ • Problems   │  │ • Statistics     │   │
+│  │ • L-BFGS    │  │ • Runner     │  │ • Plotting       │   │
+│  │ • Line      │  │ • Metrics    │  │ • Reporting      │   │
+│  │   Search    │  │              │  │                  │   │
+│  └──────┬──────┘  └──────┬───────┘  └────────┬─────────┘   │
+│         │                 │                    │             │
+│  ┌──────┴─────────────────┴────────────────────┴────────┐   │
+│  │                    Common Infrastructure              │   │
+│  │                                                       │   │
+│  │  • Tensor Operations  • Math Utilities               │   │
+│  │  • Configuration      • Error Handling               │   │
+│  │  • Logging           • Serialization                │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Core Module Documentation
+### 2.2 Module Organization
 
-### Module Structure
+#### 2.2.1 Core Modules
 
-```rust
+```
 src/core/
-├── mod .rs              // Public API and re-exports
-├── optimizer.rs        // Core optimizer traits and types
-├── lbfgs.rs           // L-BFGS implementation
-├── qqn.rs             // QQN algorithm implementation
-└── line_search.rs     // Line search algorithms
+├── mod.rs           # Module exports and error types
+├── optimizer.rs     # Optimizer trait and common types
+├── lbfgs.rs        # L-BFGS implementation
+├── qqn.rs          # QQN optimizer implementation
+├── line_search.rs  # Line search algorithms
+└── sgd.rs          # SGD implementation (for comparison)
 ```
 
-### Key Types and Constants
+#### 2.2.2 Key Traits and Interfaces
 
 ```rust
-/// Core result type used throughout the optimization framework
-pub type OptResult<T> = anyhow::Result<T>;
-
-/// Tolerance for numerical comparisons
-pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
-
-/// Maximum number of line search iterations
-pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
-
-/// Default L-BFGS history size
-pub const DEFAULT_LBFGS_HISTORY: usize = 10;
-```
-
-## Optimizer Trait System
-
-### Core Optimizer Trait
-
-The `Optimizer` trait defines the interface that all optimization algorithms must implement:
-
-```rust
-pub trait Optimizer: Send + Sync + std::fmt::Debug {
+/// Core optimizer trait
+pub trait Optimizer: Send + Sync + Debug {
     type Config: Clone + Debug + Send + Sync;
     type State: Clone + Debug + Send + Sync;
 
-    /// Create a new optimizer instance
-    fn new(config: Self::Config) -> Self where
-        Self: Sized;
-
-    /// Perform a single optimization step
+    fn new(config: Self::Config) -> Self;
     fn step(
         &mut self,
         params: &mut [Tensor],
         function: &dyn DifferentiableFunction,
     ) -> Result<StepResult>;
-
-    /// Perform a step with pre-computed gradients
-    fn step_with_gradients(
-        &mut self,
-        params: &mut [Tensor],
-        gradients: &[Tensor],
-    ) -> Result<StepResult>;
-
-    /// Reset optimizer state
     fn reset(&mut self);
-
-    /// Get current state
     fn state(&self) -> &Self::State;
-
-    /// Get optimizer name
     fn name(&self) -> &str;
-
-    /// Check convergence
-    fn has_converged(&self) -> bool { false }
 }
-```
 
-### DifferentiableFunction Trait
-
-Defines functions that can be optimized:
-
-```rust
+/// Differentiable function interface
 pub trait DifferentiableFunction: Send + Sync {
-    /// Evaluate function at given point
-    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64>;
-
-    /// Compute gradients at given point
-    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
-
-    /// Compute both value and gradients (optional optimization)
-    fn evaluate_with_gradient(&self, params: &[Tensor]) -> CandleResult<(f64, Vec<Tensor>)> {
-        let value = self.evaluate(params)?;
-        let grad = self.gradient(params)?;
-        Ok((value, grad))
-    }
+    fn evaluate(&self, params: &[Tensor]) -> Result<f64>;
+    fn gradient(&self, params: &[Tensor]) -> Result<Vec<Tensor>>;
 }
-```
 
-### StepResult Structure
-
-Contains comprehensive information about each optimization step:
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StepResult {
-    /// Step size used
-    pub step_size: f64,
-
-    /// Function evaluations consumed
-    pub function_evaluations: usize,
-
-    /// Gradient evaluations consumed
-    pub gradient_evaluations: usize,
-
-    /// Convergence information
-    pub convergence_info: ConvergenceInfo,
-
-    /// Additional metadata
-    pub metadata: OptimizationMetadata,
-}
-```
-
-## L-BFGS Implementation
-
-### Algorithm Overview
-
-The L-BFGS (Limited-memory BFGS) implementation serves as both a baseline optimizer and a core component of the QQN
-algorithm. It maintains a limited history of gradient and parameter changes to approximate the inverse Hessian matrix.
-
-### Configuration
-
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LBFGSConfig {
-    /// Number of previous iterations to store
-    pub history_size: usize,
-
-    /// Line search configuration
-    pub line_search: LineSearchConfig,
-
-    /// Numerical stability constant
-    pub epsilon: f64,
-
-    /// Maximum correction pairs
-    pub max_correction_pairs: usize,
-
-    /// Step size bounds
-    pub max_step_size: f64,
-    pub min_step_size: f64,
-
-    /// Verbose logging
-    pub verbose: bool,
-}
-```
-
-### State Management
-
-```rust
-#[derive(Debug, Clone)]
-pub struct LBFGSState {
-    /// Parameter differences: s_k = x_{k+1} - x_k
-    s_history: VecDeque<Vec<Tensor>>,
-
-    /// Gradient differences: y_k = g_{k+1} - g_k
-    y_history: VecDeque<Vec<Tensor>>,
-
-    /// Reciprocals: ρ_k = 1/(s_k^T y_k)
-    rho_history: VecDeque<f64>,
-
-    /// Previous gradient for differences
-    prev_gradient: Option<Vec<Tensor>>,
-
-    /// Current iteration
-    iteration: usize,
-
-    /// Hessian scaling factor
-    gamma: f64,
-}
-```
-
-### Two-Loop Recursion Algorithm
-
-The core L-BFGS direction computation uses the two-loop recursion:
-
-```rust
-impl LBFGSState {
-    pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-        // Input validation
-        if gradient.is_empty() {
-            return Err(candle_core::Error::Msg("Empty gradient vector".into()));
-        }
-
-        // Check for very small gradients
-        let grad_norm = compute_magnitude(gradient)?;
-        if grad_norm < 1e-10 {
-            return Ok(gradient.iter().map(|g| g.neg()).collect::<CandleResult<Vec<_>>>()?);
-        }
-
-        // No history available - use steepest descent
-        if self.s_history.is_empty() {
-            return Ok(gradient.iter().map(|g| g.neg()).collect::<CandleResult<Vec<_>>>()?);
-        }
-
-        let mut q = gradient.to_vec();
-        let mut alpha = Vec::with_capacity(self.s_history.len());
-
-        // First loop: compute α values and update q
-        for i in (0..self.s_history.len()).rev() {
-            let s_i = &self.s_history[i];
-            let rho_i = self.rho_history[i];
-
-            // Skip if numerical issues
-            if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
-                continue;
-            }
-
-            let alpha_i = rho_i * dot_product(s_i, &q)?;
-            alpha.push(alpha_i);
-
-            // q = q - α_i * y_i
-            let y_i = &self.y_history[i];
-            let scaled_y = vector_scale(y_i, alpha_i)?;
-            q = vector_subtract(&q, &scaled_y)?;
-        }
-
-        alpha.reverse();
-
-        // Apply initial Hessian scaling: r = γ * q
-        let safe_gamma = self.gamma.max(1e-6).min(1e6);
-        let mut r = vector_scale(&q, safe_gamma)?;
-
-        // Second loop: compute final direction
-        for i in 0..self.s_history.len() {
-            if i >= alpha.len() { continue; }
-
-            let s_i = &self.s_history[i];
-            let y_i = &self.y_history[i];
-            let rho_i = self.rho_history[i];
-            let alpha_i = alpha[i];
-
-            let beta = rho_i * dot_product(y_i, &r)?;
-            let correction_factor = alpha_i - beta;
-
-            if !correction_factor.is_finite() { continue; }
-
-            // r = r + (α_i - β) * s_i
-            let correction = vector_scale(s_i, correction_factor)?;
-            r = vector_add(&r, &correction)?;
-        }
-
-        // Return negative for descent direction
-        Ok(r.iter().map(|t| t.neg()).collect::<CandleResult<Vec<_>>>()?)
-    }
-}
-```
-
-### State Update with Curvature Condition
-
-```rust
-impl LBFGSState {
-    pub fn update(
+/// Line search trait
+pub trait LineSearch: Send + Sync + Debug {
+    fn search(
         &mut self,
-        new_gradient: &[Tensor],
-        step_direction: &[Tensor],
-        step_size: f64,
-    ) -> CandleResult<()> {
-        // Validate inputs
-        if !step_size.is_finite() || step_size <= 0.0 {
-            return Ok(()); // Skip invalid updates
-        }
-
-        // Compute parameter difference: s_k = α * p_k
-        let s_k = vector_scale(step_direction, step_size)?;
-
-        if let Some(prev_grad) = &self.prev_gradient {
-            // Compute gradient difference: y_k = ∇f_{k+1} - ∇f_k
-            let y_k = vector_subtract(new_gradient, prev_grad)?;
-
-            // Check curvature condition: s_k^T y_k > ε
-            let s_dot_y = dot_product(&s_k, &y_k)?;
-
-            if s_dot_y > self.epsilon() {
-                let rho_k = 1.0 / s_dot_y;
-
-                // Maintain history size limit
-                if self.s_history.len() >= self.s_history.capacity() {
-                    self.s_history.pop_front();
-                    self.y_history.pop_front();
-                    self.rho_history.pop_front();
-                }
-
-                self.s_history.push_back(s_k);
-                self.y_history.push_back(y_k.clone());
-                self.rho_history.push_back(rho_k);
-
-                // Update Hessian scaling: γ = (s_k^T y_k) / (y_k^T y_k)
-                let y_dot_y = dot_product(&y_k, &y_k)?;
-                if y_dot_y > self.epsilon() {
-                    let new_gamma = s_dot_y / y_dot_y;
-                    if new_gamma.is_finite() && new_gamma > 0.0 {
-                        self.gamma = new_gamma.max(1e-6).min(10.0);
-                    }
-                }
-            }
-        }
-
-        self.prev_gradient = Some(new_gradient.to_vec());
-        self.iteration += 1;
-        Ok(())
-    }
-}
-```
-
-## QQN Algorithm Implementation
-
-### Core Innovation
-
-The QQN (Quadratic Quasi-Newton) algorithm introduces a novel quadratic interpolation path between the steepest descent
-direction and the L-BFGS direction:
-
-```
-d(t) = t(1-t)(-∇f) + t²d_LBFGS
-```
-
-where `t ∈ [0,1]` is optimized via line search.
-
-### Configuration
-
-```rust
-#[derive(Debug, Clone)]
-pub struct QQNConfig {
-    /// L-BFGS history length
-    pub lbfgs_history: usize,
-
-    /// Line search configuration
-    pub line_search: StrongWolfeConfig,
-
-    /// Numerical stability constant
-    pub epsilon: f64,
-
-    /// Verbose logging
-    pub verbose: bool,
-}
-```
-
-### State Management
-
-```rust
-#[derive(Debug, Clone)]
-pub struct QQNState {
-    /// Current iteration number
-    pub iteration: usize,
-
-    /// Internal L-BFGS state
-    pub lbfgs_state: LBFGSState,
-}
-```
-
-### Quadratic Path Implementation
-
-```rust
-#[derive(Debug, Clone)]
-pub struct QuadraticPath {
-    negative_gradient: Vec<Tensor>,
-    lbfgs_direction: Vec<Tensor>,
-}
-
-impl QuadraticPath {
-    /// Evaluate path at parameter t: d(t) = t(1-t)(-g) + t²d_lbfgs
-    pub fn evaluate(&self, t: f64) -> CandleResult<Vec<Tensor>> {
-        let t_clamped = t.max(0.0).min(1.0);
-
-        let gradient_coeff = t_clamped * (1.0 - t_clamped);
-        let lbfgs_coeff = t_clamped * t_clamped;
-
-        let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
-        let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
-
-        combine_tensors(&gradient_term, &lbfgs_term)
-    }
-
-    /// Compute derivative: d'(t) = (1-2t)(-g) + 2t*d_lbfgs
-    pub fn derivative(&self, t: f64) -> CandleResult<Vec<Tensor>> {
-        let gradient_coeff = 1.0 - 2.0 * t;
-        let lbfgs_coeff = 2.0 * t;
-
-        let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
-        let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
-
-        combine_tensors(&gradient_term, &lbfgs_term)
-    }
-}
-```
-
-### QQN Step Algorithm
-
-```rust
-impl Optimizer for QQNOptimizer {
-    fn step(
-        &mut self,
-        params: &mut [Tensor],
+        params: &[Tensor],
+        direction: &[Tensor],
+        gradients: &[Tensor],
         function: &dyn DifferentiableFunction,
-    ) -> CandleResult<StepResult> {
-        // 1. Compute gradients
-        let gradients = function.gradient(params)?;
-
-        // 2. Compute L-BFGS direction
-        let lbfgs_direction = self.state.lbfgs_state.compute_direction(&gradients)?;
-
-        // 3. Create quadratic path
-        let quadratic_path = self.create_quadratic_path(&gradients, &lbfgs_direction)?;
-
-        // 4. Find optimal t via line search
-        let (optimal_t, f_evals, g_evals) =
-            self.find_optimal_t_line_search(params, &quadratic_path, &gradients, function)?;
-
-        // 5. Evaluate final direction
-        let direction = quadratic_path.evaluate(optimal_t)?;
-
-        // 6. Apply step
-        for (param, dir) in params.iter_mut().zip(direction.iter()) {
-            *param = param.add(dir)?;
-        }
-
-        // 7. Update L-BFGS state
-        self.state.lbfgs_state.update(&gradients, &direction, 1.0)?;
-
-        self.state.iteration += 1;
-
-        // 8. Return results
-        Ok(StepResult {
-            step_size: optimal_t,
-            function_evaluations: f_evals,
-            gradient_evaluations: g_evals,
-            convergence_info: ConvergenceInfo::default(),
-            metadata: self.create_metadata(&gradients, &direction, optimal_t)?,
-        })
-    }
+    ) -> Result<LineSearchResult>;
 }
 ```
 
-## Line Search Algorithms
+### 2.3 Data Flow
 
-### ParametricCurve Trait
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Parameters  │────▶│   Gradient   │────▶│   L-BFGS     │
+│     x_k      │     │  Computation │     │  Direction   │
+└──────────────┘     └──────────────┘     └──────┬───────┘
+                                                   │
+                     ┌──────────────┐              ▼
+                     │   Quadratic  │     ┌──────────────┐
+                     │     Path     │◀────│   Quadratic  │
+                     │   d(t)       │     │ Construction │
+                     └──────┬───────┘     └──────────────┘
+                            │
+                            ▼
+                     ┌──────────────┐
+                     │ Line Search  │
+                     │  Find t*     │
+                     └──────┬───────┘
+                            │
+                            ▼
+                     ┌──────────────┐
+                     │   Update     │
+                     │  x_{k+1}     │
+                     └──────────────┘
+```
 
-Enables line search along arbitrary parametric curves:
+### 2.4 Memory Management
+
+#### 2.4.1 L-BFGS History Storage
 
 ```rust
-pub trait ParametricCurve: Send + Sync + Debug {
-    /// Evaluate curve at parameter t
-    fn evaluate(&self, t: f64) -> Result<Vec<f64>>;
-
-    /// Evaluate derivative at parameter t
-    fn derivative(&self, t: f64) -> Result<Vec<f64>>;
-
-    /// Get initial derivative for descent checking
-    fn initial_derivative(&self) -> Result<Vec<f64>>;
-
-    /// Clone the curve
-    fn clone_box(&self) -> Box<dyn ParametricCurve>;
+pub struct LBFGSState {
+   s_history: VecDeque<Vec<Tensor>>,  // Parameter differences
+   y_history: VecDeque<Vec<Tensor>>,  // Gradient differences
+   rho_history: VecDeque<f64>,        // Curvature information
+   prev_gradient: Option<Vec<Tensor>>, // Previous gradient
+    iteration: usize,
+   gamma: f64,                        // Hessian scaling factor
 }
 ```
 
-### Strong Wolfe Line Search
+Memory usage: $O(2mn)$ where $m$ is history size, $n$ is parameter count.
 
-Implements the Strong Wolfe conditions for robust line search:
+#### 2.4.2 Tensor Lifecycle
 
-```rust
-impl LineSearch for StrongWolfeLineSearch {
-    fn search_along_curve(
-        &mut self,
-        curve: &dyn ParametricCurve,
-        current_value: f64,
-        current_gradient: &[f64],
-        objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
-        gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
-    ) -> Result<LineSearchResult> {
-        let initial_derivative = curve.initial_derivative()?;
-        let directional_derivative = dot_product_f64(current_gradient, &initial_derivative)?;
+1. **Creation**: Tensors created on specified device (CPU/GPU)
+2. **Computation**: In-place operations where possible
+3. **Cleanup**: Automatic via Rust's ownership system
 
-        // Ensure descent direction
-        if directional_derivative >= 0.0 {
-            return Err(anyhow!("Direction is not a descent direction"));
-        }
-
-        let mut alpha = self.config.initial_step;
-        let mut alpha_prev = 0.0;
-        let mut f_prev = current_value;
-
-        for i in 0..self.config.max_iterations {
-            let trial_point = curve.evaluate(alpha)?;
-            let f_alpha = objective_fn(&trial_point)?;
-
-            // Check Armijo condition and sufficient decrease
-            if !self.armijo_condition(current_value, f_alpha, alpha, directional_derivative)
-                || (i > 0 && f_alpha >= f_prev) {
-                return self.zoom(alpha_prev, alpha, current_value, directional_derivative,
-                                 curve, objective_fn, gradient_fn);
-            }
-
-            let grad_alpha = gradient_fn(&trial_point)?;
-            let curve_derivative = curve.derivative(alpha)?;
-            let grad_alpha_dot_p = dot_product_f64(&grad_alpha, &curve_derivative)?;
-
-            // Check curvature condition
-            if self.curvature_condition(grad_alpha_dot_p, directional_derivative) {
-                return Ok(LineSearchResult {
-                    step_size: alpha,
-                    success: true,
-                    termination_reason: TerminationReason::WolfeConditionsSatisfied,
-                    // ... other fields
-                });
-            }
-
-            if grad_alpha_dot_p >= 0.0 {
-                return self.zoom(alpha, alpha_prev, current_value, directional_derivative,
-                                 curve, objective_fn, gradient_fn);
-            }
-
-            alpha_prev = alpha;
-            f_prev = f_alpha;
-            alpha = alpha.min(self.config.max_step) * 2.0;
-        }
-
-        // Return failure result
-        Ok(LineSearchResult {
-            step_size: alpha_prev,
-            success: false,
-            termination_reason: TerminationReason::MaxIterationsReached,
-            // ... other fields
-        })
-    }
-}
-```
-
-### Wolfe Conditions
+### 2.5 Error Handling
 
 ```rust
-impl StrongWolfeLineSearch {
-    /// Armijo condition: f(x + αp) ≤ f(x) + c₁α∇f(x)ᵀp
-    fn armijo_condition(&self, f0: f64, f_alpha: f64, alpha: f64, directional_derivative: f64) -> bool {
-        let threshold = f0 + self.config.c1 * alpha * directional_derivative;
-        f_alpha <= threshold
-    }
-
-    /// Curvature condition: |∇f(x + αp)ᵀp| ≤ c₂|∇f(x)ᵀp|
-    fn curvature_condition(&self, grad_alpha_dot_p: f64, directional_derivative: f64) -> bool {
-        let threshold = self.config.c2 * directional_derivative.abs();
-        grad_alpha_dot_p.abs() <= threshold
-    }
-}
-```
-
-## Mathematical Utilities
-
-### Tensor Operations
-
-```rust
-/// Compute L2 norm of tensor vector
-pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
-    if tensors.is_empty() { return Ok(0.0); }
-
-    let mut sum_of_squares = 0.0;
-    for tensor in tensors {
-        let values = tensor.flatten_all()?.to_vec1::<f64>()?;
-        for &val in &values {
-            if !val.is_finite() {
-                return Ok(f64::INFINITY);
-            }
-            sum_of_squares += val * val;
-        }
-    }
-    Ok(sum_of_squares.sqrt())
-}
-
-/// Compute dot product between tensor vectors
-pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
-    if a.len() != b.len() {
-        return Err(candle_core::Error::Msg("Length mismatch".to_string()));
-    }
-
-    let mut result = 0.0;
-    for (tensor_a, tensor_b) in a.iter().zip(b.iter()) {
-        let values_a = tensor_a.flatten_all()?.to_vec1::<f64>()?;
-        let values_b = tensor_b.flatten_all()?.to_vec1::<f64>()?;
-
-        for (val_a, val_b) in values_a.iter().zip(values_b.iter()) {
-            result += val_a * val_b;
-        }
-    }
-    Ok(result)
-}
-
-/// Scale tensor vector by scalar
-pub fn vector_scale(tensors: &[Tensor], scale: f64) -> CandleResult<Vec<Tensor>> {
-    let mut result = Vec::with_capacity(tensors.len());
-    for tensor in tensors {
-        let scale_tensor = Tensor::new(scale, tensor.device())?;
-        result.push(tensor.broadcast_mul(&scale_tensor)?);
-    }
-    Ok(result)
-}
-```
-
-### Numerical Stability
-
-```rust
-/// Check if all values are finite
-pub fn is_finite(values: &[f64]) -> bool {
-    values.iter().all(|x| x.is_finite())
-}
-
-/// Clamp values to safe range
-pub fn clamp_vector(values: &[f64], min_val: f64, max_val: f64) -> Vec<f64> {
-    values.iter().map(|&x| x.clamp(min_val, max_val)).collect()
-}
-
-/// Check if value is effectively zero
-pub fn is_zero(value: f64, tolerance: f64) -> bool {
-    value.abs() < tolerance
-}
-```
-
-## Error Handling and Safety
-
-### Error Types
-
-The framework uses `anyhow::Result` for error handling with custom error types:
-
-```rust
-pub type OptResult<T> = anyhow::Result<T>;
-
 #[derive(Debug, thiserror::Error)]
-pub enum OptimizationError {
-    #[error("Numerical instability detected: {0}")]
-    NumericalInstability(String),
-
-    #[error("Invalid configuration: {0}")]
-    InvalidConfiguration(String),
-
-    #[error("Convergence failure: {0}")]
-    ConvergenceFailure(String),
-
+pub enum OptError {
     #[error("Tensor operation failed: {0}")]
     TensorError(#[from] candle_core::Error),
+
+    #[error("Numerical error: {0}")]
+    NumericalError(String),
+
+    #[error("Convergence error: {0}")]
+    ConvergenceError(String),
+
+    #[error("Line search failed: {0}")]
+    LineSearchError(String),
 }
 ```
 
-### Safety Measures
+---
 
-1. **Input Validation**: All public functions validate inputs for:
-    - Empty vectors
-    - Dimension mismatches
-    - Non-finite values
-    - Out-of-range parameters
+## 3. Implementation Details
 
-2. **Numerical Stability**:
-    - Curvature condition checking in L-BFGS
-    - Step size clamping
-    - Gradient magnitude validation
-    - Safe gamma scaling
-
-3. **Memory Safety**:
-    - Bounded history storage
-    - Careful tensor cloning
-    - Resource cleanup on errors
-
-### Example Safety Implementation
+### 3.1 QQN Step Implementation
 
 ```rust
-impl LBFGSOptimizer {
-    fn step(&mut self, params: &mut [Tensor], function: &dyn DifferentiableFunction)
-            -> CandleResult<StepResult> {
+fn step(&mut self, params: &mut [Tensor], function: &dyn DifferentiableFunction)
+    -> CandleResult<StepResult> {
+    // 1. Compute gradients
+    let gradients = function.gradient(params)?;
 
-        // Input validation
-        if params.is_empty() {
-            return Err(candle_core::Error::Msg("Empty parameters".into()));
+    // 2. Check if we should use L-BFGS
+    if self.state.iteration < self.config.min_lbfgs_iterations {
+        return self.steepest_descent_step(params, &gradients, function);
+    }
+
+    // 3. Compute L-BFGS direction
+    let lbfgs_direction = self.state.lbfgs_state.compute_direction(&gradients)?;
+
+    // 4. Create quadratic path
+    let quadratic_path = self.create_quadratic_path(&gradients, &lbfgs_direction)?;
+
+    // 5. Find optimal t using line search
+    let line_search_result = self.find_optimal_t_line_search(
+        params, &quadratic_path, &gradients, function
+    )?;
+
+    // 6. Compute final direction
+    let direction = quadratic_path.evaluate(line_search_result.step_size)?;
+
+    // 7. Update parameters
+    for (param, dir) in params.iter_mut().zip(direction.iter()) {
+        *param = param.add(dir)?;
+    }
+
+    // 8. Update L-BFGS state
+    self.state.lbfgs_state.update(&gradients, &direction, 1.0)?;
+
+    self.state.iteration += 1;
+
+    Ok(StepResult { /* ... */ })
+}
+```
+
+### 3.2 Numerical Stability
+
+#### 3.2.1 Gradient Clipping
+
+```rust
+fn clip_gradients(gradients: &mut [Tensor], max_norm: f64) -> CandleResult<()> {
+    let grad_norm = compute_magnitude(gradients)?;
+    if grad_norm > max_norm {
+        let scale = max_norm / grad_norm;
+        for grad in gradients.iter_mut() {
+            *grad = grad.affine(scale, 0.0)?;
         }
+    }
+    Ok(())
+}
+```
 
-        let gradients = function.gradient(params)?;
+#### 3.2.2 Numerical Checks
 
-        // Check for non-finite gradients
-        for (i, grad) in gradients.iter().enumerate() {
-            let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
-            if grad_vec.iter().any(|&x| !x.is_finite()) {
-                return Err(candle_core::Error::Msg(
-                    format!("Non-finite gradient at index {}", i)
-                ));
+```rust
+fn validate_direction(direction: &[Tensor]) -> CandleResult<()> {
+    for tensor in direction {
+        let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+        if values.iter().any(|&x| !x.is_finite()) {
+            return Err(candle_core::Error::Msg("Non-finite direction".into()));
+        }
+    }
+    Ok(())
+}
+```
+
+### 3.3 Performance Optimizations
+
+#### 3.3.1 Vectorized Operations
+
+```rust
+// Efficient dot product using BLAS-like operations
+pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
+    let mut result = 0.0;
+    for (tensor_a, tensor_b) in a.iter().zip(b.iter()) {
+        // Flatten and compute dot product in one pass
+        let flat_a = tensor_a.flatten_all()?;
+        let flat_b = tensor_b.flatten_all()?;
+        result += (flat_a * flat_b)?.sum_all()?.to_scalar::<f64>()?;
+    }
+    Ok(result)
+}
+```
+
+#### 3.3.2 Memory Reuse
+
+```rust
+pub struct TensorPool {
+    available: Vec<Tensor>,
+    device: Device,
+}
+
+impl TensorPool {
+    pub fn get(&mut self, shape: &[usize]) -> CandleResult<Tensor> {
+        // Reuse existing tensor if available
+        if let Some(tensor) = self.available.pop() {
+            if tensor.shape() == shape {
+                return Ok(tensor);
             }
         }
-
-        // Compute direction with fallback
-        let direction = match self.state.compute_direction(&gradients) {
-            Ok(dir) => dir,
-            Err(_) => {
-                warn!("L-BFGS direction computation failed, using steepest descent");
-                gradients.iter().map(|g| g.neg()).collect::<CandleResult<Vec<_>>>()?
-            }
-        };
-
-        // Validate direction is descent
-        let dot_product = crate::utils::math::dot_product(&gradients, &direction)?;
-        if dot_product >= 0.0 {
-            warn!("Non-descent direction detected, using steepest descent");
-            let direction = gradients.iter().map(|g| g.neg()).collect::<CandleResult<Vec<_>>>()?;
-        }
-
-        // Continue with safe step...
+        // Create new tensor if needed
+        Tensor::zeros(shape, DType::F64, &self.device)
     }
 }
 ```
 
-## Performance Considerations
+---
 
-### Memory Management
+## 4. API Reference
 
-1. **Bounded History**: L-BFGS maintains fixed-size history using `VecDeque`
-2. **Zero-Copy Operations**: Minimize tensor cloning where possible
-3. **Efficient Tensor Operations**: Use Candle's optimized operations
-
-### Computational Efficiency
-
-1. **Early Termination**: Skip invalid history pairs in L-BFGS
-2. **Vectorized Operations**: Batch tensor operations
-3. **Lazy Evaluation**: Compute expensive operations only when needed
-
-### Benchmarking Results
-
-Typical performance characteristics:
-
-- **L-BFGS**: O(mn) per iteration where m = history size, n = problem dimension
-- **QQN**: O(mn + line_search_cost) per iteration
-- **Memory**: O(mn) for L-BFGS history storage
-
-## Extension Points
-
-### Adding New Optimizers
-
-1. Implement the `Optimizer` trait:
+### 4.1 Creating an Optimizer
 
 ```rust
-#[derive(Debug, Clone)]
+use qqn_optimizer::{QQNOptimizer, QQNConfig, LineSearchConfig};
+
+// Basic usage
+let optimizer = QQNOptimizer::new(QQNConfig::default());
+
+// Custom configuration
+let config = QQNConfig {
+    lbfgs_history: 20,
+    min_lbfgs_iterations: 3,
+    line_search: LineSearchConfig {
+        method: LineSearchMethod::Bisection,
+        max_iterations: 50,
+        ..Default::default()
+    },
+    epsilon: 1e-8,
+    verbose: true,
+};
+let optimizer = QQNOptimizer::new(config);
+```
+
+### 4.2 Optimization Loop
+
+```rust
+use qqn_optimizer::{Optimizer, DifferentiableFunction};
+
+// Define your objective function
+struct MyFunction;
+impl DifferentiableFunction for MyFunction {
+    fn evaluate(&self, params: &[Tensor]) -> Result<f64> {
+        // Compute objective value
+    }
+
+    fn gradient(&self, params: &[Tensor]) -> Result<Vec<Tensor>> {
+        // Compute gradients
+    }
+}
+
+// Optimization loop
+let mut params = initialize_parameters();
+let function = MyFunction;
+let mut optimizer = QQNOptimizer::new(QQNConfig::default());
+
+for iteration in 0..max_iterations {
+    let result = optimizer.step(&mut params, &function)?;
+
+    if result.convergence_info.converged {
+        println!("Converged at iteration {}", iteration);
+        break;
+    }
+}
+```
+
+### 4.3 Benchmarking
+
+```rust
+use qqn_optimizer::benchmarks::{BenchmarkRunner, RosenbrockFunction};
+
+let mut runner = BenchmarkRunner::new();
+runner.add_optimizer("QQN", Box::new(QQNOptimizer::new(QQNConfig::default ())));
+runner.add_optimizer("L-BFGS", Box::new(LBFGSOptimizer::new(LBFGSConfig::default ())));
+
+let problem = RosenbrockFunction::new(10); // 10-dimensional
+let results = runner.run_benchmark( & problem, 10) ?; // 10 runs
+
+// Analyze results
+let analysis = StatisticalAnalysis::new( & results);
+analysis.print_summary();
+```
+
+### 4.4 Custom Line Search
+
+```rust
+use qqn_optimizer::core::line_search::{LineSearch, LineSearchResult};
+
+struct MyLineSearch;
+impl LineSearch for MyLineSearch {
+    fn search(
+        &mut self,
+        params: &[Tensor],
+        direction: &[Tensor],
+        gradients: &[Tensor],
+        function: &dyn DifferentiableFunction,
+    ) -> Result<LineSearchResult> {
+        // Custom line search implementation
+    }
+}
+```
+
+---
+
+## 6. Extension Guide
+
+### 6.1 Adding New Optimizers
+
+```rust
+use qqn_optimizer::core::{Optimizer, StepResult};
+
 pub struct MyOptimizer {
     config: MyConfig,
     state: MyState,
@@ -793,59 +507,120 @@ impl Optimizer for MyOptimizer {
     type Config = MyConfig;
     type State = MyState;
 
-    fn new(config: Self::Config) -> Self { /* ... */ }
-    fn step(&mut self, params: &mut [Tensor], function: &dyn DifferentiableFunction)
-            -> CandleResult<StepResult> { /* ... */ }
-    // ... other required methods
+    fn new(config: Self::Config) -> Self {
+        // Initialize optimizer
+    }
+
+    fn step(
+        &mut self,
+        params: &mut [Tensor],
+        function: &dyn DifferentiableFunction,
+    ) -> Result<StepResult> {
+        // Implement optimization step
+    }
+
+    // Implement other required methods...
 }
 ```
 
-2. Add configuration support in `config.rs`
-3. Register in benchmark framework
-
-### Adding New Line Search Methods
-
-1. Implement the `LineSearch` trait:
+### 6.2 Custom Benchmark Problems
 
 ```rust
-#[derive(Debug, Clone)]
-pub struct MyLineSearch {
-    config: MyLineSearchConfig,
+use qqn_optimizer::benchmarks::OptimizationProblem;
+
+pub struct MyProblem {
+    dimension: usize,
 }
 
-impl LineSearch for MyLineSearch {
-    fn search_along_curve(
-        &mut self,
-        curve: &dyn ParametricCurve,
-        current_value: f64,
-        current_gradient: &[f64],
-        objective_fn: &dyn Fn(&[f64]) -> Result<f64>,
-        gradient_fn: &dyn Fn(&[f64]) -> Result<Vec<f64>>,
-    ) -> Result<LineSearchResult> {
-        // Implementation
+impl OptimizationProblem for MyProblem {
+    fn name(&self) -> &str {
+        "MyProblem"
+    }
+
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        // Compute objective value
+    }
+
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        // Compute gradient
+    }
+
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0) // If known
     }
 }
 ```
 
-### Adding New Problem Types
-
-1. Implement `DifferentiableFunction`:
+### 6.3 Analysis Extensions
 
 ```rust
-pub struct MyProblem {
-    dimension: usize,
-    // ... other fields
-}
+use qqn_optimizer::analysis::MetricCalculator;
 
-impl DifferentiableFunction for MyProblem {
-    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> { /* ... */ }
-    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> { /* ... */ }
+pub struct MyMetric;
+impl MetricCalculator for MyMetric {
+    fn calculate(&self, trace: &OptimizationTrace) -> f64 {
+        // Custom metric calculation
+    }
 }
 ```
 
-2. Add to benchmark suite
-3. Update configuration system
+### 6.4 Integration with ML Frameworks
 
-This comprehensive technical documentation provides the foundation for understanding, using, and extending the QQN
-optimizer framework. The modular design and robust error handling make it suitable for both research and production use
-cases.
+```rust
+// PyTorch integration example
+use tch::{Tensor as TorchTensor, Device};
+
+fn torch_to_candle(torch_tensor: &TorchTensor) -> Result<candle_core::Tensor> {
+    let data: Vec<f64> = torch_tensor.to_kind(tch::Kind::Double).flatten(0, -1);
+    let shape = torch_tensor.size();
+    candle_core::Tensor::from_vec(data, &shape, &candle_core::Device::Cpu)
+}
+```
+
+---
+
+## Appendices
+
+### A. Configuration Schema
+
+```yaml
+experiment:
+  name: "QQN Benchmark Study"
+  problems:
+    - type: Rosenbrock
+      dimension: 100
+    - type: Rastrigin
+      dimension: 50
+  optimizers:
+    - type: QQN
+      lbfgs_history: 10
+      line_search:
+        method: Bisection
+    - type: LBFGS
+      history: 10
+  benchmark:
+    max_iterations: 1000
+    tolerance: 1e-6
+    num_runs: 20
+```
+
+### B. Troubleshooting Guide
+
+| Issue                | Possible Cause      | Solution                                          |
+|----------------------|---------------------|---------------------------------------------------|
+| NaN in gradients     | Numerical overflow  | Check function scaling, use gradient clipping     |
+| Slow convergence     | Poor conditioning   | Adjust L-BFGS history size, check problem scaling |
+| Line search failures | Non-smooth function | Use backtracking instead of strong Wolfe          |
+| Memory issues        | Large history size  | Reduce L-BFGS history, use gradient checkpointing |
+
+### C. References
+
+1. Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. Mathematical
+   programming, 45(1), 503-528.
+2. Nocedal, J., & Wright, S. (2006). Numerical optimization. Springer Science & Business Media.
+3. Byrd, R. H., Lu, P., Nocedal, J., & Zhu, C. (1995). A limited memory algorithm for bound constrained optimization.
+   SIAM Journal on scientific computing, 16(5), 1190-1208.

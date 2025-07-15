@@ -32,6 +32,7 @@ pub use config::{ExperimentConfig, OptimizerConfig, ProblemConfig};
 // Error types
 pub use anyhow::{Error, Result};
 
+pub use crate::core::adam::{AdamConfig, AdamOptimizer, AdamState};
 /// Current version of the QQN optimizer framework
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

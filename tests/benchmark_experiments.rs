@@ -8,10 +8,12 @@ use qqn_optimizer::benchmarks::functions::{
     MichalewiczFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
     SphereFunction, StyblinskiTangFunction,
 };
+use qqn_optimizer::core::adam::{AdamConfig, AdamOptimizer};
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::{DifferentiableFunction, Optimizer, OptimizerBox};
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::core::sgd::{SGDConfig, SGDOptimizer};
+use qqn_optimizer::init_logging;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -26,11 +28,11 @@ pub struct ExperimentRunner {
 impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
-            max_iterations: 100,  // Reduce for faster testing
-            tolerance: 1e-6,
-            time_limit: Duration::from_secs(300).into(), // 5 minutes
+            max_iterations: 10000,
+            tolerance: 1e-8,  // Stricter tolerance to prevent premature convergence
+            time_limit: Duration::from_secs(60).into(),
             random_seed: 42,
-            num_runs: 3,  // Reduce for faster testing
+            num_runs: 10,  // Reduce for faster testing
         };
 
         Self { output_dir, config }
@@ -45,6 +47,18 @@ impl ExperimentRunner {
 
         // Define test problems
         let problems = self.create_test_problems();
+        // Validate that problems are properly initialized and challenging
+        for problem in &problems {
+            let initial_params = problem.initial_point();
+            let initial_value = problem.evaluate(&initial_params)?;
+            info!("Problem {}: initial_value = {:.6e}, dimensions = {}", 
+                  problem.name(), initial_value, initial_params.len());
+            // Ensure we're not starting at the optimum
+            if initial_value < 1e-10 {
+                warn!("Problem {} may be starting too close to optimum (initial_value = {:.6e})", 
+                      problem.name(), initial_value);
+            }
+        }
 
         // Define optimizers to compare
         let optimizers = self.create_optimizers();
@@ -56,24 +70,38 @@ impl ExperimentRunner {
             info!("Running benchmarks for problem: {}", problem.name());
             let results = self.run_problem_benchmarks(problem.as_ref(), &optimizers).await?;
             all_results.push((problem.name().to_string(), results));
+            // Yield control between problems to prevent blocking
+            tokio::task::yield_now().await;
         }
 
         // Generate comprehensive analysis and HTML report
         self.generate_html_report(&all_results).await?;
 
         info!("Benchmark experiments completed. Results saved to: {}", self.output_dir);
+        // Final yield to ensure all operations complete
+        tokio::task::yield_now().await;
+        
         Ok(())
     }
 
     fn create_test_problems(&self) -> Vec<Box<dyn OptimizationProblem>> {
         vec![
             Box::new(SphereFunction::new(2)),
+            Box::new(SphereFunction::new(10)),
             Box::new(RosenbrockFunction::new(2)),
+            Box::new(RosenbrockFunction::new(5)),
             Box::new(BealeFunction::new()),
             Box::new(MatyasFunction::new()),
             Box::new(LeviFunction::new()),
             Box::new(GoldsteinPriceFunction::new()),
             Box::new(MichalewiczFunction::new(2)),
+            Box::new(MichalewiczFunction::new(5)),
+            Box::new(RastriginFunction::new(2)),
+            Box::new(RastriginFunction::new(5)),
+            Box::new(AckleyFunction::new(2)),
+            Box::new(AckleyFunction::new(5)),
+            Box::new(StyblinskiTangFunction::new(2)),
+            Box::new(StyblinskiTangFunction::new(5)),
         ]
     }
 
@@ -126,6 +154,25 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
+            (
+                "Adam".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.01,  // More reasonable learning rate for sphere function
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(10.0),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-AMSGrad".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.1,
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(10.0),
+                    amsgrad: true,
+                    ..Default::default()
+                })),
+            ),
         ]
     }
 
@@ -137,11 +184,24 @@ impl ExperimentRunner {
         let runner = BenchmarkRunner::new(self.config.clone());
         let mut results = BenchmarkResults::new(self.config.clone());
 
-        for (_opt_name, optimizer) in optimizers {
+        for (opt_name, optimizer) in optimizers {
             for run_id in 0..self.config.num_runs {
-                let result = runner
-                    .run_single_benchmark(problem, optimizer.as_ref(), run_id)
+                // Use different random seeds for each run to get varied starting points
+                let mut config_with_seed = self.config.clone();
+                config_with_seed.random_seed = self.config.random_seed + run_id as u64;
+                let runner_with_seed = BenchmarkRunner::new(config_with_seed);
+                let mut result = runner
+                    .run_single_benchmark(problem, optimizer.as_ref(), run_id, opt_name)
                     .await?;
+                // Validate convergence against known optimal value
+                let optimal_value = problem.optimal_value();
+                if optimal_value.is_none() || !result.convergence_achieved {
+                    warn!("Problem {} does not have a known optimal value, skipping convergence validation", problem.name());
+                } else {
+                    let convergence_tolerance = 1e-6; // Tolerance for considering convergence successful
+                    let dist = (result.final_value - optimal_value.unwrap()).abs();
+                    result.convergence_achieved &= dist < convergence_tolerance;
+                }
                 results.add_result(result);
             }
         }
@@ -330,11 +390,46 @@ impl ExperimentRunner {
 
         // Calculate statistics for each optimizer
         let mut optimizer_stats = HashMap::new();
+        let mut suspicious_results = Vec::new();
+        let optimal_value = results.results.first()
+            .map(|r| {
+                // We need to get the optimal value from the problem, but we don't have direct access here
+                // For now, we'll use a heuristic: if multiple optimizers achieve similar very low values,
+                // that's likely the optimum
+                let mut all_final_values: Vec<f64> = results.results.iter().map(|r| r.final_value).collect();
+                all_final_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                all_final_values[0] // Use the best achieved value as reference
+            })
+            .unwrap_or(0.0);
+        
         for result in &results.results {
             let stats = optimizer_stats
                 .entry(result.optimizer_name.clone())
                 .or_insert(Vec::new());
             stats.push(result);
+            // Flag suspicious results - use function evaluations instead of iterations
+            if result.function_evaluations <= 2 && result.convergence_achieved {
+                suspicious_results.push((result.optimizer_name.clone(), result.function_evaluations, result.final_value));
+            }
+            // Also flag results that claim convergence but are far from the best known value
+            if result.convergence_achieved && (result.final_value - optimal_value).abs() > 1e-4 {
+                suspicious_results.push((result.optimizer_name.clone(), result.function_evaluations, result.final_value));
+            }
+        }
+        // Report suspicious results
+        if !suspicious_results.is_empty() {
+            section.push_str(r#"            <div style="background-color: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+               <strong>⚠️ Suspicious/False Convergence Results Detected:</strong><br>
+"#);
+            for (optimizer, evaluations, final_value) in suspicious_results {
+                section.push_str(&format!(
+                    "                {} claimed convergence with {} function evaluations (final_value: {:.2e})<br>\n",
+                    optimizer, evaluations, final_value
+                ));
+            }
+            section.push_str(r#"                This may indicate problems with initialization or convergence criteria.
+            </div>
+"#);
         }
 
         // Create performance table
@@ -344,6 +439,8 @@ impl ExperimentRunner {
                     <th>Mean Final Value</th>
                     <th>Std Dev</th>
                     <th>Mean Iterations</th>
+                    <th>Mean Function Evals</th>
+                    <th>Mean Gradient Evals</th>
                     <th>Success Rate</th>
                     <th>Mean Time (s)</th>
                 </tr>
@@ -353,6 +450,8 @@ impl ExperimentRunner {
         for (optimizer, runs) in &optimizer_stats {
             let final_values: Vec<f64> = runs.iter().map(|r| r.final_value).collect();
             let iterations: Vec<f64> = runs.iter().map(|r| r.iterations as f64).collect();
+            let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
+            let gradient_evals: Vec<f64> = runs.iter().map(|r| r.gradient_evaluations as f64).collect();
             let times: Vec<f64> = runs.iter().map(|r| r.execution_time.as_secs_f64()).collect();
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
 
@@ -364,16 +463,18 @@ impl ExperimentRunner {
                 variance.sqrt()
             };
             let mean_iterations = iterations.iter().sum::<f64>() / iterations.len() as f64;
+            let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+            let mean_gradient_evals = gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
             let success_rate = success_count as f64 / runs.len() as f64;
             let mean_time = times.iter().sum::<f64>() / times.len() as f64;
 
-            perf_data.push((optimizer.clone(), mean_final, std_final, mean_iterations, success_rate, mean_time));
+            perf_data.push((optimizer.clone(), mean_final, std_final, mean_iterations, mean_function_evals, mean_gradient_evals, success_rate, mean_time));
         }
 
         // Sort by mean final value (lower is better)
         perf_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
-        for (i, (optimizer, mean_final, std_final, mean_iter, success_rate, mean_time)) in perf_data.iter().enumerate() {
+        for (i, (optimizer, mean_final, std_final, mean_iter, mean_func_evals, mean_grad_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
             let class = if i == 0 { "best" } else if i == 1 { "second" } else { "" };
             section.push_str(&format!(
                 r#"                <tr class="{}">
@@ -381,11 +482,13 @@ impl ExperimentRunner {
                     <td>{:.2e}</td>
                     <td>{:.2e}</td>
                     <td>{:.1}</td>
+                    <td>{:.1}</td>
+                    <td>{:.1}</td>
                     <td>{:.1}%</td>
                     <td>{:.3}</td>
                 </tr>
 "#,
-                class, optimizer, mean_final, std_final, mean_iter, success_rate * 100.0, mean_time
+                class, optimizer, mean_final, std_final, mean_iter, mean_func_evals, mean_grad_evals, success_rate * 100.0, mean_time
             ));
         }
 
@@ -552,15 +655,15 @@ impl ExperimentRunner {
             <h3>Key Findings</h3>
             <ul>
                 <li>The <span class="algorithm-highlight">{}</span> optimizer demonstrated the best overall performance across the test suite.</li>
-                <li>QQN variants showed improved robustness compared to standard L-BFGS on ill-conditioned problems.</li>
-                <li>The parametric interpolation approach successfully balances gradient descent and quasi-Newton information.</li>
+               <li>Convergence validation revealed that some optimizers may claim convergence without reaching the true optimum.</li>
+               <li>Success rates are based on actually reaching within tolerance of the known optimal values, not just internal convergence criteria.</li>
                 <li>No single optimizer dominated across all problem types, highlighting the importance of adaptive methods.</li>
             </ul>
             
             <h3>Recommendations for Practitioners</h3>
             <ul>
-                <li>Use QQN-Default for general-purpose optimization with unknown problem characteristics.</li>
-                <li>Consider QQN-Conservative for highly ill-conditioned or noisy problems.</li>
+               <li>Always validate convergence against known optimal values when available.</li>
+               <li>Be cautious of optimizers that claim convergence with very few function evaluations.</li>
                 <li>L-BFGS remains competitive for well-conditioned convex problems.</li>
                 <li>Always run multiple random seeds and report statistical significance.</li>
             </ul>
@@ -586,7 +689,7 @@ impl ExperimentRunner {
             <h3>Methodology</h3>
             <ul>
                 <li><strong>Runs per configuration:</strong> {} independent runs with different random seeds</li>
-                <li><strong>Convergence criteria:</strong> Gradient norm < {:.0e} or {} iterations</li>
+               <li><strong>Convergence criteria:</strong> Final value within 1e-6 of known optimum AND gradient norm < {:.0e} or {} iterations</li>
                <li><strong>Time limit:</strong> {:?} per run</li>
                 <li><strong>Hardware:</strong> Standard CPU implementation</li>
                 <li><strong>Implementation:</strong> Rust-based optimization framework</li>
@@ -630,17 +733,19 @@ impl ExperimentRunner {
         println!("Exporting CSV files to: {}", self.output_dir);
 
         // Export detailed results to CSV
-        let mut csv_content = String::from("Problem,Optimizer,Run,FinalValue,Iterations,Time,Converged\n");
+        let mut csv_content = String::from("Problem,Optimizer,Run,FinalValue,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
 
         for (problem_name, results) in all_results {
             for result in &results.results {
                 csv_content.push_str(&format!(
-                    "{},{},{},{:.6e},{},{:.3},{}\n",
+                    "{},{},{},{:.6e},{},{},{},{:.3},{}\n",
                     problem_name,
                     result.optimizer_name,
                     result.run_id,
                     result.final_value,
                     result.iterations,
+                    result.function_evaluations,
+                    result.gradient_evaluations,
                     result.execution_time.as_secs_f64(),
                     result.convergence_achieved
                 ));
@@ -652,7 +757,7 @@ impl ExperimentRunner {
         fs::write(csv_path, csv_content)?;
 
         // Export summary statistics
-        let mut summary_csv = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,SuccessRate\n");
+        let mut summary_csv = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
 
         for (problem_name, results) in all_results {
             let mut optimizer_stats = HashMap::new();
@@ -666,6 +771,8 @@ impl ExperimentRunner {
             for (optimizer, runs) in optimizer_stats {
                 let final_values: Vec<f64> = runs.iter().map(|r| r.final_value).collect();
                 let iterations: Vec<f64> = runs.iter().map(|r| r.iterations as f64).collect();
+                let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
+                let gradient_evals: Vec<f64> = runs.iter().map(|r| r.gradient_evaluations as f64).collect();
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
 
                 let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
@@ -676,11 +783,13 @@ impl ExperimentRunner {
                     variance.sqrt()
                 };
                 let mean_iterations = iterations.iter().sum::<f64>() / iterations.len() as f64;
+                let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+                let mean_gradient_evals = gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
                 let success_rate = success_count as f64 / runs.len() as f64;
 
                 summary_csv.push_str(&format!(
-                    "{},{},{:.6e},{:.6e},{:.1},{:.3}\n",
-                    problem_name, optimizer, mean_final, std_final, mean_iterations, success_rate
+                    "{},{},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3}\n",
+                    problem_name, optimizer, mean_final, std_final, mean_iterations, mean_function_evals, mean_gradient_evals, success_rate
                 ));
             }
         }
@@ -736,6 +845,8 @@ impl ExperimentRunner {
                     }
                 }
             }
+            // Yield control to prevent blocking the async runtime
+            tokio::task::yield_now().await;
         }
 
         // Generate performance comparison plots
@@ -761,13 +872,16 @@ impl ExperimentRunner {
                 }
             }
         }
+        // Final yield to ensure all plotting operations complete
+        tokio::task::yield_now().await;
 
         Ok(())
     }
 }
 
 #[tokio::test]
-async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
+async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    init_logging()?;
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark_results_{}", timestamp);
@@ -778,7 +892,26 @@ async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
     println!("Creating benchmark results in: {}", output_dir.display());
 
     let runner = ExperimentRunner::new(output_dir.to_string_lossy().to_string());
-    runner.run_comparative_benchmarks().await?;
+
+    // Wrap the main execution in a timeout to prevent hanging
+    let result = tokio::time::timeout(
+        Duration::from_secs(300), // 5 minute timeout
+        runner.run_comparative_benchmarks(),
+    ).await;
+
+    match result {
+        Ok(Ok(())) => {
+            println!("Benchmark completed successfully");
+        }
+        Ok(Err(e)) => {
+            eprintln!("Benchmark failed: {}", e);
+            return Err(e.into());
+        }
+        Err(_) => {
+            eprintln!("Benchmark timed out");
+            return Err("Benchmark execution timed out".into());
+        }
+    }
 
     // Verify outputs were generated
     assert!(output_dir.join("benchmark_report.html").exists());
@@ -793,11 +926,14 @@ async fn test_comprehensive_benchmarks() -> anyhow::Result<()> {
     assert!(html_content.contains("Performance Profiles"));
 
     println!("Comprehensive benchmark report generated at: {}", output_dir.display());
+    // Explicitly flush any pending async operations
+    tokio::task::yield_now().await;
+    
     Ok(())
 }
 
 #[tokio::test]
-async fn test_academic_citation_format() -> anyhow::Result<()> {
+async fn test_academic_citation_format() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Use a timestamped directory to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/citation_test_{}", timestamp);
@@ -823,21 +959,51 @@ async fn test_academic_citation_format() -> anyhow::Result<()> {
     let mut all_results = Vec::new();
     for problem in &problems {
         let mut results = BenchmarkResults::new(runner.config.clone());
-
-        // Run a few iterations for testing
-        for (_name, optimizer) in &optimizers {
-            for run_id in 0..3 {
+        for (name, optimizer) in &optimizers {
+            for run_id in 0..runner.config.num_runs {
                 let benchmark_runner = BenchmarkRunner::new(runner.config.clone());
-                let result = benchmark_runner
-                    .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id)
-                    .await?;
-                results.add_result(result);
+                let result = tokio::time::timeout(
+                    Duration::from_secs(30),
+                    benchmark_runner.run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id, &name),
+                ).await;
+
+                match result {
+                    Ok(Ok(benchmark_result)) => {
+                        results.add_result(benchmark_result);
+                    }
+                    Ok(Err(e)) => {
+                        eprintln!("Benchmark run failed: {}", e);
+                        return Err(e.into());
+                    }
+                    Err(_) => {
+                        eprintln!("Benchmark run timed out");
+                        return Err("Benchmark run timed out".into());
+                    }
+                }
             }
         }
         all_results.push((problem.name().to_string(), results));
     }
 
-    runner.generate_html_report(&all_results).await?;
+    // Add timeout for report generation
+    let report_result = tokio::time::timeout(
+        Duration::from_secs(60),
+        runner.generate_html_report(&all_results),
+    ).await;
+
+    match report_result {
+        Ok(Ok(())) => {
+            println!("Report generated successfully");
+        }
+        Ok(Err(e)) => {
+            eprintln!("Report generation failed: {}", e);
+            return Err(e.into());
+        }
+        Err(_) => {
+            eprintln!("Report generation timed out");
+            return Err("Report generation timed out".into());
+        }
+    }
 
     // Verify academic formatting
     let html_content = fs::read_to_string(output_dir.join("benchmark_report.html"))?;
@@ -846,6 +1012,9 @@ async fn test_academic_citation_format() -> anyhow::Result<()> {
     assert!(html_content.contains("Performance profiles"));
     assert!(html_content.contains("Reproducibility"));
     assert!(html_content.contains("Data Availability"));
+    // Explicitly yield to allow cleanup
+    tokio::task::yield_now().await;
 
+    
     Ok(())
 }

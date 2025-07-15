@@ -20,6 +20,7 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
     let mut sum_of_squares = 0.0;
     let mut compensation = 0.0;
     let mut max_abs = 0.0_f64;
+    let mut count = 0usize;
 
     for tensor in tensors {
         let values = tensor.flatten_all()?.to_vec1::<f64>()?;
@@ -30,6 +31,7 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
             }
             
             max_abs = max_abs.max(val.abs());
+            count += 1;
             
             // Kahan summation algorithm
             let square = val * val;
@@ -39,10 +41,25 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
             sum_of_squares = t;
         }
     }
-    // Scale back if we had large values to prevent overflow
-    if max_abs > 1e100 {
-        warn!("Very large values detected, result may be inaccurate");
+    // Handle empty tensors
+    if count == 0 {
+        return Ok(0.0);
     }
+
+    // Scale back if we had large values to prevent overflow
+    if max_abs > 1e50 {
+        // Use scaled computation for very large values
+        let mut scaled_sum = 0.0;
+        for tensor in tensors {
+            let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+            for &val in &values {
+                let scaled = val / max_abs;
+                scaled_sum += scaled * scaled;
+            }
+        }
+        return Ok(max_abs * scaled_sum.sqrt());
+    }
+
     if sum_of_squares.is_nan() {
         warn!("Sum of squares is NaN, returning infinity");
         return Ok(f64::INFINITY);
@@ -52,8 +69,8 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
         return Ok(f64::INFINITY);
     }
     if sum_of_squares < 0.0 {
-        warn!("Sum of squares is negative, returning NaN");
-        return Ok(f64::NAN);
+        warn!("Sum of squares is negative due to numerical errors, using absolute value");
+        return Ok(sum_of_squares.abs().sqrt());
     }
     Ok(sum_of_squares.sqrt())
 }

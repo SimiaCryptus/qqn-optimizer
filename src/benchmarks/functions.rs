@@ -193,6 +193,45 @@ impl StyblinskiTangFunction {
         }
     }
 }
+impl OptimizationProblem for StyblinskiTangFunction {
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![0.0; self.dimension]
+    }
+    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let sum: f64 = x
+            .iter()
+            .map(|&xi| xi.powi(4) - 16.0 * xi.powi(2) + 5.0 * xi)
+            .sum();
+        Ok(0.5 * sum)
+    }
+    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let grad: Vec<f64> = x
+            .iter()
+            .map(|&xi| 0.5 * (4.0 * xi.powi(3) - 32.0 * xi + 5.0))
+            .collect();
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        // Global minimum: f(-2.903534, -2.903534, ...) ≈ -39.16599 * n
+        Some(-39.16599 * self.dimension as f64)
+    }
+    fn convergence_tolerance(&self) -> f64 {
+        1e-4
+    }
+}
+
 /// Michalewicz function: f(x) = -Σ sin(x_i) * sin(i*x_i²/π)^(2m)
 /// Global minimum location and value depend on dimension
 #[derive(Debug, Clone)]
@@ -265,7 +304,7 @@ impl OptimizationProblem for MichalewiczFunction {
         }
     }
     fn convergence_tolerance(&self) -> f64 {
-        1e-4
+        1e-9
     }
 }
 impl Default for MatyasFunction {

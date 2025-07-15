@@ -52,7 +52,7 @@ where
         }
         
         // Adaptive step size for finite differences
-        let base_h = 1e-8;
+        let base_h = f64::EPSILON.sqrt(); // More numerically stable choice
         let mut gradients = Vec::new();
 
         for (i, param) in params.iter().enumerate() {
@@ -76,24 +76,39 @@ where
 
             for j in 0..param_data.len() {
                 // Adaptive step size based on parameter magnitude
-                let h = base_h * (1.0 + param_data[j].abs());
-                
-                // Forward difference
-                let mut params_plus = params.to_vec();
-                let mut data_plus = param_data.clone();
-                data_plus[j] += h;
-                params_plus[i] = Tensor::from_vec(data_plus, param_shape, param.device())?;
-                let f_plus = (self.objective_fn)(&params_plus)?;
+                let scale = param_data[j].abs().max(1.0);
+                let h = base_h * scale;
 
-                // Backward difference
-                let mut params_minus = params.to_vec();
-                let mut data_minus = param_data.clone();
-                data_minus[j] -= h;
-                params_minus[i] = Tensor::from_vec(data_minus, param_shape, param.device())?;
-                let f_minus = (self.objective_fn)(&params_minus)?;
 
-                // Central difference
-                grad_data[j] = (f_plus - f_minus) / (2.0 * h);
+                // Use more stable finite difference formula
+                let mut params_eval = params.to_vec();
+                let mut data_eval = param_data.clone();
+
+                // Four-point central difference for better accuracy
+                data_eval[j] = param_data[j] + 2.0 * h;
+                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
+                let f_plus_2h = (self.objective_fn)(&params_eval)?;
+
+                data_eval[j] = param_data[j] + h;
+                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
+                let f_plus_h = (self.objective_fn)(&params_eval)?;
+
+                data_eval[j] = param_data[j] - h;
+                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
+                let f_minus_h = (self.objective_fn)(&params_eval)?;
+
+                data_eval[j] = param_data[j] - 2.0 * h;
+                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
+                let f_minus_2h = (self.objective_fn)(&params_eval)?;
+
+                // Four-point formula: (-f(x+2h) + 8f(x+h) - 8f(x-h) + f(x-2h)) / (12h)
+                grad_data[j] = (-f_plus_2h + 8.0 * f_plus_h - 8.0 * f_minus_h + f_minus_2h) / (12.0 * h);
+
+                // Check for numerical issues
+                if !grad_data[j].is_finite() {
+                    // Fall back to two-point formula
+                    grad_data[j] = (f_plus_h - f_minus_h) / (2.0 * h);
+                }
             }
 
             gradients.push(Tensor::from_vec(grad_data, param_shape, param.device())?);

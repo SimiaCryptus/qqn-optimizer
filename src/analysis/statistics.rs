@@ -762,7 +762,14 @@ impl StatisticalAnalysis {
         let p_value = if df >= 1.0 && t_stat.is_finite() {
             match StudentsT::new(0.0, 1.0, df) {
                 Ok(t_dist) => {
-                    let cdf_result = t_dist.cdf(t_stat.abs());
+                    // Use more robust p-value calculation
+                    let abs_t = t_stat.abs();
+                    let cdf_result = if abs_t > 10.0 {
+                        // For large t-statistics, use approximation to avoid numerical issues
+                        1.0 - 1.0 / (1.0 + abs_t.powi(2) / df).powf((df + 1.0) / 2.0)
+                    } else {
+                        t_dist.cdf(abs_t)
+                    };
                     if cdf_result.is_finite() && cdf_result >= 0.0 && cdf_result <= 1.0 {
                         2.0 * (1.0 - cdf_result)
                     } else {
