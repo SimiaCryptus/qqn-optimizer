@@ -1,6 +1,0 @@
-Problem,Optimizer,Run,FinalValue,Iterations,Time
-rosenbrock_2d,QQN,0,1.000000e-8,50,0.500
-rosenbrock_2d,QQN,1,2.000000e-8,55,0.550
-rosenbrock_2d,QQN,2,3.000000e-8,60,0.600
-rosenbrock_2d,QQN,3,4.000000e-8,65,0.650
-rosenbrock_2d,QQN,4,5.000000e-8,70,0.700
