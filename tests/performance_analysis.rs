@@ -1,5 +1,7 @@
 use qqn_optimizer::analysis::statistics::StatisticalAnalysis;
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, OptimizationTrace};
+use qqn_optimizer::benchmarks::evaluation::{
+    BenchmarkConfig, OptimizationTrace, PerformanceMetrics,
+};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkResults, ConvergenceReason, SingleResult};
 use std::fs;
 use std::time::Duration;
@@ -9,7 +11,8 @@ pub struct LaTeXTableGenerator;
 
 impl LaTeXTableGenerator {
     pub fn generate_performance_table(results: &BenchmarkResults) -> String {
-        let mut latex = String::from(r#"\begin{table}[htbp]
+        let mut latex = String::from(
+            r#"\begin{table}[htbp]
 \centering
 \caption{Performance comparison of optimization algorithms}
 \label{tab:performance}
@@ -17,7 +20,8 @@ impl LaTeXTableGenerator {
 \toprule
 Algorithm & Mean Final Value & Std Dev & Mean Iterations & Success Rate \\
 \midrule
-"#);
+"#,
+        );
 
         // Group results by optimizer
         let mut optimizer_stats = std::collections::HashMap::new();
@@ -35,9 +39,11 @@ Algorithm & Mean Final Value & Std Dev & Mean Iterations & Success Rate \\
 
             let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
             let std_final = {
-                let variance = final_values.iter()
+                let variance = final_values
+                    .iter()
                     .map(|x| (x - mean_final).powi(2))
-                    .sum::<f64>() / final_values.len() as f64;
+                    .sum::<f64>()
+                    / final_values.len() as f64;
                 variance.sqrt()
             };
             let mean_iterations = iterations.iter().sum::<f64>() / iterations.len() as f64;
@@ -45,20 +51,27 @@ Algorithm & Mean Final Value & Std Dev & Mean Iterations & Success Rate \\
 
             latex.push_str(&format!(
                 "{} & {:.2e} & {:.2e} & {:.1} & {:.1}\\% \\\\\n",
-                optimizer, mean_final, std_final, mean_iterations, success_rate * 100.0
+                optimizer,
+                mean_final,
+                std_final,
+                mean_iterations,
+                success_rate * 100.0
             ));
         }
 
-        latex.push_str(r#"\bottomrule
+        latex.push_str(
+            r#"\bottomrule
 \end{tabular}
 \end{table}
-"#);
+"#,
+        );
 
         latex
     }
 
     pub fn generate_significance_table(analysis: &StatisticalAnalysis) -> String {
-        let mut latex = String::from(r#"\begin{table}[htbp]
+        let mut latex = String::from(
+            r#"\begin{table}[htbp]
 \centering
 \caption{Statistical significance tests comparing optimization algorithms}
 \label{tab:significance}
@@ -66,7 +79,8 @@ Algorithm & Mean Final Value & Std Dev & Mean Iterations & Success Rate \\
 \toprule
 Comparison & Test Statistic & p-value & Significant \\
 \midrule
-"#);
+"#,
+        );
 
         for test in analysis.significance_tests() {
             let significant = if test.is_significant() { "Yes" } else { "No" };
@@ -76,10 +90,12 @@ Comparison & Test Statistic & p-value & Significant \\
             ));
         }
 
-        latex.push_str(r#"\bottomrule
+        latex.push_str(
+            r#"\bottomrule
 \end{tabular}
 \end{table}
-"#);
+"#,
+        );
 
         latex
     }
@@ -131,7 +147,18 @@ fn test_latex_table_generation() {
             convergence_achieved: i < 8, // Some failures
             execution_time: Duration::from_millis(1200 + i as u64 * 120),
             trace: OptimizationTrace::new(),
-            convergence_reason: if i < 8 { ConvergenceReason::GradientTolerance } else { ConvergenceReason::MaxIterations },
+            convergence_reason: if i < 8 {
+                ConvergenceReason::GradientTolerance
+            } else {
+                ConvergenceReason::MaxIterations
+            },
+            memory_usage: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 0.0,
+                function_evaluations_per_second: 0.0,
+                gradient_evaluations_per_second: 0.0,
+                convergence_rate: 0.0,
+            },
         });
     }
     println!("Generating LaTeX performance table...");
@@ -162,8 +189,11 @@ fn test_latex_table_generation() {
     std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
     std::fs::write(output_dir.join("performance_table.tex"), &latex_table)
         .expect("Failed to write performance table");
-    std::fs::write(output_dir.join("significance_table.tex"), &significance_table)
-        .expect("Failed to write significance table");
+    std::fs::write(
+        output_dir.join("significance_table.tex"),
+        &significance_table,
+    )
+    .expect("Failed to write significance table");
     println!("LaTeX tables saved to: {}", output_dir.display());
 }
 
@@ -195,35 +225,67 @@ fn test_export_academic_formats() -> std::io::Result<()> {
             execution_time: Duration::from_millis(500 + i as u64 * 50),
             trace: OptimizationTrace::new(),
             convergence_reason: ConvergenceReason::GradientTolerance,
+            memory_usage: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 0.0,
+                function_evaluations_per_second: 0.0,
+                gradient_evaluations_per_second: 0.0,
+                convergence_rate: 0.0,
+            },
         });
     }
 
     // Export LaTeX tables
     let performance_table = LaTeXTableGenerator::generate_performance_table(&results);
-    println!("Writing performance table to: {}", output_path.join("performance_table.tex").display());
+    println!(
+        "Writing performance table to: {}",
+        output_path.join("performance_table.tex").display()
+    );
     fs::write(output_path.join("performance_table.tex"), performance_table)?;
 
     let analysis = StatisticalAnalysis::new(&results);
     let significance_table = LaTeXTableGenerator::generate_significance_table(&analysis);
-    println!("Writing significance table to: {}", output_path.join("significance_table.tex").display());
-    fs::write(output_path.join("significance_table.tex"), significance_table)?;
+    println!(
+        "Writing significance table to: {}",
+        output_path.join("significance_table.tex").display()
+    );
+    fs::write(
+        output_path.join("significance_table.tex"),
+        significance_table,
+    )?;
 
     // Export raw data for external analysis
-    let csv_data = results.results.iter()
-        .map(|r| format!("{},{},{},{:.6e},{},{:.3}",
-                         r.problem_name, r.optimizer_name, r.run_id,
-                         r.final_value, r.iterations, r.execution_time.as_secs_f64()))
+    let csv_data = results
+        .results
+        .iter()
+        .map(|r| {
+            format!(
+                "{},{},{},{:.6e},{},{:.3}",
+                r.problem_name,
+                r.optimizer_name,
+                r.run_id,
+                r.final_value,
+                r.iterations,
+                r.execution_time.as_secs_f64()
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
     let csv_header = "Problem,Optimizer,Run,FinalValue,Iterations,Time\n";
-    fs::write(output_path.join("raw_results.csv"), format!("{}{}", csv_header, csv_data))?;
+    fs::write(
+        output_path.join("raw_results.csv"),
+        format!("{}{}", csv_header, csv_data),
+    )?;
 
     // Verify files were created
     assert!(output_path.join("performance_table.tex").exists());
     assert!(output_path.join("significance_table.tex").exists());
     assert!(output_path.join("raw_results.csv").exists());
 
-    println!("Academic format exports saved to: {}", output_path.display());
+    println!(
+        "Academic format exports saved to: {}",
+        output_path.display()
+    );
     Ok(())
 }
