@@ -3,18 +3,17 @@ use log::{info, warn};
 use qqn_optimizer::analysis::plotting::{ExtendedOptimizationTrace, PlottingEngine};
 use qqn_optimizer::analysis::statistics::{StatisticalAnalysis};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner};
-use qqn_optimizer::benchmarks::functions::{
-    OptimizationProblem, RosenbrockFunction,
-    SphereFunction,
-};
+use qqn_optimizer::benchmarks::functions::{GoldsteinPriceFunction, LeviFunction, MatyasFunction, OptimizationProblem, RosenbrockFunction, SphereFunction, StyblinskiTangFunction};
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::OptimizerBox;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
-use qqn_optimizer::init_logging;
+use qqn_optimizer::{init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, RastriginFunction};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
+use qqn_optimizer::benchmarks::MichalewiczFunction;
+use qqn_optimizer::core::{SGDConfig, SGDOptimizer};
 
 /// Comprehensive benchmark experiment runner
 pub struct ExperimentRunner {
@@ -91,21 +90,21 @@ impl ExperimentRunner {
     fn create_test_problems(&self) -> Vec<Box<dyn OptimizationProblem>> {
         vec![
             Box::new(SphereFunction::new(2)),
-            // Box::new(SphereFunction::new(10)),
-            // Box::new(RosenbrockFunction::new(2)),
-            // Box::new(RosenbrockFunction::new(5)),
-            // Box::new(BealeFunction::new()),
-            // Box::new(MatyasFunction::new()),
-            // Box::new(LeviFunction::new()),
-            // Box::new(GoldsteinPriceFunction::new()),
-            // Box::new(MichalewiczFunction::new(2)),
-            // Box::new(MichalewiczFunction::new(5)),
-            // Box::new(RastriginFunction::new(2)),
-            // Box::new(RastriginFunction::new(5)),
-            // Box::new(AckleyFunction::new(2)),
-            // Box::new(AckleyFunction::new(5)),
-            // Box::new(StyblinskiTangFunction::new(2)),
-            // Box::new(StyblinskiTangFunction::new(5)),
+            Box::new(SphereFunction::new(10)),
+            Box::new(RosenbrockFunction::new(2)),
+            Box::new(RosenbrockFunction::new(5)),
+            Box::new(BealeFunction::new()),
+            Box::new(MatyasFunction::new()),
+            Box::new(LeviFunction::new()),
+            Box::new(GoldsteinPriceFunction::new()),
+            Box::new(MichalewiczFunction::new(2)),
+            Box::new(MichalewiczFunction::new(5)),
+            Box::new(RastriginFunction::new(2)),
+            Box::new(RastriginFunction::new(5)),
+            Box::new(AckleyFunction::new(2)),
+            Box::new(AckleyFunction::new(5)),
+            Box::new(StyblinskiTangFunction::new(2)),
+            Box::new(StyblinskiTangFunction::new(5)),
         ]
     }
 
@@ -115,68 +114,68 @@ impl ExperimentRunner {
                 "QQN-Default".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig::default())),
             ),
-            // (
-            //     "QQN-Conservative".to_string(),
-            //     Box::new(QQNOptimizer::new(QQNConfig {
-            //         lbfgs_history: 15,
-            //         epsilon: 1e-10,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "L-BFGS".to_string(),
-            //     Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            // ),
-            // (
-            //     "L-BFGS-Large".to_string(),
-            //     Box::new(LBFGSOptimizer::new(LBFGSConfig {
-            //         history_size: 20,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "SGD".to_string(),
-            //     Box::new(SGDOptimizer::new(SGDConfig {
-            //         learning_rate: 0.1,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "SGD-Momentum".to_string(),
-            //     Box::new(SGDOptimizer::new(SGDConfig {
-            //         learning_rate: 0.1,
-            //         momentum: 0.9,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "SGD-Nesterov".to_string(),
-            //     Box::new(SGDOptimizer::new(SGDConfig {
-            //         learning_rate: 0.1,
-            //         momentum: 0.9,
-            //         nesterov: true,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "Adam".to_string(),
-            //     Box::new(AdamOptimizer::new(AdamConfig {
-            //         learning_rate: 0.01,  // More reasonable learning rate for sphere function
-            //         lr_schedule: "adaptive".to_string(),
-            //         gradient_clip: Some(10.0),
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "Adam-AMSGrad".to_string(),
-            //     Box::new(AdamOptimizer::new(AdamConfig {
-            //         learning_rate: 0.1,
-            //         lr_schedule: "adaptive".to_string(),
-            //         gradient_clip: Some(10.0),
-            //         amsgrad: true,
-            //         ..Default::default()
-            //     })),
-            // ),
+            (
+                "QQN-Conservative".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    lbfgs_history: 15,
+                    epsilon: 1e-10,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "L-BFGS".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+            ),
+            (
+                "L-BFGS-Large".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig {
+                    history_size: 20,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Momentum".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.9,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Nesterov".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.9,
+                    nesterov: true,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.01,  // More reasonable learning rate for sphere function
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(10.0),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-AMSGrad".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.1,
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(10.0),
+                    amsgrad: true,
+                    ..Default::default()
+                })),
+            ),
         ]
     }
 
