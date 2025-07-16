@@ -206,6 +206,15 @@ pub fn vector_scale(tensors: &[Tensor], scale: f64) -> CandleResult<Vec<Tensor>>
     Ok(result)
 }
 
+/// Trait for differentiable functions that can compute both value and gradients
+pub trait DifferentiableFunction: Send + Sync {
+    /// Evaluate the function at the given point
+    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64>;
+    /// Compute gradients at the given point
+    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
+}
+
+
 /// Wrapper for separate objective and gradient functions
 pub struct SeparateFunctions<F, G>
 where
@@ -214,14 +223,6 @@ where
 {
     objective_fn: F,
     gradient_fn: G,
-}
-
-/// Trait for differentiable functions that can compute both value and gradients
-pub trait DifferentiableFunction: Send + Sync {
-    /// Evaluate the function at the given point
-    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64>;
-    /// Compute gradients at the given point
-    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
 }
 
 impl<F, G> SeparateFunctions<F, G>

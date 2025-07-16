@@ -322,7 +322,6 @@ impl Optimizer for SGDOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::optimizer::DifferentiableFunction;
     use candle_core::{Device, Tensor};
 
     /// Simple quadratic function for testing: f(x) = 0.5 * x^T * x

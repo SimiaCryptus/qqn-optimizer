@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Debug;
 use std::time::Duration;
-use crate::utils::math::DifferentiableFunction;
+pub(crate) use crate::utils::math::DifferentiableFunction;
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -351,14 +351,14 @@ impl ConvergenceChecker {
             .unwrap_or(false);
 
         // Check parameter change convergence
-        let parameter_change = if let Some(ref prev_params) = self.previous_parameters {
+        let parameter_change = match self.previous_parameters { Some(ref prev_params) => {
             Some(crate::utils::math::compute_parameter_change(
                 parameters,
                 prev_params,
             )?)
-        } else {
+        } _ => {
             None
-        };
+        }};
         let parameter_converged = parameter_change
             .map(|change| change < self.config.parameter_tolerance)
             .unwrap_or(false);

@@ -798,7 +798,6 @@ impl<'a> ParametricCurve for QuadraticPath {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::optimizer::DifferentiableFunction;
     use crate::init_logging;
     use approx::assert_relative_eq;
     use candle_core::Device;

@@ -771,7 +771,7 @@ impl Optimizer for LBFGSOptimizer {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
                 // Recovery: restore previous parameters if available
-                if let Some(prev_params) = &self.state.prev_params {
+                match &self.state.prev_params { Some(prev_params) => {
                     warn!("L-BFGS: Non-finite parameters detected, restoring previous state");
                     for (param, prev) in params.iter_mut().zip(prev_params.iter()) {
                         *param = prev.clone();
@@ -788,17 +788,17 @@ impl Optimizer for LBFGSOptimizer {
                         },
                         metadata: OptimizationMetadata::default(),
                     });
-                } else {
+                } _ => {
                     return Err(candle_core::Error::Msg(
                         "Non-finite parameter detected after update".into()
                     ));
-                }
+                }}
             }
         }
         self.log_tensor_data("Updated Parameters", params);
         // Check for improvement and update best value
         let current_value = function.evaluate(params)?;
-        let improved = if let Some(best) = self.state.best_function_value {
+        let improved = match self.state.best_function_value { Some(best) => {
             if current_value < best {
                 self.state.best_function_value = Some(current_value);
                 self.state.no_improvement_count = 0;
@@ -807,10 +807,10 @@ impl Optimizer for LBFGSOptimizer {
                 self.state.no_improvement_count += 1;
                 false
             }
-        } else {
+        } _ => {
             self.state.best_function_value = Some(current_value);
             true
-        };
+        }};
         // Enhanced recovery mechanism
         if self.config.enable_recovery &&
             self.state.no_improvement_count >= self.config.recovery_patience &&
