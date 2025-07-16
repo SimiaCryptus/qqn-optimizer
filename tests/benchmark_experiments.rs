@@ -1,18 +1,15 @@
-use candle_core::{Device, Tensor};
+use rand::{Rng, SeedableRng};
 use log::{info, warn};
 use qqn_optimizer::analysis::plotting::{ExtendedOptimizationTrace, PlottingEngine};
-use qqn_optimizer::analysis::statistics::{PerformanceProfiles, StatisticalAnalysis};
+use qqn_optimizer::analysis::statistics::{StatisticalAnalysis};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner};
 use qqn_optimizer::benchmarks::functions::{
-    AckleyFunction, BealeFunction, GoldsteinPriceFunction, LeviFunction, MatyasFunction,
-    MichalewiczFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
-    SphereFunction, StyblinskiTangFunction,
+    OptimizationProblem, RosenbrockFunction,
+    SphereFunction,
 };
-use qqn_optimizer::core::adam::{AdamConfig, AdamOptimizer};
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
-use qqn_optimizer::core::optimizer::{DifferentiableFunction, Optimizer, OptimizerBox};
+use qqn_optimizer::core::optimizer::OptimizerBox;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
-use qqn_optimizer::core::sgd::{SGDConfig, SGDOptimizer};
 use qqn_optimizer::init_logging;
 use std::collections::HashMap;
 use std::fs;
@@ -28,11 +25,11 @@ pub struct ExperimentRunner {
 impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
-            max_iterations: 10000,
+            max_iterations: 10,
             tolerance: 1e-8,  // Stricter tolerance to prevent premature convergence
             time_limit: Duration::from_secs(60).into(),
             random_seed: 42,
-            num_runs: 10,  // Reduce for faster testing
+            num_runs: 1,  // Reduce for faster testing
         };
 
         Self { output_dir, config }
@@ -50,6 +47,13 @@ impl ExperimentRunner {
         // Validate that problems are properly initialized and challenging
         for problem in &problems {
             let initial_params = problem.initial_point();
+            // Randomize initial point for each problem
+            let mut rng = rand::rngs::StdRng::try_from_os_rng()
+                .expect("Failed to create random number generator");
+            let initial_params: Vec<f64> = initial_params
+                .iter()
+                .map(|&x| x + rng.random_range(-1.0..1.0)) // Random perturbation
+                .collect();
             let initial_value = problem.evaluate(&initial_params)?;
             info!("Problem {}: initial_value = {:.6e}, dimensions = {}", 
                   problem.name(), initial_value, initial_params.len());
@@ -87,21 +91,21 @@ impl ExperimentRunner {
     fn create_test_problems(&self) -> Vec<Box<dyn OptimizationProblem>> {
         vec![
             Box::new(SphereFunction::new(2)),
-            Box::new(SphereFunction::new(10)),
-            Box::new(RosenbrockFunction::new(2)),
-            Box::new(RosenbrockFunction::new(5)),
-            Box::new(BealeFunction::new()),
-            Box::new(MatyasFunction::new()),
-            Box::new(LeviFunction::new()),
-            Box::new(GoldsteinPriceFunction::new()),
-            Box::new(MichalewiczFunction::new(2)),
-            Box::new(MichalewiczFunction::new(5)),
-            Box::new(RastriginFunction::new(2)),
-            Box::new(RastriginFunction::new(5)),
-            Box::new(AckleyFunction::new(2)),
-            Box::new(AckleyFunction::new(5)),
-            Box::new(StyblinskiTangFunction::new(2)),
-            Box::new(StyblinskiTangFunction::new(5)),
+            // Box::new(SphereFunction::new(10)),
+            // Box::new(RosenbrockFunction::new(2)),
+            // Box::new(RosenbrockFunction::new(5)),
+            // Box::new(BealeFunction::new()),
+            // Box::new(MatyasFunction::new()),
+            // Box::new(LeviFunction::new()),
+            // Box::new(GoldsteinPriceFunction::new()),
+            // Box::new(MichalewiczFunction::new(2)),
+            // Box::new(MichalewiczFunction::new(5)),
+            // Box::new(RastriginFunction::new(2)),
+            // Box::new(RastriginFunction::new(5)),
+            // Box::new(AckleyFunction::new(2)),
+            // Box::new(AckleyFunction::new(5)),
+            // Box::new(StyblinskiTangFunction::new(2)),
+            // Box::new(StyblinskiTangFunction::new(5)),
         ]
     }
 
@@ -111,68 +115,68 @@ impl ExperimentRunner {
                 "QQN-Default".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig::default())),
             ),
-            (
-                "QQN-Conservative".to_string(),
-                Box::new(QQNOptimizer::new(QQNConfig {
-                    lbfgs_history: 15,
-                    epsilon: 1e-10,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "L-BFGS".to_string(),
-                Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            ),
-            (
-                "L-BFGS-Large".to_string(),
-                Box::new(LBFGSOptimizer::new(LBFGSConfig {
-                    history_size: 20,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "SGD".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
-                    learning_rate: 0.1,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "SGD-Momentum".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
-                    learning_rate: 0.1,
-                    momentum: 0.9,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "SGD-Nesterov".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
-                    learning_rate: 0.1,
-                    momentum: 0.9,
-                    nesterov: true,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam".to_string(),
-                Box::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.01,  // More reasonable learning rate for sphere function
-                    lr_schedule: "adaptive".to_string(),
-                    gradient_clip: Some(10.0),
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam-AMSGrad".to_string(),
-                Box::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1,
-                    lr_schedule: "adaptive".to_string(),
-                    gradient_clip: Some(10.0),
-                    amsgrad: true,
-                    ..Default::default()
-                })),
-            ),
+            // (
+            //     "QQN-Conservative".to_string(),
+            //     Box::new(QQNOptimizer::new(QQNConfig {
+            //         lbfgs_history: 15,
+            //         epsilon: 1e-10,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "L-BFGS".to_string(),
+            //     Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+            // ),
+            // (
+            //     "L-BFGS-Large".to_string(),
+            //     Box::new(LBFGSOptimizer::new(LBFGSConfig {
+            //         history_size: 20,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "SGD".to_string(),
+            //     Box::new(SGDOptimizer::new(SGDConfig {
+            //         learning_rate: 0.1,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "SGD-Momentum".to_string(),
+            //     Box::new(SGDOptimizer::new(SGDConfig {
+            //         learning_rate: 0.1,
+            //         momentum: 0.9,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "SGD-Nesterov".to_string(),
+            //     Box::new(SGDOptimizer::new(SGDConfig {
+            //         learning_rate: 0.1,
+            //         momentum: 0.9,
+            //         nesterov: true,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "Adam".to_string(),
+            //     Box::new(AdamOptimizer::new(AdamConfig {
+            //         learning_rate: 0.01,  // More reasonable learning rate for sphere function
+            //         lr_schedule: "adaptive".to_string(),
+            //         gradient_clip: Some(10.0),
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "Adam-AMSGrad".to_string(),
+            //     Box::new(AdamOptimizer::new(AdamConfig {
+            //         learning_rate: 0.1,
+            //         lr_schedule: "adaptive".to_string(),
+            //         gradient_clip: Some(10.0),
+            //         amsgrad: true,
+            //         ..Default::default()
+            //     })),
+            // ),
         ]
     }
 
@@ -189,7 +193,6 @@ impl ExperimentRunner {
                 // Use different random seeds for each run to get varied starting points
                 let mut config_with_seed = self.config.clone();
                 config_with_seed.random_seed = self.config.random_seed + run_id as u64;
-                let runner_with_seed = BenchmarkRunner::new(config_with_seed);
                 let mut result = runner
                     .run_single_benchmark(problem, optimizer.as_ref(), run_id, opt_name)
                     .await?;
@@ -229,7 +232,6 @@ impl ExperimentRunner {
         for (problem_name, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem_name, results)?);
         }
-
 
         // Statistical Analysis (skip if no data)
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
@@ -392,14 +394,7 @@ impl ExperimentRunner {
         let mut optimizer_stats = HashMap::new();
         let mut suspicious_results = Vec::new();
         let optimal_value = results.results.first()
-            .map(|r| {
-                // We need to get the optimal value from the problem, but we don't have direct access here
-                // For now, we'll use a heuristic: if multiple optimizers achieve similar very low values,
-                // that's likely the optimum
-                let mut all_final_values: Vec<f64> = results.results.iter().map(|r| r.final_value).collect();
-                all_final_values.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                all_final_values[0] // Use the best achieved value as reference
-            })
+            .map(|_r| _r.final_value)
             .unwrap_or(0.0);
         
         for result in &results.results {

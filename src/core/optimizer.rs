@@ -174,6 +174,7 @@ pub trait OptimizerBox: Send + Sync + std::fmt::Debug {
         params: &mut [f64],
         gradients: &[f64],
     ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>>;
+
     /// Reset the optimizer state
     fn reset(&mut self);
     /// Get the name of this optimizer
@@ -218,28 +219,16 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     /// # Arguments
     /// * `params` - Mutable reference to parameter tensors to be updated
     /// * `gradients` - Gradient tensors for the current parameters
-    /// * `objective_value` - Function to evaluate objective at given parameters
+    /// * `objective_value` - Optional objective value at current parameters
     ///
     /// # Returns
     /// A `StepResult` containing information about the optimization step
     fn step_with_gradients(
         &mut self,
         params: &mut [Tensor],
+        function: &dyn DifferentiableFunction,
         gradients: &[Tensor],
-    ) -> Result<StepResult> {
-        // Default implementation: create a thread-safe function wrapper
-        let gradients_clone = gradients.to_vec();
-
-        let function = SeparateFunctions::new(
-            move |_params: &[Tensor]| -> CandleResult<f64> {
-                // Since we have pre-computed gradients, return a dummy value
-                // The actual objective evaluation should be done externally
-                Ok(0.0)
-            },
-            move |_: &[Tensor]| Ok(gradients_clone.clone()),
-        );
-        self.step(params, &function)
-    }
+    ) -> Result<StepResult>;
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
@@ -281,11 +270,15 @@ where
 
         let mut param_tensors = vec![param_tensor];
         let grad_tensors = vec![grad_tensor];
+        // Create a dummy function since we're only using pre-computed gradients
+        let dummy_function = ObjectiveOnlyFunction::new(|_: &[Tensor]| {
+            Ok(0.0) // Dummy value since we won't use it
+        });
+
 
         // Call the tensor-based step method
-        // Create a dummy objective function that returns 0.0
         let result = self
-            .step_with_gradients(&mut param_tensors, &grad_tensors)
+            .step_with_gradients(&mut param_tensors, &dummy_function, &grad_tensors)
             .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
 
         // Copy results back to slice
@@ -298,6 +291,7 @@ where
 
         Ok(result)
     }
+
     fn reset(&mut self) {
         Optimizer::reset(self);
     }

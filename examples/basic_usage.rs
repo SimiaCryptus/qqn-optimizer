@@ -8,6 +8,7 @@
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
+use rand::rngs::StdRng;
 use qqn_optimizer::core::optimizer::SeparateFunctions;
 use qqn_optimizer::{
     LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig,
@@ -27,6 +28,7 @@ fn main() -> Result<()> {
             initial_step: 1.0,
             min_step: 1e-16,
             max_step: 1e16,
+            verbose: true, // Enable verbose output for line search
         },
         epsilon: 1e-8,             // Numerical stability constant
         verbose: true,          // Enable verbose output
@@ -36,12 +38,12 @@ fn main() -> Result<()> {
 
     // Define the optimization problem (2D Rosenbrock function)
     let problem = RosenbrockFunction::new(2);
-    let mut x = problem.initial_point(); // Start at [-1.2, 1.0]
+    let mut initial_point = problem.initial_point(); // Random initial point in 2D
     let device = Device::Cpu;
 
     println!("Starting optimization of 2D Rosenbrock function");
-    println!("Initial point: {:?}", x);
-    println!("Initial value: {:.6}", problem.evaluate(&x)?);
+    println!("Initial point: {:?}", initial_point);
+    println!("Initial value: {:.6}", problem.evaluate(&initial_point)?);
 
     // Optimization loop
     let mut iteration = 0;
@@ -49,12 +51,12 @@ fn main() -> Result<()> {
 
     while iteration < max_iterations {
         // Compute gradient
-        let gradient = problem.gradient(&x)?;
+        let gradient = problem.gradient(&initial_point)?;
         let grad_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
         // Print progress
         if iteration % 10 == 0 {
-            let f_val = problem.evaluate(&x)?;
+            let f_val = problem.evaluate(&initial_point)?;
             println!("Iteration {}: f = {:.6}, ||∇f|| = {:.6}", iteration, f_val, grad_norm);
         }
 
@@ -65,7 +67,7 @@ fn main() -> Result<()> {
         }
 
         // Convert Vec<f64> to Tensor for optimizer
-        let mut x_tensor = vec![Tensor::from_slice(&x, x.len(), &device)?];
+        let mut x_tensor = vec![Tensor::from_slice(&initial_point, initial_point.len(), &device)?];
 
 
         // Create a function object that implements both objective and gradient computation
@@ -85,7 +87,7 @@ fn main() -> Result<()> {
         let step_result = optimizer.step(&mut x_tensor, &function)?;
 
         // Convert result back to Vec<f64>
-        x = x_tensor[0].to_vec1::<f64>()?;
+        initial_point = x_tensor[0].to_vec1::<f64>()?;
 
         // Print step information
         if iteration % 50 == 0 {
@@ -97,19 +99,19 @@ fn main() -> Result<()> {
     }
 
     // Final results
-    let final_value = problem.evaluate(&x)?;
-    let final_gradient = problem.gradient(&x)?;
+    let final_value = problem.evaluate(&initial_point)?;
+    let final_gradient = problem.gradient(&initial_point)?;
     let final_grad_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
     println!("\nOptimization completed!");
-    println!("Final point: {:?}", x);
+    println!("Final point: {:?}", initial_point);
     println!("Final value: {:.6}", final_value);
     println!("Final gradient norm: {:.2e}", final_grad_norm);
     println!("Total iterations: {}", iteration);
 
     // Compare with known optimum
     let optimum = vec![1.0, 1.0];
-    let distance_to_optimum = x.iter()
+    let distance_to_optimum = initial_point.iter()
         .zip(&optimum)
         .map(|(xi, opt)| (xi - opt).powi(2))
         .sum::<f64>()

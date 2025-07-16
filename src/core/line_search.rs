@@ -3,17 +3,16 @@ use anyhow::{anyhow, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::sync::Arc;
 
 /// Trait for 1-D differentiable parametric curves
-pub trait ParametricCurve<'a>: Send + Sync + Debug {
+pub trait ParametricCurve: Send + Sync {
     /// Evaluate the curve at parameter t
     fn evaluate(&self, t: f64) -> Result<Vec<f64>>;
     /// Evaluate the derivative of the curve at parameter t
     fn derivative(&self, t: f64) -> Result<Vec<f64>>;
     /// Get the initial derivative at t=0 for descent checking
     fn initial_derivative(&self) -> Result<Vec<f64>>;
-    /// Clone the curve
-    fn clone_box(&self) -> Box<dyn ParametricCurve<'a>>;
 }
 
 /// A 1D optimization problem along a parametric curve
@@ -39,38 +38,96 @@ impl<'a> OneDimensionalProblem<'a> {
     }
 }
 /// Convert a parametric curve and multi-dimensional functions into a 1D problem
-pub fn create_1d_problem<'a>(
-    curve: Box<dyn ParametricCurve<'a> + 'a>,
+pub fn create_1d_problem_candle<'a>(
+    curve: Box<dyn ParametricCurve + 'a>,
     current_gradient: &'a [f64],
-    objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
-    gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
+    objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64, candle_core::Error> + Send + Sync),
+    gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>, candle_core::Error> + Send + Sync),
 ) -> Result<OneDimensionalProblem<'a>> {
     // Get initial directional derivative
     let initial_derivative = curve.initial_derivative()?;
-    let initial_directional_derivative = dot_product_f64(current_gradient, &initial_derivative)?;
-    // Clone the curve for use in closures
-    let curve_for_objective = curve.clone_box();
-    let curve_for_gradient = curve;
+    let initial_directional_derivative = initial_derivative[0];
+    debug!("create_1d_problem_candle: current_gradient={:?}, initial_derivative={:?}, initial_directional_derivative={:.6e}",
+          current_gradient, initial_derivative, initial_directional_derivative);
+    // Use Arc to share the curve between closures
+    let curve = Arc::new(curve);
+    let curve_for_objective = curve.clone();
+    let curve_for_gradient = curve.clone();
     // Create 1D objective function
     let objective_1d = move |t: f64| -> Result<f64> {
-        let point = curve_for_objective.evaluate(t)?;
-        (objective_fn)(&point)
+        let result_vec = curve_for_objective.evaluate(t)?;
+        let result = objective_fn(&result_vec)
+            .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
+        debug!("1D objective at t={:.6e}: f={:.6e}", t, result);
+        Ok(result)
     };
     // Create 1D gradient function
-    let gradient_1d = Box::new(move |t: f64| -> Result<f64> {
-        let point = curve_for_gradient.evaluate(t)?;
-        let curve_derivative = curve_for_gradient.derivative(t)?;
-        let gradient_vec = (gradient_fn)(&point)?;
-        // Compute directional derivative: gradient · curve_derivative
-        dot_product_f64(&gradient_vec, &curve_derivative)
-    });
+    let gradient_1d = move |t: f64| -> Result<f64> {
+        let result_vec = curve_for_gradient.evaluate(t)?;
+        let result = gradient_fn(&result_vec)
+            .map_err(|e| anyhow!("Gradient evaluation failed: {}", e))
+            .and_then(|g| {
+                if g.len() != current_gradient.len() {
+                    return Err(anyhow!("Gradient length mismatch: expected {}, got {}", current_gradient.len(), g.len()));
+                }
+                // Compute directional derivative using dot product
+                dot_product_f64(&g, &current_gradient)
+            })?;
+        debug!("1D gradient result at t={:.6e}: {:.6e}", t, result);
+        Ok(result)
+    };
     Ok(OneDimensionalProblem::new(
         Box::new(objective_1d),
         Box::new(gradient_1d),
         initial_directional_derivative,
     ))
 }
-/// Convert a linear search direction into a 1D problem
+
+pub fn create_1d_problem<'a>(
+    curve: Box<dyn ParametricCurve + 'a>,
+    current_gradient: &'a [f64],
+    objective_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<f64> + Send + Sync),
+    gradient_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>> + Send + Sync),
+) -> Result<OneDimensionalProblem<'a>> {
+    // Get initial directional derivative
+    let initial_derivative = curve.initial_derivative()?;
+    let initial_directional_derivative = initial_derivative[0]; // Already computed by curve
+    debug!("create_1d_problem: current_gradient={:?}, initial_derivative={:?}, initial_directional_derivative={:.6e}",
+          current_gradient, initial_derivative, initial_directional_derivative);
+    
+    // Use Arc to share the curve between closures
+    let curve = Arc::new(curve);
+    let curve_for_objective = curve.clone();
+    let curve_for_gradient = curve.clone();
+    
+    // Create 1D objective function
+    let objective_1d = move |t: f64| -> Result<f64> {
+        let result_vec = curve_for_objective.evaluate(t)?;
+        let result = objective_fn(&result_vec)?;
+        debug!("1D objective at t={:.6e}: f={:.6e}", t, result);
+        Ok(result)
+    };
+
+    // Create 1D gradient function
+    let gradient_1d = move |t: f64| -> Result<f64> {
+        let result_vec = curve_for_gradient.evaluate(t)?;
+        let result = gradient_fn(&result_vec)
+            .and_then(|g| {
+                if g.len() != current_gradient.len() {
+                    return Err(anyhow!("Gradient length mismatch: expected {}, got {}", current_gradient.len(), g.len()));
+                }
+                // Compute directional derivative using dot product
+                dot_product_f64(&g, &current_gradient)
+            })?;
+        debug!("1-D gradient result at t={:.6e}; p={:?} = {:.6e}", t, result_vec, result);
+        Ok(result)
+    };
+    Ok(OneDimensionalProblem::new(
+        Box::new(objective_1d),
+        Box::new(gradient_1d),
+        initial_directional_derivative,
+    ))
+}/// Convert a linear search direction into a 1D problem
 pub fn create_1d_problem_linear<'a>(
     current_point: &'a [f64],
     direction: &'a [f64],
@@ -78,8 +135,18 @@ pub fn create_1d_problem_linear<'a>(
     objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
     gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
 ) -> Result<OneDimensionalProblem<'a>> {
-    let curve = LinearCurve::new(current_point.to_vec(), direction.to_vec());
-    create_1d_problem(Box::new(curve), current_gradient, objective_fn, gradient_fn)
+    let curve = LinearCurve::new(
+        current_point.to_vec(),
+        direction.to_vec(),
+    );
+    
+    // Debug: let's verify the curve works correctly
+    let test_val_0 = curve.evaluate(0.0)?;
+    let test_val_1 = curve.evaluate(1.0)?;
+    debug!("Curve test: f(t=0) -> {:?}, f(t=1) -> {:?}", test_val_0, test_val_1);
+
+    let result = create_1d_problem(Box::new(curve), current_gradient, objective_fn, gradient_fn);
+    result
 }
 
 /// Linear parametric curve: x(t) = x0 + t * direction
@@ -92,24 +159,66 @@ impl LinearCurve {
     pub fn new(start_point: Vec<f64>, direction: Vec<f64>) -> Self {
         Self { start_point, direction }
     }
-}
-impl<'a> ParametricCurve<'a> for LinearCurve {
-    fn evaluate(&self, t: f64) -> Result<Vec<f64>> {
-        Ok(self.start_point
+    /// Get the point along the curve at parameter t
+    pub fn point_at(&self, t: f64) -> Vec<f64> {
+        self.start_point
             .iter()
             .zip(self.direction.iter())
             .map(|(x, d)| x + t * d)
-            .collect())
+            .collect()
+    }
+}
+impl ParametricCurve for LinearCurve {
+    fn evaluate(&self, t: f64) -> Result<Vec<f64>> {
+        Ok(self.point_at(t))
     }
     fn derivative(&self, _t: f64) -> Result<Vec<f64>> {
-        // For linear curves, derivative is constant
+        // For a linear curve, dx/dt = direction (constant)
         Ok(self.direction.clone())
     }
     fn initial_derivative(&self) -> Result<Vec<f64>> {
         Ok(self.direction.clone())
     }
-    fn clone_box(&self) -> Box<dyn ParametricCurve<'a>> {
-        Box::new(self.clone())
+}
+/// Linear parametric curve that evaluates a function along the path
+pub struct FunctionLinearCurve<'a> {
+    curve: LinearCurve,
+    objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
+    gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
+}
+impl<'a> FunctionLinearCurve<'a> {
+    pub fn new(
+        start_point: Vec<f64>,
+        direction: Vec<f64>,
+        objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
+        gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
+    ) -> Self {
+        Self {
+            curve: LinearCurve::new(start_point, direction),
+            objective_fn,
+            gradient_fn,
+        }
+    }
+}
+impl<'a> ParametricCurve for FunctionLinearCurve<'a> {
+    fn evaluate(&self, t: f64) -> Result<Vec<f64>> {
+        let point = self.curve.point_at(t);
+        debug!("Evaluating function at t={:.6e}: point={:?}", t, point);
+        let f_val = (self.objective_fn)(&point)?;
+        debug!("Function value at t={:.6e}: f={:.6e}", t, f_val);
+        Ok(vec![f_val])
+    }
+    fn derivative(&self, t: f64) -> Result<Vec<f64>> {
+        let point = self.curve.point_at(t);
+        let gradient = (self.gradient_fn)(&point)?;
+        debug!("Computing derivative at t={:.6e}: point={:?}, gradient={:?}", t, point, gradient);
+        // Chain rule: df/dt = ∇f(x(t)) · dx/dt
+        // dx/dt = direction (constant for linear curve)
+        let directional_derivative = dot_product_f64(&gradient, &self.curve.direction)?;
+        Ok(vec![directional_derivative])
+    }
+    fn initial_derivative(&self) -> Result<Vec<f64>> {
+        self.derivative(0.0)
     }
 }
 
@@ -141,6 +250,7 @@ pub struct LineSearchConfig {
     pub initial_step: f64,
     pub min_step: f64,
     pub max_step: f64,
+    pub verbose: bool, // Enable verbose logging
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,6 +270,7 @@ impl Default for LineSearchConfig {
             initial_step: 1.0,
             min_step: 1e-16,
             max_step: 1e16,
+            verbose: true, // Default to no verbose logging
         }
     }
 }
@@ -174,7 +285,7 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
                 min_step: config.min_step,
                 max_step: config.max_step,
                 initial_step: config.initial_step,
-                verbose: false,
+                verbose: config.verbose,
             }))
         }
         LineSearchMethod::Backtracking => {
@@ -194,7 +305,7 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
                 max_step: config.max_step,
                 initial_step: config.initial_step,
                 window_shrink_factor: 0.5,
-                verbose: false,
+                verbose: config.verbose,
             }))
         }
     }
@@ -202,63 +313,7 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
 
 /// Trait for line search algorithms
 pub trait LineSearch: Send + Sync + Debug {
-    /// Perform line search along a given direction
-    /// This is the primary interface that should be used by optimizers
-    fn search(
-        &mut self,
-        params: &[candle_core::Tensor],
-        direction: &[candle_core::Tensor],
-        gradients: &[candle_core::Tensor],
-        function: &dyn crate::core::optimizer::DifferentiableFunction,
-    ) -> Result<LineSearchResult> {
-        // Convert to f64 for line search with proper error handling
-        let params_f64: Vec<f64> = params
-            .iter()
-            .map(|t| t.flatten_all()?.to_vec1::<f64>())
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-        let direction_f64: Vec<f64> = direction
-            .iter()
-            .map(|t| t.flatten_all()?.to_vec1::<f64>())
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-        let gradients_f64: Vec<f64> = gradients
-            .iter()
-            .map(|t| t.flatten_all()?.to_vec1::<f64>())
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-        // Create closures with let bindings to ensure they live long enough
-        let objective_fn = |x: &[f64]| {
-            let tensors = crate::core::qqn::f64_to_tensors(x, params)?;
-            function.evaluate(&tensors)
-                .map_err(|e| anyhow!("Function evaluation failed: {}", e))
-        };
-        let gradient_fn = |x: &[f64]| {
-            let tensors = crate::core::qqn::f64_to_tensors(x, params)?;
-            let grads = function.gradient(&tensors)
-                .map_err(|e| anyhow!("Gradient evaluation failed: {}", e))?;
-            Ok(grads
-                .iter()
-                .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-                .collect())
-        };
 
-        // Create 1D problem
-        let problem = create_1d_problem_linear(
-            &params_f64,
-            &direction_f64,
-            &gradients_f64,
-            &objective_fn,
-            &gradient_fn,
-        )?;
-        self.optimize_1d(&problem)
-    }
 
     /// Perform 1D line search optimization
     fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem) -> Result<LineSearchResult>;
@@ -600,7 +655,7 @@ impl BisectionLineSearch {
         let mut a = left;
         let mut b = right;
         let mut g_evals = 0;
-        let mut f_evals = 0;
+        let f_evals = 0;
         self.log_verbose(&format!("Finding zero gradient in interval [{:.6e}, {:.6e}]", a, b));
         for i in 0..self.config.max_iterations {
             let mid = 0.5 * (a + b);
@@ -642,7 +697,7 @@ impl BisectionLineSearch {
         problem: &OneDimensionalProblem,
     ) -> Result<(f64, usize, usize)> {
         let mut window_size = initial_window;
-        let mut total_f_evals = 0;
+        let total_f_evals = 0;
         let mut total_g_evals = 0;
         let mut iteration_count = 0;
         self.log_verbose(&format!("Starting window search with initial window={:.6e}", window_size));
@@ -651,6 +706,14 @@ impl BisectionLineSearch {
             self.log_verbose(&format!("Trying window size: {:.6e}", window_size));
             // Check if we can find a sign change in the gradient within this window
             let grad_0 = problem.initial_directional_derivative;
+            // Actually evaluate the gradient at t=0 to make sure it matches
+            let grad_0_actual = (problem.gradient)(0.0)?;
+            total_g_evals += 1;
+            if (grad_0 - grad_0_actual).abs() > 1e-10 {
+                self.log_verbose(&format!("WARNING: initial_directional_derivative={:.6e} != actual grad(0)={:.6e}",
+                                          grad_0, grad_0_actual));
+            }
+           
             let grad_window = (problem.gradient)(window_size)?;
             total_g_evals += 1;
             self.log_verbose(&format!("  grad(0)={:.6e}, grad({:.6e})={:.6e}", grad_0, window_size, grad_window));

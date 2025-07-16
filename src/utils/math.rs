@@ -10,6 +10,50 @@ use anyhow::{anyhow, Result};
 use candle_core::{Result as CandleResult, Tensor};
 use log::warn;
 
+pub(crate) fn f64_to_tensors(values: &[f64], template: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+    // Calculate total number of elements needed
+    let total_elements: usize = template.iter()
+        .map(|t| t.shape().elem_count())
+        .sum();
+    if values.len() < total_elements {
+        return Err(candle_core::Error::Msg(format!(
+            "Insufficient values: got {} but need {}",
+            values.len(),
+            total_elements
+        )));
+    }
+
+    let mut offset = 0;
+    let mut result = Vec::new();
+    for t in template {
+        let shape = t.shape();
+        let numel = shape.elem_count();
+        // Check if we have enough values remaining
+        if offset + numel > values.len() {
+            return Err(candle_core::Error::Msg(format!(
+                "Not enough values: need {} more but only {} available",
+                numel,
+                values.len().saturating_sub(offset)
+            )));
+        }
+
+        let slice = &values[offset..offset + numel];
+        let tensor = Tensor::from_slice(slice, shape, t.device())?;
+        result.push(tensor);
+        offset += numel;
+    }
+    Ok(result)
+}
+
+pub(crate) fn tensors_to_f64(tensors: &[Tensor]) -> CandleResult<Vec<f64>> {
+    let mut result = Vec::new();
+    for tensor in tensors {
+        let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+        result.extend(values);
+    }
+    Ok(result)
+}
+
 /// Compute the magnitude (L2 norm) of a vector of tensors
 pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
     if tensors.is_empty() {

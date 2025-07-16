@@ -20,13 +20,13 @@ impl LogisticRegression {
 
     pub fn synthetic(n_samples: usize, n_features: usize) -> Result<Self> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let mut x_data = Vec::new();
         let mut y_data = Vec::new();
 
         for _ in 0..n_samples {
-            let x: Vec<f64> = (0..n_features).map(|_| rng.gen_range(-1.0..1.0)).collect();
+            let x: Vec<f64> = (0..n_features).map(|_| rng.random_range(-1.0..1.0)).collect();
             let linear_combination: f64 = x
                 .iter()
                 .enumerate()
@@ -123,7 +123,7 @@ impl NeuralNetworkTraining {
     pub fn mlp_classification(layer_sizes: Vec<usize>) -> Result<Self> {
         // Generate synthetic classification data
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let n_samples = 100;
         let input_size = layer_sizes[0];
@@ -133,9 +133,9 @@ impl NeuralNetworkTraining {
         let mut y_data = Vec::new();
 
         for _ in 0..n_samples {
-            let x: Vec<f64> = (0..input_size).map(|_| rng.gen_range(-1.0..1.0)).collect();
+            let x: Vec<f64> = (0..input_size).map(|_| rng.random_range(-1.0..1.0)).collect();
             let mut y = vec![0.0; output_size];
-            let class = rng.gen_range(0..output_size);
+            let class = rng.random_range(0..output_size);
             y[class] = 1.0;
 
             x_data.push(x);
@@ -164,9 +164,9 @@ impl OptimizationProblem for NeuralNetworkTraining {
     }
     fn initial_point(&self) -> Vec<f64> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         (0..self.dimension())
-            .map(|_| rng.gen_range(-0.1..0.1))
+            .map(|_| rng.random_range(-0.1..0.1))
             .collect()
     }
 

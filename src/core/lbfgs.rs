@@ -9,14 +9,15 @@ use crate::core::line_search::create_line_search;
 use crate::core::line_search::{LineSearch, LineSearchConfig};
 use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
 use crate::core::optimizer::{DifferentiableFunction, OptimizationMetadata};
-use crate::utils::math::{
-    compute_magnitude, dot_product, vector_add, vector_scale, vector_subtract,
-};
+use crate::utils::math::{compute_magnitude, dot_product, f64_to_tensors, tensors_to_f64, vector_add, vector_scale, vector_subtract};
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::Instant;
+
+// Convert to 1D problem for line search
+use crate::core::line_search::create_1d_problem_linear;
 
 /// Configuration parameters for the L-BFGS optimizer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -286,8 +287,6 @@ impl LBFGSState {
             warn!("Invalid step size: {}", step_size);
             return Ok(()); // Skip update but don't fail
         }
-        // Pre-allocate vectors to avoid repeated allocations
-        let s_k = vector_scale(step_direction, step_size)?;
         // Validate inputs
         if new_gradient.is_empty() || step_direction.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient or direction vectors".into()));
@@ -663,13 +662,36 @@ impl Optimizer for LBFGSOptimizer {
                 metadata,
             });
         }
+
+        // Convert tensors to f64 vectors for line search
+        let current_point = tensors_to_f64(params)?;
+        let direction_f64 = tensors_to_f64(&search_direction)?;
+        let gradient_f64 = tensors_to_f64(&gradients)?;
         
-        let line_search_result = line_search.search(
-            params,
-            &search_direction,
-            &gradients,
-            function,
-        ).map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?;
+        // Perform line search in a separate scope to avoid borrow conflicts
+        let line_search_result = {
+            // Create objective and gradient functions that work with f64 vectors
+            let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
+                let x_tensors = f64_to_tensors(x, params)?;
+                function.evaluate(&x_tensors).map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
+            };
+            let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+                let x_tensors = f64_to_tensors(x, params)?;
+                let grad_tensors = function.gradient(&x_tensors).map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
+                tensors_to_f64(&grad_tensors).map_err(|e| anyhow::anyhow!("Tensor conversion failed: {}", e))
+            };
+            // Create 1D problem
+            let problem = create_1d_problem_linear(
+                &current_point,
+                &direction_f64,
+                &gradient_f64,
+                &objective_fn,
+                &gradient_fn,
+            ).map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            // Perform line search
+            line_search.optimize_1d(&problem)
+                .map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?
+        };
 
         if self.config.verbose {
             debug!("=== Line Search Result ===");
@@ -802,22 +824,312 @@ impl Optimizer for LBFGSOptimizer {
     fn step_with_gradients(
         &mut self,
         params: &mut [Tensor],
-        gradients: &[Tensor],
-    ) -> CandleResult<StepResult> {
+        function: &dyn DifferentiableFunction,
+        _gradients: &[Tensor],
+    ) -> Result<StepResult, candle_core::Error> {
 
 
-        // Create a thread-safe function wrapper that uses the provided gradients
-        let gradients_clone = gradients.to_vec();
 
-        let function = crate::core::optimizer::SeparateFunctions::new(
-            move |_params: &[Tensor]| -> CandleResult<f64> {
-                // Since we have pre-computed gradients, return a dummy value
-                // The actual objective evaluation should be done externally if needed
-                Ok(0.0)
-            },
-            move |_: &[Tensor]| Ok(gradients_clone.clone()),
-        );
-        self.step(params, &function)
+        let start_time = Instant::now();
+        if self.config.verbose {
+            debug!("=== L-BFGS Step {} Starting (with precomputed gradients) ===", self.state.iteration());
+        }
+
+        // Store current parameters for potential recovery
+        if self.config.enable_recovery {
+            self.state.prev_params = Some(params.to_vec());
+        }
+
+        // Use the provided gradients (assumed to be at current parameters)
+        let gradients = function.gradient(params)?;
+        let gradients = if self.config.gradient_clip > 0.0 {
+            let grad_norm = compute_magnitude(&gradients)?;
+            if grad_norm > self.config.gradient_clip {
+                warn!("L-BFGS: Clipping gradient from {:.6e} to {:.6e}", grad_norm, self.config.gradient_clip);
+                let scale_factor = self.config.gradient_clip / grad_norm;
+                gradients.iter()
+                    .map(|g| g.affine(scale_factor, 0.0))
+                    .collect::<CandleResult<Vec<_>>>()?
+            } else {
+                gradients.to_vec()
+            }
+        } else {
+            gradients.to_vec()
+        };
+        
+        // Log initial state in verbose mode
+        self.log_tensor_data("Initial Parameters", params);
+        self.log_tensor_data("Provided Gradients", &gradients);
+
+        // Input validation
+        if params.is_empty() || gradients.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+        }
+        if params.len() != gradients.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Parameter and gradient dimension mismatch: {} vs {}",
+                        params.len(), gradients.len())
+            ));
+        }
+
+        // Compute L-BFGS search direction using provided gradients
+        self.log_lbfgs_state("Before computing direction");
+        let search_direction = self.state.compute_direction(&gradients)?;
+        self.log_tensor_data("L-BFGS Search Direction", &search_direction);
+
+        // Validate search direction
+        let direction_norm = compute_magnitude(&search_direction)?;
+        self.log_scalar("Direction Norm", direction_norm);
+
+        if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
+            warn!("L-BFGS: Invalid search direction norm: {}, using steepest descent", direction_norm);
+            // Fall back to steepest descent
+            let search_direction = gradients
+                .iter()
+                .map(|g| g.neg())
+                .collect::<CandleResult<Vec<_>>>()?;
+            let direction_norm = compute_magnitude(&search_direction)?;
+            let step_size = 0.01 / (direction_norm + 1.0);
+            self.log_scalar("Fallback Step Size", step_size);
+            self.log_tensor_data("Fallback Direction", &search_direction);
+
+            // Update parameters with conservative step
+            for (param, dir) in params.iter_mut().zip(search_direction.iter()) {
+                let step_size_tensor = Tensor::new(step_size, param.device())?;
+                let update = dir.broadcast_mul(&step_size_tensor)?;
+                *param = param.add(&update)?;
+            }
+            self.log_tensor_data("Updated Parameters (Fallback)", params);
+
+            // Update L-BFGS state
+            if step_size > 0.0 {
+                self.state.update(&gradients, &search_direction, step_size)?;
+            }
+
+            let convergence_info = self.compute_convergence_info(&gradients)?;
+            let step_duration = start_time.elapsed();
+            let mut metadata = OptimizationMetadata::default();
+            metadata.timing_info.step_duration = step_duration;
+            metadata.optimizer_data.insert("fallback_to_steepest_descent".to_string(), 1.0);
+
+            return Ok(StepResult {
+                step_size,
+                function_evaluations: 0,
+                gradient_evaluations: 0,
+                convergence_info,
+                metadata,
+            });
+        }
+
+        // Use adaptive step size based on gradient magnitude
+        let grad_norm = compute_magnitude(&gradients)?;
+        self.log_scalar("Gradient Norm", grad_norm);
+        debug!("L-BFGS step {}: grad_norm={:.6e}", self.state.iteration(), grad_norm);
+
+        // Conservative step size initialization
+        let step_size = if self.state.iteration() == 0 {
+            let param_scale = params.iter()
+                .map(|p| compute_magnitude(&[p.clone()]))
+                .collect::<CandleResult<Vec<_>>>()?
+                .into_iter()
+                .fold(0.0_f64, |a, b| a.max(b));
+            let scale_factor = (param_scale + 1.0).max(1.0);
+            let initial_step = 0.01 / ((grad_norm / scale_factor) + 1.0);
+            initial_step.max(1e-6).min(1e-3)
+        } else {
+            let dir_norm = compute_magnitude(&search_direction)?;
+            if dir_norm > 0.0 {
+                let gamma_step = self.state.gamma() / (dir_norm + 1.0);
+                gamma_step.max(self.config.min_step_size).min(self.config.max_step_size)
+            } else {
+                self.config.min_step_size
+            }
+        };
+        debug!("L-BFGS: Initial step size = {:.6e}", step_size);
+
+        // Use the configured line search with the provided function
+        let mut line_search = self.line_search.clone_box();
+        
+        // Handle very large gradients conservatively
+        if grad_norm > 1e6 || direction_norm > 1e6 {
+            warn!("L-BFGS: Large gradients detected (grad_norm={:.2e}, dir_norm={:.2e}), using very conservative step size", 
+                  grad_norm, direction_norm);
+            let conservative_step = (1e-6 / (grad_norm + 1.0)).max(1e-12).min(1e-6);
+            
+            for (param, direction) in params.iter_mut().zip(&search_direction) {
+                let step_size_tensor = Tensor::new(conservative_step, param.device())?;
+                let step = direction.broadcast_mul(&step_size_tensor)?;
+                *param = param.add(&step)?;
+            }
+            
+            self.state.update(&gradients, &search_direction, conservative_step)?;
+            let convergence_info = self.compute_convergence_info(&gradients)?;
+            let step_duration = start_time.elapsed();
+            let mut metadata = OptimizationMetadata::default();
+            metadata.timing_info.step_duration = step_duration;
+            metadata.optimizer_data.insert("conservative_step_used".to_string(), 1.0);
+            metadata.optimizer_data.insert("conservative_step_size".to_string(), conservative_step);
+            return Ok(StepResult {
+                step_size: conservative_step,
+                function_evaluations: 1,
+                gradient_evaluations: 0,
+                convergence_info,
+                metadata,
+            });
+        }
+
+        // Convert tensors to f64 vectors for line search
+        let current_point = tensors_to_f64(params)?;
+        let direction_f64 = tensors_to_f64(&search_direction)?;
+        let gradient_f64 = tensors_to_f64(&gradients)?;
+        
+        // Perform line search using the provided function
+        let line_search_result = {
+            let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
+                let x_tensors = f64_to_tensors(x, params)?;
+                function.evaluate(&x_tensors).map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
+            };
+            let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+                let x_tensors = f64_to_tensors(x, params)?;
+                let grad_tensors = function.gradient(&x_tensors).map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
+                tensors_to_f64(&grad_tensors).map_err(|e| anyhow::anyhow!("Tensor conversion failed: {}", e))
+            };
+            
+            let problem = create_1d_problem_linear(
+                &current_point,
+                &direction_f64,
+                &gradient_f64,
+                &objective_fn,
+                &gradient_fn,
+            ).map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            
+            line_search.optimize_1d(&problem)
+                .map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?
+        };
+
+        if self.config.verbose {
+            debug!("=== Line Search Result ===");
+            debug!("  Step Size: {:.12e}", line_search_result.step_size);
+            debug!("  Success: {}", line_search_result.success);
+            debug!("  Function Evaluations: {}", line_search_result.function_evaluations);
+            debug!("  Gradient Evaluations: {}", line_search_result.gradient_evaluations);
+        }
+
+        // Limit the actual step size based on maximum parameter change
+        let mut actual_step_size = line_search_result.step_size;
+        if self.config.max_param_change > 0.0 {
+            let max_change = search_direction.iter()
+                .map(|d| {
+                    let d_vec = d.flatten_all()?.to_vec1::<f64>()?;
+                    Ok(d_vec.iter().map(|x| x.abs()).fold(0.0, f64::max) * actual_step_size)
+                })
+                .collect::<CandleResult<Vec<_>>>()?
+                .into_iter()
+                .fold(0.0, f64::max);
+            if max_change > self.config.max_param_change {
+                let scale = self.config.max_param_change / max_change;
+                actual_step_size *= scale;
+                warn!("L-BFGS: Limiting step size from {:.6e} to {:.6e} due to max_param_change constraint", 
+                      line_search_result.step_size, actual_step_size);
+            }
+        }
+
+        // Update parameters: x_{k+1} = x_k + alpha * p_k
+        for (param, direction) in params.iter_mut().zip(&search_direction) {
+            let step_size_tensor = Tensor::new(actual_step_size, param.device())?;
+            let step = direction.broadcast_mul(&step_size_tensor)?;
+            *param = param.add(&step)?;
+            
+            // Check for NaN/Inf in updated parameters
+            let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
+            if param_vec.iter().any(|&x| !x.is_finite()) {
+                if let Some(prev_params) = &self.state.prev_params {
+                    warn!("L-BFGS: Non-finite parameters detected, restoring previous state");
+                    for (param, prev) in params.iter_mut().zip(prev_params.iter()) {
+                        *param = prev.clone();
+                    }
+                    self.state.reset();
+                    return Ok(StepResult {
+                        step_size: 0.0,
+                        function_evaluations: line_search_result.function_evaluations,
+                        gradient_evaluations: line_search_result.gradient_evaluations,
+                        convergence_info: ConvergenceInfo {
+                            converged: false,
+                            function_change: None,
+                        },
+                        metadata: OptimizationMetadata::default(),
+                    });
+                } else {
+                    return Err(candle_core::Error::Msg(
+                        "Non-finite parameter detected after update".into()
+                    ));
+                }
+            }
+        }
+        self.log_tensor_data("Updated Parameters", params);
+
+        // Check for improvement and update best value
+        let current_value = function.evaluate(params)?;
+        let improved = if let Some(best) = self.state.best_function_value {
+            if current_value < best {
+                self.state.best_function_value = Some(current_value);
+                self.state.no_improvement_count = 0;
+                true
+            } else {
+                self.state.no_improvement_count += 1;
+                false
+            }
+        } else {
+            self.state.best_function_value = Some(current_value);
+            true
+        };
+
+        // Trigger recovery if stuck
+        if self.config.enable_recovery && 
+           self.state.no_improvement_count >= self.config.recovery_patience &&
+           !improved {
+            warn!("L-BFGS: No improvement for {} iterations, triggering recovery", 
+                  self.state.no_improvement_count);
+            self.state.s_history.clear();
+            self.state.y_history.clear();
+            self.state.rho_history.clear();
+            self.state.gamma = 1.0;
+            self.state.no_improvement_count = 0;
+        }
+
+        // Update L-BFGS state with new information
+        self.state.update(&gradients, &search_direction, actual_step_size)?;
+        self.log_lbfgs_state("After state update");
+
+        // Compute convergence information
+        let convergence_info = self.compute_convergence_info(&gradients)?;
+        let step_duration = start_time.elapsed();
+        if self.config.verbose {
+            debug!("=== L-BFGS Step {} Completed ===", self.state.iteration() - 1);
+            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Converged: {}", convergence_info.converged);
+        }
+
+        let mut metadata = OptimizationMetadata::default();
+        metadata.timing_info.step_duration = step_duration;
+        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+        metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
+        metadata.optimizer_data.insert("step_size".to_string(), actual_step_size);
+        metadata.optimizer_data.insert("gamma".to_string(), self.state.gamma());
+        metadata.optimizer_data.insert("history_size".to_string(), self.state.history_length() as f64);
+        metadata.optimizer_data.insert("function_value".to_string(), current_value);
+        if let Some(best) = self.state.best_function_value {
+            metadata.optimizer_data.insert("best_function_value".to_string(), best);
+        }
+        metadata.optimizer_data.insert("no_improvement_count".to_string(), self.state.no_improvement_count as f64);
+
+        Ok(StepResult {
+            step_size: actual_step_size,
+            function_evaluations: line_search_result.function_evaluations,
+            gradient_evaluations: line_search_result.gradient_evaluations,
+            convergence_info,
+            metadata,
+        })
     }
 
     fn reset(&mut self) {

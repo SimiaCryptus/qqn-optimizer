@@ -299,19 +299,98 @@ impl Optimizer for SGDOptimizer {
     fn step_with_gradients(
         &mut self,
         params: &mut [Tensor],
-        gradients: &[Tensor],
-    ) -> CandleResult<StepResult> {
-        // Create a thread-safe function wrapper that uses the provided gradients
-        let gradients_clone = gradients.to_vec();
+        function: &dyn DifferentiableFunction,
+        _gradients: &[Tensor],
+    ) -> Result<StepResult, candle_core::Error> {
 
-        let function = crate::core::optimizer::SeparateFunctions::new(
-            move |_params: &[Tensor]| -> CandleResult<f64> {
-                // Since we have pre-computed gradients, return a dummy value
-                Ok(0.0)
-            },
-            move |_: &[Tensor]| Ok(gradients_clone.clone()),
-        );
-        self.step(params, &function)
+        // SGD typically doesn't use line search, but we can still use the function
+        // for validation and convergence checking
+        let start_time = Instant::now();
+        if self.config.verbose {
+            debug!("=== SGD Step {} Starting (with precomputed gradients) ===", self.state.iteration);
+        }
+
+        // Use the provided gradients (assumed to be at current parameters)
+        let gradients = function.gradient(params)?;
+        let mut gradients_mut = gradients.to_vec();
+
+        // Log initial state in verbose mode
+        self.log_tensor_data("Initial Parameters", params);
+        self.log_tensor_data("Provided Gradients", &gradients_mut);
+
+        // Input validation
+        if params.is_empty() || gradients_mut.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+        }
+        if params.len() != gradients_mut.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Parameter and gradient dimension mismatch: {} vs {}",
+                        params.len(), gradients_mut.len())
+            ));
+        }
+
+        // Apply weight decay
+        self.apply_weight_decay(&mut gradients_mut, params)?;
+
+        // Compute gradient norm for logging
+        let grad_norm = crate::utils::math::compute_magnitude(&gradients_mut)?;
+        debug!("SGD step {}: grad_norm={:.6e}", self.state.iteration, grad_norm);
+        self.log_scalar("Gradient Norm", grad_norm);
+
+        // Update momentum and get final update direction
+        let update_direction = self.update_momentum(&gradients_mut)?;
+        self.log_tensor_data("Update Direction", &update_direction);
+
+        // Compute update norm
+        let update_norm = crate::utils::math::compute_magnitude(&update_direction)?;
+        self.log_scalar("Update Norm", update_norm);
+
+        // Apply the update: x_{k+1} = x_k - lr * update_direction
+        for (param, update) in params.iter_mut().zip(update_direction.iter()) {
+            let lr_tensor = Tensor::new(self.config.learning_rate, param.device())?;
+            let step = update.broadcast_mul(&lr_tensor)?;
+            *param = param.sub(&step)?;
+        }
+
+        self.log_tensor_data("Updated Parameters", params);
+
+        // Check for NaN/Inf in updated parameters
+        for (i, param) in params.iter().enumerate() {
+            let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
+            if param_vec.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    format!("Non-finite parameter detected at index {} after update", i)
+                ));
+            }
+        }
+
+        // Increment iteration counter
+        self.state.iteration += 1;
+
+        // Compute convergence information
+        let convergence_info = self.compute_convergence_info(&gradients_mut)?;
+        let step_duration = start_time.elapsed();
+
+        if self.config.verbose {
+            debug!("=== SGD Step {} Completed ===", self.state.iteration - 1);
+            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Converged: {}", convergence_info.converged);
+        }
+
+        let mut metadata = OptimizationMetadata::default();
+        metadata.timing_info.step_duration = step_duration;
+        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+        metadata.optimizer_data.insert("update_norm".to_string(), update_norm);
+        metadata.optimizer_data.insert("learning_rate".to_string(), self.config.learning_rate);
+        metadata.optimizer_data.insert("momentum".to_string(), self.config.momentum);
+
+        Ok(StepResult {
+            step_size: self.config.learning_rate,
+            function_evaluations: 0, // SGD doesn't do line search by default
+            gradient_evaluations: 0, // Gradients were provided
+            convergence_info,
+            metadata,
+        })
     }
 
     fn reset(&mut self) {

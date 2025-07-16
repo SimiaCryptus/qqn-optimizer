@@ -464,55 +464,104 @@ impl Optimizer for AdamOptimizer {
     fn step_with_gradients(
         &mut self,
         params: &mut [Tensor],
-        gradients: &[Tensor],
-    ) -> CandleResult<StepResult> {
-        // Create a thread-safe function wrapper that uses the provided gradients
-        let gradients_clone = gradients.to_vec();
-
-        let function = crate::core::optimizer::SeparateFunctions::new(
-            move |_params: &[Tensor]| -> CandleResult<f64> {
-                // Since we have pre-computed gradients, return a dummy value
-                Ok(0.0)
-            },
-            move |_: &[Tensor]| Ok(gradients_clone.clone()),
-        );
+        function: &dyn DifferentiableFunction,
+        _gradients: &[Tensor],
+    ) -> Result<StepResult, candle_core::Error> {
         
-        // For step_with_gradients, we need to handle convergence differently
-        // since we don't have access to function values
+        // Adam typically doesn't use line search, but we can still use the function
+        // for convergence checking and validation
         let start_time = Instant::now();
-        
-        // Apply weight decay and gradient clipping
+        if self.config.verbose {
+            debug!("=== Adam Step {} Starting (with precomputed gradients) ===", self.state.iteration);
+        }
+        // Store previous function value for change calculation
+        let prev_function_value = self.prev_function_value;
+        // Compute current function value using the provided function
+        let current_value = function.evaluate(params)?;
+        let function_change = prev_function_value.map(|prev| current_value - prev);
+
+        // Use the provided gradients (assumed to be at current parameters)
+        let gradients = function.gradient(params)?;
         let mut gradients_mut = gradients.to_vec();
+        // Log initial state in verbose mode
+        self.log_tensor_data("Initial Parameters", params);
+        self.log_tensor_data("Provided Gradients", &gradients_mut);
+        // Input validation
+        if params.is_empty() || gradients_mut.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+        }
+        if params.len() != gradients_mut.len() {
+            return Err(candle_core::Error::Msg(
+                format!("Parameter and gradient dimension mismatch: {} vs {}",
+                        params.len(), gradients_mut.len())
+            ));
+        }
+        // Apply weight decay and gradient clipping
         self.apply_weight_decay(&mut gradients_mut, params)?;
         self.apply_gradient_clipping(&mut gradients_mut)?;
+        // Compute gradient norm for logging
+        let grad_norm = crate::utils::math::compute_magnitude(&gradients_mut)?;
+        debug!("Adam step {}: grad_norm={:.6e}", self.state.iteration, grad_norm);
+        self.log_scalar("Gradient Norm", grad_norm);
+        // Update learning rate based on schedule
+        self.update_learning_rate(Some(current_value));
         
         // Compute parameter updates using Adam algorithm
         let updates = self.compute_updates(&gradients_mut)?;
+        self.log_tensor_data("Parameter Updates", &updates);
+        // Compute update norm
+        let update_norm = crate::utils::math::compute_magnitude(&updates)?;
+        self.log_scalar("Update Norm", update_norm);
+        // Adam typically uses a fixed step size of 1.0, but we could implement
+        // line search here if needed for better convergence
+        let step_size = 1.0;
         
-        // Apply the updates
+        // Apply the updates with step size: x_{k+1} = x_k - step_size * updates
         for (param, update) in params.iter_mut().zip(updates.iter()) {
-            *param = param.sub(update)?;
+            *param = param.sub(&update.affine(step_size, 0.0)?)?;
+        }
+        self.log_tensor_data("Updated Parameters", params);
+        // Check for NaN/Inf in updated parameters
+        for (i, param) in params.iter().enumerate() {
+            let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
+            if param_vec.iter().any(|&x| !x.is_finite()) {
+                return Err(candle_core::Error::Msg(
+                    format!("Non-finite parameter detected at index {} after update", i)
+                ));
+            }
         }
         
         // Increment iteration counter
         self.state.iteration += 1;
         
-        // For gradients-only mode, use simpler convergence check
-        let gradient_norm = crate::utils::math::compute_magnitude(&gradients_mut)?;
-        let convergence_info = ConvergenceInfo {
-            converged: gradient_norm < 1e-6,
-            function_change: None,
-        };
-        
+        // Compute convergence information
+        let convergence_info = self.compute_convergence_info(&gradients_mut, function_change)?;
         let step_duration = start_time.elapsed();
+
+        if self.config.verbose {
+            debug!("=== Adam Step {} Completed ===", self.state.iteration - 1);
+            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Converged: {}", convergence_info.converged);
+            debug!("  Current LR: {:.6e}", self.current_lr);
+            if let Some(change) = function_change {
+                debug!("  Function Change: {:.6e}", change);
+            }
+        }
+        
         let mut metadata = OptimizationMetadata::default();
         metadata.timing_info.step_duration = step_duration;
-        metadata.optimizer_data.insert("gradient_norm".to_string(), gradient_norm);
+        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+        metadata.optimizer_data.insert("update_norm".to_string(), update_norm);
         metadata.optimizer_data.insert("learning_rate".to_string(), self.current_lr);
+        metadata.optimizer_data.insert("beta1".to_string(), self.config.beta1);
+        metadata.optimizer_data.insert("beta2".to_string(), self.config.beta2);
+        if let Some(change) = function_change {
+            metadata.optimizer_data.insert("function_change".to_string(), change);
+        }
         
         Ok(StepResult {
-            step_size: self.current_lr,
-            function_evaluations: 0,
+            step_size: self.current_lr * step_size,
+            function_evaluations: 1,
             gradient_evaluations: 0,
             convergence_info,
             metadata,
