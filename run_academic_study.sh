@@ -30,8 +30,8 @@ echo "Collecting generated artifacts..."
 
     
     
-# Look for any benchmark_results directories (with timestamps)
-for dir in results/benchmark_results_*; do
+# Look for any benchmark/results directories (with timestamps)
+for dir in results/benchmark/results_*; do
     if [ -d "$dir" ]; then
         echo "Found benchmark results directory: $dir"
         # Copy all contents to output directory
@@ -45,8 +45,8 @@ for dir in results/benchmark_results_*; do
     fi
 done
 
-# Look for academic_exports directories
-for dir in results/academic_exports_*; do
+# Look for academic/exports directories
+for dir in results/academic/exports_*; do
     if [ -d "$dir" ]; then
         echo "Found academic exports directory: $dir"
         cp -r "$dir"/* "$OUTPUT_DIR/" 2>/dev/null || echo "No files to copy from $dir"
@@ -56,8 +56,8 @@ for dir in results/academic_exports_*; do
         find "$dir" -name "*.csv" -exec cp {} paper/analysis/ \; 2>/dev/null || echo "No CSV files found"
     fi
 done
-# Look for citation_test directories
-for dir in results/citation_test_*; do
+# Look for citation/test directories
+for dir in results/citation/test_*; do
     if [ -d "$dir" ]; then
         echo "Found citation test directory: $dir"
         cp -r "$dir"/* "$OUTPUT_DIR/" 2>/dev/null || echo "No files to copy from $dir"
@@ -75,7 +75,7 @@ done
 # List what was actually generated
 echo ""
 echo "Generated files:"
-find . -maxdepth 2 -name "results/benchmark_results_*" -o -name "results/academic_exports_*" -o -name "results/citation_test_*" -o -name "results/latex_output_*" | head -20
+find . -maxdepth 2 -name "results/benchmark/results_*" -o -name "results/academic/exports_*" -o -name "results/citation/test_*" -o -name "results/latex/output_*" | head -20
 echo ""
 echo "Contents of output directory:"
 ls -la "$OUTPUT_DIR" 2>/dev/null || echo "Output directory is empty"

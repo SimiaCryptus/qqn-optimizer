@@ -1,5 +1,16 @@
+use crate::utils::math::{f64_to_tensors, tensors_to_f64, DifferentiableFunction};
 use anyhow::Result;
+use candle_core::Tensor;
 use std::f64::consts::PI;
+
+/// Combined trait for optimization problems that are also differentiable
+pub trait OptimizationProblemDifferentiable: OptimizationProblem + DifferentiableFunction {}
+
+/// Blanket implementation for any type that implements both traits
+impl<T> OptimizationProblemDifferentiable for T 
+where 
+    T: OptimizationProblem + DifferentiableFunction 
+{}
 
 /// Trait defining an optimization problem interface
 pub trait OptimizationProblem: Send + Sync {
@@ -10,14 +21,36 @@ pub trait OptimizationProblem: Send + Sync {
     /// Get the initial starting point
     fn initial_point(&self) -> Vec<f64>;
     /// Evaluate the objective function at point x
-    fn evaluate(&self, x: &[f64]) -> Result<f64>;
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64>;
     /// Compute the gradient at point x
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>>;
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>>;
     /// Get the optimal value if known
     fn optimal_value(&self) -> Option<f64>;
     /// Get convergence tolerance
     fn convergence_tolerance(&self) -> f64;
 }
+
+/// Implement DifferentiableFunction for all types that implement OptimizationProblem
+impl<T: OptimizationProblem> DifferentiableFunction for T {
+    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
+        // Convert tensors to f64 values
+        let values = tensors_to_f64(params)?;
+        // Call the OptimizationProblem evaluate method
+        self.evaluate_f64(&values)
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))
+    }
+    fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
+        // Convert tensors to f64 values
+        let values = tensors_to_f64(params)?;
+        // Call the OptimizationProblem gradient method
+        let grad_values = self
+            .gradient_f64(&values)
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+        // Convert gradient values back to tensors with same shapes as input
+        f64_to_tensors(&grad_values, params)
+    }
+}
+
 /// Matyas function: f(x, y) = 0.26(x² + y²) - 0.48xy
 /// Global minimum: f(0, 0) = 0
 #[derive(Debug, Clone)]
@@ -41,7 +74,7 @@ impl OptimizationProblem for MatyasFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![1.0, 1.0]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Matyas function requires 2D input"));
         }
@@ -49,16 +82,13 @@ impl OptimizationProblem for MatyasFunction {
         let x2 = x[1];
         Ok(0.26 * (x1 * x1 + x2 * x2) - 0.48 * x1 * x2)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Matyas function requires 2D input"));
         }
         let x1 = x[0];
         let x2 = x[1];
-        Ok(vec![
-            0.52 * x1 - 0.48 * x2,
-            0.52 * x2 - 0.48 * x1,
-        ])
+        Ok(vec![0.52 * x1 - 0.48 * x2, 0.52 * x2 - 0.48 * x1])
     }
     fn optimal_value(&self) -> Option<f64> {
         Some(0.0)
@@ -90,7 +120,7 @@ impl OptimizationProblem for LeviFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![0.0, 0.0]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Levi function requires 2D input"));
         }
@@ -101,7 +131,7 @@ impl OptimizationProblem for LeviFunction {
         let term3 = (x2 - 1.0).powi(2) * (1.0 + (2.0 * PI * x2).sin().powi(2));
         Ok(term1 + term2 + term3)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Levi function requires 2D input"));
         }
@@ -109,7 +139,12 @@ impl OptimizationProblem for LeviFunction {
         let x2 = x[1];
         let grad_x1 = 2.0 * (3.0 * PI * x1).sin() * (3.0 * PI * x1).cos() * 3.0 * PI
             + 2.0 * (x1 - 1.0) * (1.0 + (3.0 * PI * x2).sin().powi(2));
-        let grad_x2 = (x1 - 1.0).powi(2) * 2.0 * (3.0 * PI * x2).sin() * (3.0 * PI * x2).cos() * 3.0 * PI
+        let grad_x2 = (x1 - 1.0).powi(2)
+            * 2.0
+            * (3.0 * PI * x2).sin()
+            * (3.0 * PI * x2).cos()
+            * 3.0
+            * PI
             + 2.0 * (x2 - 1.0) * (1.0 + (2.0 * PI * x2).sin().powi(2))
             + (x2 - 1.0).powi(2) * 2.0 * (2.0 * PI * x2).sin() * (2.0 * PI * x2).cos() * 2.0 * PI;
         Ok(vec![grad_x1, grad_x2])
@@ -144,30 +179,38 @@ impl OptimizationProblem for GoldsteinPriceFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![1.0, 1.0]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != 2 {
-            return Err(anyhow::anyhow!("Goldstein-Price function requires 2D input"));
+            return Err(anyhow::anyhow!(
+                "Goldstein-Price function requires 2D input"
+            ));
         }
         let x1 = x[0];
         let x2 = x[1];
-        let term1 = 1.0 + (x1 + x2 + 1.0).powi(2) * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
-        let term2 = 30.0 + (2.0 * x1 - 3.0 * x2).powi(2) * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
+        let term1 = 1.0
+            + (x1 + x2 + 1.0).powi(2)
+                * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
+        let term2 = 30.0
+            + (2.0 * x1 - 3.0 * x2).powi(2)
+                * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
         Ok(term1 * term2)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != 2 {
-            return Err(anyhow::anyhow!("Goldstein-Price function requires 2D input"));
+            return Err(anyhow::anyhow!(
+                "Goldstein-Price function requires 2D input"
+            ));
         }
         // This is a complex gradient calculation - using numerical differentiation for simplicity
         let h = 1e-8;
-        let f_x = self.evaluate(x)?;
+        let f_x = self.evaluate_f64(x)?;
         let mut x_plus_h = x.to_vec();
         x_plus_h[0] += h;
-        let f_x1_plus_h = self.evaluate(&x_plus_h)?;
+        let f_x1_plus_h = self.evaluate_f64(&x_plus_h)?;
         let grad_x1 = (f_x1_plus_h - f_x) / h;
         let mut x_plus_h = x.to_vec();
         x_plus_h[1] += h;
-        let f_x2_plus_h = self.evaluate(&x_plus_h)?;
+        let f_x2_plus_h = self.evaluate_f64(&x_plus_h)?;
         let grad_x2 = (f_x2_plus_h - f_x) / h;
         Ok(vec![grad_x1, grad_x2])
     }
@@ -203,7 +246,7 @@ impl OptimizationProblem for StyblinskiTangFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![0.0; self.dimension]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -213,7 +256,7 @@ impl OptimizationProblem for StyblinskiTangFunction {
             .sum();
         Ok(0.5 * sum)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -262,11 +305,12 @@ impl OptimizationProblem for MichalewiczFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![PI / 4.0; self.dimension]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
-        let sum: f64 = x.iter()
+        let sum: f64 = x
+            .iter()
             .enumerate()
             .map(|(i, &xi)| {
                 let i_plus_1 = (i + 1) as f64;
@@ -275,11 +319,12 @@ impl OptimizationProblem for MichalewiczFunction {
             .sum();
         Ok(-sum)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
-        let grad: Vec<f64> = x.iter()
+        let grad: Vec<f64> = x
+            .iter()
             .enumerate()
             .map(|(i, &xi)| {
                 let i_plus_1 = (i + 1) as f64;
@@ -288,7 +333,12 @@ impl OptimizationProblem for MichalewiczFunction {
                 let cos_inner = inner_arg.cos();
                 let power_term = sin_inner.powf(2.0 * self.m as f64);
                 let term1 = xi.cos() * power_term;
-                let term2 = xi.sin() * 2.0 * self.m as f64 * sin_inner.powf(2.0 * self.m as f64 - 1.0) * cos_inner * (2.0 * i_plus_1 * xi / PI);
+                let term2 = xi.sin()
+                    * 2.0
+                    * self.m as f64
+                    * sin_inner.powf(2.0 * self.m as f64 - 1.0)
+                    * cos_inner
+                    * (2.0 * i_plus_1 * xi / PI);
                 -(term1 + term2)
             })
             .collect();
@@ -348,7 +398,7 @@ impl OptimizationProblem for RosenbrockFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![-1.2; self.dimension]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -360,7 +410,7 @@ impl OptimizationProblem for RosenbrockFunction {
         }
         Ok(sum)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -407,7 +457,7 @@ impl OptimizationProblem for RastriginFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![2.0; self.dimension]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -418,7 +468,7 @@ impl OptimizationProblem for RastriginFunction {
             .sum();
         Ok(self.a * n + sum)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -460,14 +510,14 @@ impl OptimizationProblem for SphereFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![1.0; self.dimension]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
         let sum: f64 = x.iter().map(|&xi| xi * xi).sum();
         Ok(sum)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -478,7 +528,7 @@ impl OptimizationProblem for SphereFunction {
         Some(0.0)
     }
     fn convergence_tolerance(&self) -> f64 {
-        1e-4  // More lenient for SGD testing
+        1e-4 // More lenient for SGD testing
     }
 }
 /// Beale function: f(x, y) = (1.5 - x + xy)² + (2.25 - x + xy²)² + (2.625 - x + xy³)²
@@ -504,7 +554,7 @@ impl OptimizationProblem for BealeFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![1.0, 1.0]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Beale function requires 2D input"));
         }
@@ -515,7 +565,7 @@ impl OptimizationProblem for BealeFunction {
         let term3 = (2.625 - x1 + x1 * x2 * x2 * x2).powi(2);
         Ok(term1 + term2 + term3)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Beale function requires 2D input"));
         }
@@ -561,7 +611,7 @@ impl OptimizationProblem for HimmelblauFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![0.0, 0.0]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Himmelblau function requires 2D input"));
         }
@@ -571,7 +621,7 @@ impl OptimizationProblem for HimmelblauFunction {
         let term2 = (x1 + x2 * x2 - 7.0).powi(2);
         Ok(term1 + term2)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Himmelblau function requires 2D input"));
         }
@@ -611,7 +661,7 @@ impl OptimizationProblem for BoothFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![0.0, 0.0]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Booth function requires 2D input"));
         }
@@ -621,7 +671,7 @@ impl OptimizationProblem for BoothFunction {
         let term2 = (2.0 * x1 + x2 - 5.0).powi(2);
         Ok(term1 + term2)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != 2 {
             return Err(anyhow::anyhow!("Booth function requires 2D input"));
         }
@@ -673,7 +723,7 @@ impl OptimizationProblem for AckleyFunction {
     fn initial_point(&self) -> Vec<f64> {
         vec![1.0; self.dimension]
     }
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -684,7 +734,7 @@ impl OptimizationProblem for AckleyFunction {
         let term2 = -(sum_cos / n).exp();
         Ok(term1 + term2 + self.a + std::f64::consts::E)
     }
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -759,7 +809,7 @@ impl OptimizationProblem for GriewankFunction {
         vec![100.0; self.dimension] // Start far from optimum
     }
 
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -774,7 +824,7 @@ impl OptimizationProblem for GriewankFunction {
         Ok(1.0 + sum_squares / 4000.0 - product)
     }
 
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -843,20 +893,17 @@ impl OptimizationProblem for SchwefelFunction {
         vec![100.0; self.dimension] // Start away from global optimum
     }
 
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
 
-        let sum: f64 = x
-            .iter()
-            .map(|&xi| xi * (xi.abs().sqrt()).sin())
-            .sum();
+        let sum: f64 = x.iter().map(|&xi| xi * (xi.abs().sqrt()).sin()).sum();
 
         Ok(418.9829 * self.dimension as f64 - sum)
     }
 
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -921,7 +968,7 @@ impl OptimizationProblem for LevyFunction {
         vec![2.0; self.dimension] // Start near but not at optimum
     }
 
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -949,7 +996,7 @@ impl OptimizationProblem for LevyFunction {
         Ok(first_term + middle_sum + last_term)
     }
 
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -1032,7 +1079,7 @@ impl OptimizationProblem for ZakharovFunction {
         vec![1.0; self.dimension]
     }
 
-    fn evaluate(&self, x: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
@@ -1047,7 +1094,7 @@ impl OptimizationProblem for ZakharovFunction {
         Ok(sum1 + sum2.powi(2) + sum2.powi(4))
     }
 
-    fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }

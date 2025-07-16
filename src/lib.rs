@@ -23,7 +23,7 @@ pub use benchmarks::{
 
 pub use analysis::{
     plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine},
-    reporting::{AcademicReport, ReportGenerator},
+    reporting::AcademicReport,
     statistics::{ConvergenceComparison, PerformanceProfiles, StatisticalAnalysis},
 };
 

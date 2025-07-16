@@ -35,15 +35,15 @@ The main orchestrator for running optimization experiments.
 
 ```rust
 pub struct BenchmarkRunner {
-   config: BenchmarkConfig,
+    config: BenchmarkConfig,
 }
 
 pub struct BenchmarkConfig {
-   pub max_iterations: usize,      // Maximum iterations per run
-   pub tolerance: f64,             // Convergence tolerance
-   pub time_limit: Duration,       // Time limit per run
-   pub random_seed: u64,           // For reproducibility
-   pub num_runs: usize,            // Runs per configuration
+    pub max_iterations: usize,      // Maximum iterations per run
+    pub tolerance: f64,             // Convergence tolerance
+    pub time_limit: Duration,       // Time limit per run
+    pub random_seed: u64,           // For reproducibility
+    pub num_runs: usize,            // Runs per configuration
 }
 ```
 
@@ -76,16 +76,16 @@ Results are stored in structured formats:
 
 ```rust
 pub struct SingleResult {
-   pub problem_name: String,
-   pub optimizer_name: String,
-   pub run_id: usize,
-   pub final_value: f64,
-   pub final_gradient_norm: f64,
-   pub iterations: usize,
-   pub convergence_achieved: bool,
-   pub execution_time: Duration,
-   pub trace: OptimizationTrace,
-   pub convergence_reason: ConvergenceReason,
+    pub problem_name: String,
+    pub optimizer_name: String,
+    pub run_id: usize,
+    pub final_value: f64,
+    pub final_gradient_norm: f64,
+    pub iterations: usize,
+    pub convergence_achieved: bool,
+    pub execution_time: Duration,
+    pub trace: OptimizationTrace,
+    pub convergence_reason: ConvergenceReason,
 }
 ```
 
@@ -94,41 +94,42 @@ pub struct SingleResult {
 ### Running Benchmarks
 
 #### Basic Usage
+
 ```rust
 use qqn_optimizer::benchmarks::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-   // Configure benchmark
-   let config = BenchmarkConfig {
-      max_iterations: 1000,
-      tolerance: 1e-6,
-      num_runs: 10,
-      ..Default::default()
-   };
+    // Configure benchmark
+    let config = BenchmarkConfig {
+        max_iterations: 1000,
+        tolerance: 1e-6,
+        num_runs: 10,
+        ..Default::default()
+    };
 
-   // Create runner
-   let runner = BenchmarkRunner::new(config);
+    // Create runner
+    let runner = BenchmarkRunner::new(config);
 
-   // Define problems
-   let problems = vec![
-      Box::new(SphereFunction::new(10)),
-      Box::new(RosenbrockFunction::new(10)),
-   ];
+    // Define problems
+    let problems = vec![
+        Box::new(SphereFunction::new(10)),
+        Box::new(RosenbrockFunction::new(10)),
+    ];
 
-   // Define optimizers
-   let optimizers = vec![
-      Box::new(QQNOptimizer::new(QQNConfig::default())),
-      Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-   ];
+    // Define optimizers
+    let optimizers = vec![
+        Box::new(QQNOptimizer::new(QQNConfig::default())),
+        Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+    ];
 
-   // Run benchmarks
-   let results = runner.run_benchmarks(problems, optimizers).await?;
+    // Run benchmarks
+    let results = runner.run_benchmarks(problems, optimizers).await?;
 
-   // Save results
-   results.save_to_file(Path::new("results.json"))?;
+    // Save results
+    results.save_to_file(Path::new("results.json"))?;
 
-   Ok(())
+    Ok(())
 }
 ```
 
@@ -154,18 +155,18 @@ The framework tracks detailed optimization progress:
 
 ```rust
 pub struct OptimizationTrace {
-   pub iterations: Vec<IterationData>,
-   pub total_function_evaluations: usize,
-   pub total_gradient_evaluations: usize,
+    pub iterations: Vec<IterationData>,
+    pub total_function_evaluations: usize,
+    pub total_gradient_evaluations: usize,
 }
 
 pub struct IterationData {
-   pub iteration: usize,
-   pub function_value: f64,
-   pub gradient_norm: f64,
-   pub step_size: f64,
-   pub parameters: Vec<f64>,
-   pub timestamp: Duration,
+    pub iteration: usize,
+    pub function_value: f64,
+    pub gradient_norm: f64,
+    pub step_size: f64,
+    pub parameters: Vec<f64>,
+    pub timestamp: Duration,
 }
 ```
 
@@ -231,24 +232,24 @@ test.optimizer_a, test.optimizer_b);
 The framework generates comprehensive HTML reports with:
 
 1. **Executive Summary**
-   - Total problems tested
-   - Success rates by optimizer
-   - Key findings
+    - Total problems tested
+    - Success rates by optimizer
+    - Key findings
 
 2. **Detailed Results**
-   - Performance tables for each problem
-   - Convergence statistics
-   - Timing information
+    - Performance tables for each problem
+    - Convergence statistics
+    - Timing information
 
 3. **Statistical Analysis**
-   - Pairwise significance tests
-   - Effect sizes
-   - Confidence intervals
+    - Pairwise significance tests
+    - Effect sizes
+    - Confidence intervals
 
 4. **Visualizations**
-   - Convergence plots
-   - Performance profiles
-   - Box plots
+    - Convergence plots
+    - Performance profiles
+    - Box plots
 
 ### LaTeX Export
 
@@ -265,6 +266,7 @@ let significance_table = LaTeXTableGenerator::generate_significance_table( & ana
 ```
 
 Example LaTeX output:
+
 ```latex
 \begin{table}[htbp]
 \centering
@@ -299,6 +301,7 @@ summary.save_to_csv(Path::new("summary.csv")) ?;
 ### Quick Start
 
 1. **Run Basic Benchmarks**
+
 ```bash
 cargo test test_comprehensive_benchmarks -- --nocapture
 ```
@@ -375,9 +378,9 @@ random_seed: 42,
 
 - **p-value < 0.05**: Statistically significant difference
 - **Effect Size**:
-   - Small: |d| < 0.2
-   - Medium: 0.2 ≤ |d| < 0.8
-   - Large: |d| ≥ 0.8
+    - Small: |d| < 0.2
+    - Medium: 0.2 ≤ |d| < 0.8
+    - Large: |d| ≥ 0.8
 
 ### Performance Profiles
 
@@ -395,17 +398,17 @@ Performance profiles show the fraction of problems solved within a performance r
 use qqn_optimizer::benchmarks::functions::OptimizationProblem;
 
 pub struct CustomFunction {
-   // Your fields
+    // Your fields
 }
 
 impl OptimizationProblem for CustomFunction {
-   // Implement required methods
+    // Implement required methods
 }
 
 // Register in experiment
 let problems = vec![
-   Box::new(CustomFunction::new()),
-   // ... other problems
+    Box::new(CustomFunction::new()),
+    // ... other problems
 ];
 ```
 
@@ -413,17 +416,17 @@ let problems = vec![
 
 ```rust
 impl BenchmarkResults {
-   pub fn custom_metric(&self) -> HashMap<String, f64> {
-      let mut metrics = HashMap::new();
+    pub fn custom_metric(&self) -> HashMap<String, f64> {
+        let mut metrics = HashMap::new();
 
-      for (optimizer, results) in self.group_by_optimizer() {
-         // Calculate your metric
-         let metric_value = calculate_custom_metric(results);
-         metrics.insert(optimizer, metric_value);
-      }
+        for (optimizer, results) in self.group_by_optimizer() {
+            // Calculate your metric
+            let metric_value = calculate_custom_metric(results);
+            metrics.insert(optimizer, metric_value);
+        }
 
-      metrics
-   }
+        metrics
+    }
 }
 ```
 
@@ -433,51 +436,51 @@ impl BenchmarkResults {
 use qqn_optimizer::analysis::plotting::PlottingEngine;
 
 impl PlottingEngine {
-   pub fn custom_plot(&self, data: &CustomData) -> Result<()> {
-      // Use plotters crate to create custom visualizations
-   }
+    pub fn custom_plot(&self, data: &CustomData) -> Result<()> {
+        // Use plotters crate to create custom visualizations
+    }
 }
 ```
 
 ## Best Practices
 
 1. **Reproducibility**
-   - Always set random seeds
-   - Document hardware and software versions
-   - Save raw results for future analysis
+    - Always set random seeds
+    - Document hardware and software versions
+    - Save raw results for future analysis
 
 2. **Statistical Rigor**
-   - Run sufficient repetitions (≥10)
-   - Report confidence intervals
-   - Use appropriate statistical tests
+    - Run sufficient repetitions (≥10)
+    - Report confidence intervals
+    - Use appropriate statistical tests
 
 3. **Fair Comparison**
-   - Use same starting points
-   - Apply identical convergence criteria
-   - Consider problem-specific tolerances
+    - Use same starting points
+    - Apply identical convergence criteria
+    - Consider problem-specific tolerances
 
 4. **Reporting**
-   - Include both tables and visualizations
-   - Report failures and edge cases
-   - Provide interpretation guidelines
+    - Include both tables and visualizations
+    - Report failures and edge cases
+    - Provide interpretation guidelines
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Font Rendering Errors in Tests**
-   - The framework handles missing fonts gracefully
-   - Plots are optional for test success
+    - The framework handles missing fonts gracefully
+    - Plots are optional for test success
 
 2. **Numerical Instabilities**
-   - Check gradient implementations
-   - Verify function continuity
-   - Use appropriate scaling
+    - Check gradient implementations
+    - Verify function continuity
+    - Use appropriate scaling
 
 3. **Memory Issues**
-   - Reduce trace storage frequency
-   - Limit problem dimensions
-   - Use streaming analysis for large datasets
+    - Reduce trace storage frequency
+    - Limit problem dimensions
+    - Use streaming analysis for large datasets
 
 ### Debug Mode
 

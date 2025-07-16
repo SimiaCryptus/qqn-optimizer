@@ -15,7 +15,7 @@ pub mod statistics;
 pub use plotting::{
     ExtendedOptimizationTrace, PlotConfig, PlottingEngine,
 };
-pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter, ReportGenerator};
+pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter};
 pub use statistics::{
     ConvergenceComparison, EffectSize, PerformanceProfiles, RobustnessAnalysis, SignificanceTest,
     StatisticalAnalysis,

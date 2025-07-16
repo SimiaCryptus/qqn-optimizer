@@ -242,12 +242,12 @@ pub trait LineSearch: Send + Sync + Debug {
 
 ```rust
 pub struct LBFGSState {
-   s_history: VecDeque<Vec<Tensor>>,  // Parameter differences
-   y_history: VecDeque<Vec<Tensor>>,  // Gradient differences
-   rho_history: VecDeque<f64>,        // Curvature information
-   prev_gradient: Option<Vec<Tensor>>, // Previous gradient
+    s_history: VecDeque<Vec<Tensor>>,  // Parameter differences
+    y_history: VecDeque<Vec<Tensor>>,  // Gradient differences
+    rho_history: VecDeque<f64>,        // Curvature information
+    prev_gradient: Option<Vec<Tensor>>, // Previous gradient
     iteration: usize,
-   gamma: f64,                        // Hessian scaling factor
+    gamma: f64,                        // Hessian scaling factor
 }
 ```
 
@@ -286,7 +286,7 @@ pub enum OptError {
 
 ```rust
 fn step(&mut self, params: &mut [Tensor], function: &dyn DifferentiableFunction)
-    -> CandleResult<StepResult> {
+        -> CandleResult<StepResult> {
     // 1. Compute gradients
     let gradients = function.gradient(params)?;
 
@@ -404,19 +404,19 @@ impl TensorPool {
 use qqn_optimizer::{QQNOptimizer, QQNConfig, LineSearchConfig};
 
 // Basic usage
-let optimizer = QQNOptimizer::new(QQNConfig::default());
+let optimizer = QQNOptimizer::new(QQNConfig::default ());
 
 // Custom configuration
 let config = QQNConfig {
-    lbfgs_history: 20,
-    min_lbfgs_iterations: 3,
-    line_search: LineSearchConfig {
-        method: LineSearchMethod::Bisection,
-        max_iterations: 50,
-        ..Default::default()
-    },
-    epsilon: 1e-8,
-    verbose: true,
+lbfgs_history: 20,
+min_lbfgs_iterations: 3,
+line_search: LineSearchConfig {
+method: LineSearchMethod::Bisection,
+max_iterations: 50,
+..Default::default ()
+},
+epsilon: 1e-8,
+verbose: true,
 };
 let optimizer = QQNOptimizer::new(config);
 ```
@@ -441,15 +441,15 @@ impl DifferentiableFunction for MyFunction {
 // Optimization loop
 let mut params = initialize_parameters();
 let function = MyFunction;
-let mut optimizer = QQNOptimizer::new(QQNConfig::default());
+let mut optimizer = QQNOptimizer::new(QQNConfig::default ());
 
 for iteration in 0..max_iterations {
-    let result = optimizer.step(&mut params, &function)?;
+let result = optimizer.step( & mut params, & function) ?;
 
-    if result.convergence_info.converged {
-        println!("Converged at iteration {}", iteration);
-        break;
-    }
+if result.convergence_info.converged {
+println ! ("Converged at iteration {}", iteration);
+break;
+}
 }
 ```
 

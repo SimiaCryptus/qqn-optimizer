@@ -266,7 +266,7 @@ impl ExperimentConfig {
                 "At least one optimizer must be specified".to_string()
             ));
         }
-        
+
         // Validate problem configurations
         for problem in &self.problems {
             problem.validate()?;
@@ -752,7 +752,7 @@ impl<T> ConfigBuilder<T> {
             validators: Vec::new(),
         }
     }
-    pub fn add_validator<F>(mut self, validator: F) -> Self 
+    pub fn add_validator<F>(mut self, validator: F) -> Self
     where
         F: Fn(&T) -> Result<(), ConfigError> + 'static,
     {

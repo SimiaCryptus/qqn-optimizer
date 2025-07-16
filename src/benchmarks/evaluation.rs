@@ -1,10 +1,12 @@
-use crate::benchmarks::functions::OptimizationProblem;
-use crate::core::optimizer::OptimizerBox;
+use crate::benchmarks::functions::{OptimizationProblem, OptimizationProblemDifferentiable};
+use crate::core::optimizer::{OptimizerBox};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use candle_core::Device;
 use tokio::time::timeout;
+use crate::utils::math::{create_1d_tensor, f64_to_tensors, DifferentiableFunction};
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,7 +227,7 @@ impl BenchmarkRunner {
     /// Run benchmarks for all combinations of problems and optimizers
     pub async fn run_benchmarks(
         &self,
-        problems: Vec<Box<dyn OptimizationProblem>>,
+        problems: Vec<Box<dyn OptimizationProblemDifferentiable>>,
         optimizers: Vec<Box<dyn OptimizerBox>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
@@ -248,7 +250,7 @@ impl BenchmarkRunner {
     /// Run a single benchmark with one problem and one optimizer
     pub async fn run_single_benchmark(
         &self,
-        problem: &dyn OptimizationProblem,
+        problem: &dyn OptimizationProblemDifferentiable,
         optimizer: &dyn OptimizerBox,
         run_id: usize,
         opt_name: &String,
@@ -307,10 +309,10 @@ impl BenchmarkRunner {
 
         // Final evaluation
         let final_value = problem
-            .evaluate(&x)
+            .evaluate_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient = problem
-            .gradient(&x)
+            .gradient_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
         info!("Benchmark complete: {} with {} (run {}): final_value={:.6e}, grad_norm={:.6e}, iterations={}", 
@@ -361,7 +363,7 @@ impl BenchmarkRunner {
 
     async fn optimization_loop(
         &self,
-        problem: &dyn OptimizationProblem,
+        problem: &dyn OptimizationProblemDifferentiable,
         optimizer: &mut dyn OptimizerBox,
         x: &mut [f64],
         iteration: &mut usize,
@@ -382,7 +384,7 @@ impl BenchmarkRunner {
 
         while *iteration < self.config.max_iterations {
             // Evaluate function and gradient
-            let f_val = match problem.evaluate(x) {
+            let f_val = match problem.evaluate_f64(x) {
                 Ok(val) => val,
                 Err(e) => {
                     warn!("Function evaluation failed at iteration {}: {}", iteration, e);
@@ -415,7 +417,7 @@ impl BenchmarkRunner {
             }
 
             *function_evaluations += 1;
-            let gradient = match problem.gradient(x) {
+            let gradient = match problem.gradient_f64(x) {
                 Ok(grad) => grad,
                 Err(e) => {
                     warn!("Gradient evaluation failed at iteration {}: {}", iteration, e);
@@ -487,8 +489,14 @@ impl BenchmarkRunner {
             previous_f_val = Some(f_val);
 
             // Perform optimization step
+            let device = &Device::Cpu;
+            let mut tensors = [create_1d_tensor(x, device).map_err(|e| {
+                BenchmarkError::ProblemError(format!("Failed to create tensor: {}", e))
+            })?];
+            f64_to_tensors(x, &tensors)
+                .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             let step_result = optimizer
-                .step_slice(x, &gradient)
+                .step(&mut tensors, problem as &dyn DifferentiableFunction)
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
 
             // Update counters
@@ -624,7 +632,7 @@ mod tests {
 
         let runner = BenchmarkRunner::new(config);
 
-        let problems: Vec<Box<dyn OptimizationProblem>> = vec![Box::new(SphereFunction::new(2))];
+        let problems: Vec<Box<dyn OptimizationProblemDifferentiable>> = vec![Box::new(SphereFunction::new(2))];
 
         // Use a more conservative L-BFGS configuration for testing
         let mut lbfgs_config = LBFGSConfig::default();

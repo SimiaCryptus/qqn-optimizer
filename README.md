@@ -164,7 +164,7 @@ async fn main() -> anyhow::Result<()> {
     let results = runner.run_benchmarks(problems, optimizers).await?;
 
     // Save results
-    results.save_to_file(Path::new("results/benchmark_results.json"))?;
+    results.save_to_file(Path::new("results/benchmark/results.json"))?;
 
     Ok(())
 }

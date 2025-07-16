@@ -8,7 +8,12 @@
 
 use anyhow::{anyhow, Result};
 use candle_core::{Result as CandleResult, Tensor};
-use log::warn;
+use log::{debug, warn};
+
+/// Create a 1D tensor from a Vec<f64>
+pub fn create_1d_tensor(values: &[f64], device: &candle_core::Device) -> CandleResult<Tensor> {
+    Tensor::new(values, device)
+}
 
 pub(crate) fn f64_to_tensors(values: &[f64], template: &[Tensor]) -> CandleResult<Vec<Tensor>> {
     // Calculate total number of elements needed
@@ -73,10 +78,10 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
                 warn!("Tensor contains non-finite value: {}", val);
                 return Ok(f64::INFINITY);
             }
-            
+
             max_abs = max_abs.max(val.abs());
             count += 1;
-            
+
             // Kahan summation algorithm
             let square = val * val;
             let y = square - compensation;
@@ -201,6 +206,91 @@ pub fn vector_scale(tensors: &[Tensor], scale: f64) -> CandleResult<Vec<Tensor>>
     Ok(result)
 }
 
+/// Wrapper for separate objective and gradient functions
+pub struct SeparateFunctions<F, G>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
+{
+    objective_fn: F,
+    gradient_fn: G,
+}
+
+/// Trait for differentiable functions that can compute both value and gradients
+pub trait DifferentiableFunction: Send + Sync {
+    /// Evaluate the function at the given point
+    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64>;
+    /// Compute gradients at the given point
+    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
+}
+
+impl<F, G> SeparateFunctions<F, G>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
+{
+    pub fn new(objective_fn: F, gradient_fn: G) -> Self {
+        Self { objective_fn, gradient_fn }
+    }
+}
+impl<F, G> DifferentiableFunction for SeparateFunctions<F, G>
+where
+    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
+    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
+{
+    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
+        (self.objective_fn)(params)
+    }
+    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+        (self.gradient_fn)(params)
+    }
+}
+
+
+pub fn log_tensor(tensors: &[Tensor]) {
+    for (i, tensor) in tensors.iter().enumerate() {
+        match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
+            Ok(values) => {
+                debug!(
+                        "  Tensor[{}]: shape={:?}, values={:?}",
+                        i,
+                        tensor.shape(),
+                        values
+                    );
+                debug!("  Tensor[{}]: shape={:?}, dtype={:?}, device={:?}",
+                           i, tensor.shape(), tensor.dtype(), tensor.device());
+                if values.len() <= 10 {
+                    debug!("    Full data: {:?}", values);
+                } else {
+                    debug!(
+                            "    First 5: {:?}, Last 5: {:?}",
+                            &values[..5],
+                            &values[values.len() - 5..]
+                        );
+                }
+
+                // Log statistics
+                let mean = values.iter().sum::<f64>() / values.len() as f64;
+                let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+                let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                let l2_norm = values.iter().map(|x| x * x).sum::<f64>().sqrt();
+
+                debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}, norm={:.6e}",
+                          mean, variance.sqrt(), min_val, max_val, l2_norm);
+            }
+            Err(e) => {
+                debug!(
+                        "  Tensor[{}]: shape={:?}, error reading values: {}",
+                        i,
+                        tensor.shape(),
+                        e
+                    );
+            }
+        }
+    }
+}
+
 /// Scale tensors by a scalar (alias for vector_scale for consistency)
 pub fn scale_tensors(tensors: &[Tensor], scale: f64) -> CandleResult<Vec<Tensor>> {
     vector_scale(tensors, scale)
@@ -261,6 +351,142 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
     use candle_core::Device;
+    #[test]
+    fn test_f64_to_tensors() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let template = vec![
+            Tensor::zeros(&[2, 2], candle_core::DType::F64, &device)?,
+            Tensor::zeros(&[3], candle_core::DType::F64, &device)?,
+        ];
+        let values = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
+        let tensors = f64_to_tensors(&values, &template)?;
+        assert_eq!(tensors.len(), 2);
+        // Check first tensor (2x2)
+        let first_values = tensors[0].flatten_all()?.to_vec1::<f64>()?;
+        assert_eq!(first_values, vec![1.0, 2.0, 3.0, 4.0]);
+        // Check second tensor (3)
+        let second_values = tensors[1].to_vec1::<f64>()?;
+        assert_eq!(second_values, vec![5.0, 6.0, 7.0]);
+        // Test insufficient values
+        let short_values = vec![1.0, 2.0];
+        assert!(f64_to_tensors(&short_values, &template).is_err());
+        Ok(())
+    }
+    #[test]
+    fn test_tensors_to_f64() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let tensors = vec![
+            Tensor::from_slice(&[1.0, 2.0, 3.0, 4.0], &[2, 2], &device)?,
+            Tensor::from_slice(&[5.0, 6.0, 7.0], &[3], &device)?,
+        ];
+        let values = tensors_to_f64(&tensors)?;
+        assert_eq!(values, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]);
+        Ok(())
+    }
+    #[test]
+    fn test_compute_magnitude_edge_cases() -> CandleResult<()> {
+        let device = Device::Cpu;
+        // Test empty tensors
+        let empty_tensors: Vec<Tensor> = vec![];
+        assert_eq!(compute_magnitude(&empty_tensors)?, 0.0);
+        // Test with zero values
+        let zero_tensors = vec![Tensor::zeros(&[3], candle_core::DType::F64, &device)?];
+        assert_eq!(compute_magnitude(&zero_tensors)?, 0.0);
+        // Test with very large values (testing overflow prevention)
+        let large_values = vec![1e100, 2e100, 3e100];
+        let large_tensors = vec![Tensor::from_slice(&large_values, &[3], &device)?];
+        let magnitude = compute_magnitude(&large_tensors)?;
+        assert!(magnitude.is_finite());
+        assert!(magnitude > 0.0);
+        Ok(())
+    }
+    #[test]
+    fn test_dot_product_f64() -> Result<()> {
+        let a = vec![1.0, 2.0, 3.0];
+        let b = vec![4.0, 5.0, 6.0];
+        let result = dot_product_f64(&a, &b)?;
+        assert_relative_eq!(result, 32.0, epsilon = 1e-10); // 1*4 + 2*5 + 3*6 = 32
+        // Test mismatched lengths
+        let c = vec![1.0, 2.0];
+        assert!(dot_product_f64(&a, &c).is_err());
+        // Test empty vectors
+        let empty: Vec<f64> = vec![];
+        assert_eq!(dot_product_f64(&empty, &empty)?, 0.0);
+        Ok(())
+    }
+    #[test]
+    fn test_compute_parameter_change() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let p0 = vec![
+            Tensor::from_slice(&[1.0, 2.0], &[2], &device)?,
+            Tensor::from_slice(&[3.0, 4.0], &[2], &device)?,
+        ];
+        let p1 = vec![
+            Tensor::from_slice(&[2.0, 4.0], &[2], &device)?,
+            Tensor::from_slice(&[6.0, 8.0], &[2], &device)?,
+        ];
+        let change = compute_parameter_change(&p0, &p1)?;
+        // Change is sqrt((1^2 + 2^2 + 3^2 + 4^2)) = sqrt(30) ≈ 5.477
+        assert_relative_eq!(change, 30.0_f64.sqrt(), epsilon = 1e-10);
+        // Test mismatched lengths
+        let p2 = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
+        assert!(compute_parameter_change(&p0, &p2).is_err());
+        // Test no change
+        let no_change = compute_parameter_change(&p0, &p0)?;
+        assert_relative_eq!(no_change, 0.0, epsilon = 1e-10);
+        Ok(())
+    }
+    #[test]
+    fn test_scale_tensors_alias() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let tensors = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
+        let scaled = scale_tensors(&tensors, 3.0)?;
+        let values = scaled[0].to_vec1::<f64>()?;
+        assert_relative_eq!(values[0], 3.0, epsilon = 1e-10);
+        assert_relative_eq!(values[1], 6.0, epsilon = 1e-10);
+        Ok(())
+    }
+    #[test]
+    fn test_combine_tensors_alias() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let a = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
+        let b = vec![Tensor::from_slice(&[3.0, 4.0], &[2], &device)?];
+        let combined = combine_tensors(&a, &b)?;
+        let values = combined[0].to_vec1::<f64>()?;
+        assert_relative_eq!(values[0], 4.0, epsilon = 1e-10);
+        assert_relative_eq!(values[1], 6.0, epsilon = 1e-10);
+        Ok(())
+    }
+    #[test]
+    fn test_dot_product_error_cases() -> CandleResult<()> {
+        let device = Device::Cpu;
+        // Test mismatched vector lengths
+        let a = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
+        let b = vec![
+            Tensor::from_slice(&[3.0, 4.0], &[2], &device)?,
+            Tensor::from_slice(&[5.0], &[1], &device)?,
+        ];
+        assert!(dot_product(&a, &b).is_err());
+        // Test mismatched tensor shapes
+        let c = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
+        let d = vec![Tensor::from_slice(&[3.0, 4.0, 5.0], &[3], &device)?];
+        assert!(dot_product(&c, &d).is_err());
+        Ok(())
+    }
+    #[test]
+    fn test_vector_operations_errors() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let a = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
+        let b = vec![
+            Tensor::from_slice(&[2.0], &[1], &device)?,
+            Tensor::from_slice(&[3.0], &[1], &device)?,
+        ];
+        // Test mismatched lengths for various operations
+        assert!(vector_add(&a, &b).is_err());
+        assert!(vector_subtract(&a, &b).is_err());
+        Ok(())
+    }
+
 
     #[test]
     fn test_compute_magnitude() -> CandleResult<()> {

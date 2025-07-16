@@ -196,7 +196,7 @@ fn run_optimizer(
         }
 
         // Perform optimization step
-        let _step_result = optimizer.step_slice(&mut x, &gradient)
+        let _step_result = optimizer.step(&mut x, &gradient)
             .map_err(|e| anyhow::anyhow!("Optimizer step failed: {}", e))?;
 
         iteration += 1;

@@ -184,7 +184,7 @@ fn test_latex_table_generation() {
     println!("Generated significance table:\n{}", significance_table);
     // Save to files for verification
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("latex_output_{}", timestamp);
+    let output_dir_name = format!("results/latex/output_{}", timestamp);
     let output_dir = std::path::Path::new(&output_dir_name);
     std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
     std::fs::write(output_dir.join("performance_table.tex"), &latex_table)
@@ -193,7 +193,7 @@ fn test_latex_table_generation() {
         output_dir.join("significance_table.tex"),
         &significance_table,
     )
-    .expect("Failed to write significance table");
+        .expect("Failed to write significance table");
     println!("LaTeX tables saved to: {}", output_dir.display());
 }
 
@@ -201,7 +201,7 @@ fn test_latex_table_generation() {
 fn test_export_academic_formats() -> std::io::Result<()> {
     // Use a timestamped directory to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir = format!("results/academic_exports_{}", timestamp);
+    let output_dir = format!("results/academic/exports_{}", timestamp);
     let output_path = std::path::Path::new(&output_dir);
     std::fs::create_dir_all(output_path)?;
 

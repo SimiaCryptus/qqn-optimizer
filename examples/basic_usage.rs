@@ -8,7 +8,6 @@
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
-use rand::rngs::StdRng;
 use qqn_optimizer::core::optimizer::SeparateFunctions;
 use qqn_optimizer::{
     LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig,

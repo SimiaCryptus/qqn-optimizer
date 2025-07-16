@@ -4,8 +4,10 @@
 
 We present Quadratic Quasi-Newton (QQN), a novel optimization algorithm that addresses the practical limitations of
 L-BFGS in non-convex optimization, particularly for neural network training. QQN hybridizes quasi-Newton and gradient
-descent methods through a parametric quadratic spline that smoothly interpolates between the two search directions. Unlike
-existing hybrid methods that rely on linear convex combinations or discrete switching, QQN introduces a fundamentally new
+descent methods through a parametric quadratic spline that smoothly interpolates between the two search directions.
+Unlike
+existing hybrid methods that rely on linear convex combinations or discrete switching, QQN introduces a fundamentally
+new
 approach: parametric curve interpolation in the search direction space. The key innovation is constructing a quadratic
 parametric curve d_QQN(t) = t(1-t)(-g) + t²d_LBFGS that enables nonlinear adaptation to local problem structure. This
 represents the first application of parametric curve interpolation to search direction hybridization in optimization
@@ -29,9 +31,9 @@ relevant curvature information, or (3) numerical precision issues corrupt the qu
 algorithm may suggest steps that increase the objective function, necessitating extensive backtracking that reduces to
 inefficient small steps along suboptimal directions.
 
-We propose Quadratic Quasi-Newton (QQN), a hybrid optimization method that addresses these limitations through a 
-fundamentally new approach to combining optimization methods. While existing hybrid approaches use linear convex 
-combinations of the form d = αd_GD + (1-α)d_QN or employ discrete switching criteria, QQN introduces parametric curve 
+We propose Quadratic Quasi-Newton (QQN), a hybrid optimization method that addresses these limitations through a
+fundamentally new approach to combining optimization methods. While existing hybrid approaches use linear convex
+combinations of the form d = αd_GD + (1-α)d_QN or employ discrete switching criteria, QQN introduces parametric curve
 interpolation to the search direction space:
 
 **Parametric Curve Architecture**: QQN constructs a quadratic parametric curve d_QQN(t) = t(1-t)(-g) + t²d_LBFGS that
@@ -58,7 +60,6 @@ Our contributions are:
 4. **Empirical validation**: Comprehensive evaluation demonstrating improved stability over L-BFGS and advantages over
    existing hybrid methods
 
-
 ## 2. Background and Related Work
 
 ### 2.1 Quasi-Newton Methods
@@ -73,14 +74,15 @@ quality depends critically on the curvature condition $s_i^T y_i > 0$, which may
 
 ### 2.2 Hybrid Optimization Methods
 
-Despite extensive research on hybrid optimization methods, existing approaches have fundamental limitations that QQN addresses:
+Despite extensive research on hybrid optimization methods, existing approaches have fundamental limitations that QQN
+addresses:
 
-**Linear Convex Combinations**: Traditional hybrid methods use simple weighted averages d = αd_GD + (1-α)d_QN where α 
-is either fixed or adaptively chosen [[Byrd et al., 2016]](#byrd-et-al-2016). These linear combinations cannot capture 
+**Linear Convex Combinations**: Traditional hybrid methods use simple weighted averages d = αd_GD + (1-α)d_QN where α
+is either fixed or adaptively chosen [[Byrd et al., 2016]](#byrd-et-al-2016). These linear combinations cannot capture
 nonlinear relationships between methods and lack the geometric flexibility needed for adaptive optimization.
 
 **Trust Region Methods** [[Conn et al., 2000]](#conn-gould-toint-2000) constrain the step size within a region where the
-quadratic model is trusted. While effective, these methods operate by constraining the search region rather than 
+quadratic model is trusted. While effective, these methods operate by constraining the search region rather than
 modifying the search direction interpolation, representing a fundamentally different paradigm from QQN.
 
 **Switching Methods** [[Keskar & Berahas, 2016]](#keskar-berahas-2016) alternate between L-BFGS and SGD based on
@@ -92,7 +94,6 @@ ensure descent. This modifies the problem rather than the algorithm, potentially
 **Critical Gap**: No existing method uses parametric curve interpolation for search directions. While parametric curves
 are well-established in trajectory optimization and robotics, their application to interpolating between optimization
 methods represents unexplored territory that QQN addresses.
-
 
 ### 2.3 Line Search Methods
 
@@ -106,20 +107,23 @@ where $0 < c_1 < c_2 < 1$ (typically $c_1 = 10^{-4}$, $c_2 = 0.9$).
 
 Strong Wolfe conditions additionally require $|\nabla f(x + \alpha d)^T d| \leq c_2 |\nabla f(x)^T d|$ to prevent
 excessively large steps.
+
 ### 2.4 Parametric Methods in Optimization
-While parametric curves are used in trajectory optimization [[Ratliff et al., 2009]](#ratliff-et-al-2009) and 
-regularization path following [[Rosset, 2004]](#rosset-2004), these applications operate in parameter space rather 
-than search direction space. QQN's innovation lies in applying parametric interpolation to the search directions 
+
+While parametric curves are used in trajectory optimization [[Ratliff et al., 2009]](#ratliff-et-al-2009) and
+regularization path following [[Rosset, 2004]](#rosset-2004), these applications operate in parameter space rather
+than search direction space. QQN's innovation lies in applying parametric interpolation to the search directions
 themselves, creating a new optimization paradigm.
 
 ## 3. Method
 
 ### 3.1 Motivation
 
-Traditional hybrid optimization methods face fundamental limitations in how they combine different algorithmic approaches:
+Traditional hybrid optimization methods face fundamental limitations in how they combine different algorithmic
+approaches:
 
 1. **Linear combinations** d = αd_GD + (1-α)d_QN provide only fixed-rate transitions between methods
-2. **Discrete switching** causes optimization instability at transition boundaries  
+2. **Discrete switching** causes optimization instability at transition boundaries
 3. **Trust regions** constrain step sizes but don't address direction quality
 
 QQN introduces a fundamentally different approach: instead of linearly combining directions or switching between them,
@@ -139,11 +143,12 @@ This specific quadratic form emerges from rigorous analysis as the minimal polyn
 
 1. **Smooth interpolation**: $d_{QQN}(0) = 0$ (starting point), $d_{QQN}(1) = d_{LBFGS}$ (quasi-Newton limit)
 2. **Initial gradient behavior**: $d'_{QQN}(0) = -g$ (tangent to gradient descent at origin)
-3. **Nonlinear adaptation**: The quadratic terms enable curvature-dependent weighting impossible with linear combinations
+3. **Nonlinear adaptation**: The quadratic terms enable curvature-dependent weighting impossible with linear
+   combinations
 4. **Convergence stability**: Small perturbations in $d_{LBFGS}$ produce bounded changes in optimal $t^*$
 
-**Key Innovation**: Unlike convex combinations that maintain fixed proportions, the coefficients $t(1-t)$ and $t^2$ 
-create a nonlinear relationship that automatically emphasizes gradient descent for small steps and quasi-Newton for 
+**Key Innovation**: Unlike convex combinations that maintain fixed proportions, the coefficients $t(1-t)$ and $t^2$
+create a nonlinear relationship that automatically emphasizes gradient descent for small steps and quasi-Newton for
 larger steps, without requiring explicit thresholds or switching logic.
 
 ### 3.3 Theoretical Foundation for Quadratic Form
@@ -167,9 +172,6 @@ multiscale geometric information. Standard line search methods (backtracking, Wo
 The directional derivative along the curve is:
 $$\frac{d}{dt}f(x + d_{QQN}(t)) = \nabla f(x + d_{QQN}(t))^T \cdot d'_{QQN}(t)$$
 where $d'_{QQN}(t) = (1-2t)(-g) + 2t \cdot d_{LBFGS}$.
-
-
-
 
 ### 3.5 Complete Algorithm
 
@@ -201,9 +203,10 @@ Since $-\|g\|^2 < 0$ and by assumption $g^T d_{LBFGS} < 0$, we have $g^T d_{QQN}
 
 ### 4.2 Stability Analysis
 
-**Theorem 2 (Convergence Stability)**: QQN's quadratic form provides convergence stability where linear interpolation fails.
+**Theorem 2 (Convergence Stability)**: QQN's quadratic form provides convergence stability where linear interpolation
+fails.
 
-*Proof*: For linear interpolation $d_1(t) = (1-t)(-g) + td_{LBFGS}$, when $d_{LBFGS}$ becomes unreliable (e.g., 
+*Proof*: For linear interpolation $d_1(t) = (1-t)(-g) + td_{LBFGS}$, when $d_{LBFGS}$ becomes unreliable (e.g.,
 $g^T d_{LBFGS} \approx 0$), the optimal $t^*$ can jump discontinuously. For QQN's quadratic form, the critical point
 satisfies:
 $$\nabla f(x + d_{QQN}(t^*))^T [(1-2t^*)(-g) + 2t^*d_{LBFGS}] = 0$$
@@ -225,7 +228,7 @@ convergence. □
 QQN can be viewed as a generalization that unifies several optimization paradigms:
 
 1. **Gradient descent**: Recovered when $t \to 0$
-2. **L-BFGS**: Recovered when $t = 1$  
+2. **L-BFGS**: Recovered when $t = 1$
 3. **Trust region**: The constraint $t \in [0,1]$ implicitly defines a trust region in parameter space
 4. **Linear combinations**: Special case when restricting to $d(t) = (1-t)d_0 + td_1$
 
@@ -243,7 +246,6 @@ We evaluate QQN against standard optimizers on:
 4. **Comparison with hybrid methods**: Direct comparison with linear combination and switching-based hybrids
 
 All experiments use:
-
 
 ### 5.2 Results on Test Functions
 
@@ -274,8 +276,8 @@ interpolation over simple convex combinations.
 
 The optimal interpolation parameter $t^*$ naturally adapts during optimization:
 
-
-This automatic adaptation occurs without any explicit scheduling or thresholds, demonstrating the power of the parametric
+This automatic adaptation occurs without any explicit scheduling or thresholds, demonstrating the power of the
+parametric
 approach. Linear combination methods cannot achieve this smooth, continuous adaptation.
 
 ### 5.5 Comparison with Existing Hybrid Methods
@@ -290,7 +292,8 @@ approach. Linear combination methods cannot achieve this smooth, continuous adap
 | Trust Region L-BFGS | 712 | 1067 | 495 | 85% |
 | **QQN** | **634** | **956** | **487** | **89%** |
 
-QQN's parametric interpolation consistently outperforms existing hybrid approaches, validating the theoretical advantages
+QQN's parametric interpolation consistently outperforms existing hybrid approaches, validating the theoretical
+advantages
 of nonlinear interpolation over linear combinations and discrete switching.
 
 ## 6. Discussion
@@ -301,7 +304,6 @@ QQN adds minimal computational overhead compared to L-BFGS:
 
 The parametric curve computation is negligible compared to function evaluations, making QQN practical for large-scale
 applications.
-
 
 ### 6.2 Limitations
 
@@ -341,7 +343,7 @@ in optimization theory.
 
 Empirical results demonstrate that QQN achieves more stable convergence than L-BFGS while maintaining competitive
 iteration complexity. Direct comparisons with existing hybrid methods validate the advantages of nonlinear parametric
-interpolation over traditional approaches. The method is particularly effective on ill-conditioned and non-convex 
+interpolation over traditional approaches. The method is particularly effective on ill-conditioned and non-convex
 problems where L-BFGS struggles with unreliable search directions.
 
 QQN's parametric interpolation framework represents a significant contribution to optimization literature, filling a
@@ -368,13 +370,13 @@ training deep neural networks. Advances in Neural Information Processing Systems
 
 <a id="wolfe-1969"></a>Wolfe, P. (1969). Convergence conditions for ascent methods. SIAM review, 11(2), 226-235.
 
-<a id="byrd-et-al-2016"></a>Byrd, R. H., Hansen, S. L., Nocedal, J., & Singer, Y. (2016). A stochastic quasi-Newton 
+<a id="byrd-et-al-2016"></a>Byrd, R. H., Hansen, S. L., Nocedal, J., & Singer, Y. (2016). A stochastic quasi-Newton
 method for large-scale optimization. SIAM Journal on Optimization, 26(2), 1008-1031.
 
-<a id="ratliff-et-al-2009"></a>Ratliff, N., Zucker, M., Bagnell, J. A., & Srinivasa, S. (2009). CHOMP: Gradient 
+<a id="ratliff-et-al-2009"></a>Ratliff, N., Zucker, M., Bagnell, J. A., & Srinivasa, S. (2009). CHOMP: Gradient
 optimization techniques for efficient motion planning. In IEEE International Conference on Robotics and Automation.
 
-<a id="rosset-2004"></a>Rosset, S. (2004). Following curved regularized optimization solution paths. In Advances in 
+<a id="rosset-2004"></a>Rosset, S. (2004). Following curved regularized optimization solution paths. In Advances in
 Neural Information Processing Systems (pp. 1153-1160).
 
 ## Appendix A: Implementation Details

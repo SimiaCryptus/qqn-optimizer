@@ -2,7 +2,7 @@ use candle_core::{Device, Tensor};
 use log::{debug, warn};
 use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFunction, SphereFunction};
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
-use qqn_optimizer::core::optimizer::{DifferentiableFunction, ObjectiveOnlyFunction, Optimizer};
+use qqn_optimizer::core::optimizer::{DifferentiableFunction, Optimizer, SeparateFunctions};
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::init_logging;
 /// Wrapper to make benchmark functions work with the new DifferentiableFunction trait
@@ -170,12 +170,18 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
 fn test_qqn_numerical_stability() {
     let config = QQNConfig::default();
     let mut optimizer = QQNOptimizer::new(config);
-    // Create a simple objective function using ObjectiveOnlyFunction
+
+    // Create a simple function with exact gradients using SeparateFunctions
     let objective_fn = |tensors: &[Tensor]| -> candle_core::Result<f64> {
         let x = tensors[0].to_vec1::<f64>()?;
         Ok(x[0] * x[0] + x[1] * x[1])
     };
-    let function = ObjectiveOnlyFunction::new(objective_fn);
+    let gradient_fn = |tensors: &[Tensor]| -> candle_core::Result<Vec<Tensor>> {
+        let x = tensors[0].to_vec1::<f64>()?;
+        let grad = vec![2.0 * x[0], 2.0 * x[1]];
+        Ok(vec![tensor_from_vec(grad)])
+    };
+    let function = SeparateFunctions::new(objective_fn, gradient_fn);
 
 
     // Test with very small gradients
@@ -216,12 +222,18 @@ fn test_qqn_numerical_stability() {
 fn test_qqn_reset_functionality() {
     let config = QQNConfig::default();
     let mut optimizer = QQNOptimizer::new(config);
-    // Create a simple objective function using ObjectiveOnlyFunction
+
+    // Create a simple function with exact gradients using SeparateFunctions
     let objective_fn = |tensors: &[Tensor]| -> candle_core::Result<f64> {
         let x = tensors[0].to_vec1::<f64>()?;
         Ok(x[0] * x[0] + x[1] * x[1])
     };
-    let function = ObjectiveOnlyFunction::new(objective_fn);
+    let gradient_fn = |tensors: &[Tensor]| -> candle_core::Result<Vec<Tensor>> {
+        let x = tensors[0].to_vec1::<f64>()?;
+        let grad = vec![2.0 * x[0], 2.0 * x[1]];
+        Ok(vec![tensor_from_vec(grad)])
+    };
+    let function = SeparateFunctions::new(objective_fn, gradient_fn);
 
 
     // Perform several steps

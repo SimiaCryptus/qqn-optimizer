@@ -6,19 +6,19 @@ pub type OptResult<T> = Result<T, OptError>;
 pub enum OptError {
     #[error("Tensor operation failed: {0}")]
     TensorError(#[from] candle_core::Error),
-    
+
     #[error("Numerical error: {0}")]
     NumericalError(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     #[error("Convergence error: {0}")]
     ConvergenceError(String),
-    
+
     #[error("Line search failed: {0}")]
     LineSearchError(String),
-    
+
     #[error("Invalid input: {0}")]
     InvalidInput(String),
 }

@@ -4,148 +4,12 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
-use candle_core::Result as CandleResult;
 use candle_core::{Result, Tensor};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Debug;
 use std::time::Duration;
-/// Trait for differentiable functions that can compute both value and gradients
-pub trait DifferentiableFunction: Send + Sync {
-    /// Evaluate the function at the given point
-    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64>;
-    /// Compute gradients at the given point
-    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
-    /// Compute both value and gradients (default implementation calls both separately)
-    fn evaluate_with_gradient(&self, params: &[Tensor]) -> CandleResult<(f64, Vec<Tensor>)> {
-        let value = self.evaluate(params)?;
-        let grad = self.gradient(params)?;
-        Ok((value, grad))
-    }
-}
-/// Wrapper for functions that only provide objective evaluation
-pub struct ObjectiveOnlyFunction<F>
-where
-    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
-{
-    objective_fn: F,
-}
-impl<F> ObjectiveOnlyFunction<F>
-where
-    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
-{
-    pub fn new(objective_fn: F) -> Self {
-        Self { objective_fn }
-    }
-}
-impl<F> DifferentiableFunction for ObjectiveOnlyFunction<F>
-where
-    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
-{
-    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
-        (self.objective_fn)(params)
-    }
-    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-        // Validate input parameters
-        if params.is_empty() {
-            return Err(candle_core::Error::Msg("Empty parameter vector".into()));
-        }
-        
-        // Adaptive step size for finite differences
-        let base_h = f64::EPSILON.sqrt(); // More numerically stable choice
-        let mut gradients = Vec::new();
-
-        for (i, param) in params.iter().enumerate() {
-            // Check for valid tensor
-            if param.rank() == 0 {
-                return Err(candle_core::Error::Msg(
-                    format!("Parameter {} is a scalar, expected tensor", i)
-                ));
-            }
-            
-            let param_shape = param.shape();
-            let param_data = param.to_vec1::<f64>()?;
-            // Validate parameter data
-            if param_data.iter().any(|&x| !x.is_finite()) {
-                return Err(candle_core::Error::Msg(
-                    format!("Non-finite values in parameter {}", i)
-                ));
-            }
-            
-            let mut grad_data = vec![0.0; param_data.len()];
-
-            for j in 0..param_data.len() {
-                // Adaptive step size based on parameter magnitude
-                let scale = param_data[j].abs().max(1.0);
-                let h = base_h * scale;
-
-
-                // Use more stable finite difference formula
-                let mut params_eval = params.to_vec();
-                let mut data_eval = param_data.clone();
-
-                // Four-point central difference for better accuracy
-                data_eval[j] = param_data[j] + 2.0 * h;
-                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
-                let f_plus_2h = (self.objective_fn)(&params_eval)?;
-
-                data_eval[j] = param_data[j] + h;
-                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
-                let f_plus_h = (self.objective_fn)(&params_eval)?;
-
-                data_eval[j] = param_data[j] - h;
-                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
-                let f_minus_h = (self.objective_fn)(&params_eval)?;
-
-                data_eval[j] = param_data[j] - 2.0 * h;
-                params_eval[i] = Tensor::from_vec(data_eval.clone(), param_shape, param.device())?;
-                let f_minus_2h = (self.objective_fn)(&params_eval)?;
-
-                // Four-point formula: (-f(x+2h) + 8f(x+h) - 8f(x-h) + f(x-2h)) / (12h)
-                grad_data[j] = (-f_plus_2h + 8.0 * f_plus_h - 8.0 * f_minus_h + f_minus_2h) / (12.0 * h);
-
-                // Check for numerical issues
-                if !grad_data[j].is_finite() {
-                    // Fall back to two-point formula
-                    grad_data[j] = (f_plus_h - f_minus_h) / (2.0 * h);
-                }
-            }
-
-            gradients.push(Tensor::from_vec(grad_data, param_shape, param.device())?);
-        }
-        Ok(gradients)
-    }
-}
-/// Wrapper for separate objective and gradient functions
-pub struct SeparateFunctions<F, G>
-where
-    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
-    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
-{
-    objective_fn: F,
-    gradient_fn: G,
-}
-impl<F, G> SeparateFunctions<F, G>
-where
-    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
-    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
-{
-    pub fn new(objective_fn: F, gradient_fn: G) -> Self {
-        Self { objective_fn, gradient_fn }
-    }
-}
-impl<F, G> DifferentiableFunction for SeparateFunctions<F, G>
-where
-    F: Fn(&[Tensor]) -> CandleResult<f64> + Send + Sync,
-    G: Fn(&[Tensor]) -> CandleResult<Vec<Tensor>> + Send + Sync,
-{
-    fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
-        (self.objective_fn)(params)
-    }
-    fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-        (self.gradient_fn)(params)
-    }
-}
+use crate::utils::math::DifferentiableFunction;
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,11 +32,10 @@ impl Default for OptimizationMetadata {
 }
 /// Trait object-safe version of Optimizer for dynamic dispatch
 pub trait OptimizerBox: Send + Sync + std::fmt::Debug {
-    /// Perform a single optimization step with slice-based interface
-    fn step_slice(
+    fn step(
         &mut self,
-        params: &mut [f64],
-        gradients: &[f64],
+        params: &mut [Tensor],
+        differentiable_function: &dyn DifferentiableFunction,
     ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>>;
 
     /// Reset the optimizer state
@@ -214,22 +77,6 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
         function: &dyn DifferentiableFunction,
     ) -> Result<StepResult>;
 
-    /// Perform a single optimization step with pre-computed gradients
-    ///
-    /// # Arguments
-    /// * `params` - Mutable reference to parameter tensors to be updated
-    /// * `gradients` - Gradient tensors for the current parameters
-    /// * `objective_value` - Optional objective value at current parameters
-    ///
-    /// # Returns
-    /// A `StepResult` containing information about the optimization step
-    fn step_with_gradients(
-        &mut self,
-        params: &mut [Tensor],
-        function: &dyn DifferentiableFunction,
-        gradients: &[Tensor],
-    ) -> Result<StepResult>;
-
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
 
@@ -256,42 +103,14 @@ impl<T> OptimizerBox for T
 where
     T: Optimizer + Clone + 'static,
 {
-    fn step_slice(
+    fn step(
         &mut self,
-        params: &mut [f64],
-        gradients: &[f64],
+        params: &mut [Tensor],
+        differentiable_function: &dyn DifferentiableFunction,
     ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>> {
-        // Convert slices to tensors
-        let device = candle_core::Device::Cpu;
-        let param_tensor = candle_core::Tensor::from_slice(params, params.len(), &device)
-            .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-        let grad_tensor = candle_core::Tensor::from_slice(gradients, gradients.len(), &device)
-            .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-
-        let mut param_tensors = vec![param_tensor];
-        let grad_tensors = vec![grad_tensor];
-        // Create a dummy function since we're only using pre-computed gradients
-        let dummy_function = ObjectiveOnlyFunction::new(|_: &[Tensor]| {
-            Ok(0.0) // Dummy value since we won't use it
-        });
-
-
-        // Call the tensor-based step method
-        let result = self
-            .step_with_gradients(&mut param_tensors, &dummy_function, &grad_tensors)
-            .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-
-        // Copy results back to slice
-        if let Some(tensor) = param_tensors.first() {
-            let data = tensor
-                .to_vec1::<f64>()
-                .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            params.copy_from_slice(&data);
-        }
-
-        Ok(result)
+        let step_result = self.step(params, differentiable_function)?;
+        Ok(step_result)
     }
-
     fn reset(&mut self) {
         Optimizer::reset(self);
     }

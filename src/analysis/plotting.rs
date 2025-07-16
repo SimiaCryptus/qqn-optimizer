@@ -76,8 +76,6 @@ impl PlottingEngine {
         }
 
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-
-        // Try to create the backend and handle font errors gracefully
         let root = match BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area() {
             area => area,
         };
@@ -179,10 +177,10 @@ impl PlottingEngine {
         // Safely calculate log bounds with overflow protection
         let safe_min = min_positive_obj.max(1e-12).min(1e10);
         let safe_max = max_obj.max(1.0).min(1e10);
-        
+
         let log_min = safe_min.log10().max(-15.0).min(15.0);
         let log_max = safe_max.log10().max(-15.0).min(15.0);
-        
+
         // Ensure we have a valid range
         let (final_log_min, final_log_max) = if (log_max - log_min).abs() < 1e-10 {
             (log_min - 1.0, log_min + 1.0)

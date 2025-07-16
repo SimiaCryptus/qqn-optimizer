@@ -3,17 +3,6 @@
 use crate::analysis::AnalysisReport;
 use crate::core::OptResult;
 
-/// Report generator for academic publications
-pub struct ReportGenerator {
-    config: ReportConfig,
-}
-
-impl ReportGenerator {
-    pub fn new(config: ReportConfig) -> Self {
-        Self { config }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct ReportConfig {
     pub template: String,
