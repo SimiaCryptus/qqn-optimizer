@@ -46,7 +46,7 @@ pub fn create_1d_problem_candle<'a>(
 ) -> Result<OneDimensionalProblem<'a>> {
     // Get initial directional derivative
     let initial_derivative = curve.initial_derivative()?;
-    let initial_directional_derivative = initial_derivative[0];
+    let initial_directional_derivative = dot_product_f64(&current_gradient, &initial_derivative)?;
     debug!("create_1d_problem_candle: current_gradient={:?}, initial_derivative={:?}, initial_directional_derivative={:.6e}",
           current_gradient, initial_derivative, initial_directional_derivative);
     // Use Arc to share the curve between closures
@@ -91,7 +91,7 @@ pub fn create_1d_problem<'a>(
 ) -> Result<OneDimensionalProblem<'a>> {
     // Get initial directional derivative
     let initial_derivative = curve.initial_derivative()?;
-    let initial_directional_derivative = initial_derivative[0]; // Already computed by curve
+    let initial_directional_derivative = dot_product_f64(&current_gradient, &initial_derivative)?;
     debug!("create_1d_problem: current_gradient={:?}, initial_derivative={:?}, initial_directional_derivative={:.6e}",
           current_gradient, initial_derivative, initial_directional_derivative);
     
@@ -111,13 +111,14 @@ pub fn create_1d_problem<'a>(
     // Create 1D gradient function
     let gradient_1d = move |t: f64| -> Result<f64> {
         let result_vec = curve_for_gradient.evaluate(t)?;
+        let curve_derivative = curve_for_gradient.derivative(t)?;
         let result = gradient_fn(&result_vec)
             .and_then(|g| {
-                if g.len() != current_gradient.len() {
-                    return Err(anyhow!("Gradient length mismatch: expected {}, got {}", current_gradient.len(), g.len()));
+                if g.len() != curve_derivative.len() {
+                    return Err(anyhow!("Gradient length mismatch: expected {}, got {}", curve_derivative.len(), g.len()));
                 }
-                // Compute directional derivative using dot product
-                dot_product_f64(&g, &current_gradient)
+                // Compute directional derivative: ∇f(x(t)) · dx/dt
+                dot_product_f64(&g, &curve_derivative)
             })?;
         debug!("1-D gradient result at t={:.6e}; p={:?} = {:.6e}", t, result_vec, result);
         Ok(result)
