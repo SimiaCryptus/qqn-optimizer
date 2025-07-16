@@ -53,7 +53,7 @@ impl ExperimentRunner {
                 .iter()
                 .map(|&x| x + rng.random_range(-1.0..1.0)) // Random perturbation
                 .collect();
-            let initial_value = problem.evaluate(&initial_params)?;
+            let initial_value = problem.evaluate_f64(&initial_params)?;
             info!("Problem {}: initial_value = {:.6e}, dimensions = {}", 
                   problem.name(), initial_value, initial_params.len());
             // Ensure we're not starting at the optimum

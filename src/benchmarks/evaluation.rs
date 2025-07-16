@@ -1,4 +1,4 @@
-use crate::benchmarks::functions::{OptimizationProblem, OptimizationProblemDifferentiable};
+use crate::benchmarks::functions::{OptimizationProblem};
 use crate::core::optimizer::{OptimizerBox};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
@@ -227,7 +227,7 @@ impl BenchmarkRunner {
     /// Run benchmarks for all combinations of problems and optimizers
     pub async fn run_benchmarks(
         &self,
-        problems: Vec<Box<dyn OptimizationProblemDifferentiable>>,
+        problems: Vec<Box<dyn OptimizationProblem>>,
         optimizers: Vec<Box<dyn OptimizerBox>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
@@ -250,7 +250,7 @@ impl BenchmarkRunner {
     /// Run a single benchmark with one problem and one optimizer
     pub async fn run_single_benchmark(
         &self,
-        problem: &dyn OptimizationProblemDifferentiable,
+        problem: &dyn OptimizationProblem,
         optimizer: &dyn OptimizerBox,
         run_id: usize,
         opt_name: &String,
@@ -363,7 +363,7 @@ impl BenchmarkRunner {
 
     async fn optimization_loop(
         &self,
-        problem: &dyn OptimizationProblemDifferentiable,
+        problem: &dyn OptimizationProblem,
         optimizer: &mut dyn OptimizerBox,
         x: &mut [f64],
         iteration: &mut usize,
@@ -496,7 +496,8 @@ impl BenchmarkRunner {
             f64_to_tensors(x, &tensors)
                 .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             let step_result = optimizer
-                .step(&mut tensors, problem as &dyn DifferentiableFunction)
+                // .step(&mut tensors, problem)
+                .step(&mut tensors, convert_subtrait(problem))
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
 
             // Update counters
@@ -520,6 +521,10 @@ impl BenchmarkRunner {
 
         Ok(ConvergenceReason::MaxIterations)
     }
+}
+
+pub fn convert_subtrait(p0: &dyn OptimizationProblem) -> &dyn DifferentiableFunction {
+    todo!()
 }
 
 /// Benchmark execution errors
@@ -632,7 +637,7 @@ mod tests {
 
         let runner = BenchmarkRunner::new(config);
 
-        let problems: Vec<Box<dyn OptimizationProblemDifferentiable>> = vec![Box::new(SphereFunction::new(2))];
+        let problems: Vec<Box<dyn OptimizationProblem>> = vec![Box::new(SphereFunction::new(2))];
 
         // Use a more conservative L-BFGS configuration for testing
         let mut lbfgs_config = LBFGSConfig::default();

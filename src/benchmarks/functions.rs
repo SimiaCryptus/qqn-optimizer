@@ -3,17 +3,8 @@ use anyhow::Result;
 use candle_core::Tensor;
 use std::f64::consts::PI;
 
-/// Combined trait for optimization problems that are also differentiable
-pub trait OptimizationProblemDifferentiable: OptimizationProblem + DifferentiableFunction {}
-
-/// Blanket implementation for any type that implements both traits
-impl<T> OptimizationProblemDifferentiable for T 
-where 
-    T: OptimizationProblem + DifferentiableFunction 
-{}
-
 /// Trait defining an optimization problem interface
-pub trait OptimizationProblem: Send + Sync {
+pub trait OptimizationProblem: Send + Sync + DifferentiableFunction {
     /// Get the problem name
     fn name(&self) -> &str;
     /// Get the problem dimension
