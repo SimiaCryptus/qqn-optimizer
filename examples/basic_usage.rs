@@ -8,11 +8,11 @@
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
-use qqn_optimizer::core::optimizer::SeparateFunctions;
 use qqn_optimizer::{
     LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig,
     QQNOptimizer, RosenbrockFunction,
 };
+use qqn_optimizer::utils::math::SeparateFunctions;
 
 fn main() -> Result<()> {
     // Configure the QQN optimizer
@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
     println!("Starting optimization of 2D Rosenbrock function");
     println!("Initial point: {:?}", initial_point);
-    println!("Initial value: {:.6}", problem.evaluate(&initial_point)?);
+    println!("Initial value: {:.6}", problem.evaluate_f64(&initial_point)?);
 
     // Optimization loop
     let mut iteration = 0;
@@ -50,12 +50,12 @@ fn main() -> Result<()> {
 
     while iteration < max_iterations {
         // Compute gradient
-        let gradient = problem.gradient(&initial_point)?;
+        let gradient = problem.gradient_f64(&initial_point)?;
         let grad_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
         // Print progress
         if iteration % 10 == 0 {
-            let f_val = problem.evaluate(&initial_point)?;
+            let f_val = problem.evaluate_f64(&initial_point)?;
             println!("Iteration {}: f = {:.6}, ||∇f|| = {:.6}", iteration, f_val, grad_norm);
         }
 
@@ -73,11 +73,11 @@ fn main() -> Result<()> {
         let function = SeparateFunctions::new(
             |params: &[Tensor]| -> candle_core::Result<f64> {
                 let x_vec = params[0].to_vec1::<f64>()?;
-                problem.evaluate(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+                problem.evaluate_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
             },
             |params: &[Tensor]| -> candle_core::Result<Vec<Tensor>> {
                 let x_vec = params[0].to_vec1::<f64>()?;
-                let grad = problem.gradient(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+                let grad = problem.gradient_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
                 Ok(vec![Tensor::from_slice(&grad, grad.len(), &device).map_err(|e| candle_core::Error::Msg(e.to_string()))?])
             },
         );
@@ -98,8 +98,8 @@ fn main() -> Result<()> {
     }
 
     // Final results
-    let final_value = problem.evaluate(&initial_point)?;
-    let final_gradient = problem.gradient(&initial_point)?;
+    let final_value = problem.evaluate_f64(&initial_point)?;
+    let final_gradient = problem.gradient_f64(&initial_point)?;
     let final_grad_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
     println!("\nOptimization completed!");
