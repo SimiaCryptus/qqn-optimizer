@@ -136,15 +136,11 @@ impl ExperimentRunner {
             ),
             (
                 "SGD".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
-                    learning_rate: 0.1,
-                    ..Default::default()
-                })),
+                Box::new(SGDOptimizer::new(Default::default())),
             ),
             (
                 "SGD-Momentum".to_string(),
                 Box::new(SGDOptimizer::new(SGDConfig {
-                    learning_rate: 0.1,
                     momentum: 0.9,
                     ..Default::default()
                 })),
@@ -152,7 +148,6 @@ impl ExperimentRunner {
             (
                 "SGD-Nesterov".to_string(),
                 Box::new(SGDOptimizer::new(SGDConfig {
-                    learning_rate: 0.1,
                     momentum: 0.9,
                     nesterov: true,
                     ..Default::default()
@@ -160,19 +155,11 @@ impl ExperimentRunner {
             ),
             (
                 "Adam".to_string(),
-                Box::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.01,  // More reasonable learning rate for sphere function
-                    lr_schedule: "adaptive".to_string(),
-                    gradient_clip: Some(10.0),
-                    ..Default::default()
-                })),
+                Box::new(AdamOptimizer::new(Default::default())),
             ),
             (
                 "Adam-AMSGrad".to_string(),
                 Box::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1,
-                    lr_schedule: "adaptive".to_string(),
-                    gradient_clip: Some(10.0),
                     amsgrad: true,
                     ..Default::default()
                 })),

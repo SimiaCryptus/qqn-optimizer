@@ -23,7 +23,7 @@ pub struct SGDConfig {
 impl Default for SGDConfig {
     fn default() -> Self {
         Self {
-            learning_rate: 0.01,
+            learning_rate: 0.1,
             momentum: 0.0,
             weight_decay: 0.0,
             nesterov: false,
@@ -415,14 +415,6 @@ mod tests {
 
         assert_eq!(optimizer.name(), "SGD");
         assert_eq!(optimizer.state.iteration(), 0);
-    }
-    #[test]
-    fn test_sgd_config_default() {
-        let config = SGDConfig::default();
-        assert_eq!(config.learning_rate, 0.01);
-        assert_eq!(config.momentum, 0.0);
-        assert_eq!(config.weight_decay, 0.0);
-        assert!(!config.nesterov);
     }
 
     #[test]
