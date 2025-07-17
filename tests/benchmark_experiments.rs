@@ -24,11 +24,11 @@ pub struct ExperimentRunner {
 impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
-            max_iterations: 100,
+            max_iterations: 1000,
             tolerance: 1e-8,
             time_limit: Duration::from_secs(60).into(),
             random_seed: 42,
-            num_runs: 1,
+            num_runs: 5,
         };
 
         Self { output_dir, config }
@@ -90,73 +90,73 @@ impl ExperimentRunner {
     fn create_test_problems(&self) -> Vec<Box<dyn OptimizationProblem>> {
         vec![
             Box::new(SphereFunction::new(2)),
-            // Box::new(SphereFunction::new(10)),
-            // Box::new(RosenbrockFunction::new(2)),
-            // Box::new(RosenbrockFunction::new(5)),
-            // Box::new(BealeFunction::new()),
-            // Box::new(MatyasFunction::new()),
-            // Box::new(LeviFunction::new()),
-            // Box::new(GoldsteinPriceFunction::new()),
-            // Box::new(MichalewiczFunction::new(2)),
-            // Box::new(MichalewiczFunction::new(5)),
-            // Box::new(RastriginFunction::new(2)),
-            // Box::new(RastriginFunction::new(5)),
-            // Box::new(AckleyFunction::new(2)),
-            // Box::new(AckleyFunction::new(5)),
-            // Box::new(StyblinskiTangFunction::new(2)),
-            // Box::new(StyblinskiTangFunction::new(5)),
+            Box::new(SphereFunction::new(10)),
+            Box::new(RosenbrockFunction::new(2)),
+            Box::new(RosenbrockFunction::new(5)),
+            Box::new(BealeFunction::new()),
+            Box::new(MatyasFunction::new()),
+            Box::new(LeviFunction::new()),
+            Box::new(GoldsteinPriceFunction::new()),
+            Box::new(MichalewiczFunction::new(2)),
+            Box::new(MichalewiczFunction::new(5)),
+            Box::new(RastriginFunction::new(2)),
+            Box::new(RastriginFunction::new(5)),
+            Box::new(AckleyFunction::new(2)),
+            Box::new(AckleyFunction::new(5)),
+            Box::new(StyblinskiTangFunction::new(2)),
+            Box::new(StyblinskiTangFunction::new(5)),
         ]
     }
 
     fn create_optimizers(&self) -> Vec<(String, Box<dyn OptimizerBox>)> {
         vec![
-            // (
-            //     "QQN-Default".to_string(),
-            //     Box::new(QQNOptimizer::new(QQNConfig::default())),
-            // ),
-            // (
-            //     "QQN-Conservative".to_string(),
-            //     Box::new(QQNOptimizer::new(QQNConfig {
-            //         lbfgs_history: 15,
-            //         epsilon: 1e-10,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "L-BFGS".to_string(),
-            //     Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            // ),
-            // (
-            //     "L-BFGS-Large".to_string(),
-            //     Box::new(LBFGSOptimizer::new(LBFGSConfig {
-            //         history_size: 20,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "SGD".to_string(),
-            //     Box::new(SGDOptimizer::new(SGDConfig {
-            //         learning_rate: 0.1,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "SGD-Momentum".to_string(),
-            //     Box::new(SGDOptimizer::new(SGDConfig {
-            //         learning_rate: 0.1,
-            //         momentum: 0.9,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "SGD-Nesterov".to_string(),
-            //     Box::new(SGDOptimizer::new(SGDConfig {
-            //         learning_rate: 0.1,
-            //         momentum: 0.9,
-            //         nesterov: true,
-            //         ..Default::default()
-            //     })),
-            // ),
+            (
+                "QQN-Default".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig::default())),
+            ),
+            (
+                "QQN-Conservative".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    lbfgs_history: 15,
+                    epsilon: 1e-10,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "L-BFGS".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+            ),
+            (
+                "L-BFGS-Large".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig {
+                    history_size: 20,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Momentum".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.9,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Nesterov".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.9,
+                    nesterov: true,
+                    ..Default::default()
+                })),
+            ),
             (
                 "Adam".to_string(),
                 Box::new(AdamOptimizer::new(AdamConfig {
@@ -166,16 +166,16 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
-            // (
-            //     "Adam-AMSGrad".to_string(),
-            //     Box::new(AdamOptimizer::new(AdamConfig {
-            //         learning_rate: 0.1,
-            //         lr_schedule: "adaptive".to_string(),
-            //         gradient_clip: Some(10.0),
-            //         amsgrad: true,
-            //         ..Default::default()
-            //     })),
-            // ),
+            (
+                "Adam-AMSGrad".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.1,
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(10.0),
+                    amsgrad: true,
+                    ..Default::default()
+                })),
+            ),
         ]
     }
 
