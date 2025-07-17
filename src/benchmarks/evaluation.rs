@@ -4,7 +4,7 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use candle_core::Device;
+use candle_core::{Device, Tensor};
 use tokio::time::timeout;
 use crate::utils::math::{create_1d_tensor, f64_to_tensors, DifferentiableFunction};
 
@@ -495,9 +495,10 @@ impl BenchmarkRunner {
             })?];
             f64_to_tensors(x, &tensors)
                 .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+            // Create wrapper that lives long enough for the step call
+            let problem_wrapper = ProblemWrapper::new(problem);
             let step_result = optimizer
-                // .step(&mut tensors, problem)
-                .step(&mut tensors, convert_subtrait(problem))
+                .step(&mut tensors, &problem_wrapper)
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
 
             // Update counters
@@ -523,8 +524,31 @@ impl BenchmarkRunner {
     }
 }
 
-pub fn convert_subtrait(p0: &dyn OptimizationProblem) -> &dyn DifferentiableFunction {
-    todo!()
+
+/// Wrapper to convert OptimizationProblem to DifferentiableFunction
+pub struct ProblemWrapper<'a> {
+    problem: &'a dyn OptimizationProblem,
+}
+
+impl<'a> ProblemWrapper<'a> {
+    pub fn new(problem: &'a dyn OptimizationProblem) -> Self {
+        Self { problem }
+    }
+}
+
+impl<'a> DifferentiableFunction for ProblemWrapper<'a> {
+    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
+        let x_vec = crate::utils::math::tensors_to_f64(params)?;
+        self.problem.evaluate_f64(&x_vec)
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))
+    }
+    
+    fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
+        let x_vec = crate::utils::math::tensors_to_f64(params)?;
+        let grad_vec = self.problem.gradient_f64(&x_vec)
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+        crate::utils::math::f64_to_tensors(&grad_vec, params)
+    }
 }
 
 /// Benchmark execution errors

@@ -2,9 +2,11 @@ use candle_core::{Device, Tensor};
 use log::{debug, warn};
 use qqn_optimizer::benchmarks::functions::{OptimizationProblem, RosenbrockFunction, SphereFunction};
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
-use qqn_optimizer::core::optimizer::{DifferentiableFunction, Optimizer, SeparateFunctions};
+use qqn_optimizer::core::optimizer::{Optimizer};
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::init_logging;
+use qqn_optimizer::utils::math::{DifferentiableFunction, SeparateFunctions};
+
 /// Wrapper to make benchmark functions work with the new DifferentiableFunction trait
 struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
     problem: T,
@@ -17,11 +19,11 @@ impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {
 impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         let x_vec = tensors_to_vec(params);
-        self.problem.evaluate(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+        self.problem.evaluate_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
     }
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         let x_vec = tensors_to_vec(params);
-        let grad_vec = self.problem.gradient(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+        let grad_vec = self.problem.gradient_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
         Ok(vec![tensor_from_vec(grad_vec)])
     }
 }
@@ -58,7 +60,7 @@ async fn test_qqn_rosenbrock_optimization() {
 
 
     while iterations < max_iterations {
-        let gradient_vec = problem.problem.gradient(&x).unwrap();
+        let gradient_vec = problem.problem.gradient_f64(&x).unwrap();
         // Check gradient norm for convergence
         let grad_norm = gradient_vec.iter().map(|g| g * g).sum::<f64>().sqrt();
         if grad_norm < tolerance {
@@ -77,19 +79,19 @@ async fn test_qqn_rosenbrock_optimization() {
         // Update x for next iteration
         x = tensors_to_vec(&params);
         if iterations % 10 == 0 {
-            let f_val = problem.problem.evaluate(&x).unwrap();
+            let f_val = problem.problem.evaluate_f64(&x).unwrap();
             debug!("Iteration {}: f_val={:.6e}, grad_norm={:.6e}, step_size={:.6e}", 
                    iterations, f_val, grad_norm, step_result.step_size);
         }
         iterations += 1;
     }
 
-    let final_value = problem.problem.evaluate(&x).unwrap();
-    let final_gradient = problem.problem.gradient(&x).unwrap();
+    let final_value = problem.problem.evaluate_f64(&x).unwrap();
+    let final_gradient = problem.problem.gradient_f64(&x).unwrap();
     let final_grad_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
     // Check that we made reasonable progress
-    let initial_value = problem.problem.evaluate(&problem.problem.initial_point()).unwrap();
+    let initial_value = problem.problem.evaluate_f64(&problem.problem.initial_point()).unwrap();
     assert!(final_value < initial_value * 0.5 || final_grad_norm < 10.0,
             "QQN failed to make progress: initial={:.6e}, final={:.6e}, grad_norm={:.6e}",
             initial_value, final_value, final_grad_norm);
@@ -115,7 +117,7 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
     let max_iterations = 1000;
 
     while qqn_iterations < max_iterations {
-        let gradient_vec = problem.problem.gradient(&qqn_x).unwrap();
+        let gradient_vec = problem.problem.gradient_f64(&qqn_x).unwrap();
         let grad_norm = gradient_vec.iter().map(|g| g * g).sum::<f64>().sqrt();
         if grad_norm < 1e-6 {
             break;
@@ -139,7 +141,7 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
     let mut lbfgs_iterations = 0;
 
     while lbfgs_iterations < max_iterations {
-        let gradient_vec = problem.problem.gradient(&lbfgs_x).unwrap();
+        let gradient_vec = problem.problem.gradient_f64(&lbfgs_x).unwrap();
         let grad_norm = gradient_vec.iter().map(|g| g * g).sum::<f64>().sqrt();
         if grad_norm < 1e-6 {
             break;
@@ -153,8 +155,8 @@ async fn test_qqn_vs_lbfgs_sphere_function() {
         lbfgs_iterations += 1;
     }
 
-    let qqn_final_value = problem.problem.evaluate(&qqn_x).unwrap();
-    let lbfgs_final_value = problem.problem.evaluate(&lbfgs_x).unwrap();
+    let qqn_final_value = problem.problem.evaluate_f64(&qqn_x).unwrap();
+    let lbfgs_final_value = problem.problem.evaluate_f64(&lbfgs_x).unwrap();
 
     // Both should converge to near-zero
     assert!(qqn_final_value < 1e-2, "QQN failed to converge on sphere function: {}", qqn_final_value);

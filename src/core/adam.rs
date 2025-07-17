@@ -588,7 +588,6 @@ mod tests {
         assert_eq!(config.weight_decay, 0.0);
         assert!(!config.amsgrad);
         assert_eq!(config.max_line_search_iter, 10);
-        assert!(!config.verbose);
     }
 
     #[test]

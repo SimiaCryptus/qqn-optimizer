@@ -3,6 +3,7 @@ use crate::benchmarks::functions::OptimizationProblem;
 use anyhow::Result;
 
 /// Logistic regression optimization problem
+#[derive(Clone)]
 pub struct LogisticRegression {
     x_data: Vec<Vec<f64>>,
     y_data: Vec<f64>,
@@ -26,7 +27,9 @@ impl LogisticRegression {
         let mut y_data = Vec::new();
 
         for _ in 0..n_samples {
-            let x: Vec<f64> = (0..n_features).map(|_| rng.random_range(-1.0..1.0)).collect();
+            let x: Vec<f64> = (0..n_features)
+                .map(|_| rng.random_range(-1.0..1.0))
+                .collect();
             let linear_combination: f64 = x
                 .iter()
                 .enumerate()
@@ -102,9 +105,13 @@ impl OptimizationProblem for LogisticRegression {
     fn initial_point(&self) -> Vec<f64> {
         vec![0.0; self.dimension()]
     }
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
 }
 
 /// Neural network training problem (simplified MLP)
+#[derive(Clone)]
 pub struct NeuralNetworkTraining {
     layer_sizes: Vec<usize>,
     x_data: Vec<Vec<f64>>,
@@ -133,7 +140,9 @@ impl NeuralNetworkTraining {
         let mut y_data = Vec::new();
 
         for _ in 0..n_samples {
-            let x: Vec<f64> = (0..input_size).map(|_| rng.random_range(-1.0..1.0)).collect();
+            let x: Vec<f64> = (0..input_size)
+                .map(|_| rng.random_range(-1.0..1.0))
+                .collect();
             let mut y = vec![0.0; output_size];
             let class = rng.random_range(0..output_size);
             y[class] = 1.0;
@@ -156,6 +165,9 @@ impl NeuralNetworkTraining {
 }
 
 impl OptimizationProblem for NeuralNetworkTraining {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         "Neural Network Training"
     }
@@ -252,6 +264,7 @@ impl OptimizationProblem for NeuralNetworkTraining {
 }
 
 /// Linear regression optimization problem
+#[derive(Clone)]
 pub struct LinearRegression {
     x_data: Vec<Vec<f64>>,
     y_data: Vec<f64>,
@@ -269,6 +282,9 @@ impl LinearRegression {
 }
 
 impl OptimizationProblem for LinearRegression {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         "Linear Regression"
     }
@@ -330,6 +346,7 @@ impl OptimizationProblem for LinearRegression {
 }
 
 /// Support Vector Machine optimization problem (simplified)
+#[derive(Clone)]
 pub struct SupportVectorMachine {
     x_data: Vec<Vec<f64>>,
     y_data: Vec<f64>,
@@ -343,6 +360,9 @@ impl SupportVectorMachine {
 }
 
 impl OptimizationProblem for SupportVectorMachine {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         "Support Vector Machine"
     }

@@ -1,10 +1,10 @@
 use crate::utils::math::{f64_to_tensors, tensors_to_f64, DifferentiableFunction};
 use anyhow::Result;
-use candle_core::Tensor;
 use std::f64::consts::PI;
+use candle_core::{Result as CandleResult, Tensor};
 
 /// Trait defining an optimization problem interface
-pub trait OptimizationProblem: Send + Sync + DifferentiableFunction {
+pub trait OptimizationProblem: Send + Sync {
     /// Get the problem name
     fn name(&self) -> &str;
     /// Get the problem dimension
@@ -19,28 +19,13 @@ pub trait OptimizationProblem: Send + Sync + DifferentiableFunction {
     fn optimal_value(&self) -> Option<f64>;
     /// Get convergence tolerance
     fn convergence_tolerance(&self) -> f64;
+
+    /// Clone this optimization problem
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem>;
+
 }
 
-/// Implement DifferentiableFunction for all types that implement OptimizationProblem
-impl<T: OptimizationProblem> DifferentiableFunction for T {
-    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
-        // Convert tensors to f64 values
-        let values = tensors_to_f64(params)?;
-        // Call the OptimizationProblem evaluate method
-        self.evaluate_f64(&values)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))
-    }
-    fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
-        // Convert tensors to f64 values
-        let values = tensors_to_f64(params)?;
-        // Call the OptimizationProblem gradient method
-        let grad_values = self
-            .gradient_f64(&values)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        // Convert gradient values back to tensors with same shapes as input
-        f64_to_tensors(&grad_values, params)
-    }
-}
+
 
 /// Matyas function: f(x, y) = 0.26(x² + y²) - 0.48xy
 /// Global minimum: f(0, 0) = 0
@@ -87,6 +72,9 @@ impl OptimizationProblem for MatyasFunction {
     fn convergence_tolerance(&self) -> f64 {
         1e-6
     }
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
 }
 /// Levi N.13 function: f(x, y) = sin²(3πx) + (x-1)²(1 + sin²(3πy)) + (y-1)²(1 + sin²(2πy))
 /// Global minimum: f(1, 1) = 0
@@ -102,6 +90,9 @@ impl LeviFunction {
     }
 }
 impl OptimizationProblem for LeviFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -161,6 +152,9 @@ impl GoldsteinPriceFunction {
     }
 }
 impl OptimizationProblem for GoldsteinPriceFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -228,6 +222,9 @@ impl StyblinskiTangFunction {
     }
 }
 impl OptimizationProblem for StyblinskiTangFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -287,6 +284,9 @@ impl MichalewiczFunction {
     }
 }
 impl OptimizationProblem for MichalewiczFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -380,6 +380,9 @@ impl RosenbrockFunction {
     }
 }
 impl OptimizationProblem for RosenbrockFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -439,6 +442,9 @@ impl RastriginFunction {
     }
 }
 impl OptimizationProblem for RastriginFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -492,6 +498,9 @@ impl SphereFunction {
     }
 }
 impl OptimizationProblem for SphereFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -536,6 +545,9 @@ impl BealeFunction {
     }
 }
 impl OptimizationProblem for BealeFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -593,6 +605,9 @@ impl HimmelblauFunction {
     }
 }
 impl OptimizationProblem for HimmelblauFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -643,6 +658,9 @@ impl BoothFunction {
     }
 }
 impl OptimizationProblem for BoothFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -705,6 +723,9 @@ impl AckleyFunction {
     }
 }
 impl OptimizationProblem for AckleyFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -788,6 +809,9 @@ impl GriewankFunction {
 }
 
 impl OptimizationProblem for GriewankFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -872,6 +896,9 @@ impl SchwefelFunction {
 }
 
 impl OptimizationProblem for SchwefelFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -947,6 +974,9 @@ impl LevyFunction {
 }
 
 impl OptimizationProblem for LevyFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -1058,6 +1088,9 @@ impl ZakharovFunction {
 }
 
 impl OptimizationProblem for ZakharovFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
