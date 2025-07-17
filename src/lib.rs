@@ -1,6 +1,5 @@
 pub mod analysis;
 pub mod benchmarks;
-pub mod config;
 pub mod core;
 pub mod utils;
 
@@ -26,8 +25,6 @@ pub use analysis::{
     reporting::AcademicReport,
     statistics::{ConvergenceComparison, PerformanceProfiles, StatisticalAnalysis},
 };
-
-pub use config::{ExperimentConfig, OptimizerConfig, ProblemConfig};
 
 // Error types
 pub use anyhow::{Error, Result};

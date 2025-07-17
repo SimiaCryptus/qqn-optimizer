@@ -808,8 +808,7 @@ impl Optimizer for LBFGSOptimizer {
         // Convert tensors to f64 vectors for line search
         let current_point = tensors_to_f64(params)?;
         let direction_f64 = tensors_to_f64(&search_direction)?;
-        let gradient_f64 = tensors_to_f64(&gradients)?;
-
+        
         // Perform line search in a separate scope to avoid borrow conflicts
         let line_search_result = {
             // Create objective and gradient functions that work with f64 vectors
@@ -831,7 +830,6 @@ impl Optimizer for LBFGSOptimizer {
             let problem = create_1d_problem_linear(
                 &current_point,
                 &direction_f64,
-                &gradient_f64,
                 &objective_fn,
                 &gradient_fn,
             )

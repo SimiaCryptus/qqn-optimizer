@@ -98,7 +98,6 @@ pub fn create_1d_problem<'a>(
 pub fn create_1d_problem_linear<'a>(
     current_point: &'a [f64],
     direction: &'a [f64],
-    current_gradient: &'a [f64],
     objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
     gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
 ) -> Result<OneDimensionalProblem<'a>> {
@@ -367,11 +366,9 @@ impl StrongWolfeLineSearch {
         f0: f64,
         directional_derivative: f64,
         problem: &OneDimensionalProblem,
-    ) -> Result<(f64, usize, usize)> {
+    ) -> Result<f64> {
         let mut alpha_lo = alpha_lo;
         let mut alpha_hi = alpha_hi;
-        let mut f_evals = 0;
-        let mut g_evals = 0;
         let mut best_alpha = alpha_lo;
         let mut best_value = f64::INFINITY;
 
@@ -391,7 +388,6 @@ impl StrongWolfeLineSearch {
 
             // Evaluate 1D function at trial point
             let f_alpha_j = (problem.objective)(alpha_j)?;
-            f_evals += 1;
             // Track best point found
             if f_alpha_j < best_value {
                 best_value = f_alpha_j;
@@ -406,11 +402,10 @@ impl StrongWolfeLineSearch {
 
             // Evaluate 1D gradient at trial point
             let grad_alpha_j = (problem.gradient)(alpha_j)?;
-            g_evals += 1;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_j, directional_derivative) {
-                return Ok((alpha_j, f_evals, g_evals));
+                return Ok(alpha_j);
             }
 
             // Update interval
@@ -425,7 +420,7 @@ impl StrongWolfeLineSearch {
         }
 
         // Return best point found during search
-        Ok((best_alpha, f_evals, g_evals))
+        Ok(best_alpha)
     }
 }
 
@@ -450,8 +445,6 @@ impl LineSearch for StrongWolfeLineSearch {
         let mut alpha = self.config.initial_step;
         let mut alpha_prev = 0.0;
         let mut f_prev = f0;
-        let mut f_evals = 1; // Already evaluated f(0)
-        let mut g_evals = 0;
         let mut best_alpha = 0.0;
         let mut best_f = f0;
 
@@ -462,7 +455,6 @@ impl LineSearch for StrongWolfeLineSearch {
 
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;
-            f_evals += 1;
             self.log_verbose(&format!("  f({:.3e}) = {:.3e}", alpha, f_alpha));
             // Track best point found
             if f_alpha < best_f {
@@ -479,7 +471,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     alpha_prev, alpha
                 ));
                 // Zoom between alpha_prev and alpha
-                let (final_alpha, zoom_f_evals, zoom_g_evals) =
+                let final_alpha =
                     self.zoom(alpha_prev, alpha, f0, directional_derivative, &problem)?;
                 self.log_verbose(&format!("Zoom completed with alpha={:.3e}", final_alpha));
 
@@ -492,7 +484,6 @@ impl LineSearch for StrongWolfeLineSearch {
 
             // Evaluate gradient at current point
             let grad_alpha = (problem.gradient)(alpha)?;
-            g_evals += 1;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha, directional_derivative) {
@@ -513,7 +504,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     "  Gradient indicates overshoot, zooming between {:.3e} and {:.3e}",
                     alpha, alpha_prev
                 ));
-                let (final_alpha, zoom_f_evals, zoom_g_evals) =
+                let final_alpha =
                     self.zoom(alpha, alpha_prev, f0, directional_derivative, &problem)?;
 
                 return Ok(LineSearchResult {
@@ -686,7 +677,7 @@ fn find_far_point_1(problem: &OneDimensionalProblem, f0: f64, initial_steop: f64
 
 /// Find far point using simple function-value-based method
 /// Looks for a point where f(t) > f(0) (function value is worse than starting point)
-fn find_far_point_2(problem: &OneDimensionalProblem, f0: f64, initial_steop: f64, max_iterations: usize, min_step: f64, gradient_tolerance: f64, max_step: f64) -> Result<f64, Error> {
+fn find_far_point_2(problem: &OneDimensionalProblem, f0: f64, initial_steop: f64, max_iterations: usize, max_step: f64) -> Result<f64, Error> {
     let mut t = initial_steop;
     let mut iteration = 0;
     debug!("Finding far point starting from t={:.3e}", t);
@@ -822,7 +813,7 @@ impl LineSearch for BisectionLineSearch {
         let config = self.config.clone();
        let far_point = match config.line_bracket_method {
            1 => find_far_point_1(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, config.gradient_tolerance, config.max_step)?,
-           2 => find_far_point_2(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, config.gradient_tolerance, config.max_step)?,
+           2 => find_far_point_2(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.max_step)?,
            _ => return Err(anyhow!("Invalid line_bracket_method: {}. Must be 1 or 2", config.line_bracket_method)),
        };
         
@@ -921,14 +912,12 @@ impl LineSearch for BacktrackingLineSearch {
         }
 
         let mut alpha = self.config.initial_step;
-        let mut f_evals = 1; // Already evaluated f(0)
         let mut best_alpha = 0.0;
         let mut best_f = f0;
 
         for _ in 0..self.config.max_iterations {
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;
-            f_evals += 1;
             // Track best point
             if f_alpha < best_f {
                 best_f = f_alpha;
@@ -1056,17 +1045,14 @@ impl GoldenSectionLineSearch {
     const PHI: f64 = 1.618033988749895;
     const RESPHI: f64 = 2.0 - Self::PHI; // 1/phi
     /// Find minimum using golden section search
-    fn find_minimum(&self, problem: &OneDimensionalProblem) -> Result<(f64, usize, usize)> {
+    fn find_minimum(&self, problem: &OneDimensionalProblem) -> Result<f64> {
         let mut a = 0.0;
         let mut b = self.config.initial_step;
-        let mut f_evals = 0;
         let g_evals = 0;
         // First, find a bracket [a, b] where the minimum lies
         // Expand until we find a point where function starts increasing
         let mut f_a = (problem.objective)(a)?;
-        f_evals += 1;
         let mut f_b = (problem.objective)(b)?;
-        f_evals += 1;
         // If f(b) > f(a), we might already have a bracket
         if f_b > f_a {
             // Try to find a better bracket by expanding in the other direction
@@ -1075,13 +1061,10 @@ impl GoldenSectionLineSearch {
                 c = self.config.min_step;
             }
             let f_c = (problem.objective)(c)?;
-            f_evals += 1;
             if f_c < f_a {
                 // Minimum is to the left of a
                 b = a;
                 a = c;
-                f_b = f_a;
-                f_a = f_c;
             }
         } else {
             // Expand to the right to find bracket
@@ -1094,7 +1077,6 @@ impl GoldenSectionLineSearch {
                 f_a = f_b;
                 b = new_b;
                 f_b = (problem.objective)(b)?;
-                f_evals += 1;
             }
         }
         self.log_verbose(&format!("Initial bracket: [{:.6e}, {:.6e}]", a, b));
@@ -1103,7 +1085,6 @@ impl GoldenSectionLineSearch {
         let mut x2 = a + (1.0 - Self::RESPHI) * (b - a);
         let mut f1 = (problem.objective)(x1)?;
         let mut f2 = (problem.objective)(x2)?;
-        f_evals += 2;
         for i in 0..self.config.max_iterations {
             self.log_verbose(&format!(
                 "Iteration {}: interval=[{:.3e}, {:.3e}], x1={:.3e}, x2={:.3e}, f1={:.3e}, f2={:.3e}",
@@ -1119,7 +1100,6 @@ impl GoldenSectionLineSearch {
                 f2 = f1;
                 x1 = a + Self::RESPHI * (b - a);
                 f1 = (problem.objective)(x1)?;
-                f_evals += 1;
             } else {
                 // Minimum is in [x1, b]
                 a = x1;
@@ -1127,12 +1107,11 @@ impl GoldenSectionLineSearch {
                 f1 = f2;
                 x2 = a + (1.0 - Self::RESPHI) * (b - a);
                 f2 = (problem.objective)(x2)?;
-                f_evals += 1;
             }
         }
         let final_x = if f1 < f2 { x1 } else { x2 };
         self.log_verbose(&format!("Golden section completed with x={:.3e}", final_x));
-        Ok((final_x, f_evals, g_evals))
+        Ok(final_x)
     }
 }
 impl LineSearch for GoldenSectionLineSearch {
@@ -1162,7 +1141,7 @@ impl LineSearch for GoldenSectionLineSearch {
             return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
         }
 
-        let (step_size, f_evals, g_evals) = self.find_minimum(problem)?;
+        let step_size = self.find_minimum(problem)?;
         let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
         Ok(LineSearchResult {
             step_size,
@@ -1237,26 +1216,6 @@ impl MoreThuenteLineSearch {
         let curvature = grad_alpha.abs() <= self.config.c2 * grad0.abs();
         (armijo, curvature)
     }
-    /// Cubic interpolation step
-    fn cubic_interpolation(&self, x1: f64, f1: f64, g1: f64, x2: f64, f2: f64, g2: f64) -> f64 {
-        let d1 = g1 + g2 - 3.0 * (f1 - f2) / (x1 - x2);
-        let d2_sq = d1 * d1 - g1 * g2;
-        if d2_sq < 0.0 {
-            // Fall back to quadratic interpolation
-            return self.quadratic_interpolation(x1, f1, g1, x2, f2);
-        }
-        let d2 = d2_sq.sqrt();
-        let sign = if x2 > x1 { 1.0 } else { -1.0 };
-        x2 - (x2 - x1) * (g2 + d2 * sign - d1) / (g2 - g1 + 2.0 * d2 * sign)
-    }
-    /// Quadratic interpolation step
-    fn quadratic_interpolation(&self, x1: f64, f1: f64, g1: f64, x2: f64, f2: f64) -> f64 {
-        let a = (f2 - f1 - g1 * (x2 - x1)) / ((x2 - x1) * (x2 - x1));
-        if a.abs() < 1e-15 {
-            return 0.5 * (x1 + x2); // Linear case
-        }
-        x1 - g1 / (2.0 * a)
-    }
     /// Update interval using More-Thuente rules
     fn update_interval(
         &self,
@@ -1275,7 +1234,7 @@ impl MoreThuenteLineSearch {
         // Case 1: Higher function value
         if fp > *fx {
             let theta = 3.0 * (*fx - fp) / (stp - *stx) + *gx + gp;
-            let s = (theta.abs().max(gx.abs()).max(gp.abs()));
+            let s = theta.abs().max(gx.abs()).max(gp.abs());
             let mut gamma = s * ((theta / s).powi(2) - (*gx / s) * (gp / s)).sqrt();
             if stp < *stx {
                 gamma = -gamma;
@@ -1408,8 +1367,6 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut fy = f0;
         let mut gy = g0;
         let mut brackt = false;
-        let mut f_evals = 1;
-        let mut g_evals = 0;
         let mut best_stp = 0.0;
         let mut best_f = f0;
 
@@ -1421,8 +1378,6 @@ impl LineSearch for MoreThuenteLineSearch {
             // Evaluate function and gradient at current step
             let fp = (problem.objective)(stp)?;
             let gp = (problem.gradient)(stp)?;
-            f_evals += 1;
-            g_evals += 1;
             // Track best point
             if fp < best_f {
                 best_f = fp;
@@ -1550,7 +1505,7 @@ impl CubicQuadraticLineSearch {
         let config = self.config.clone();
         let far_point = match config.line_bracket_method {
             1 => find_far_point_1(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, 1e-16, config.max_step)?,
-            2 => find_far_point_2(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, 1e-16, config.max_step)?,
+            2 => find_far_point_2(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.max_step)?,
             _ => return Err(anyhow!("Invalid line_bracket_method: {}. Must be 1 or 2", config.line_bracket_method)),
         };
         // Verify we have a good interval
@@ -1663,8 +1618,6 @@ impl LineSearch for CubicQuadraticLineSearch {
         let mut alpha_prev = 0.0;
         let mut f_prev = f0;
         let mut g_prev = g0;
-        let mut f_evals = 1;
-        let mut g_evals = 0;
         let mut best_alpha = 0.0;
         let mut best_f = f0;
         let mut search_right_bound = right_bound;
@@ -1677,8 +1630,6 @@ impl LineSearch for CubicQuadraticLineSearch {
             // Evaluate at current step
             let f_alpha = (problem.objective)(alpha)?;
             let g_alpha = (problem.gradient)(alpha)?;
-            f_evals += 1;
-            g_evals += 1;
             // Track best point
             if f_alpha < best_f {
                 best_f = f_alpha;
@@ -1842,7 +1793,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -1872,7 +1822,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -1898,7 +1847,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -1922,7 +1870,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -1945,7 +1892,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -1968,7 +1914,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -2042,7 +1987,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &rosenbrock,
             &rosenbrock_gradient,
         )
@@ -2104,7 +2048,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &difficult_function,
             &difficult_gradient,
         )
@@ -2174,7 +2117,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -2197,7 +2139,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )
@@ -2220,7 +2161,6 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
         )

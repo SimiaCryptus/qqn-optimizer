@@ -52,9 +52,6 @@ impl OptimizationProblem for LogisticRegression {
     fn optimal_value(&self) -> Option<f64> {
         None // Logistic regression doesn't have a known global optimum
     }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
-    }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
         let mut loss = 0.0;
@@ -258,9 +255,6 @@ impl OptimizationProblem for NeuralNetworkTraining {
         None // Neural network training doesn't have a known global optimum
     }
 
-    fn convergence_tolerance(&self) -> f64 {
-        1e-5
-    }
 }
 
 /// Linear regression optimization problem
@@ -290,9 +284,6 @@ impl OptimizationProblem for LinearRegression {
     }
     fn optimal_value(&self) -> Option<f64> {
         None // Linear regression doesn't have a known global optimum
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
@@ -368,9 +359,6 @@ impl OptimizationProblem for SupportVectorMachine {
     }
     fn optimal_value(&self) -> Option<f64> {
         None // SVM doesn't have a known global optimum
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {

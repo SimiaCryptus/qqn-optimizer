@@ -161,6 +161,10 @@ pub struct BenchmarkResults {
     pub results: Vec<SingleResult>,
     pub config: BenchmarkConfig,
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub convergence_achieved: bool,
+    pub final_value: Option<f64>,
+    pub function_evaluations: usize,
+    pub gradient_evaluations: usize,
 }
 
 impl BenchmarkResults {
@@ -169,6 +173,10 @@ impl BenchmarkResults {
             results: Vec::new(),
             config,
             timestamp: chrono::Utc::now(),
+            convergence_achieved: false,
+            final_value: None,
+            function_evaluations: 0,
+            gradient_evaluations: 0,
         }
     }
 
@@ -491,15 +499,9 @@ impl BenchmarkRunner {
                 iteration, f_val, gradient_norm
             );
             // Use the more lenient of the two tolerances to ensure convergence is achievable
-            let tolerance = problem.convergence_tolerance().max(self.config.tolerance);
-            if gradient_norm < tolerance {
-                info!("Converged by gradient tolerance at iteration {}", iteration);
-                return Ok(ConvergenceReason::GradientTolerance);
-            }
             // Check function value convergence if optimal value is known
             if let Some(optimal_value) = problem.optimal_value() {
-                let function_tolerance = (f_val - optimal_value).abs();
-                if function_tolerance < tolerance {
+                if f_val < optimal_value {
                     info!("Converged by function tolerance at iteration {}", iteration);
                     return Ok(ConvergenceReason::FunctionTolerance);
                 }

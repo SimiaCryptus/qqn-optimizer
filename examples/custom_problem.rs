@@ -121,9 +121,6 @@ impl OptimizationProblem for QuadraticProblem {
         Some(self.optimal_value)
     }
 
-    fn convergence_tolerance(&self) -> f64 {
-        1e-8
-    }
    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
        Box::new(QuadraticProblem {
            name: self.name.clone(),
@@ -231,11 +228,6 @@ fn main() -> Result<()> {
              .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
          let gradient = problem.gradient_f64(&x)?;
          let grad_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-         // Check convergence
-         if grad_norm < problem.convergence_tolerance() {
-             println!("Converged in {} iterations", iteration);
-             break;
-         }
          // Perform optimization step
          let _step_result = optimizer.step(&mut params, problem)
              .map_err(|e| anyhow::anyhow!("Optimizer step failed: {}", e))?;

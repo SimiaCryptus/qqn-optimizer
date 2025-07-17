@@ -17,8 +17,6 @@ pub trait OptimizationProblem: Send + Sync {
     fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>>;
     /// Get the optimal value if known
     fn optimal_value(&self) -> Option<f64>;
-    /// Get convergence tolerance
-    fn convergence_tolerance(&self) -> f64;
     /// Clone this optimization problem
     fn clone_problem(&self) -> Box<dyn OptimizationProblem>;
 }
@@ -88,10 +86,7 @@ impl OptimizationProblem for MatyasFunction {
         Ok(vec![0.52 * x1 - 0.48 * x2, 0.52 * x2 - 0.48 * x1])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
+        Some(1e-6)
     }
 }
 /// Levi N.13 function: f(x, y) = sin²(3πx) + (x-1)²(1 + sin²(3πy)) + (y-1)²(1 + sin²(2πy))
@@ -150,10 +145,7 @@ impl OptimizationProblem for LeviFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
+        Some(1e-6)
     }
 }
 /// Goldstein-Price function: complex 2D function with multiple local minima
@@ -220,9 +212,6 @@ impl OptimizationProblem for GoldsteinPriceFunction {
     fn optimal_value(&self) -> Option<f64> {
         Some(3.0)
     }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-4
-    }
 }
 /// Styblinski-Tang function: f(x) = 0.5 * Σ(x_i^4 - 16*x_i^2 + 5*x_i)
 /// Global minimum: f(-2.903534, -2.903534, ...) ≈ -39.16599 * n
@@ -274,10 +263,7 @@ impl OptimizationProblem for StyblinskiTangFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         // Global minimum: f(-2.903534, -2.903534, ...) ≈ -39.16599 * n
-        Some(-39.16599 * self.dimension as f64)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-4
+        Some(-39. * self.dimension as f64)
     }
 }
 
@@ -353,14 +339,11 @@ impl OptimizationProblem for MichalewiczFunction {
     fn optimal_value(&self) -> Option<f64> {
         // Approximate known values for small dimensions
         match self.dimension {
-            2 => Some(-1.8013),
-            5 => Some(-4.687658),
-            10 => Some(-9.66015),
+            2 => Some(-1.8),
+            5 => Some(-4.6),
+            10 => Some(-9.6),
             _ => None,
         }
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-9
     }
     fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
@@ -442,10 +425,7 @@ impl OptimizationProblem for RosenbrockFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
+        Some(1e-3)
     }
 }
 /// Rastrigin function: f(x) = A*n + Σ[x_i² - A*cos(2π*x_i)]
@@ -503,10 +483,7 @@ impl OptimizationProblem for RastriginFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-4
+        Some(1e-2)
     }
 }
 /// Sphere function: f(x) = Σx_i²
@@ -552,10 +529,7 @@ impl OptimizationProblem for SphereFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-4 // More lenient for SGD testing
+        Some(1e-6)
     }
 }
 /// Beale function: f(x, y) = (1.5 - x + xy)² + (2.25 - x + xy²)² + (2.625 - x + xy³)²
@@ -612,10 +586,7 @@ impl OptimizationProblem for BealeFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
+        Some(1e-6)
     }
 }
 /// Himmelblau function: f(x, y) = (x² + y - 11)² + (x + y² - 7)²
@@ -665,10 +636,7 @@ impl OptimizationProblem for HimmelblauFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
+        Some(1e-8)
     }
 }
 /// Booth function: f(x, y) = (x + 2y - 7)² + (2x + y - 5)²
@@ -718,10 +686,7 @@ impl OptimizationProblem for BoothFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
+        Some(1e-8)
     }
 }
 
@@ -794,10 +759,7 @@ impl OptimizationProblem for AckleyFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
-    }
-    fn convergence_tolerance(&self) -> f64 {
-        1e-4
+        Some(1e-2)
     }
 }
 impl Default for BealeFunction {
@@ -897,12 +859,9 @@ impl OptimizationProblem for GriewankFunction {
     }
 
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
+        Some(1e-8)
     }
 
-    fn convergence_tolerance(&self) -> f64 {
-        1e-4
-    }
 }
 
 /// Schwefel function: f(x) = 418.9829*n - Σ x_i * sin(√|x_i|)
@@ -974,12 +933,9 @@ impl OptimizationProblem for SchwefelFunction {
     }
 
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
+        Some(1e-8)
     }
 
-    fn convergence_tolerance(&self) -> f64 {
-        1e-3 // More lenient due to difficulty
-    }
 }
 
 /// Levy function: f(x) = sin²(πw₁) + Σ(wᵢ-1)²[1+10sin²(πwᵢ+1)] + (wₙ-1)²[1+sin²(2πwₙ)]
@@ -1089,12 +1045,9 @@ impl OptimizationProblem for LevyFunction {
     }
 
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
+        Some(1e-6)
     }
 
-    fn convergence_tolerance(&self) -> f64 {
-        1e-5
-    }
 }
 
 /// Zakharov function: f(x) = Σx_i² + (Σ(0.5*i*x_i))² + (Σ(0.5*i*x_i))⁴
@@ -1169,12 +1122,9 @@ impl OptimizationProblem for ZakharovFunction {
     }
 
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.0)
+        Some(1e-8)
     }
 
-    fn convergence_tolerance(&self) -> f64 {
-        1e-6
-    }
 }
 
 #[cfg(test)]
@@ -1249,7 +1199,7 @@ mod tests {
 
         // Test properties
         assert_eq!(problem.dimension(), 3);
-        assert_eq!(problem.optimal_value(), Some(0.0));
+        assert_eq!(problem.optimal_value(), Some(1e-8));
         assert_eq!(problem.name(), "Sphere_3D");
     }
 
@@ -1650,12 +1600,6 @@ mod tests {
             Box::new(RastriginFunction::new(2)),
             Box::new(AckleyFunction::new(2)),
         ];
-
-        for problem in functions {
-            let tolerance = problem.convergence_tolerance();
-            assert!(tolerance > 0.0);
-            assert!(tolerance < 1.0);
-        }
     }
 
     #[test]

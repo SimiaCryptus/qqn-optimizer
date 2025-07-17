@@ -14,7 +14,7 @@ use crate::utils::math::{
 use crate::LineSearchConfig;
 use anyhow::{anyhow, Result as AnyhowResult};
 use candle_core::{Device, Error, Result as CandleResult, Tensor};
-use log::{debug, info, trace, warn};
+use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -231,12 +231,6 @@ impl QQNOptimizer {
         debug!("Starting line search for optimal t along quadratic path");
         // Create a parametric curve adapter for the quadratic path
         let curve = quadratic_path.clone();
-        // Get the initial derivative of the quadratic path for line search
-        let initial_derivative = curve.derivative(0.0).map_err(|e| {
-            Error::Msg(format!("Failed to get initial derivative: {}", e))
-        })?;
-
-        // Create objective and gradient functions
 
         // Create 1D problem
         let fn1 = |x: &[f64]| -> anyhow::Result<f64> {
@@ -293,6 +287,10 @@ impl QQNOptimizer {
         reason: &str,
     ) -> CandleResult<StepResult> {
         info!("Using steepest descent: {}", reason);
+        // Evaluate function at current parameters to check for increasing steps
+        let initial_function_value = function.evaluate(nd_params)?;
+        debug!("Initial function value (steepest descent): {:.6e}", initial_function_value);
+        
         // Create steepest descent direction (negative gradient)
         let direction = scale_tensors(gradients, -1.0)?;
         self.log_tensor_data("Steepest Descent Direction", &direction);
@@ -324,17 +322,10 @@ impl QQNOptimizer {
             .into_iter()
             .flatten()
             .collect();
-        let gradients_f64: Vec<f64> = gradients
-            .iter()
-            .map(|t| t.flatten_all()?.to_vec1::<f64>())
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
 
         // Creat a 1d tensor buffer for the unitary parameter
         // Perform line search in a separate scope to avoid borrow conflicts
-        let mut line_search_result = {
+        let line_search_result = {
             // Create objective and gradient functions
             let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
                 let _1d_params = create_1d_tensor(x, nd_params[0].device())?;
@@ -363,7 +354,6 @@ impl QQNOptimizer {
             let problem = create_1d_problem_linear(
                 &params_f64,
                 &direction_f64,
-                &gradients_f64,
                 &objective_fn,
                 &gradient_fn,
             )
@@ -407,10 +397,28 @@ impl QQNOptimizer {
         }
         // Log updated parameters
         self.log_tensor_data("Updated Parameters (Steepest Descent)", nd_params);
+        // FATAL ERROR CHECK: Verify that the steepest descent step decreased the function value
+        let final_function_value = function.evaluate(nd_params)?;
+        debug!("Final function value (steepest descent): {:.6e}", final_function_value);
+        if final_function_value > initial_function_value {
+            let increase = final_function_value - initial_function_value;
+            error!(
+                "FATAL ERROR: Steepest descent step increased function value by {:.6e} (from {:.6e} to {:.6e}). This should never happen!",
+                increase, initial_function_value, final_function_value
+            );
+            return Err(Error::Msg(format!(
+                "FATAL ERROR: Steepest descent step increased function value by {:.6e} (from {:.6e} to {:.6e}). This violates the descent property and should never happen.",
+                increase, initial_function_value, final_function_value
+            )));
+        }
+        let function_decrease = initial_function_value - final_function_value;
+        debug!("Function decreased by (steepest descent): {:.6e}", function_decrease);
+        self.log_scalar("Function Decrease (Steepest Descent)", function_decrease);
+        
         // Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: false,
-            function_change: None,
+            function_change: Some(function_decrease),
         };
         // Create metadata
         let mut metadata = OptimizationMetadata::default();
@@ -424,6 +432,15 @@ impl QQNOptimizer {
         metadata
             .optimizer_data
             .insert("reason".to_string(), reason.len() as f64); // Store reason length as proxy
+        metadata
+            .optimizer_data
+            .insert("function_decrease".to_string(), function_decrease);
+        metadata
+            .optimizer_data
+            .insert("initial_function_value".to_string(), initial_function_value);
+        metadata
+            .optimizer_data
+            .insert("final_function_value".to_string(), final_function_value);
         Ok(StepResult {
             step_size: line_search_result.step_size,
             convergence_info,
@@ -431,37 +448,6 @@ impl QQNOptimizer {
         })
     }
 
-    fn compute_scale_factor(
-        &mut self,
-        params: &mut [Tensor],
-        step_norm: f64,
-    ) -> Result<f64, Error> {
-        // Safety check: if step is too large, scale it down
-        // Make max step norm adaptive based on current parameter magnitude
-        let param_norm = compute_magnitude(params)?;
-        let max_step_norm = if param_norm > 0.0 {
-            // Allow steps up to 10% of parameter norm, but at least 1.0
-            (0.1 * param_norm).max(1.0)
-        } else {
-            1.0
-        };
-        let scaling_factor = if step_norm > max_step_norm {
-            warn!(
-                "Step norm {:.3e} exceeds maximum {:.3e}, scaling down",
-                step_norm, max_step_norm
-            );
-            self.log_scalar("Scaling Factor", max_step_norm / step_norm);
-            max_step_norm / step_norm
-        } else {
-            debug!(
-                "Max step norm: {:.3e} (based on param norm: {:.3e})",
-                max_step_norm, param_norm
-            );
-            self.log_scalar("Scaling Factor", 1.0);
-            1.0
-        };
-        Ok(scaling_factor)
-    }
 
     fn is_all_finite(tensor_vec: &Vec<Tensor>) -> bool {
         tensor_vec.iter().all(|d| {
@@ -497,6 +483,10 @@ impl Optimizer for QQNOptimizer {
             ));
         }
         self.log_tensor_data("Initial Parameters", params);
+        // Evaluate function at current parameters to check for increasing steps
+        let initial_function_value = function.evaluate(params)?;
+        debug!("Initial function value: {:.6e}", initial_function_value);
+
 
         // Compute gradients at current parameters
         let gradients = function.gradient(params)?;
@@ -590,6 +580,23 @@ impl Optimizer for QQNOptimizer {
         for (param, x) in params.iter_mut().zip(position.iter()) {
             *param = x.clone();
         }
+        // FATAL ERROR CHECK: Verify that the step decreased the function value
+        let final_function_value = function.evaluate(params)?;
+        debug!("Final function value: {:.6e}", final_function_value);
+        if final_function_value > initial_function_value {
+            let increase = final_function_value - initial_function_value;
+            error!(
+                "FATAL ERROR: QQN step increased function value by {:.6e} (from {:.6e} to {:.6e}). This should never happen!",
+                increase, initial_function_value, final_function_value
+            );
+            return Err(Error::Msg(format!(
+                "FATAL ERROR: QQN step increased function value by {:.6e} (from {:.6e} to {:.6e}). This violates the descent property and should never happen.",
+                increase, initial_function_value, final_function_value
+            )));
+        }
+        let function_decrease = initial_function_value - final_function_value;
+        debug!("Function decreased by: {:.6e}", function_decrease);
+        self.log_scalar("Function Decrease", function_decrease);
 
         // Check for NaN/Inf in updated parameters
         for (i, param) in params.iter().enumerate() {
@@ -622,7 +629,7 @@ impl Optimizer for QQNOptimizer {
         // 7. Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: false,      // QQN does not have a convergence criterion like L-BFGS
-            function_change: None, // Would need previous function value
+            function_change: Some(function_decrease),
         };
 
         let mut metadata = OptimizationMetadata::default();
@@ -633,6 +640,15 @@ impl Optimizer for QQNOptimizer {
         metadata
             .optimizer_data
             .insert("optimal_t".to_string(), line_search_result.step_size);
+        metadata
+            .optimizer_data
+            .insert("function_decrease".to_string(), function_decrease);
+        metadata
+            .optimizer_data
+            .insert("initial_function_value".to_string(), initial_function_value);
+        metadata
+            .optimizer_data
+            .insert("final_function_value".to_string(), final_function_value);
 
         Ok(StepResult {
             step_size: line_search_result.step_size,
