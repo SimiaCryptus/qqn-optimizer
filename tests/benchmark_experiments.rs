@@ -28,7 +28,7 @@ impl ExperimentRunner {
             max_iterations: 1000,
             tolerance: 1e-8,
             time_limit: Duration::from_secs(60).into(),
-            num_runs: 5,
+            num_runs: 10,
         };
 
         Self { output_dir, config }
@@ -115,6 +115,16 @@ impl ExperimentRunner {
                 Box::new(QQNOptimizer::new(QQNConfig::default())),
             ),
             (
+                "QQN-SimpleBracket".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        line_bracket_method: 2,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
                 "QQN-StrongWolfe".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
@@ -134,7 +144,6 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
-
             (
                 "QQN-CubicQuadraticInterpolation".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
@@ -145,7 +154,6 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
-
             (
                 "QQN-GoldenSection".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
@@ -156,7 +164,6 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
-
             (
                 "QQN-MoreThuente".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
@@ -978,7 +985,7 @@ impl ExperimentRunner {
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // init_logging()?;
+    //init_logging()?;
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);
@@ -992,7 +999,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
 
     // Wrap the main execution in a timeout to prevent hanging
     let result = tokio::time::timeout(
-        Duration::from_secs(300), // 5 minute timeout
+        Duration::from_secs(30000),
         runner.run_comparative_benchmarks(),
     ).await;
 

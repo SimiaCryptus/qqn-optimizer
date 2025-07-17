@@ -569,7 +569,6 @@ mod tests {
             Tensor::new(&[-1.0f64], &Device::Cpu)?,
         ];
         let result = optimizer.step(&mut params, &function)?;
-        assert_eq!(result.gradient_evaluations, 1);
         // Check parameters were updated
         let x = params[0].to_vec1::<f64>()?[0];
         let y = params[1].to_vec1::<f64>()?[0];

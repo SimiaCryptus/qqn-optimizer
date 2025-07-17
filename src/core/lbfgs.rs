@@ -141,10 +141,20 @@ impl LBFGSState {
     }
 
     /// Compute the L-BFGS search direction using the two-loop recursion
-    pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+    pub fn compute_direction(&mut self, params: &[Tensor], gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
         // Validate input
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
+        }
+        if params.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameter vector".into()));
+        }
+        if params.len() != gradient.len() {
+            return Err(candle_core::Error::Msg(format!(
+                "Parameter and gradient dimension mismatch: {} vs {}",
+                params.len(),
+                gradient.len()
+            )));
         }
 
         
@@ -322,47 +332,35 @@ impl LBFGSState {
     /// Update the L-BFGS state with new gradient and step information.
     pub fn update(
         &mut self,
+        old_params: &[Tensor],
+        new_params: &[Tensor],
         new_gradient: &[Tensor],
-        step_direction: &[Tensor],
-        step_size: f64,
     ) -> CandleResult<()> {
         // Early validation to avoid expensive computations
-        if new_gradient.is_empty() || step_direction.is_empty() {
+        if old_params.is_empty() || new_params.is_empty() || new_gradient.is_empty() {
             return Err(candle_core::Error::Msg(
-                "Empty gradient or direction vectors".into(),
+                "Empty parameter or gradient vectors".into(),
             ));
         }
-        if new_gradient.len() != step_direction.len() {
+        if old_params.len() != new_params.len() || new_params.len() != new_gradient.len() {
             return Err(candle_core::Error::Msg(format!(
-                "Gradient and direction dimension mismatch: {} vs {}",
-                new_gradient.len(),
-                step_direction.len()
+                "Parameter and gradient dimension mismatch: old={}, new={}, grad={}",
+                old_params.len(),
+                new_params.len(),
+                new_gradient.len()
             )));
-        }
-        if !step_size.is_finite() || step_size <= 0.0 {
-            warn!("Invalid step size: {}", step_size);
-            return Ok(()); // Skip update but don't fail
-        }
-        // Validate inputs
-        if new_gradient.is_empty() || step_direction.is_empty() {
-            return Err(candle_core::Error::Msg(
-                "Empty gradient or direction vectors".into(),
-            ));
-        }
-        if new_gradient.len() != step_direction.len() {
-            return Err(candle_core::Error::Msg(format!(
-                "Gradient and direction dimension mismatch: {} vs {}",
-                new_gradient.len(),
-                step_direction.len()
-            )));
-        }
-        if !step_size.is_finite() || step_size <= 0.0 {
-            warn!("L-BFGS: Invalid step size: {}", step_size);
-            return Ok(()); // Skip update but don't fail
         }
 
-        // Compute parameter difference: s_k = step_size * step_direction
-        let s_k = vector_scale(step_direction, step_size)?;
+        // Compute parameter difference: s_k = new_params - old_params
+        let s_k = vector_subtract(new_params, old_params)?;
+        
+        // Check if there was any actual movement
+        let s_k_norm = compute_magnitude(&s_k)?;
+        if s_k_norm < self.epsilon() {
+            debug!("L-BFGS: Parameter change too small ({}), skipping update", s_k_norm);
+            self.prev_gradient = Some(new_gradient.to_vec());
+            return Ok(());
+        }
 
         if let Some(prev_grad) = &self.prev_gradient {
             // Reserve capacity to avoid reallocations
@@ -672,7 +670,7 @@ impl Optimizer for LBFGSOptimizer {
 
         // Compute L-BFGS search direction
         self.log_lbfgs_state("Before computing direction");
-        let search_direction = self.state.compute_direction(&gradients)?;
+        let search_direction = self.state.compute_direction(params, &gradients)?;
         self.log_tensor_data("L-BFGS Search Direction", &search_direction);
 
         // Validate search direction
@@ -705,8 +703,14 @@ impl Optimizer for LBFGSOptimizer {
             // Update L-BFGS state
             // Don't update state with invalid steps
             if step_size > 0.0 {
+                let old_params_vec = params.to_vec();
+                for (param, dir) in params.iter_mut().zip(search_direction.iter()) {
+                    let step_size_tensor = Tensor::new(step_size, param.device())?;
+                    let update = dir.broadcast_mul(&step_size_tensor)?;
+                    *param = param.add(&update)?;
+                }
                 self.state
-                    .update(&gradients, &search_direction, step_size)?;
+                    .update(&old_params_vec, params, &gradients)?;
             }
 
             let convergence_info = self.compute_convergence_info(&gradients)?;
@@ -775,6 +779,7 @@ impl Optimizer for LBFGSOptimizer {
             // For very large gradients, use an extremely conservative fixed step
             let conservative_step = (1e-6 / (grad_norm + 1.0)).max(1e-12).min(1e-6);
             // Update parameters with conservative step
+            let old_params = params.to_vec();
             for (param, direction) in params.iter_mut().zip(&search_direction) {
                 let step_size_tensor = Tensor::new(conservative_step, param.device())?;
                 let step = direction.broadcast_mul(&step_size_tensor)?;
@@ -782,7 +787,7 @@ impl Optimizer for LBFGSOptimizer {
             }
             // Update L-BFGS state
             self.state
-                .update(&gradients, &search_direction, conservative_step)?;
+                .update(&old_params, params, &gradients)?;
             let convergence_info = self.compute_convergence_info(&gradients)?;
             let step_duration = start_time.elapsed();
             let mut metadata = OptimizationMetadata::default();
@@ -864,6 +869,7 @@ impl Optimizer for LBFGSOptimizer {
         }
 
         // Update parameters: x_{k+1} = x_k + alpha * p_k
+        let old_params = params.to_vec();
         for (param, direction) in params.iter_mut().zip(&search_direction) {
             let step_size_tensor = Tensor::new(actual_step_size, param.device())?;
             let step = direction.broadcast_mul(&step_size_tensor)?;
@@ -948,7 +954,7 @@ impl Optimizer for LBFGSOptimizer {
 
         // Update L-BFGS state with new information
         self.state
-            .update(&gradients, &search_direction, actual_step_size)?;
+            .update(&old_params, params, &gradients)?;
         self.log_lbfgs_state("After state update");
 
         // Compute convergence information
@@ -1084,10 +1090,11 @@ mod tests {
     fn test_lbfgs_steepest_descent_fallback() -> CandleResult<()> {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5, 1e-8);
+        let params = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
         let gradient = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
-        let direction = state.compute_direction(&gradient)?;
+        let direction = state.compute_direction(&params, &gradient)?;
 
         // Should return negative gradient (steepest descent)
         let expected = vec![Tensor::from_slice(&[-1.0, -2.0], (2,), &device)?];
@@ -1104,19 +1111,20 @@ mod tests {
     fn test_lbfgs_state_update() -> CandleResult<()> {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5, 1e-8);
+        let old_params = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
+        let new_params1 = vec![Tensor::from_slice(&[0.9, 0.9], &[2], &device)?];
+        let new_params2 = vec![Tensor::from_slice(&[0.8, 0.8], &[2], &device)?];
 
         let grad1 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[0.5, 0.5], &[2], &device)?];
-        let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
-        let step_size = 0.1;
 
         // First update should not add to history (no previous gradient)
-        state.update(&grad1, &direction, step_size)?;
+        state.update(&old_params, &new_params1, &grad1)?;
         assert_eq!(state.history_length(), 0);
         assert_eq!(state.iteration(), 1);
 
         // Second update should add to history
-        state.update(&grad2, &direction, step_size)?;
+        state.update(&new_params1, &new_params2, &grad2)?;
         assert_eq!(state.history_length(), 1);
         assert_eq!(state.iteration(), 2);
 
@@ -1127,20 +1135,21 @@ mod tests {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5, 1e-8);
         // Build up some history with more distinct gradients and directions
-        // First iteration: gradient [2.0, 4.0], direction [-1.0, -2.0], step 0.1
+        // First iteration: gradient [2.0, 4.0], move from [0, 0] to [-0.1, -0.2]
+        let params0 = vec![Tensor::from_slice(&[0.0, 0.0], &[2], &device)?];
+        let params1 = vec![Tensor::from_slice(&[-0.1, -0.2], &[2], &device)?];
         let grad1 = vec![Tensor::from_slice(&[2.0, 4.0], &[2], &device)?];
-        let direction1 = vec![Tensor::from_slice(&[-1.0, -2.0], &[2], &device)?];
-        let step1 = 0.1;
-        // Second iteration: gradient [1.0, 1.0] (different from first), same direction, step 0.1
+        
+        // Second iteration: gradient [1.0, 1.0], move from [-0.1, -0.2] to [-0.2, -0.4]
+        let params2 = vec![Tensor::from_slice(&[-0.2, -0.4], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
-        let direction2 = vec![Tensor::from_slice(&[-1.0, -2.0], &[2], &device)?];
-        let step2 = 0.1;
 
-        state.update(&grad1, &direction1, step1)?;
-        state.update(&grad2, &direction2, step2)?;
+        state.update(&params0, &params1, &grad1)?;
+        state.update(&params1, &params2, &grad2)?;
         // Now compute a direction with history
+        let current_params = vec![Tensor::from_slice(&[-0.2, -0.4], &[2], &device)?];
         let grad3 = vec![Tensor::from_slice(&[0.8, 0.4], &[2], &device)?];
-        let direction = state.compute_direction(&grad3)?;
+        let direction = state.compute_direction(&current_params, &grad3)?;
         // Direction should be different from steepest descent due to history
         let steepest_descent = vec![Tensor::from_slice(&[-0.8, -0.4], &[2], &device)?];
         let dir_values = direction[0].to_vec1::<f64>()?;
@@ -1186,14 +1195,14 @@ mod tests {
     fn test_curvature_condition_rejection() -> CandleResult<()> {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5, 1e-8);
+        let old_params = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
+        let new_params = vec![Tensor::from_slice(&[0.9, 0.9], &[2], &device)?];
 
         let grad1 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?]; // Same gradient
-        let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
-        let step_size = 0.1;
 
-        state.update(&grad1, &direction, step_size)?;
-        state.update(&grad2, &direction, step_size)?;
+        state.update(&old_params, &new_params, &grad1)?;
+        state.update(&new_params, &old_params, &grad2)?;  // Move back to test zero curvature
 
         // With Powell damping, zero curvature gets corrected and update is accepted
         // The original test expected rejection, but Powell damping allows acceptance
@@ -1208,14 +1217,20 @@ mod tests {
         let mut state = LBFGSState::new(2, 1e-8); // Small history size
 
         // Add more updates than history size
+        let mut old_params = vec![Tensor::from_slice(&[0.0, 0.0], &[2], &device)?];
         for i in 0..5 {
+            let new_params = vec![Tensor::from_slice(
+                &[0.0 - (i + 1) as f64 * 0.1, 0.0 - (i + 1) as f64 * 0.1],
+                &[2],
+                &device,
+            )?];
             let grad = vec![Tensor::from_slice(
                 &[1.0 + i as f64 * 0.1, 1.0],
                 &[2],
                 &device,
             )?];
-            let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
-            state.update(&grad, &direction, 0.1)?;
+            state.update(&old_params, &new_params, &grad)?;
+            old_params = new_params;
         }
 
         // Should maintain only the history size limit
@@ -1362,11 +1377,13 @@ mod tests {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5, 1e-8);
         // Create gradients that will result in positive curvature
+        let params0 = vec![Tensor::from_slice(&[0.0, 0.0], &[2], &device)?];
+        let params1 = vec![Tensor::from_slice(&[-0.5, -0.5], &[2], &device)?];
+        let params2 = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
         let grad1 = vec![Tensor::from_slice(&[2.0, 2.0], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
-        let direction = vec![Tensor::from_slice(&[-1.0, -1.0], &[2], &device)?];
-        state.update(&grad1, &direction, 0.5)?;
-        state.update(&grad2, &direction, 0.5)?;
+        state.update(&params0, &params1, &grad1)?;
+        state.update(&params1, &params2, &grad2)?;
         // Gamma should have been updated from default 1.0
         assert!(state.gamma() != 1.0);
         assert!(state.gamma() > 0.0);
@@ -1378,7 +1395,8 @@ mod tests {
         let mut state = LBFGSState::new(5, 1e-8);
         // Empty gradient should return error
         let empty_gradient: Vec<Tensor> = vec![];
-        let result = state.compute_direction(&empty_gradient);
+        let empty_params: Vec<Tensor> = vec![];
+        let result = state.compute_direction(&empty_params, &empty_gradient);
         assert!(result.is_err());
         Ok(())
     }
@@ -1411,12 +1429,27 @@ mod tests {
         let device = Device::Cpu;
         let mut state = LBFGSState::new(5, 1e-8);
         // Very small gradient
+        let params = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
         let gradient = vec![Tensor::from_slice(&[1e-12, 1e-12], &[2], &device)?];
-        let direction = state.compute_direction(&gradient)?;
+        let direction = state.compute_direction(&params, &gradient)?;
         // Should still return a valid direction (negative gradient)
         let dir_values = direction[0].to_vec1::<f64>()?;
         assert!(dir_values[0].is_finite());
         assert!(dir_values[1].is_finite());
+        Ok(())
+    }
+    #[test]
+    fn test_lbfgs_compute_direction_dimension_mismatch() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let mut state = LBFGSState::new(5, 1e-8);
+        // Mismatched dimensions
+        let params = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
+        let gradient = vec![
+            Tensor::from_slice(&[1.0], &[1], &device)?,
+            Tensor::from_slice(&[2.0], &[1], &device)?
+        ];
+        let result = state.compute_direction(&params, &gradient);
+        assert!(result.is_err());
         Ok(())
     }
 }

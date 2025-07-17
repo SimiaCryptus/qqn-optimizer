@@ -506,13 +506,10 @@ impl BenchmarkRunner {
             }
             // Check for stagnation
             if let Some(prev_f) = previous_f_val {
-                let f_change: f64 = ((f_val - prev_f) as f64).abs();
-                // Use a more reasonable stagnation threshold
-                let stagnation_threshold = tolerance * 0.01; // Even more reasonable threshold
-                if f_change < stagnation_threshold && gradient_norm > tolerance * 10.0 {
+                let f_change = ((f_val - prev_f) as f64).abs();
+                if f_change < 0.0 {
                     stagnation_count += 1;
-                    debug!("Stagnation detected: |f_change|={:.6e} < {:.6e}, grad_norm={:.6e}, count={}", 
-                           f_change, stagnation_threshold, gradient_norm, stagnation_count);
+                    debug!("Stagnation detected");
                     if stagnation_count > MAX_STAGNATION_COUNT {
                         // Consider it converged if function value hasn't changed much
                         warn!(

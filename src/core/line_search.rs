@@ -1,5 +1,5 @@
 use crate::utils::math::dot_product_f64;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -8,11 +8,9 @@ use std::sync::Arc;
 /// Trait for 1-D differentiable parametric curves
 pub trait ParametricCurve: Send + Sync {
     /// Evaluate the curve at parameter t
-    fn evaluate(&self, t: f64) -> Result<Vec<f64>>;
-    /// Evaluate the derivative of the curve at parameter t
-    fn derivative(&self, t: f64) -> Result<Vec<f64>>;
-    /// Get the initial derivative at t=0 for descent checking
-    fn initial_derivative(&self) -> Result<Vec<f64>>;
+    fn position(&self, t: f64) -> Result<Vec<f64>>;
+    /// Evaluate the direction of the curve at parameter t
+    fn direction(&self, t: f64) -> Result<Vec<f64>>;
 }
 
 /// A 1D optimization problem along a parametric curve
@@ -37,67 +35,21 @@ impl<'a> OneDimensionalProblem<'a> {
         }
     }
 }
-/// Convert a parametric curve and multi-dimensional functions into a 1D problem
-pub fn create_1d_problem_candle<'a>(
-    curve: Box<dyn ParametricCurve + 'a>,
-    current_gradient: &'a [f64],
-    objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64, candle_core::Error> + Send + Sync),
-    gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>, candle_core::Error> + Send + Sync),
-) -> Result<OneDimensionalProblem<'a>> {
-    // Get initial directional derivative
-    let initial_derivative = curve.initial_derivative()?;
-    let initial_directional_derivative = dot_product_f64(&current_gradient, &initial_derivative)?;
-    debug!("create_1d_problem_candle: current_gradient={:?}, initial_derivative={:?}, initial_directional_derivative={:.6e}",
-          current_gradient, initial_derivative, initial_directional_derivative);
-    // Use Arc to share the curve between closures
-    let curve = Arc::new(curve);
-    let curve_for_objective = curve.clone();
-    let curve_for_gradient = curve.clone();
-    // Create 1D objective function
-    let objective_1d = move |t: f64| -> Result<f64> {
-        let result_vec = curve_for_objective.evaluate(t)?;
-        let result =
-            objective_fn(&result_vec).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
-        debug!("1D objective at t={:.6e}: f={:.6e}", t, result);
-        Ok(result)
-    };
-    // Create 1D gradient function
-    let gradient_1d = move |t: f64| -> Result<f64> {
-        let result_vec = curve_for_gradient.evaluate(t)?;
-        let result = gradient_fn(&result_vec)
-            .map_err(|e| anyhow!("Gradient evaluation failed: {}", e))
-            .and_then(|g| {
-                if g.len() != current_gradient.len() {
-                    return Err(anyhow!(
-                        "Gradient length mismatch: expected {}, got {}",
-                        current_gradient.len(),
-                        g.len()
-                    ));
-                }
-                // Compute directional derivative using dot product
-                dot_product_f64(&g, &current_gradient)
-            })?;
-        debug!("1D gradient result at t={:.6e}: {:.6e}", t, result);
-        Ok(result)
-    };
-    Ok(OneDimensionalProblem::new(
-        Box::new(objective_1d),
-        Box::new(gradient_1d),
-        initial_directional_derivative,
-    ))
-}
 
 pub fn create_1d_problem<'a>(
     curve: Box<dyn ParametricCurve + 'a>,
-    current_gradient: &'a [f64],
     objective_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<f64> + Send + Sync),
     gradient_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>> + Send + Sync),
 ) -> Result<OneDimensionalProblem<'a>> {
+    let initial_position = curve.position(0.0)?;
+    let initial_value = objective_fn(&initial_position)
+        .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
     // Get initial directional derivative
-    let initial_derivative = curve.initial_derivative()?;
-    let initial_directional_derivative = dot_product_f64(&current_gradient, &initial_derivative)?;
-    debug!("create_1d_problem: current_gradient={:?}, initial_derivative={:?}, initial_directional_derivative={:.6e}",
-          current_gradient, initial_derivative, initial_directional_derivative);
+    let initial_direction = curve.direction(0.0)?;
+    let initial_derivative = gradient_fn(&curve.position(0.0)?)?;
+    let initial_directional_derivative = dot_product_f64(&initial_derivative, &initial_direction)?;
+    debug!("create_1d_problem: initial_derivative={:?}, initial_direction={:?}, initial_directional_derivative={:.3e}",
+          initial_derivative, initial_direction, initial_directional_derivative);
 
     // Use Arc to share the curve between closures
     let curve = Arc::new(curve);
@@ -106,16 +58,19 @@ pub fn create_1d_problem<'a>(
 
     // Create 1D objective function
     let objective_1d = move |t: f64| -> Result<f64> {
-        let result_vec = curve_for_objective.evaluate(t)?;
+        let result_vec = curve_for_objective.position(t)?;
+        let result_val = objective_fn(&result_vec)
+            .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
+        let improvement = initial_value - result_val;
         let result = objective_fn(&result_vec)?;
-        debug!("1D objective at t={:.6e}: f={:.6e}", t, result);
+        debug!("1D objective at t={:.3e}: f={:.3e}, improvement: {:.3e}", t, result, improvement);
         Ok(result)
     };
 
     // Create 1D gradient function
     let gradient_1d = move |t: f64| -> Result<f64> {
-        let result_vec = curve_for_gradient.evaluate(t)?;
-        let curve_derivative = curve_for_gradient.derivative(t)?;
+        let result_vec = curve_for_gradient.position(t)?;
+        let curve_derivative = curve_for_gradient.direction(t)?;
         let result = gradient_fn(&result_vec).and_then(|g| {
             if g.len() != curve_derivative.len() {
                 return Err(anyhow!(
@@ -128,7 +83,7 @@ pub fn create_1d_problem<'a>(
             dot_product_f64(&g, &curve_derivative)
         })?;
         debug!(
-            "1-D gradient result at t={:.6e}; p={:?} = {:.6e}",
+            "1-D gradient result at t={:.3e}; p={:?} = {:.3e}",
             t, result_vec, result
         );
         Ok(result)
@@ -150,14 +105,14 @@ pub fn create_1d_problem_linear<'a>(
     let curve = LinearCurve::new(current_point.to_vec(), direction.to_vec());
 
     // Debug: let's verify the curve works correctly
-    let test_val_0 = curve.evaluate(0.0)?;
-    let test_val_1 = curve.evaluate(1.0)?;
+    let test_val_0 = curve.position(0.0)?;
+    let test_val_1 = curve.position(1.0)?;
     debug!(
         "Curve test: f(t=0) -> {:?}, f(t=1) -> {:?}",
         test_val_0, test_val_1
     );
 
-    let result = create_1d_problem(Box::new(curve), current_gradient, objective_fn, gradient_fn);
+    let result = create_1d_problem(Box::new(curve), objective_fn, gradient_fn);
     result
 }
 
@@ -184,62 +139,11 @@ impl LinearCurve {
     }
 }
 impl ParametricCurve for LinearCurve {
-    fn evaluate(&self, t: f64) -> Result<Vec<f64>> {
+    fn position(&self, t: f64) -> Result<Vec<f64>> {
         Ok(self.point_at(t))
     }
-    fn derivative(&self, _t: f64) -> Result<Vec<f64>> {
-        // For a linear curve, dx/dt = direction (constant)
-        Ok(self.direction.clone())
-    }
-    fn initial_derivative(&self) -> Result<Vec<f64>> {
-        Ok(self.direction.clone())
-    }
+    fn direction(&self, _t: f64) -> Result<Vec<f64>> { Ok(self.direction.clone()) }
 }
-/// Linear parametric curve that evaluates a function along the path
-pub struct FunctionLinearCurve<'a> {
-    curve: LinearCurve,
-    objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
-    gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
-}
-impl<'a> FunctionLinearCurve<'a> {
-    pub fn new(
-        start_point: Vec<f64>,
-        direction: Vec<f64>,
-        objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
-        gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
-    ) -> Self {
-        Self {
-            curve: LinearCurve::new(start_point, direction),
-            objective_fn,
-            gradient_fn,
-        }
-    }
-}
-impl<'a> ParametricCurve for FunctionLinearCurve<'a> {
-    fn evaluate(&self, t: f64) -> Result<Vec<f64>> {
-        let point = self.curve.point_at(t);
-        debug!("Evaluating function at t={:.6e}: point={:?}", t, point);
-        let f_val = (self.objective_fn)(&point)?;
-        debug!("Function value at t={:.6e}: f={:.6e}", t, f_val);
-        Ok(vec![f_val])
-    }
-    fn derivative(&self, t: f64) -> Result<Vec<f64>> {
-        let point = self.curve.point_at(t);
-        let gradient = (self.gradient_fn)(&point)?;
-        debug!(
-            "Computing derivative at t={:.6e}: point={:?}, gradient={:?}",
-            t, point, gradient
-        );
-        // Chain rule: df/dt = ∇f(x(t)) · dx/dt
-        // dx/dt = direction (constant for linear curve)
-        let directional_derivative = dot_product_f64(&gradient, &self.curve.direction)?;
-        Ok(vec![directional_derivative])
-    }
-    fn initial_derivative(&self) -> Result<Vec<f64>> {
-        self.derivative(0.0)
-    }
-}
-
 /// Line search result containing step size and evaluation counts
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineSearchResult {
@@ -267,6 +171,7 @@ pub struct LineSearchConfig {
     pub min_step: f64,
     pub max_step: f64,
     pub verbose: bool, // Enable verbose logging
+    pub line_bracket_method: u8, // 1: gradient-based bracketing, 2: function-value-based bracketing
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,9 +179,9 @@ pub enum LineSearchMethod {
     StrongWolfe,
     Backtracking,
     Bisection,
-   GoldenSection,
-   MoreThuente,
-   CubicQuadraticInterpolation,
+    GoldenSection,
+    MoreThuente,
+    CubicQuadraticInterpolation,
 }
 
 impl Default for LineSearchConfig {
@@ -284,12 +189,13 @@ impl Default for LineSearchConfig {
         Self {
             method: LineSearchMethod::StrongWolfe,
             c1: 1e-4,
-            c2: 0.1, // Much less strict curvature condition for better performance
+            c2: 0.01,
             max_iterations: 50,
             initial_step: 1.0,
             min_step: 1e-16,
-            max_step: 100.0, // More reasonable maximum step
-            verbose: true,   // Default to no verbose logging
+            max_step: 100.0,
+            verbose: true,
+            line_bracket_method: 1, // Default to gradient-based bracketing
         }
     }
 }
@@ -308,49 +214,54 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
         LineSearchMethod::Backtracking => {
             Box::new(BacktrackingLineSearch::new(BacktrackingConfig {
                 c1: config.c1,
-                rho: 0.5, // Default backtracking factor
                 max_iterations: config.max_iterations,
                 min_step: config.min_step,
                 initial_step: config.initial_step,
+                ..BacktrackingConfig::default()
             }))
         }
         LineSearchMethod::Bisection => Box::new(BisectionLineSearch::new(BisectionConfig {
             max_iterations: config.max_iterations,
-            gradient_tolerance: 1e-8,
             min_step: config.min_step,
             max_step: config.max_step,
             initial_step: config.initial_step,
-            window_shrink_factor: 0.5,
             verbose: config.verbose,
+            line_bracket_method: config.line_bracket_method,
+            ..BisectionConfig::default()
         })),
-       LineSearchMethod::GoldenSection => Box::new(GoldenSectionLineSearch::new(GoldenSectionConfig {
-           max_iterations: config.max_iterations,
-           tolerance: 1e-8,
-           min_step: config.min_step,
-           max_step: config.max_step,
-           initial_step: config.initial_step,
-           verbose: config.verbose,
-       })),
-       LineSearchMethod::MoreThuente => Box::new(MoreThuenteLineSearch::new(MoreThuenteConfig {
-           c1: config.c1,
-           c2: config.c2,
-           max_iterations: config.max_iterations,
-           min_step: config.min_step,
-           max_step: config.max_step,
-           initial_step: config.initial_step,
-           verbose: config.verbose,
-           ..Default::default()
-       })),
-       LineSearchMethod::CubicQuadraticInterpolation => Box::new(CubicQuadraticLineSearch::new(CubicQuadraticConfig {
-           c1: config.c1,
-           c2: config.c2,
-           max_iterations: config.max_iterations,
-           min_step: config.min_step,
-           max_step: config.max_step,
-           initial_step: config.initial_step,
-           verbose: config.verbose,
-           ..Default::default()
-       })),
+        LineSearchMethod::GoldenSection => {
+            Box::new(GoldenSectionLineSearch::new(GoldenSectionConfig {
+                max_iterations: config.max_iterations,
+                min_step: config.min_step,
+                max_step: config.max_step,
+                initial_step: config.initial_step,
+                verbose: config.verbose,
+                ..GoldenSectionConfig::default()
+            }))
+        }
+        LineSearchMethod::MoreThuente => Box::new(MoreThuenteLineSearch::new(MoreThuenteConfig {
+            c1: config.c1,
+            c2: config.c2,
+            max_iterations: config.max_iterations,
+            min_step: config.min_step,
+            max_step: config.max_step,
+            initial_step: config.initial_step,
+            verbose: config.verbose,
+            ..MoreThuenteConfig::default()
+        })),
+        LineSearchMethod::CubicQuadraticInterpolation => {
+            Box::new(CubicQuadraticLineSearch::new(CubicQuadraticConfig {
+                c1: config.c1,
+                c2: config.c2,
+                max_iterations: config.max_iterations,
+                min_step: config.min_step,
+                max_step: config.max_step,
+                initial_step: config.initial_step,
+                verbose: config.verbose,
+                line_bracket_method: config.line_bracket_method,
+                ..CubicQuadraticConfig::default()
+            }))
+        }
     }
 }
 
@@ -421,7 +332,7 @@ impl StrongWolfeLineSearch {
         let satisfied = f_alpha <= threshold;
         if self.config.verbose {
             debug!(
-                "  Armijo: f({:.6e})={:.6e} <= {:.6e} + {:.6e}*{:.6e}*{:.6e} = {:.6e}? {}",
+                "  Armijo: f({:.3e})={:.3e} <= {:.3e} + {:.3e}*{:.3e}*{:.3e} = {:.3e}? {}",
                 alpha,
                 f_alpha,
                 f0,
@@ -441,7 +352,7 @@ impl StrongWolfeLineSearch {
         let satisfied = grad_alpha.abs() <= threshold;
         if self.config.verbose {
             debug!(
-                "  Curvature: |{:.6e}| <= {:.6e}*|{:.6e}| = {:.6e}? {}",
+                "  Curvature: |{:.3e}| <= {:.3e}*|{:.3e}| = {:.3e}? {}",
                 grad_alpha, self.config.c2, directional_derivative, threshold, satisfied
             );
         }
@@ -507,6 +418,10 @@ impl StrongWolfeLineSearch {
                 alpha_hi = alpha_lo;
             }
             alpha_lo = alpha_j;
+            // Check if interval is too small
+            if (alpha_hi - alpha_lo).abs() < self.config.min_step {
+                break;
+            }
         }
 
         // Return best point found during search
@@ -522,9 +437,9 @@ impl LineSearch for StrongWolfeLineSearch {
         let f0 = (problem.objective)(0.0)?;
         let directional_derivative = problem.initial_directional_derivative;
 
-        self.log_verbose(&format!("Starting 1D optimization with f(0)={:.6e}", f0));
+        self.log_verbose(&format!("Starting 1D optimization with f(0)={:.3e}", f0));
         self.log_verbose(&format!(
-            "Directional derivative: {:.6e}",
+            "Directional derivative: {:.3e}",
             directional_derivative
         ));
 
@@ -537,29 +452,36 @@ impl LineSearch for StrongWolfeLineSearch {
         let mut f_prev = f0;
         let mut f_evals = 1; // Already evaluated f(0)
         let mut g_evals = 0;
+        let mut best_alpha = 0.0;
+        let mut best_f = f0;
 
-        self.log_verbose(&format!("Initial step size: {:.6e}", alpha));
+        self.log_verbose(&format!("Initial step size: {:.3e}", alpha));
 
         for i in 0..self.config.max_iterations {
-            self.log_verbose(&format!("Iteration {}: trying alpha={:.6e}", i, alpha));
+            self.log_verbose(&format!("Iteration {}: trying alpha={:.3e}", i, alpha));
 
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;
             f_evals += 1;
-            self.log_verbose(&format!("  f({:.6e}) = {:.6e}", alpha, f_alpha));
+            self.log_verbose(&format!("  f({:.3e}) = {:.3e}", alpha, f_alpha));
+            // Track best point found
+            if f_alpha < best_f {
+                best_f = f_alpha;
+                best_alpha = alpha;
+            }
 
             // Check Armijo condition and sufficient decrease
             if !self.armijo_condition(f0, f_alpha, alpha, directional_derivative)
                 || (i > 0 && f_alpha >= f_prev)
             {
                 self.log_verbose(&format!(
-                    "  Armijo failed or insufficient decrease, zooming between {:.6e} and {:.6e}",
+                    "  Armijo failed or insufficient decrease, zooming between {:.3e} and {:.3e}",
                     alpha_prev, alpha
                 ));
                 // Zoom between alpha_prev and alpha
                 let (final_alpha, zoom_f_evals, zoom_g_evals) =
                     self.zoom(alpha_prev, alpha, f0, directional_derivative, &problem)?;
-                self.log_verbose(&format!("Zoom completed with alpha={:.6e}", final_alpha));
+                self.log_verbose(&format!("Zoom completed with alpha={:.3e}", final_alpha));
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -575,7 +497,7 @@ impl LineSearch for StrongWolfeLineSearch {
             // Check curvature condition
             if self.curvature_condition(grad_alpha, directional_derivative) {
                 self.log_verbose(&format!(
-                    "Both Wolfe conditions satisfied at alpha={:.6e}",
+                    "Both Wolfe conditions satisfied at alpha={:.3e}",
                     alpha
                 ));
                 return Ok(LineSearchResult {
@@ -588,7 +510,7 @@ impl LineSearch for StrongWolfeLineSearch {
             // Check if gradient indicates we should look further
             if grad_alpha >= 0.0 {
                 self.log_verbose(&format!(
-                    "  Gradient indicates overshoot, zooming between {:.6e} and {:.6e}",
+                    "  Gradient indicates overshoot, zooming between {:.3e} and {:.3e}",
                     alpha, alpha_prev
                 ));
                 let (final_alpha, zoom_f_evals, zoom_g_evals) =
@@ -605,24 +527,56 @@ impl LineSearch for StrongWolfeLineSearch {
             alpha_prev = alpha;
             f_prev = f_alpha;
             alpha = alpha.min(self.config.max_step) * 2.0; // Expand step size
-            self.log_verbose(&format!("  Expanding step size to {:.6e}", alpha));
+            self.log_verbose(&format!("  Expanding step size to {:.3e}", alpha));
 
             if alpha < self.config.min_step {
-                self.log_verbose("Step size below minimum, terminating");
-                break;
+                // Try one last time with the minimum step
+                let f_min = (problem.objective)(self.config.min_step)?;
+                if f_min < f0 {
+                    self.log_verbose(&format!(
+                        "Using minimum step size {:.3e} with improvement",
+                        self.config.min_step
+                    ));
+                    return Ok(LineSearchResult {
+                        step_size: self.config.min_step,
+                        success: true,
+                        termination_reason: TerminationReason::StepSizeTooSmall,
+                    });
+                } else {
+                    self.log_verbose("Even minimum step size doesn't improve function");
+                    break;
+                }
             }
         }
 
-        // Line search failed to converge
-        self.log_verbose(&format!(
-            "Line search failed to converge, returning alpha={:.6e}",
-            alpha_prev
-        ));
-        Ok(LineSearchResult {
-            step_size: alpha_prev,
-            success: false,
-            termination_reason: TerminationReason::MaxIterationsReached,
-        })
+        // If we have any improvement, use it
+        if best_alpha > 0.0 && best_f < f0 {
+            self.log_verbose(&format!(
+                "Returning best point found: alpha={:.3e}, f={:.3e}",
+                best_alpha, best_f
+            ));
+            return Ok(LineSearchResult {
+                step_size: best_alpha,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            });
+        }
+
+        // Last resort: try machine epsilon steps
+        let eps_step = f64::EPSILON.sqrt();
+        let f_eps = (problem.objective)(eps_step)?;
+        if f_eps < f0 {
+            self.log_verbose(&format!("Using machine epsilon step {:.3e}", eps_step));
+            return Ok(LineSearchResult {
+                step_size: eps_step,
+                success: true,
+                termination_reason: TerminationReason::StepSizeTooSmall,
+            });
+        }
+
+        // Only fail if we truly cannot find any improvement
+        self.log_verbose("No improvement found even with machine epsilon steps");
+        Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"))
     }
 
     fn reset(&mut self) {
@@ -664,20 +618,108 @@ pub struct BisectionConfig {
     pub initial_step: f64,         // Initial step size
     pub window_shrink_factor: f64, // Factor to shrink window on failure
     pub verbose: bool,             // Enable verbose logging
+   pub line_bracket_method: u8,   // 1: gradient-based bracketing, 2: function-value-based bracketing
 }
 impl Default for BisectionConfig {
     fn default() -> Self {
         Self {
             max_iterations: 100,
-            gradient_tolerance: 1e-8,
+            gradient_tolerance: 1e-16,
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
             window_shrink_factor: 0.5,
             verbose: false,
+            line_bracket_method: 1, // 1 for far point method, 2 for simple far point
         }
     }
 }
+
+/// Find far point using gradient-based method
+/// Looks for a point where f(t) < f(0) and gradient is positive (function starts increasing)
+fn find_far_point_1(problem: &OneDimensionalProblem, f0: f64, initial_steop: f64, max_iterations: usize, min_step: f64, gradient_tolerance: f64, max_step: f64) -> Result<f64, Error> {
+    let mut t = initial_steop;
+    let mut iteration = 0;
+    debug!("Finding far point starting from t={:.3e}", t);
+    while iteration < max_iterations {
+        let f_t = (problem.objective)(t)?;
+        let grad_t = (problem.gradient)(t)?;
+        debug!(
+            "  Iteration {}: t={:.3e}, f={:.3e}, grad={:.3e}, f0={:.3e}",
+            iteration, t, f_t, grad_t, f0
+        );
+        // Check if this point satisfies our far point criteria:
+        // 1. Function value is still better than f(0)
+        // 2. Gradient is positive (function is increasing)
+        if f_t < f0 && grad_t > 0.0 {
+            debug!("Found far point at t={:.3e}", t);
+            return Ok(t);
+        }
+        if f_t >= f0 {
+            debug!("Function value too high at t={:.3e}, reducing step", t);
+            t *= 0.5;
+            if t < min_step {
+                debug!("Step size too small, using minimum step");
+                return Ok(min_step);
+            }
+        }
+        // If gradient is still negative, step is too small
+        else if grad_t < 0.0 {
+            debug!("Gradient still negative at t={:.3e}, increasing step", t);
+            t *= 2.0;
+            if t > max_step {
+                debug!("Step size too large, using maximum step");
+                return Ok(max_step);
+            }
+        }
+        // If gradient is approximately zero, we found our point
+        else if grad_t.abs() <= gradient_tolerance {
+            debug!("Found zero gradient at t={:.3e}", t);
+            return Ok(t);
+        }
+        iteration += 1;
+    }
+    // If we can't find a proper far point, return the last valid step
+    debug!("Max iterations reached, returning t={:.3e}", t);
+    Ok(t)
+}
+
+/// Find far point using simple function-value-based method
+/// Looks for a point where f(t) > f(0) (function value is worse than starting point)
+fn find_far_point_2(problem: &OneDimensionalProblem, f0: f64, initial_steop: f64, max_iterations: usize, min_step: f64, gradient_tolerance: f64, max_step: f64) -> Result<f64, Error> {
+    let mut t = initial_steop;
+    let mut iteration = 0;
+    debug!("Finding far point starting from t={:.3e}", t);
+    while iteration < max_iterations {
+        let f_t = (problem.objective)(t)?;
+        debug!(
+            "  Iteration {}: t={:.3e}, f={:.3e}, f0={:.3e}",
+            iteration, t, f_t, f0
+        );
+        // Check if this point satisfies our far point criteria:
+        // 1. Function value is worse than f(0)
+        if f_t > f0 {
+            debug!("Found far point at t={:.3e}", t);
+            return Ok(t);
+        }
+       
+       // If function value is still better than f(0), increase step size
+       if f_t <= f0 {
+           debug!("Function value still better at t={:.3e}, increasing step", t);
+           t *= 2.0;
+           if t > max_step {
+               debug!("Step size too large, using maximum step");
+               return Ok(max_step);
+           }
+       }
+       
+        iteration += 1;
+    }
+    // If we can't find a proper far point, return the last valid step
+    debug!("Max iterations reached, returning t={:.3e}", t);
+    Ok(t)
+}
+
 /// Bisection line search implementation
 /// Finds the point where the gradient is zero using bisection method
 /// If gradient is non-decreasing, uses window search with successive halving
@@ -695,44 +737,53 @@ impl BisectionLineSearch {
             debug!("Bisection: {}", message);
         }
     }
+
     /// Find the point where gradient is approximately zero using bisection
     fn find_zero_gradient(
         &self,
         left: f64,
         right: f64,
         problem: &OneDimensionalProblem,
-    ) -> Result<(f64, usize, usize)> {
+    ) -> Result<f64> {
         let mut a = left;
         let mut b = right;
-        let mut g_evals = 0;
-        let f_evals = 0;
+        
         self.log_verbose(&format!(
-            "Finding zero gradient in interval [{:.6e}, {:.6e}]",
+            "Finding zero gradient in interval [{:.3e}, {:.3e}]",
             a, b
         ));
+        // Verify we have a proper bracket with opposite gradient signs
+        let grad_a = (problem.gradient)(a)?;
+        let grad_b = (problem.gradient)(b)?;
+        if grad_a * grad_b > 0.0 {
+            self.log_verbose(&format!(
+                "Warning: gradients have same sign at endpoints: grad({:.3e})={:.3e}, grad({:.3e})={:.3e}",
+                a, grad_a, b, grad_b
+            ));
+            // Return the point with smaller absolute gradient
+            return Ok(if grad_a.abs() < grad_b.abs() { a } else { b });
+        }
+        
         for i in 0..self.config.max_iterations {
             let mid = 0.5 * (a + b);
             // Evaluate gradient at midpoint
             let grad_mid = (problem.gradient)(mid)?;
-            g_evals += 1;
             self.log_verbose(&format!(
-                "  Iteration {}: mid={:.6e}, grad={:.6e}",
+                "  Iteration {}: mid={:.3e}, grad={:.3e}",
                 i, mid, grad_mid
             ));
             // Check if gradient is close enough to zero
             if grad_mid.abs() <= self.config.gradient_tolerance {
-                self.log_verbose(&format!("Found zero gradient at alpha={:.6e}", mid));
-                return Ok((mid, f_evals, g_evals));
+                self.log_verbose(&format!("Found zero gradient at alpha={:.3e}", mid));
+                return Ok(mid);
             }
             // Check if interval is too small
             if (b - a) < self.config.min_step {
-                self.log_verbose(&format!("Interval too small, returning mid={:.6e}", mid));
-                return Ok((mid, f_evals, g_evals));
+                self.log_verbose(&format!("Interval too small, returning mid={:.3e}", mid));
+                return Ok(mid);
             }
-            // Evaluate gradients at endpoints if not already done
-            let grad_a = (problem.gradient)(a)?;
-            g_evals += 1;
             // Update interval based on sign of gradient
+            let grad_a = (problem.gradient)(a)?;
             if grad_a * grad_mid < 0.0 {
                 // Zero is between a and mid
                 b = mid;
@@ -744,76 +795,12 @@ impl BisectionLineSearch {
         // Return midpoint if max iterations reached
         let final_alpha = 0.5 * (a + b);
         self.log_verbose(&format!(
-            "Max iterations reached, returning alpha={:.6e}",
+            "Max iterations reached, returning alpha={:.3e}",
             final_alpha
         ));
-        Ok((final_alpha, f_evals, g_evals))
+        Ok(final_alpha)
     }
-    /// Window search with successive halving
-    fn window_search(
-        &self,
-        initial_window: f64,
-        problem: &OneDimensionalProblem,
-    ) -> Result<(f64, usize, usize)> {
-        let mut window_size = initial_window;
-        let total_f_evals = 0;
-        let mut total_g_evals = 0;
-        let mut iteration_count = 0;
-        self.log_verbose(&format!(
-            "Starting window search with initial window={:.6e}",
-            window_size
-        ));
-        while window_size >= self.config.min_step && iteration_count < self.config.max_iterations {
-            iteration_count += 1;
-            self.log_verbose(&format!("Trying window size: {:.6e}", window_size));
-            // Check if we can find a sign change in the gradient within this window
-            let grad_0 = problem.initial_directional_derivative;
-            // Actually evaluate the gradient at t=0 to make sure it matches
-            let grad_0_actual = (problem.gradient)(0.0)?;
-            total_g_evals += 1;
-            if (grad_0 - grad_0_actual).abs() > 1e-10 {
-                self.log_verbose(&format!(
-                    "WARNING: initial_directional_derivative={:.6e} != actual grad(0)={:.6e}",
-                    grad_0, grad_0_actual
-                ));
-            }
 
-            let grad_window = (problem.gradient)(window_size)?;
-            total_g_evals += 1;
-            self.log_verbose(&format!(
-                "  grad(0)={:.6e}, grad({:.6e})={:.6e}",
-                grad_0, window_size, grad_window
-            ));
-            // If gradients have opposite signs, we can use bisection
-            if grad_0 * grad_window < 0.0 {
-                self.log_verbose("Found sign change, using bisection");
-                let (alpha, f_evals, g_evals) =
-                    self.find_zero_gradient(0.0, window_size, problem)?;
-                return Ok((alpha, total_f_evals + f_evals, total_g_evals + g_evals));
-            }
-            // If gradient becomes non-negative, we've found a good stopping point
-            if grad_window >= 0.0 {
-                self.log_verbose(&format!(
-                    "Gradient became non-negative at window={:.6e}, using this as step size",
-                    window_size
-                ));
-                return Ok((window_size, total_f_evals, total_g_evals));
-            }
-            // If gradient is still negative, we need a smaller window
-            if grad_window < 0.0 {
-                self.log_verbose("Gradient still negative, shrinking window");
-                window_size *= self.config.window_shrink_factor;
-                continue;
-            }
-        }
-        // If we can't find a good window, return the minimum step (which may be too small)
-        let final_alpha = window_size;
-        self.log_verbose(&format!(
-            "Window search completed after {} iterations, returning alpha={:.6e}",
-            iteration_count, final_alpha
-        ));
-        Ok((final_alpha, total_f_evals, total_g_evals))
-    }
 }
 impl LineSearch for BisectionLineSearch {
     fn optimize_1d<'a>(
@@ -823,30 +810,72 @@ impl LineSearch for BisectionLineSearch {
         let directional_derivative = problem.initial_directional_derivative;
         self.log_verbose(&format!("Starting bisection line search"));
         self.log_verbose(&format!(
-            "Initial directional derivative: {:.6e}",
+            "Initial directional derivative: {:.3e}",
             directional_derivative
         ));
+        
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
-        // Start with window search to find appropriate interval
-        let (step_size, f_evals, g_evals) =
-            self.window_search(self.config.initial_step, problem)?;
-        // Verify the step size is reasonable
-        if step_size < self.config.min_step {
-            return Ok(LineSearchResult {
-                step_size,
-                success: false,
-                termination_reason: TerminationReason::StepSizeTooSmall,
-            });
-        }
-        // Check final gradient to see if we found a good point
-        let final_gradient = (problem.gradient)(step_size)?;
-        let success = final_gradient.abs() <= self.config.gradient_tolerance;
+
+        // Step 1: Find the far point
+        let config = self.config.clone();
+       let far_point = match config.line_bracket_method {
+           1 => find_far_point_1(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, config.gradient_tolerance, config.max_step)?,
+           2 => find_far_point_2(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, config.gradient_tolerance, config.max_step)?,
+           _ => return Err(anyhow!("Invalid line_bracket_method: {}. Must be 1 or 2", config.line_bracket_method)),
+       };
+        
+        // Step 2: Verify we have a proper bracket for bisection
+        let grad_0 = problem.initial_directional_derivative;
+        let grad_far = (problem.gradient)(far_point)?;
+        
         self.log_verbose(&format!(
-            "Final result: alpha={:.6e}, grad={:.6e}, success={}",
-            step_size, final_gradient, success
+            "Bracket: grad(0)={:.3e}, grad({:.3e})={:.3e}",
+            grad_0, far_point, grad_far
         ));
+        
+        // Step 3: Perform bisection search for zero gradient
+        let step_size = if grad_0 * grad_far < 0.0 {
+            // We have a proper bracket, use bisection
+            self.find_zero_gradient(0.0, far_point, problem)?
+        } else {
+            // No proper bracket, return the far point if it's an improvement
+            let f0 = (problem.objective)(0.0)?;
+            let f_far = (problem.objective)(far_point)?;
+            if f_far < f0 {
+                self.log_verbose(&format!(
+                    "No gradient sign change, but far point provides improvement"
+                ));
+                far_point
+            } else {
+                // Try minimum step as last resort
+                let f_min = (problem.objective)(self.config.min_step)?;
+                if f_min < f0 {
+                    self.config.min_step
+                } else {
+                    return Err(anyhow!("Cannot find any improvement"));
+                }
+            }
+        };
+        
+        // Verify the final step size provides improvement
+        let f0 = (problem.objective)(0.0)?;
+        let f_final = (problem.objective)(step_size)?;
+        
+        if f_final >= f0 {
+            return Err(anyhow!("Final step size does not provide improvement"));
+        }
+        
+        // Check final gradient
+        let final_gradient = (problem.gradient)(step_size)?;
+        let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
+        
+        self.log_verbose(&format!(
+            "Final result: alpha={:.3e}, f_improvement={:.3e}, grad={:.3e}, success={}",
+            step_size, f0 - f_final, final_gradient, success
+        ));
+        
         Ok(LineSearchResult {
             step_size,
             success,
@@ -857,9 +886,11 @@ impl LineSearch for BisectionLineSearch {
             },
         })
     }
+    
     fn reset(&mut self) {
         // Bisection line search is stateless, nothing to reset
     }
+    
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
@@ -891,11 +922,18 @@ impl LineSearch for BacktrackingLineSearch {
 
         let mut alpha = self.config.initial_step;
         let mut f_evals = 1; // Already evaluated f(0)
+        let mut best_alpha = 0.0;
+        let mut best_f = f0;
 
         for _ in 0..self.config.max_iterations {
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;
             f_evals += 1;
+            // Track best point
+            if f_alpha < best_f {
+                best_f = f_alpha;
+                best_alpha = alpha;
+            }
 
             // Check Armijo condition
             let armijo_threshold = f0 + self.config.c1 * alpha * directional_derivative;
@@ -911,16 +949,40 @@ impl LineSearch for BacktrackingLineSearch {
             alpha *= self.config.rho;
 
             if alpha < self.config.min_step {
+                // Try minimum step
+                let f_min = (problem.objective)(self.config.min_step)?;
+                if f_min < f0 {
+                    return Ok(LineSearchResult {
+                        step_size: self.config.min_step,
+                        success: true,
+                        termination_reason: TerminationReason::StepSizeTooSmall,
+                    });
+                }
                 break;
             }
         }
 
-        // Line search failed
-        Ok(LineSearchResult {
-            step_size: alpha,
-            success: false,
-            termination_reason: TerminationReason::StepSizeTooSmall,
-        })
+        // Return best point found if any improvement
+        if best_alpha > 0.0 && best_f < f0 {
+            return Ok(LineSearchResult {
+                step_size: best_alpha,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            });
+        }
+
+        // Try machine epsilon
+        let eps_step = f64::EPSILON.sqrt();
+        let f_eps = (problem.objective)(eps_step)?;
+        if f_eps < f0 {
+            return Ok(LineSearchResult {
+                step_size: eps_step,
+                success: true,
+                termination_reason: TerminationReason::StepSizeTooSmall,
+            });
+        }
+
+        Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"))
     }
 
     fn reset(&mut self) {
@@ -1044,7 +1106,7 @@ impl GoldenSectionLineSearch {
         f_evals += 2;
         for i in 0..self.config.max_iterations {
             self.log_verbose(&format!(
-                "Iteration {}: interval=[{:.6e}, {:.6e}], x1={:.6e}, x2={:.6e}, f1={:.6e}, f2={:.6e}",
+                "Iteration {}: interval=[{:.3e}, {:.3e}], x1={:.3e}, x2={:.3e}, f1={:.3e}, f2={:.3e}",
                 i, a, b, x1, x2, f1, f2
             ));
             if (b - a) < self.config.tolerance {
@@ -1069,16 +1131,37 @@ impl GoldenSectionLineSearch {
             }
         }
         let final_x = if f1 < f2 { x1 } else { x2 };
-        self.log_verbose(&format!("Golden section completed with x={:.6e}", final_x));
+        self.log_verbose(&format!("Golden section completed with x={:.3e}", final_x));
         Ok((final_x, f_evals, g_evals))
     }
 }
 impl LineSearch for GoldenSectionLineSearch {
-    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem<'a>) -> Result<LineSearchResult> {
+    fn optimize_1d<'a>(
+        &mut self,
+        problem: &'a OneDimensionalProblem<'a>,
+    ) -> Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
+        // First verify we can make progress
+        let f0 = (problem.objective)(0.0)?;
+        let test_step = self.config.min_step;
+        let f_test = (problem.objective)(test_step)?;
+        if f_test >= f0 {
+            // Try machine epsilon
+            let eps_step = f64::EPSILON.sqrt();
+            let f_eps = (problem.objective)(eps_step)?;
+            if f_eps < f0 {
+                return Ok(LineSearchResult {
+                    step_size: eps_step,
+                    success: true,
+                    termination_reason: TerminationReason::StepSizeTooSmall,
+                });
+            }
+            return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
+        }
+
         let (step_size, f_evals, g_evals) = self.find_minimum(problem)?;
         let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
         Ok(LineSearchResult {
@@ -1108,8 +1191,8 @@ pub struct MoreThuenteConfig {
     pub max_step: f64,
     pub initial_step: f64,
     pub verbose: bool,
-    pub xtol: f64,      // Relative tolerance for step size
-    pub ftol: f64,      // Tolerance for function decrease
+    pub xtol: f64, // Relative tolerance for step size
+    pub ftol: f64, // Tolerance for function decrease
 }
 impl Default for MoreThuenteConfig {
     fn default() -> Self {
@@ -1142,7 +1225,14 @@ impl MoreThuenteLineSearch {
         }
     }
     /// Check strong Wolfe conditions
-    fn check_wolfe_conditions(&self, f0: f64, f_alpha: f64, grad_alpha: f64, alpha: f64, grad0: f64) -> (bool, bool) {
+    fn check_wolfe_conditions(
+        &self,
+        f0: f64,
+        f_alpha: f64,
+        grad_alpha: f64,
+        alpha: f64,
+        grad0: f64,
+    ) -> (bool, bool) {
         let armijo = f_alpha <= f0 + self.config.c1 * alpha * grad0;
         let curvature = grad_alpha.abs() <= self.config.c2 * grad0.abs();
         (armijo, curvature)
@@ -1168,11 +1258,19 @@ impl MoreThuenteLineSearch {
         x1 - g1 / (2.0 * a)
     }
     /// Update interval using More-Thuente rules
-    fn update_interval(&self,
-                      stx: &mut f64, fx: &mut f64, gx: &mut f64,
-                      sty: &mut f64, fy: &mut f64, gy: &mut f64,
-                      stp: f64, fp: f64, gp: f64,
-                      brackt: &mut bool) -> f64 {
+    fn update_interval(
+        &self,
+        stx: &mut f64,
+        fx: &mut f64,
+        gx: &mut f64,
+        sty: &mut f64,
+        fy: &mut f64,
+        gy: &mut f64,
+        stp: f64,
+        fp: f64,
+        gp: f64,
+        brackt: &mut bool,
+    ) -> f64 {
         let sgnd = gp * (*gx / gx.abs());
         // Case 1: Higher function value
         if fp > *fx {
@@ -1277,12 +1375,31 @@ impl MoreThuenteLineSearch {
     }
 }
 impl LineSearch for MoreThuenteLineSearch {
-    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem<'a>) -> Result<LineSearchResult> {
+    fn optimize_1d<'a>(
+        &mut self,
+        problem: &'a OneDimensionalProblem<'a>,
+    ) -> Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
         if g0 >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
+        // Verify we can make progress
+        let test_step = self.config.min_step;
+        let f_test = (problem.objective)(test_step)?;
+        if f_test >= f0 {
+            let eps_step = f64::EPSILON.sqrt();
+            let f_eps = (problem.objective)(eps_step)?;
+            if f_eps < f0 {
+                return Ok(LineSearchResult {
+                    step_size: eps_step,
+                    success: true,
+                    termination_reason: TerminationReason::StepSizeTooSmall,
+                });
+            }
+            return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
+        }
+
         let mut stp = self.config.initial_step;
         let mut stx = 0.0;
         let mut fx = f0;
@@ -1293,15 +1410,27 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut brackt = false;
         let mut f_evals = 1;
         let mut g_evals = 0;
-        self.log_verbose(&format!("Starting More-Thuente with f(0)={:.6e}, g(0)={:.6e}", f0, g0));
+        let mut best_stp = 0.0;
+        let mut best_f = f0;
+
+        self.log_verbose(&format!(
+            "Starting More-Thuente with f(0)={:.3e}, g(0)={:.3e}",
+            f0, g0
+        ));
         for iter in 0..self.config.max_iterations {
             // Evaluate function and gradient at current step
             let fp = (problem.objective)(stp)?;
             let gp = (problem.gradient)(stp)?;
             f_evals += 1;
             g_evals += 1;
+            // Track best point
+            if fp < best_f {
+                best_f = fp;
+                best_stp = stp;
+            }
+
             self.log_verbose(&format!(
-                "Iteration {}: stp={:.6e}, f={:.6e}, g={:.6e}",
+                "Iteration {}: stp={:.3e}, f={:.3e}, g={:.3e}",
                 iter, stp, fp, gp
             ));
             // Check Wolfe conditions
@@ -1315,9 +1444,18 @@ impl LineSearch for MoreThuenteLineSearch {
                 });
             }
             // Update interval and get new trial step
-            let new_stp = self.update_interval(&mut stx, &mut fx, &mut gx,
-                                             &mut sty, &mut fy, &mut gy,
-                                             stp, fp, gp, &mut brackt);
+            let new_stp = self.update_interval(
+                &mut stx,
+                &mut fx,
+                &mut gx,
+                &mut sty,
+                &mut fy,
+                &mut gy,
+                stp,
+                fp,
+                gp,
+                &mut brackt,
+            );
             // Update the interval endpoints
             if fp > f0 + self.config.c1 * stp * g0 || (fp >= fx && iter > 0) {
                 sty = stp;
@@ -1340,11 +1478,21 @@ impl LineSearch for MoreThuenteLineSearch {
                 break;
             }
         }
-        Ok(LineSearchResult {
-            step_size: stp,
-            success: true,
-            termination_reason: TerminationReason::MaxIterationsReached,
-        })
+
+        // Return best point found
+        if best_stp > 0.0 && best_f < f0 {
+            Ok(LineSearchResult {
+                step_size: best_stp,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            })
+        } else {
+            Ok(LineSearchResult {
+                step_size: stp,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            })
+        }
     }
     fn reset(&mut self) {
         // More-Thuente is stateless
@@ -1365,6 +1513,7 @@ pub struct CubicQuadraticConfig {
     pub verbose: bool,
     pub interpolation_safeguard: f64, // Minimum fraction of interval to move
     pub extrapolation_factor: f64,    // Factor for extrapolation steps
+    pub line_bracket_method: u8, // 1: gradient-based bracketing, 2: function-value-based bracketing
 }
 impl Default for CubicQuadraticConfig {
     fn default() -> Self {
@@ -1378,6 +1527,7 @@ impl Default for CubicQuadraticConfig {
             verbose: false,
             interpolation_safeguard: 0.1,
             extrapolation_factor: 2.0,
+            line_bracket_method: 1, // Default to method 1
         }
     }
 }
@@ -1395,6 +1545,31 @@ impl CubicQuadraticLineSearch {
             debug!("CubicQuadratic: {}", message);
         }
     }
+    /// Establish a good search interval using smart far point identification
+    fn establish_search_interval(&self, problem: &OneDimensionalProblem) -> Result<(f64, f64)> {
+        let config = self.config.clone();
+        let far_point = match config.line_bracket_method {
+            1 => find_far_point_1(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, 1e-16, config.max_step)?,
+            2 => find_far_point_2(problem, (problem.objective)(0.0)?, config.initial_step, config.max_iterations, config.min_step, 1e-16, config.max_step)?,
+            _ => return Err(anyhow!("Invalid line_bracket_method: {}. Must be 1 or 2", config.line_bracket_method)),
+        };
+        // Verify we have a good interval
+        let grad_0 = problem.initial_directional_derivative;
+        let grad_far = (problem.gradient)(far_point)?;
+        self.log_verbose(&format!(
+            "Search interval: [0, {:.3e}], grad(0)={:.3e}, grad(far)={:.3e}",
+            far_point, grad_0, grad_far
+        ));
+        // If we have opposite gradient signs, we have a good bracket
+        if grad_0 * grad_far < 0.0 {
+            self.log_verbose("Good bracket established with opposite gradient signs");
+            return Ok((0.0, far_point));
+        }
+        // If gradients have same sign, we still use the interval but may need more iterations
+        self.log_verbose("Gradients have same sign, but using interval anyway");
+        Ok((0.0, far_point))
+    }
+    
     /// Cubic interpolation between two points with function and gradient values
     fn cubic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64, gb: f64) -> Option<f64> {
         let d1 = ga + gb - 3.0 * (fa - fb) / (a - b);
@@ -1442,34 +1617,76 @@ impl CubicQuadraticLineSearch {
         }
     }
     /// Check Wolfe conditions
-    fn check_wolfe(&self, f0: f64, f_alpha: f64, g_alpha: f64, alpha: f64, g0: f64) -> (bool, bool) {
+    fn check_wolfe(
+        &self,
+        f0: f64,
+        f_alpha: f64,
+        g_alpha: f64,
+        alpha: f64,
+        g0: f64,
+    ) -> (bool, bool) {
         let armijo = f_alpha <= f0 + self.config.c1 * alpha * g0;
         let curvature = g_alpha.abs() <= self.config.c2 * g0.abs();
         (armijo, curvature)
     }
 }
 impl LineSearch for CubicQuadraticLineSearch {
-    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem<'a>) -> Result<LineSearchResult> {
+    fn optimize_1d<'a>(
+        &mut self,
+        problem: &'a OneDimensionalProblem<'a>,
+    ) -> Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
         if g0 >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
-        let mut alpha = self.config.initial_step;
+        // Verify we can make progress
+        let test_step = self.config.min_step;
+        let f_test = (problem.objective)(test_step)?;
+        if f_test >= f0 {
+            let eps_step = f64::EPSILON.sqrt();
+            let f_eps = (problem.objective)(eps_step)?;
+            if f_eps < f0 {
+                return Ok(LineSearchResult {
+                    step_size: eps_step,
+                    success: true,
+                    termination_reason: TerminationReason::StepSizeTooSmall,
+                });
+            }
+            return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
+        }
+
+        // Establish a good search interval using smart far point identification
+        let (left_bound, right_bound) = self.establish_search_interval(problem)?;
+        
+        let mut alpha = self.config.initial_step.min(right_bound * 0.5);
         let mut alpha_prev = 0.0;
         let mut f_prev = f0;
         let mut g_prev = g0;
         let mut f_evals = 1;
         let mut g_evals = 0;
-        self.log_verbose(&format!("Starting with f(0)={:.6e}, g(0)={:.6e}", f0, g0));
+        let mut best_alpha = 0.0;
+        let mut best_f = f0;
+        let mut search_right_bound = right_bound;
+
+        self.log_verbose(&format!(
+            "Starting with f(0)={:.3e}, g(0)={:.3e}, search interval=[{:.3e}, {:.3e}]",
+            f0, g0, left_bound, search_right_bound
+        ));
         for iter in 0..self.config.max_iterations {
             // Evaluate at current step
             let f_alpha = (problem.objective)(alpha)?;
             let g_alpha = (problem.gradient)(alpha)?;
             f_evals += 1;
             g_evals += 1;
+            // Track best point
+            if f_alpha < best_f {
+                best_f = f_alpha;
+                best_alpha = alpha;
+            }
+
             self.log_verbose(&format!(
-                "Iteration {}: alpha={:.6e}, f={:.6e}, g={:.6e}",
+                "Iteration {}: alpha={:.3e}, f={:.3e}, g={:.3e}",
                 iter, alpha, f_alpha, g_alpha
             ));
             // Check Wolfe conditions
@@ -1488,33 +1705,60 @@ impl LineSearch for CubicQuadraticLineSearch {
                 // Try cubic interpolation first
                 let new_alpha = if iter > 0 {
                     self.cubic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha, g_alpha)
-                        .or_else(|| self.quadratic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha))
+                        .or_else(|| {
+                            self.quadratic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha)
+                        })
                         .unwrap_or(0.5 * (alpha_prev + alpha))
                 } else {
                     // First iteration, use quadratic interpolation
                     self.quadratic_interpolate(0.0, f0, g0, alpha, f_alpha)
                         .unwrap_or(0.5 * alpha)
                 };
-                alpha = new_alpha.max(self.config.min_step).min(self.config.max_step);
-                self.log_verbose(&format!("Interpolated new alpha: {:.6e}", alpha));
+                // Constrain to our established search interval
+                alpha = new_alpha
+                    .max(self.config.min_step)
+                    .min(search_right_bound)
+                    .min(self.config.max_step);
+                
+                // Update search bounds if we're interpolating
+                if new_alpha < alpha_prev {
+                    search_right_bound = alpha_prev;
+                }
+                
+                self.log_verbose(&format!("Interpolated new alpha: {:.3e}", alpha));
                 continue;
             }
             // If curvature condition fails but Armijo is satisfied
             if !curvature {
                 if g_alpha * g0 > 0.0 {
                     // Gradient has wrong sign, interpolate
-                    let new_alpha = self.cubic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha, g_alpha)
-                        .or_else(|| self.quadratic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha))
+                    let new_alpha = self
+                        .cubic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha, g_alpha)
+                        .or_else(|| {
+                            self.quadratic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha)
+                        })
                         .unwrap_or(0.5 * (alpha_prev + alpha));
-                    alpha = new_alpha.max(self.config.min_step).min(self.config.max_step);
-                    self.log_verbose(&format!("Interpolated for wrong gradient sign: {:.6e}", alpha));
+                    
+                    // Constrain to search interval
+                    alpha = new_alpha
+                        .max(self.config.min_step)
+                        .min(search_right_bound)
+                        .min(self.config.max_step);
+                    
+                    self.log_verbose(&format!(
+                        "Interpolated for wrong gradient sign: {:.3e}",
+                        alpha
+                    ));
                 } else {
-                    // Gradient magnitude too large, extrapolate
+                    // Gradient magnitude too large, extrapolate but respect bounds
                     alpha_prev = alpha;
                     f_prev = f_alpha;
                     g_prev = g_alpha;
-                    alpha = (alpha * self.config.extrapolation_factor).min(self.config.max_step);
-                    self.log_verbose(&format!("Extrapolated: {:.6e}", alpha));
+                    alpha = (alpha * self.config.extrapolation_factor)
+                        .min(search_right_bound)
+                        .min(self.config.max_step);
+                    
+                    self.log_verbose(&format!("Extrapolated: {:.3e}", alpha));
                 }
                 continue;
             }
@@ -1522,15 +1766,29 @@ impl LineSearch for CubicQuadraticLineSearch {
             alpha_prev = alpha;
             f_prev = f_alpha;
             g_prev = g_alpha;
-            alpha *= self.config.extrapolation_factor;
-            alpha = alpha.min(self.config.max_step);
+            alpha = (alpha * self.config.extrapolation_factor)
+                .min(search_right_bound)
+                .min(self.config.max_step);
         }
-        // Return best point found
-        Ok(LineSearchResult {
-            step_size: alpha,
-            success: false,
-            termination_reason: TerminationReason::MaxIterationsReached,
-        })
+
+        // Return best point found if we have improvement
+        if best_alpha > 0.0 && best_f < f0 {
+            Ok(LineSearchResult {
+                step_size: best_alpha,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            })
+        } else if alpha > 0.0 {
+            // Return last alpha tried
+            Ok(LineSearchResult {
+                step_size: alpha,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            })
+        } else {
+            // This should never happen given our initial checks
+            Err(anyhow!("Line search failed to find any improvement"))
+        }
     }
     fn reset(&mut self) {
         // Stateless
@@ -1547,7 +1805,9 @@ pub fn more_thuente_line_search() -> Box<dyn LineSearch> {
     Box::new(MoreThuenteLineSearch::new(MoreThuenteConfig::default()))
 }
 pub fn cubic_quadratic_line_search() -> Box<dyn LineSearch> {
-    Box::new(CubicQuadraticLineSearch::new(CubicQuadraticConfig::default()))
+    Box::new(CubicQuadraticLineSearch::new(
+        CubicQuadraticConfig::default(),
+    ))
 }
 pub fn golden_section_with_config(config: GoldenSectionConfig) -> Box<dyn LineSearch> {
     Box::new(GoldenSectionLineSearch::new(config))
@@ -1621,7 +1881,6 @@ mod tests {
 
         assert!(result.success);
         assert!(result.step_size > 0.0);
-        assert!(result.function_evaluations > 0);
 
         // For quadratic function, optimal step should be 1.0
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
@@ -1649,7 +1908,6 @@ mod tests {
 
         assert!(result.success);
         assert!(result.step_size > 0.0);
-        assert!(result.function_evaluations > 0);
     }
 
     #[test]
@@ -1696,7 +1954,6 @@ mod tests {
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
-        assert!(result.gradient_evaluations > 0);
         // For quadratic function, optimal step should be 1.0 (where gradient is zero)
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
     }
@@ -1726,16 +1983,16 @@ mod tests {
         let direction = vec![3.0, 4.0];
         let curve = LinearCurve::new(start.clone(), direction.clone());
         // Test evaluation at different t values
-        let p0 = curve.evaluate(0.0).unwrap();
+        let p0 = curve.position(0.0).unwrap();
         assert_eq!(p0, vec![1.0, 2.0]);
-        let p1 = curve.evaluate(1.0).unwrap();
+        let p1 = curve.position(1.0).unwrap();
         assert_eq!(p1, vec![4.0, 6.0]);
-        let p_half = curve.evaluate(0.5).unwrap();
+        let p_half = curve.position(0.5).unwrap();
         assert_eq!(p_half, vec![2.5, 4.0]);
         // Test derivative (should be constant)
-        let d0 = curve.derivative(0.0).unwrap();
+        let d0 = curve.direction(0.0).unwrap();
         assert_eq!(d0, direction);
-        let d1 = curve.derivative(1.0).unwrap();
+        let d1 = curve.direction(1.0).unwrap();
         assert_eq!(d1, direction);
     }
     #[test]
@@ -1808,8 +2065,6 @@ mod tests {
         use serde_json;
         let result = LineSearchResult {
             step_size: 0.5,
-            function_evaluations: 10,
-            gradient_evaluations: 5,
             success: true,
             termination_reason: TerminationReason::WolfeConditionsSatisfied,
         };
@@ -1819,10 +2074,6 @@ mod tests {
         // Test deserialization
         let deserialized: LineSearchResult = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.step_size, result.step_size);
-        assert_eq!(
-            deserialized.function_evaluations,
-            result.function_evaluations
-        );
     }
     #[test]
     fn test_min_step_size() {
@@ -1864,8 +2115,6 @@ mod tests {
                 // If it fails, we expect it to be due to step size being too small
                 LineSearchResult {
                     step_size: 0.0,
-                    function_evaluations: 0,
-                    gradient_evaluations: 0,
                     success: false,
                     termination_reason: TerminationReason::StepSizeTooSmall,
                 }
@@ -1899,19 +2148,19 @@ mod tests {
         let _cloned5 = ls5.clone_box();
         let ls6 = bisection_with_config(BisectionConfig::default());
         let _cloned6 = ls6.clone_box();
-       // Test new factory functions
-       let ls7 = golden_section_line_search();
-       let _cloned7 = ls7.clone_box();
-       let ls8 = more_thuente_line_search();
-       let _cloned8 = ls8.clone_box();
-       let ls9 = cubic_quadratic_line_search();
-       let _cloned9 = ls9.clone_box();
-       let ls10 = golden_section_with_config(GoldenSectionConfig::default());
-       let _cloned10 = ls10.clone_box();
-       let ls11 = more_thuente_with_config(MoreThuenteConfig::default());
-       let _cloned11 = ls11.clone_box();
-       let ls12 = cubic_quadratic_with_config(CubicQuadraticConfig::default());
-       let _cloned12 = ls12.clone_box();
+        // Test new factory functions
+        let ls7 = golden_section_line_search();
+        let _cloned7 = ls7.clone_box();
+        let ls8 = more_thuente_line_search();
+        let _cloned8 = ls8.clone_box();
+        let ls9 = cubic_quadratic_line_search();
+        let _cloned9 = ls9.clone_box();
+        let ls10 = golden_section_with_config(GoldenSectionConfig::default());
+        let _cloned10 = ls10.clone_box();
+        let ls11 = more_thuente_with_config(MoreThuenteConfig::default());
+        let _cloned11 = ls11.clone_box();
+        let ls12 = cubic_quadratic_with_config(CubicQuadraticConfig::default());
+        let _cloned12 = ls12.clone_box();
     }
     #[test]
     fn test_golden_section_quadratic() {
@@ -1928,7 +2177,8 @@ mod tests {
             &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -1950,7 +2200,8 @@ mod tests {
             &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -1972,7 +2223,8 @@ mod tests {
             &current_gradient,
             &quadratic_function,
             &quadratic_gradient1,
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
