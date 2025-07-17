@@ -25,10 +25,9 @@ pub struct ExperimentRunner {
 impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
-            max_iterations: 100,
+            max_iterations: 1000,
             tolerance: 1e-8,
             time_limit: Duration::from_secs(60).into(),
-            random_seed: 42,
             num_runs: 5,
         };
 
@@ -247,8 +246,6 @@ impl ExperimentRunner {
        for (opt_name, ref optimizer) in optimizers.iter() {
             for run_id in 0..self.config.num_runs {
                 // Use different random seeds for each run to get varied starting points
-                let mut config_with_seed = self.config.clone();
-                config_with_seed.random_seed = self.config.random_seed + run_id as u64;
                 let mut result = runner
                    .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name)
                     .await?;
@@ -526,7 +523,9 @@ impl ExperimentRunner {
         }
 
         // Sort by mean final value (lower is better)
-        perf_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        perf_data.sort_by(|a, b| {
+            a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for (i, (optimizer, mean_final, std_final, mean_iter, mean_func_evals, mean_grad_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
             let class = if i == 0 { "best" } else if i == 1 { "second" } else { "" };

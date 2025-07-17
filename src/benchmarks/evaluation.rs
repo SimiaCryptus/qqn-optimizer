@@ -6,6 +6,7 @@ use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use rand::Rng;
 use tokio::time::timeout;
 
 /// Wrapper for Duration that implements bincode traits
@@ -39,7 +40,6 @@ pub struct BenchmarkConfig {
     pub max_iterations: usize,
     pub tolerance: f64,
     pub time_limit: DurationWrapper,
-    pub random_seed: u64,
     pub num_runs: usize,
 }
 
@@ -49,7 +49,6 @@ impl Default for BenchmarkConfig {
             max_iterations: 10000,
             tolerance: 1e-12,
             time_limit: Duration::from_secs(600).into(), // 10 minutes
-            random_seed: 42,
             num_runs: 10,
         }
     }
@@ -278,6 +277,13 @@ impl BenchmarkRunner {
                 "Initial point contains non-finite values"
             )));
         }
+        // Randomize initial point to ensure variability
+        let mut rng = rand::rng();
+        let noise = 1.0;
+        for xi in x.iter_mut() {
+            *xi += rng.random_range(-noise..noise); // Random perturbation
+        }
+
 
         let mut iteration = 0;
         let mut function_evaluations = 0;
