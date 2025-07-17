@@ -90,7 +90,7 @@ impl QQNState {
     pub fn new(lbfgs_history: usize) -> Self {
         Self {
             iteration: 0,
-            lbfgs_state: LBFGSState::new(lbfgs_history, 1e-8),
+            lbfgs_state: LBFGSState::new_with_options(lbfgs_history, 1e-8, true), // Disable checks for QQN
         }
     }
 }

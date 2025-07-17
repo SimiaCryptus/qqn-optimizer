@@ -100,11 +100,17 @@ pub struct LBFGSState {
     /// Previous parameters for recovery
     #[serde(skip_serializing, skip_deserializing)]
     prev_params: Option<Vec<Tensor>>,
+    /// Disable safety checks when used within QQN
+    disable_checks: bool,
 }
 
 impl LBFGSState {
     /// Create a new L-BFGS state with the given history size.
     pub fn new(history_size: usize, epsilon: f64) -> Self {
+        Self::new_with_options(history_size, epsilon, false)
+    }
+    /// Create a new L-BFGS state with options for QQN usage
+    pub fn new_with_options(history_size: usize, epsilon: f64, disable_checks: bool) -> Self {
         Self {
             s_history: VecDeque::with_capacity(history_size),
             y_history: VecDeque::with_capacity(history_size),
@@ -116,6 +122,7 @@ impl LBFGSState {
             best_function_value: None,
             no_improvement_count: 0,
             prev_params: None,
+            disable_checks,
         }
     }
 
@@ -130,6 +137,7 @@ impl LBFGSState {
         self.best_function_value = None;
         self.no_improvement_count = 0;
         self.prev_params = None;
+        // Don't reset disable_checks as it's a configuration option
     }
 
     /// Compute the L-BFGS search direction using the two-loop recursion
@@ -138,31 +146,34 @@ impl LBFGSState {
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
         }
-        // Check gradient magnitude to avoid numerical issues
-        let grad_norm = compute_magnitude(gradient)?;
-        if grad_norm < 1e-10 {
-            debug!(
-                "L-BFGS: Very small gradient norm {:.6e}, using steepest descent",
-                grad_norm
-            );
-            return Ok(gradient
-                .iter()
-                .map(|g| g.neg())
-                .collect::<CandleResult<Vec<_>>>()?);
-        }
 
-        // Check for NaN/Inf in gradient
-        for (i, grad) in gradient.iter().enumerate() {
-            let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
-            if grad_vec.iter().any(|&x| !x.is_finite()) {
-                warn!(
-                    "L-BFGS: Non-finite gradient detected at index {}, using steepest descent",
-                    i
+        
+        if !self.disable_checks {
+            // Check gradient magnitude to avoid numerical issues
+            let grad_norm = compute_magnitude(gradient)?;
+            if grad_norm < 1e-10 {
+                debug!(
+                    "L-BFGS: Very small gradient norm {:.6e}, using steepest descent",
+                    grad_norm
                 );
                 return Ok(gradient
                     .iter()
                     .map(|g| g.neg())
                     .collect::<CandleResult<Vec<_>>>()?);
+            }
+            // Check for NaN/Inf in gradient
+            for (i, grad) in gradient.iter().enumerate() {
+                let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
+                if grad_vec.iter().any(|&x| !x.is_finite()) {
+                    warn!(
+                        "L-BFGS: Non-finite gradient detected at index {}, using steepest descent",
+                        i
+                    );
+                    return Ok(gradient
+                        .iter()
+                        .map(|g| g.neg())
+                        .collect::<CandleResult<Vec<_>>>()?);
+                }
             }
         }
 
@@ -205,17 +216,20 @@ impl LBFGSState {
             let y_i = &self.y_history[i];
             let scaled_y = vector_scale(y_i, alpha_i)?;
             q = vector_subtract(&q, &scaled_y)?;
-            // Check if q has become non-finite
-            for (_j, q_tensor) in q.iter().enumerate() {
-                let q_vec = q_tensor.flatten_all()?.to_vec1::<f64>()?;
-                if q_vec.iter().any(|&x| !x.is_finite()) {
-                    warn!(
-                        "L-BFGS: Non-finite q detected during first loop, using steepest descent"
-                    );
-                    return Ok(gradient
-                        .iter()
-                        .map(|g| g.neg())
-                        .collect::<CandleResult<Vec<_>>>()?);
+            
+            if !self.disable_checks {
+                // Check if q has become non-finite
+                for (_j, q_tensor) in q.iter().enumerate() {
+                    let q_vec = q_tensor.flatten_all()?.to_vec1::<f64>()?;
+                    if q_vec.iter().any(|&x| !x.is_finite()) {
+                        warn!(
+                            "L-BFGS: Non-finite q detected during first loop, using steepest descent"
+                        );
+                        return Ok(gradient
+                            .iter()
+                            .map(|g| g.neg())
+                            .collect::<CandleResult<Vec<_>>>()?);
+                    }
                 }
             }
         }
@@ -225,16 +239,21 @@ impl LBFGSState {
 
         // Apply initial Hessian approximation scaling
         debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
-        // Additional safety check for gamma
-        if !self.gamma.is_finite() || self.gamma <= 0.0 {
-            warn!(
-                "L-BFGS: Invalid gamma detected: {}, resetting to 1.0",
-                self.gamma
-            );
-            self.gamma = 1.0;
-        }
-        // Clamp gamma to prevent numerical issues
-        let safe_gamma = self.gamma.max(1e-6).min(1e6);
+        
+        let safe_gamma = if !self.disable_checks {
+            // Additional safety check for gamma
+            if !self.gamma.is_finite() || self.gamma <= 0.0 {
+                warn!(
+                    "L-BFGS: Invalid gamma detected: {}, resetting to 1.0",
+                    self.gamma
+                );
+                self.gamma = 1.0;
+            }
+            // Clamp gamma to prevent numerical issues
+            self.gamma.max(1e-6).min(1e6)
+        } else {
+            self.gamma
+        };
         let mut r = vector_scale(&q, safe_gamma)?;
 
         // Second loop: compute final direction
@@ -258,13 +277,37 @@ impl LBFGSState {
             // r = r + (alpha_i - beta) * s_i
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
-            // Check if r has become non-finite
-            for (_j, r_tensor) in r.iter().enumerate() {
-                let r_vec = r_tensor.flatten_all()?.to_vec1::<f64>()?;
-                if r_vec.iter().any(|&x| !x.is_finite()) {
-                    warn!(
-                        "L-BFGS: Non-finite r detected during second loop, using steepest descent"
-                    );
+            
+            if !self.disable_checks {
+                // Check if r has become non-finite
+                for (_j, r_tensor) in r.iter().enumerate() {
+                    let r_vec = r_tensor.flatten_all()?.to_vec1::<f64>()?;
+                    if r_vec.iter().any(|&x| !x.is_finite()) {
+                        warn!(
+                            "L-BFGS: Non-finite r detected during second loop, using steepest descent"
+                        );
+                        return Ok(gradient
+                            .iter()
+                            .map(|g| g.neg())
+                            .collect::<CandleResult<Vec<_>>>()?);
+                    }
+                }
+            }
+        }
+        
+        // Return the negative of r to get a descent direction
+        let direction = r
+            .iter()
+            .map(|t| t.neg())
+            .collect::<CandleResult<Vec<_>>>()?;
+            
+        if !self.disable_checks {
+            // Final check on the direction
+            // Verify the direction is finite
+            for (_i, dir) in direction.iter().enumerate() {
+                let dir_vec = dir.flatten_all()?.to_vec1::<f64>()?;
+                if dir_vec.iter().any(|&x| !x.is_finite()) {
+                    warn!("L-BFGS: Non-finite direction detected, using steepest descent");
                     return Ok(gradient
                         .iter()
                         .map(|g| g.neg())
@@ -272,24 +315,7 @@ impl LBFGSState {
                 }
             }
         }
-        // Final check on the direction
-        let direction = r
-            .iter()
-            .map(|t| t.neg())
-            .collect::<CandleResult<Vec<_>>>()?;
-        // Verify the direction is finite
-        for (_i, dir) in direction.iter().enumerate() {
-            let dir_vec = dir.flatten_all()?.to_vec1::<f64>()?;
-            if dir_vec.iter().any(|&x| !x.is_finite()) {
-                warn!("L-BFGS: Non-finite direction detected, using steepest descent");
-                return Ok(gradient
-                    .iter()
-                    .map(|g| g.neg())
-                    .collect::<CandleResult<Vec<_>>>()?);
-            }
-        }
 
-        // Return the negative of r to get a descent direction
         Ok(direction)
     }
 
@@ -358,35 +384,41 @@ impl LBFGSState {
             // Implement Powell's damping for negative curvature
             let curvature_threshold = self.epsilon() * grad_norm.max(1.0);
             let (s_k_final, y_k_final, s_dot_y_final) = if s_dot_y < curvature_threshold {
-                // Apply Powell's damping
-                let theta = if s_dot_y < 0.2 * curvature_threshold {
-                    0.8 * curvature_threshold / (curvature_threshold - s_dot_y)
-                } else {
-                    1.0
-                };
 
-                if theta < 1.0 {
-                    debug!("L-BFGS: Applying Powell damping with theta = {:.6e}", theta);
-                    // y_k_damped = theta * y_k + (1 - theta) * B_k * s_k
-                    // For simplicity, we'll use a scaled identity approximation for B_k
-                    let scaled_s = vector_scale(&s_k, self.gamma)?;
-                    let damped_y = vector_add(
-                        &vector_scale(&y_k, theta)?,
-                        &vector_scale(&scaled_s, 1.0 - theta)?,
-                    )?;
-                    let damped_s_dot_y = dot_product(&s_k, &damped_y)?;
-                    (s_k, damped_y, damped_s_dot_y)
-                } else {
+                if self.disable_checks {
+                    // When used in QQN, skip Powell damping and accept the update
                     (s_k, y_k, s_dot_y)
+                } else {
+                    // Apply Powell's damping
+                    let theta = if s_dot_y < 0.2 * curvature_threshold {
+                        0.8 * curvature_threshold / (curvature_threshold - s_dot_y)
+                    } else {
+                        1.0
+                    };
+
+                    if theta < 1.0 {
+                        debug!("L-BFGS: Applying Powell damping with theta = {:.6e}", theta);
+                        // y_k_damped = theta * y_k + (1 - theta) * B_k * s_k
+                        // For simplicity, we'll use a scaled identity approximation for B_k
+                        let scaled_s = vector_scale(&s_k, self.gamma)?;
+                        let damped_y = vector_add(
+                            &vector_scale(&y_k, theta)?,
+                            &vector_scale(&scaled_s, 1.0 - theta)?,
+                        )?;
+                        let damped_s_dot_y = dot_product(&s_k, &damped_y)?;
+                        (s_k, damped_y, damped_s_dot_y)
+                    } else {
+                        (s_k, y_k, s_dot_y)
+                    }
                 }
             } else {
                 (s_k, y_k, s_dot_y)
             };
 
             // Now check if the (possibly damped) curvature condition is satisfied
-            if s_dot_y_final > curvature_threshold {
+            if self.disable_checks || s_dot_y_final > curvature_threshold {
                 let rho_k = 1.0 / s_dot_y_final;
-                if !rho_k.is_finite() {
+                if !self.disable_checks && !rho_k.is_finite() {
                     warn!("L-BFGS: Non-finite rho_k, skipping update");
                     self.prev_gradient = Some(new_gradient.to_vec());
                     return Ok(());
