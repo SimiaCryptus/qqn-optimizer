@@ -881,7 +881,6 @@ pub fn bisection_with_config(config: BisectionConfig) -> Box<dyn LineSearch> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
     use approx::assert_relative_eq;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
@@ -892,11 +891,6 @@ mod tests {
     fn quadratic_gradient1(x: &[f64]) -> Result<Vec<f64>> {
         // ∇f(x) = x
         Ok(x.to_vec())
-    }
-
-    fn quadratic_gradient2(x: &[f64]) -> Result<f64> {
-        // ∇f(x) = x
-        Ok(x[0])
     }
 
     #[test]
@@ -923,7 +917,7 @@ mod tests {
 
     #[test]
     fn test_strong_wolfe_quadratic() {
-        init_logging();
+        // init_logging();
         let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig::default());
 
         let current_point = vec![2.0, 3.0];
@@ -950,7 +944,7 @@ mod tests {
 
     #[test]
     fn test_backtracking_quadratic() {
-        init_logging();
+        // init_logging();
         let mut line_search = BacktrackingLineSearch::new(BacktrackingConfig::default());
 
         let current_point = vec![1.0, 1.0];
@@ -975,7 +969,7 @@ mod tests {
 
     #[test]
     fn test_non_descent_direction() {
-        init_logging();
+        // init_logging();
         let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig::default());
 
         let current_point = vec![1.0, 1.0];
@@ -1003,14 +997,6 @@ mod tests {
         let current_point = vec![2.0, 3.0];
         let direction = vec![-2.0, -3.0]; // Negative gradient (descent direction)
         let current_gradient = quadratic_gradient1(&current_point).unwrap();
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            &current_gradient,
-            &quadratic_function,
-            &quadratic_gradient1,
-        ).unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
 
         let problem = create_1d_problem_linear(
             &current_point,
@@ -1023,7 +1009,6 @@ mod tests {
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
-        assert!(result.function_evaluations >= 0);
         assert!(result.gradient_evaluations > 0);
         // For quadratic function, optimal step should be 1.0 (where gradient is zero)
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
@@ -1031,7 +1016,7 @@ mod tests {
 
     #[test]
     fn test_bisection_non_descent() {
-        init_logging();
+        // init_logging();
         let mut line_search = BisectionLineSearch::new(BisectionConfig::default());
         let current_point = vec![1.0, 1.0];
         let direction = vec![1.0, 1.0]; // Positive gradient (ascent direction)
@@ -1043,16 +1028,6 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         ).unwrap();
-        let result = line_search.optimize_1d(&problem);
-
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            &current_gradient,
-            &quadratic_function,
-            &quadratic_gradient1,
-        ).unwrap();
-
         let result = line_search.optimize_1d(&problem);
         assert!(result.is_err());
     }
@@ -1191,6 +1166,7 @@ mod tests {
         ).unwrap();
         let result = line_search.optimize_1d(&problem)
             .map_or_else(|e| {
+                debug!("Line search failed: {}", e);
                 // If it fails, we expect it to be due to step size being too small
                 LineSearchResult {
                     step_size: 0.0,
@@ -1200,7 +1176,6 @@ mod tests {
                     termination_reason: TerminationReason::StepSizeTooSmall,
                 }
             }, |res| res);
-
         // The test should handle both cases: success with small step or failure
         if result.success {
             // If it succeeded, the step size should be very small

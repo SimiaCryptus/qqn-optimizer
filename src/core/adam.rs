@@ -857,7 +857,6 @@ mod tests {
     }
     #[test]
     fn test_adam_clone() -> CandleResult<()> {
-        let device = Device::Cpu;
         let config = AdamConfig {
             learning_rate: 0.123,
             beta1: 0.95,

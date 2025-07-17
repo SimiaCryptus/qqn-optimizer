@@ -29,9 +29,6 @@ pub struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
     problem: T,
 }
 impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {
-    fn new(problem: T) -> Self {
-        Self { problem }
-    }
 }
 impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
@@ -303,9 +300,6 @@ impl MichalewiczFunction {
     }
 }
 impl OptimizationProblem for MichalewiczFunction {
-    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
-        Box::new(self.clone())
-    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -365,6 +359,9 @@ impl OptimizationProblem for MichalewiczFunction {
     }
     fn convergence_tolerance(&self) -> f64 {
         1e-9
+    }
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
     }
 }
 impl Default for MatyasFunction {
@@ -1175,8 +1172,6 @@ impl OptimizationProblem for ZakharovFunction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarks::functions::*;
-    use anyhow::Result;
     use approx::assert_relative_eq;
 
     const EPSILON: f64 = 1e-10;

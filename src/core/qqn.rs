@@ -796,7 +796,6 @@ impl<'a> ParametricCurve for QuadraticPath {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;
@@ -813,12 +812,6 @@ mod tests {
                 eval_count: Arc::new(Mutex::new(0)),
                 grad_count: Arc::new(Mutex::new(0)),
             }
-        }
-        fn evaluation_count(&self) -> usize {
-            *self.eval_count.lock().unwrap()
-        }
-        fn gradient_count(&self) -> usize {
-            *self.grad_count.lock().unwrap()
         }
     }
     impl DifferentiableFunction for QuadraticFunction {
@@ -1015,7 +1008,6 @@ mod tests {
         config.min_lbfgs_iterations = 0;
         let mut optimizer = QQNOptimizer::new(config);
         let mut params = vec![Tensor::from_slice(&[2.0, 3.0], &[2], &device)?];
-        let gradients = vec![Tensor::from_slice(&[2.0, 3.0], &[2], &device)?]; // Gradient of quadratic
         let function = QuadraticFunction::new();
         let result = optimizer.step(&mut params, &function)?;
         // Should move towards origin
@@ -1096,7 +1088,7 @@ mod tests {
         let function = QuadraticFunction::new();
         // Take multiple steps
         for _ in 0..20 {
-            let result = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, &function)?;
             // Check if we're close enough to optimum
             let values = params[0].to_vec1::<f64>()?;
             if values.iter().all(|&x| x.abs() < 1e-6) {
@@ -1121,7 +1113,7 @@ mod tests {
         let function = RosenbrockFunction;
         // Take several steps
         for i in 0..10 {
-            let result = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, &function)?;
             // Function value should generally decrease
             let f_val = function.evaluate(&params)?;
             println!("Step {}: f = {:.6e}", i, f_val);

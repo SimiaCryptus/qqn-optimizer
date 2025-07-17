@@ -658,11 +658,10 @@ mod tests {
     use super::*;
     use crate::benchmarks::functions::SphereFunction;
     use crate::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
-    use crate::init_logging;
-
+    
     #[tokio::test]
     async fn test_benchmark_runner() {
-        let _ = init_logging();
+        //let _ = init_logging();
         let config = BenchmarkConfig {
             max_iterations: 100,  // Reduced for testing
             tolerance: 1e-6,

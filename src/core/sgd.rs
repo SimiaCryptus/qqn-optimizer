@@ -550,9 +550,6 @@ mod tests {
             Tensor::new(&[1.0f64], &Device::Cpu)?,
             Tensor::new(&[-1.0f64], &Device::Cpu)?,
         ];
-        // Compute gradients manually
-        let gradients = function.gradient(&params)?;
-        // Use step_with_gradients
         let result = optimizer.step(&mut params, &function)?;
         assert_eq!(result.gradient_evaluations, 1);
         // Check parameters were updated

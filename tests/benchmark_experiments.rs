@@ -196,13 +196,12 @@ impl ExperimentRunner {
                 let mut result = runner
                    .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name)
                     .await?;
-                // For optimization, validate that we achieved reasonable progress
+                
                 // Check if final value is below a reasonable threshold
                 if let Some(optimal_value) = problem.optimal_value() {
                     let success_threshold = optimal_value + problem.convergence_tolerance() * 1000.0;
                     result.convergence_achieved &= result.final_value < success_threshold;
                 } else {
-                    // For problems without known optimum, use gradient norm as success criterion
                     result.convergence_achieved &= result.final_gradient_norm < problem.convergence_tolerance() * 10.0;
                 }
                 results.add_result(result);
@@ -221,8 +220,7 @@ impl ExperimentRunner {
         for (problem_name, results) in all_results {
             println!("  Problem '{}': {} results", problem_name, results.results.len());
         }
-
-
+        
         let mut html_content = self.generate_html_header();
 
         // Executive Summary
