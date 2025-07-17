@@ -23,25 +23,27 @@ pub trait OptimizationProblem: Send + Sync {
     fn clone_problem(&self) -> Box<dyn OptimizationProblem>;
 }
 
-
 /// Wrapper to make benchmark functions work with the new DifferentiableFunction trait
 pub struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
     problem: T,
 }
-impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {
-}
+impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {}
 impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         let x_vec = tensors_to_vec(params);
-        self.problem.evaluate_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+        self.problem
+            .evaluate_f64(&x_vec)
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))
     }
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         let x_vec = tensors_to_vec(params);
-        let grad_vec = self.problem.gradient_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+        let grad_vec = self
+            .problem
+            .gradient_f64(&x_vec)
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
         Ok(vec![tensor_from_vec(grad_vec)])
     }
 }
-
 
 /// Matyas function: f(x, y) = 0.26(x² + y²) - 0.48xy
 /// Global minimum: f(0, 0) = 0
@@ -57,6 +59,9 @@ impl MatyasFunction {
     }
 }
 impl OptimizationProblem for MatyasFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
     fn name(&self) -> &str {
         &self.name
     }
@@ -87,9 +92,6 @@ impl OptimizationProblem for MatyasFunction {
     }
     fn convergence_tolerance(&self) -> f64 {
         1e-6
-    }
-    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
-        Box::new(self.clone())
     }
 }
 /// Levi N.13 function: f(x, y) = sin²(3πx) + (x-1)²(1 + sin²(3πy)) + (y-1)²(1 + sin²(2πy))
@@ -406,7 +408,13 @@ impl OptimizationProblem for RosenbrockFunction {
         self.dimension
     }
     fn initial_point(&self) -> Vec<f64> {
-        vec![-1.2; self.dimension]
+        // Use the standard Rosenbrock starting point
+        let mut initial = vec![-1.2; self.dimension];
+        // Alternate between -1.2 and 1.0 for better conditioning
+        for i in (1..self.dimension).step_by(2) {
+            initial[i] = 1.0;
+        }
+        initial
     }
     fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
@@ -468,7 +476,10 @@ impl OptimizationProblem for RastriginFunction {
         self.dimension
     }
     fn initial_point(&self) -> Vec<f64> {
-        vec![2.0; self.dimension]
+        // Start at a more challenging point with some randomness
+        (0..self.dimension)
+            .map(|i| 2.0 + 0.5 * (i as f64).sin())
+            .collect()
     }
     fn evaluate_f64(&self, x: &[f64]) -> Result<f64> {
         if x.len() != self.dimension {
@@ -1166,9 +1177,6 @@ impl OptimizationProblem for ZakharovFunction {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1210,7 +1218,11 @@ mod tests {
 
         // Test at origin (global minimum)
         let origin = vec![0.0, 0.0, 0.0];
-        assert_relative_eq!(problem.evaluate_f64(&origin).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&origin).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_origin = problem.gradient_f64(&origin).unwrap();
         for &g in &grad_origin {
@@ -1220,7 +1232,11 @@ mod tests {
         // Test at arbitrary point
         let point = vec![1.0, 2.0, 3.0];
         let expected_value = 1.0 + 4.0 + 9.0; // 14.0
-        assert_relative_eq!(problem.evaluate_f64(&point).unwrap(), expected_value, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&point).unwrap(),
+            expected_value,
+            epsilon = EPSILON
+        );
 
         let expected_grad = vec![2.0, 4.0, 6.0];
         let grad = problem.gradient_f64(&point).unwrap();
@@ -1243,7 +1259,11 @@ mod tests {
 
         // Test at global minimum (1, 1)
         let optimum = vec![1.0, 1.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1261,7 +1281,11 @@ mod tests {
         // Test higher dimension
         let problem_3d = RosenbrockFunction::new(3);
         let optimum_3d = vec![1.0, 1.0, 1.0];
-        assert_relative_eq!(problem_3d.evaluate_f64(&optimum_3d).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem_3d.evaluate_f64(&optimum_3d).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
     }
 
     #[test]
@@ -1270,7 +1294,11 @@ mod tests {
 
         // Test at global minimum (0, 0)
         let optimum = vec![0.0, 0.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1293,7 +1321,11 @@ mod tests {
 
         // Test at global minimum (0, 0)
         let optimum = vec![0.0, 0.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = 1e-10
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1315,7 +1347,11 @@ mod tests {
 
         // Test at global minimum (0, 0)
         let optimum = vec![0.0, 0.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1325,7 +1361,11 @@ mod tests {
         // Test at arbitrary point
         let point = vec![1.0, 2.0];
         let expected_value = 0.26 * (1.0 + 4.0) - 0.48 * 1.0 * 2.0;
-        assert_relative_eq!(problem.evaluate_f64(&point).unwrap(), expected_value, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&point).unwrap(),
+            expected_value,
+            epsilon = EPSILON
+        );
 
         let expected_grad = vec![0.52 * 1.0 - 0.48 * 2.0, 0.52 * 2.0 - 0.48 * 1.0];
         let grad = problem.gradient_f64(&point).unwrap();
@@ -1343,7 +1383,11 @@ mod tests {
 
         // Test at global minimum (1, 1)
         let optimum = vec![1.0, 1.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         // Test at arbitrary point
         let point = vec![0.5, 0.5];
@@ -1360,7 +1404,11 @@ mod tests {
 
         // Test at global minimum (0, -1)
         let optimum = vec![0.0, -1.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 3.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            3.0,
+            epsilon = 1e-10
+        );
 
         // Test at arbitrary point
         let point = vec![1.0, 1.0];
@@ -1408,7 +1456,11 @@ mod tests {
 
         // Test at global minimum (3, 0.5)
         let optimum = vec![3.0, 0.5];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = 1e-10
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1426,7 +1478,11 @@ mod tests {
 
         // Test at one of the global minima (3, 2)
         let optimum = vec![3.0, 2.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = 1e-10
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1444,7 +1500,11 @@ mod tests {
 
         // Test at global minimum (1, 3)
         let optimum = vec![1.0, 3.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1462,7 +1522,11 @@ mod tests {
 
         // Test at global minimum (0, 0)
         let optimum = vec![0.0, 0.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {
@@ -1494,7 +1558,11 @@ mod tests {
 
         // Test at global minimum (1, 1, 1)
         let optimum = vec![1.0, 1.0, 1.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = 1e-10
+        );
 
         // Test gradient numerically
         let point = vec![2.0, 2.0, 2.0];
@@ -1507,7 +1575,11 @@ mod tests {
 
         // Test at global minimum (0, 0, 0)
         let optimum = vec![0.0, 0.0, 0.0];
-        assert_relative_eq!(problem.evaluate_f64(&optimum).unwrap(), 0.0, epsilon = EPSILON);
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
 
         let grad_optimum = problem.gradient_f64(&optimum).unwrap();
         for &g in &grad_optimum {

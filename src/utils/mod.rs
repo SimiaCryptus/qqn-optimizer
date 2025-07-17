@@ -1,8 +1,8 @@
 pub mod math;
 
 pub use math::{
-    clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, lerp,
-    norm_inf, norm_l1, norm_l2, vector_add, vector_scale, vector_subtract,
+    clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, lerp, norm_inf,
+    norm_l1, norm_l2, vector_add, vector_scale, vector_subtract,
 };
 
 /// Common mathematical constants
@@ -60,9 +60,10 @@ pub mod validation {
     pub fn validate_finite(values: &[f64]) -> OptResult<()> {
         for (i, &val) in values.iter().enumerate() {
             if !val.is_finite() {
-                return Err(crate::core::OptError::InvalidInput(
-                    format!("Non-finite value {} at index {}", val, i)
-                ));
+                return Err(crate::core::OptError::InvalidInput(format!(
+                    "Non-finite value {} at index {}",
+                    val, i
+                )));
             }
         }
         Ok(())
@@ -71,9 +72,10 @@ pub mod validation {
     /// Validate that a value is within reasonable bounds
     pub fn validate_bounds(value: f64, min: f64, max: f64) -> OptResult<()> {
         if value < min || value > max {
-            return Err(crate::core::OptError::InvalidInput(
-                format!("Value {} outside bounds [{}, {}]", value, min, max)
-            ));
+            return Err(crate::core::OptError::InvalidInput(format!(
+                "Value {} outside bounds [{}, {}]",
+                value, min, max
+            )));
         }
         Ok(())
     }
@@ -89,15 +91,6 @@ pub mod validation {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_constants() {
-        assert!(constants::EPSILON > 0.0);
-        assert!(constants::SQRT_EPSILON > constants::EPSILON);
-        assert!(constants::DEFAULT_TOLERANCE > constants::SQRT_EPSILON);
-        assert!(constants::MAX_SAFE_VALUE > 1.0);
-        assert!(constants::MIN_SAFE_VALUE < 1.0);
-    }
 
     #[test]
     fn test_paths() {

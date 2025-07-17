@@ -26,17 +26,38 @@ pub struct ProblemConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ProblemType {
-    Rosenbrock { dimension: usize },
-    Rastrigin { dimension: usize },
-    Sphere { dimension: usize },
+    Rosenbrock {
+        dimension: usize,
+    },
+    Rastrigin {
+        dimension: usize,
+    },
+    Sphere {
+        dimension: usize,
+    },
     Beale,
-    LogisticRegression { dataset: String },
-    NeuralNetwork { architecture: NetworkConfig },
-    Griewank { dimension: usize },
-    Schwefel { dimension: usize },
-    Levy { dimension: usize },
-    Zakharov { dimension: usize },
-    Michalewicz { dimension: usize, steepness: Option<i32> },
+    LogisticRegression {
+        dataset: String,
+    },
+    NeuralNetwork {
+        architecture: NetworkConfig,
+    },
+    Griewank {
+        dimension: usize,
+    },
+    Schwefel {
+        dimension: usize,
+    },
+    Levy {
+        dimension: usize,
+    },
+    Zakharov {
+        dimension: usize,
+    },
+    Michalewicz {
+        dimension: usize,
+        steepness: Option<i32>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,17 +274,17 @@ impl ExperimentConfig {
         // Validate experiment metadata
         if self.name.trim().is_empty() {
             return Err(ConfigError::InvalidExperiment(
-                "Experiment name cannot be empty".to_string()
+                "Experiment name cannot be empty".to_string(),
             ));
         }
         if self.problems.is_empty() {
             return Err(ConfigError::InvalidExperiment(
-                "At least one problem must be specified".to_string()
+                "At least one problem must be specified".to_string(),
             ));
         }
         if self.optimizers.is_empty() {
             return Err(ConfigError::InvalidExperiment(
-                "At least one optimizer must be specified".to_string()
+                "At least one optimizer must be specified".to_string(),
             ));
         }
 
@@ -371,7 +392,10 @@ impl ProblemConfig {
                     )));
                 }
             }
-            ProblemType::Michalewicz { dimension, steepness } => {
+            ProblemType::Michalewicz {
+                dimension,
+                steepness,
+            } => {
                 if *dimension < 1 {
                     return Err(ConfigError::InvalidProblem(format!(
                         "Michalewicz dimension must be >= 1, got {}",
@@ -395,10 +419,7 @@ impl ProblemConfig {
 impl OptimizerConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
         match &self.optimizer_type {
-            OptimizerType::QQN {
-                lbfgs_history,
-                ..
-            } => {
+            OptimizerType::QQN { lbfgs_history, .. } => {
                 if *lbfgs_history == 0 {
                     return Err(ConfigError::InvalidOptimizer(
                         "QQN L-BFGS history must be > 0".to_string(),
@@ -710,8 +731,11 @@ mod tests {
 // Add helper function
 pub fn create_sgd_config(lr: f64, momentum: Option<f64>) -> OptimizerConfig {
     OptimizerConfig {
-        name: format!("sgd_lr{}{}", lr,
-                      momentum.map(|m| format!("_mom{}", m)).unwrap_or_default()),
+        name: format!(
+            "sgd_lr{}{}",
+            lr,
+            momentum.map(|m| format!("_mom{}", m)).unwrap_or_default()
+        ),
         optimizer_type: OptimizerType::SGD {
             learning_rate: lr,
             momentum,

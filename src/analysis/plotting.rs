@@ -76,9 +76,10 @@ impl PlottingEngine {
         }
 
         let output_path = format!("{}/{}.png", self.output_dir, filename);
-        let root = match BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area() {
-            area => area,
-        };
+        let root =
+            match BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area() {
+                area => area,
+            };
 
         // Try to fill with white, which might trigger font issues
         if let Err(e) = root.fill(&WHITE) {
@@ -105,13 +106,14 @@ impl PlottingEngine {
         // Build chart without text elements to avoid font issues
         let mut chart = ChartBuilder::on(&root)
             .margin(10)
-            .x_label_area_size(0)  // No labels to avoid font issues
-            .y_label_area_size(0)  // No labels to avoid font issues
+            .x_label_area_size(0) // No labels to avoid font issues
+            .y_label_area_size(0) // No labels to avoid font issues
             .build_cartesian_2d(0..max_iterations, min_obj..max_obj)
             .map_err(|e| anyhow::anyhow!("Chart building error: {}", e))?;
 
         // Configure mesh without text to avoid font issues
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .disable_x_mesh()
             .disable_y_mesh()
             .draw()
@@ -130,10 +132,10 @@ impl PlottingEngine {
                 .collect();
 
             // Draw series
-            chart.draw_series(LineSeries::new(series_data, color))
+            chart
+                .draw_series(LineSeries::new(series_data, color))
                 .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
         }
-
 
         root.present()?;
         println!("Convergence plot saved to: {}", output_path);
@@ -221,7 +223,6 @@ impl PlottingEngine {
             }
         }
 
-
         root.present()?;
         println!("Log convergence plot saved to: {}", output_path);
         Ok(())
@@ -264,7 +265,6 @@ impl PlottingEngine {
         if chart_data.is_empty() {
             return Ok(());
         }
-
 
         // Create subplot for each problem
         let num_problems = chart_data.len();
@@ -365,7 +365,6 @@ impl PlottingEngine {
         if box_data.is_empty() {
             return Ok(());
         }
-
 
         let global_min = box_data
             .iter()

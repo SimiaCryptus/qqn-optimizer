@@ -34,10 +34,12 @@ impl Default for OptimizationMetadata {
 /// This trait provides a unified interface for different optimization methods,
 /// enabling easy benchmarking and comparison between algorithms.
 pub trait Optimizer: Send + Sync + std::fmt::Debug + 'static {
-
     /// Clone the optimizer (required for trait object safety)
     fn clone_box(&self) -> Box<dyn Optimizer>;
-
+    /// Get optimizer configuration as a string for serialization
+    fn config_string(&self) -> String {
+        format!("{:?}", self)
+    }
 
     /// Perform a single optimization step using a differentiable function
     ///

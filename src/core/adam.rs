@@ -1,9 +1,9 @@
 use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
-use crate::utils::math::DifferentiableFunction;
 
 /// Configuration parameters for the Adam optimizer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,11 +37,11 @@ pub struct AdamConfig {
 impl Default for AdamConfig {
     fn default() -> Self {
         Self {
-            learning_rate: 0.01,   // Higher learning rate for better convergence
+            learning_rate: 0.01, // Higher learning rate for better convergence
             lr_schedule: "adaptive".to_string(),
             lr_decay: 0.999,
             min_learning_rate: 1e-8,
-            gradient_clip: Some(1.0),   // Tighter gradient clipping
+            gradient_clip: Some(1.0), // Tighter gradient clipping
             beta1: 0.9,
             beta2: 0.999,
             epsilon: 1e-8,
@@ -124,9 +124,15 @@ impl AdamOptimizer {
     pub fn new(config: AdamConfig) -> Self {
         if config.verbose {
             info!("Creating Adam optimizer with verbose logging enabled");
-            debug!("Adam Config: lr={}, beta1={}, beta2={}, epsilon={}, weight_decay={}, amsgrad={}",
-                  config.learning_rate, config.beta1, config.beta2, config.epsilon, 
-                  config.weight_decay, config.amsgrad);
+            debug!(
+                "Adam Config: lr={}, beta1={}, beta2={}, epsilon={}, weight_decay={}, amsgrad={}",
+                config.learning_rate,
+                config.beta1,
+                config.beta2,
+                config.epsilon,
+                config.weight_decay,
+                config.amsgrad
+            );
         }
         let current_lr = config.learning_rate;
         Self {
@@ -147,22 +153,42 @@ impl AdamOptimizer {
         for (i, tensor) in tensors.iter().enumerate() {
             match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
                 Ok(values) => {
-                    debug!("  Tensor[{}]: shape={:?}, length={}", i, tensor.shape(), values.len());
+                    debug!(
+                        "  Tensor[{}]: shape={:?}, length={}",
+                        i,
+                        tensor.shape(),
+                        values.len()
+                    );
                     if values.len() <= 10 {
                         debug!("    Full data: {:?}", values);
                     } else {
-                        debug!("    First 5: {:?}, Last 5: {:?}", &values[..5], &values[values.len() - 5..]);
+                        debug!(
+                            "    First 5: {:?}, Last 5: {:?}",
+                            &values[..5],
+                            &values[values.len() - 5..]
+                        );
                     }
                     // Log statistics
                     let mean = values.iter().sum::<f64>() / values.len() as f64;
-                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+                        / values.len() as f64;
                     let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
                     let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                    debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
-                          mean, variance.sqrt(), min_val, max_val);
+                    debug!(
+                        "    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
+                        mean,
+                        variance.sqrt(),
+                        min_val,
+                        max_val
+                    );
                 }
                 Err(e) => {
-                    debug!("  Tensor[{}]: shape={:?}, error reading values: {}", i, tensor.shape(), e);
+                    debug!(
+                        "  Tensor[{}]: shape={:?}, error reading values: {}",
+                        i,
+                        tensor.shape(),
+                        e
+                    );
                 }
             }
         }
@@ -211,12 +237,13 @@ impl AdamOptimizer {
             "cosine" => {
                 let t = self.state.iteration as f64;
                 let cosine_decay = 0.5 * (1.0 + (std::f64::consts::PI * t / 1000.0).cos());
-                self.current_lr = self.config.min_learning_rate +
-                    (self.config.learning_rate - self.config.min_learning_rate) * cosine_decay;
+                self.current_lr = self.config.min_learning_rate
+                    + (self.config.learning_rate - self.config.min_learning_rate) * cosine_decay;
             }
             "adaptive" => {
                 // More conservative adaptive learning rate schedule
-                if let (Some(prev_val), Some(curr_val)) = (self.prev_function_value, current_value) {
+                if let (Some(prev_val), Some(curr_val)) = (self.prev_function_value, current_value)
+                {
                     let relative_improvement = (prev_val - curr_val) / prev_val.abs().max(1e-12);
 
                     // Only reduce LR if function value is actually increasing or very small improvement
@@ -224,7 +251,7 @@ impl AdamOptimizer {
                         self.bad_step_count += 1;
                         // Require more consecutive bad steps and use gentler reduction
                         if self.bad_step_count >= 20 {
-                            self.current_lr *= 0.8;  // Less aggressive reduction
+                            self.current_lr *= 0.8; // Less aggressive reduction
                             self.current_lr = self.current_lr.max(self.config.min_learning_rate);
                             self.bad_step_count = 0;
                             if self.config.verbose {
@@ -247,16 +274,25 @@ impl AdamOptimizer {
     fn compute_updates(&mut self, gradients: &[Tensor]) -> CandleResult<Vec<Tensor>> {
         // Initialize moment estimates if needed
         if self.state.m.is_none() {
-            self.state.m = Some(gradients.iter().map(|g| {
-                Tensor::zeros_like(g).unwrap()
-            }).collect());
-            self.state.v = Some(gradients.iter().map(|g| {
-                Tensor::zeros_like(g).unwrap()
-            }).collect());
+            self.state.m = Some(
+                gradients
+                    .iter()
+                    .map(|g| Tensor::zeros_like(g).unwrap())
+                    .collect(),
+            );
+            self.state.v = Some(
+                gradients
+                    .iter()
+                    .map(|g| Tensor::zeros_like(g).unwrap())
+                    .collect(),
+            );
             if self.config.amsgrad {
-                self.state.v_max = Some(gradients.iter().map(|g| {
-                    Tensor::zeros_like(g).unwrap()
-                }).collect());
+                self.state.v_max = Some(
+                    gradients
+                        .iter()
+                        .map(|g| Tensor::zeros_like(g).unwrap())
+                        .collect(),
+                );
             }
         }
 
@@ -290,7 +326,9 @@ impl AdamOptimizer {
                 let v_max = self.state.v_max.as_mut().unwrap();
                 let v_i_vec = v[i].flatten_all()?.to_vec1::<f64>()?;
                 let v_max_vec = v_max[i].flatten_all()?.to_vec1::<f64>()?;
-                let new_v_max: Vec<f64> = v_i_vec.iter().zip(v_max_vec.iter())
+                let new_v_max: Vec<f64> = v_i_vec
+                    .iter()
+                    .zip(v_max_vec.iter())
                     .map(|(&v_val, &v_max_val)| v_val.max(v_max_val))
                     .collect();
                 v_max[i] = Tensor::from_vec(new_v_max, v[i].shape(), v[i].device())?;
@@ -311,7 +349,11 @@ impl AdamOptimizer {
     }
 
     /// Compute convergence information for the current state.
-    fn compute_convergence_info(&self, gradients: &[Tensor], function_change: Option<f64>) -> CandleResult<ConvergenceInfo> {
+    fn compute_convergence_info(
+        &self,
+        gradients: &[Tensor],
+        function_change: Option<f64>,
+    ) -> CandleResult<ConvergenceInfo> {
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
 
         // More reasonable convergence criteria: gradient norm is primary, function change is secondary
@@ -331,15 +373,23 @@ impl AdamOptimizer {
             true
         } else if grad_converged {
             // Moderately small gradient norm - check function change too
-            function_change.map(|change| change.abs() < func_tolerance).unwrap_or(true)
+            function_change
+                .map(|change| change.abs() < func_tolerance)
+                .unwrap_or(true)
         } else {
             false
         };
 
         if self.config.verbose && (grad_converged || func_converged) {
-            debug!("Convergence check: grad_norm={:.6e} < {:.6e} = {}, func_change={:?} < {:.6e} = {}", 
-                  gradient_norm, grad_tolerance, grad_converged,
-                  function_change, func_tolerance, func_converged);
+            debug!(
+                "Convergence check: grad_norm={:.6e} < {:.6e} = {}, func_change={:?} < {:.6e} = {}",
+                gradient_norm,
+                grad_tolerance,
+                grad_converged,
+                function_change,
+                func_tolerance,
+                func_converged
+            );
         }
 
         Ok(ConvergenceInfo {
@@ -350,11 +400,9 @@ impl AdamOptimizer {
 }
 
 impl Optimizer for AdamOptimizer {
-
     fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
-
 
     fn step(
         &mut self,
@@ -375,7 +423,6 @@ impl Optimizer for AdamOptimizer {
         // Calculate function change
         let function_change = prev_function_value.map(|prev| current_value - prev);
 
-
         // Compute gradients at current parameters
         let mut gradients = function.gradient(params)?;
 
@@ -385,13 +432,16 @@ impl Optimizer for AdamOptimizer {
 
         // Input validation
         if params.is_empty() || gradients.is_empty() {
-            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+            return Err(candle_core::Error::Msg(
+                "Empty parameters or gradients".into(),
+            ));
         }
         if params.len() != gradients.len() {
-            return Err(candle_core::Error::Msg(
-                format!("Parameter and gradient dimension mismatch: {} vs {}",
-                        params.len(), gradients.len())
-            ));
+            return Err(candle_core::Error::Msg(format!(
+                "Parameter and gradient dimension mismatch: {} vs {}",
+                params.len(),
+                gradients.len()
+            )));
         }
 
         // Apply weight decay
@@ -401,9 +451,11 @@ impl Optimizer for AdamOptimizer {
 
         // Compute gradient norm for logging
         let grad_norm = crate::utils::math::compute_magnitude(&gradients)?;
-        debug!("Adam step {}: grad_norm={:.6e}", self.state.iteration, grad_norm);
+        debug!(
+            "Adam step {}: grad_norm={:.6e}",
+            self.state.iteration, grad_norm
+        );
         self.log_scalar("Gradient Norm", grad_norm);
-
 
         // Compute parameter updates using Adam algorithm
         let updates = self.compute_updates(&gradients)?;
@@ -414,7 +466,6 @@ impl Optimizer for AdamOptimizer {
         self.log_scalar("Update Norm", update_norm);
         // Update learning rate based on schedule (after computing updates)
         self.update_learning_rate(Some(current_value));
-
 
         // Perform line search if enabled
         let step_size = 1.0;
@@ -430,9 +481,10 @@ impl Optimizer for AdamOptimizer {
         for (i, param) in params.iter().enumerate() {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
-                return Err(candle_core::Error::Msg(
-                    format!("Non-finite parameter detected at index {} after update", i)
-                ));
+                return Err(candle_core::Error::Msg(format!(
+                    "Non-finite parameter detected at index {} after update",
+                    i
+                )));
             }
         }
 
@@ -457,14 +509,28 @@ impl Optimizer for AdamOptimizer {
 
         let mut metadata = OptimizationMetadata::default();
         metadata.timing_info.step_duration = step_duration;
-        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
-        metadata.optimizer_data.insert("update_norm".to_string(), update_norm);
-        metadata.optimizer_data.insert("learning_rate".to_string(), self.current_lr);
-        metadata.optimizer_data.insert("beta1".to_string(), self.config.beta1);
-        metadata.optimizer_data.insert("beta2".to_string(), self.config.beta2);
-        metadata.optimizer_data.insert("line_search_alpha".to_string(), step_size);
+        metadata
+            .optimizer_data
+            .insert("gradient_norm".to_string(), grad_norm);
+        metadata
+            .optimizer_data
+            .insert("update_norm".to_string(), update_norm);
+        metadata
+            .optimizer_data
+            .insert("learning_rate".to_string(), self.current_lr);
+        metadata
+            .optimizer_data
+            .insert("beta1".to_string(), self.config.beta1);
+        metadata
+            .optimizer_data
+            .insert("beta2".to_string(), self.config.beta2);
+        metadata
+            .optimizer_data
+            .insert("line_search_alpha".to_string(), step_size);
         if let Some(change) = function_change {
-            metadata.optimizer_data.insert("function_change".to_string(), change);
+            metadata
+                .optimizer_data
+                .insert("function_change".to_string(), change);
         }
 
         Ok(StepResult {
@@ -483,7 +549,6 @@ impl Optimizer for AdamOptimizer {
         self.bad_step_count = 0;
     }
 
-
     fn name(&self) -> &str {
         if self.config.amsgrad {
             "Adam-AMSGrad"
@@ -499,7 +564,7 @@ impl Optimizer for AdamOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::optimizer::{Optimizer};
+    use crate::core::optimizer::Optimizer;
     use candle_core::{Device, Tensor};
 
     /// Simple quadratic function for testing: f(x) = 0.5 * ||x||^2
@@ -562,7 +627,6 @@ mod tests {
         assert!(state.v.is_none());
         assert!(state.v_max.is_none());
     }
-
 
     #[test]
     fn test_adam_optimizer_creation() {
@@ -642,8 +706,10 @@ mod tests {
             // Print progress for debugging
             let current_values = params[0].flatten_all()?.to_vec1::<f64>()?;
             let current_function_value = function.evaluate(&params)?;
-            println!("Step {}: params=[{:.6}, {:.6}], f={:.6e}",
-                     i, current_values[0], current_values[1], current_function_value);
+            println!(
+                "Step {}: params=[{:.6}, {:.6}], f={:.6e}",
+                i, current_values[0], current_values[1], current_function_value
+            );
             // Early termination if converged
             if result.convergence_info.converged {
                 break;
@@ -651,9 +717,20 @@ mod tests {
         }
         // Should converge close to [0, 0]
         let final_values = params[0].flatten_all()?.to_vec1::<f64>()?;
-        println!("Final values: [{:.6}, {:.6}]", final_values[0], final_values[1]);
-        assert!(final_values[0].abs() < 0.5, "Expected |x| < 0.5, got {}", final_values[0].abs());
-        assert!(final_values[1].abs() < 0.5, "Expected |y| < 0.5, got {}", final_values[1].abs());
+        println!(
+            "Final values: [{:.6}, {:.6}]",
+            final_values[0], final_values[1]
+        );
+        assert!(
+            final_values[0].abs() < 0.5,
+            "Expected |x| < 0.5, got {}",
+            final_values[0].abs()
+        );
+        assert!(
+            final_values[1].abs() < 0.5,
+            "Expected |y| < 0.5, got {}",
+            final_values[1].abs()
+        );
         Ok(())
     }
     #[test]
@@ -732,8 +809,12 @@ mod tests {
         }
 
         // After 100 steps, learning rate should have decreased from cosine schedule
-        assert!(optimizer.current_lr < initial_lr,
-                "Expected lr {} < initial_lr {}", optimizer.current_lr, initial_lr);
+        assert!(
+            optimizer.current_lr < initial_lr,
+            "Expected lr {} < initial_lr {}",
+            optimizer.current_lr,
+            initial_lr
+        );
         assert!(optimizer.current_lr >= optimizer.config.min_learning_rate);
         Ok(())
     }
@@ -790,7 +871,7 @@ mod tests {
         let config = AdamConfig {
             learning_rate: 0.01,
             lr_schedule: "constant".to_string(),
-            gradient_clip: None,  // Disable gradient clipping for Rosenbrock
+            gradient_clip: None, // Disable gradient clipping for Rosenbrock
             verbose: true,
             ..Default::default()
         };
@@ -807,8 +888,10 @@ mod tests {
             if i % 50 == 0 {
                 let current_values = params[0].flatten_all()?.to_vec1::<f64>()?;
                 let current_value = function.evaluate(&params)?;
-                println!("Step {}: params=[{:.6}, {:.6}], f={:.6e}",
-                         i, current_values[0], current_values[1], current_value);
+                println!(
+                    "Step {}: params=[{:.6}, {:.6}], f={:.6e}",
+                    i, current_values[0], current_values[1], current_value
+                );
             }
             if result.convergence_info.converged {
                 break;
@@ -817,12 +900,17 @@ mod tests {
         // Should be closer to optimum at (1, 1)
         let final_values = params[0].flatten_all()?.to_vec1::<f64>()?;
         let final_value = function.evaluate(&params)?;
-        println!("Final Rosenbrock: params=[{:.6}, {:.6}], f={:.6e}",
-                 final_values[0], final_values[1], final_value);
+        println!(
+            "Final Rosenbrock: params=[{:.6}, {:.6}], f={:.6e}",
+            final_values[0], final_values[1], final_value
+        );
         // Rosenbrock is difficult, so we're lenient with convergence
-        assert!(final_value < initial_value * 0.1,
-                "Function value should have decreased significantly: initial={:.6e}, final={:.6e}",
-                initial_value, final_value);
+        assert!(
+            final_value < initial_value * 0.1,
+            "Function value should have decreased significantly: initial={:.6e}, final={:.6e}",
+            initial_value,
+            final_value
+        );
         Ok(())
     }
     #[test]
@@ -911,7 +999,10 @@ mod tests {
         assert!(result.metadata.optimizer_data.contains_key("learning_rate"));
         assert!(result.metadata.optimizer_data.contains_key("beta1"));
         assert!(result.metadata.optimizer_data.contains_key("beta2"));
-        assert!(result.metadata.optimizer_data.contains_key("line_search_alpha"));
+        assert!(result
+            .metadata
+            .optimizer_data
+            .contains_key("line_search_alpha"));
         // Check that timing info is recorded
         assert!(result.metadata.timing_info.step_duration.as_secs_f64() >= 0.0);
         Ok(())

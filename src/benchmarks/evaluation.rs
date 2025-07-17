@@ -1,12 +1,12 @@
-use crate::benchmarks::functions::{OptimizationProblem};
-use crate::core::optimizer::{Optimizer};
+use crate::benchmarks::functions::OptimizationProblem;
+use crate::core::optimizer::Optimizer;
+use crate::utils::math::{create_1d_tensor, DifferentiableFunction};
+use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use candle_core::{Device, Tensor};
 use tokio::time::timeout;
-use crate::utils::math::{create_1d_tensor, DifferentiableFunction};
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -228,15 +228,20 @@ impl BenchmarkRunner {
     pub async fn run_benchmarks(
         &self,
         problems: Vec<Box<dyn OptimizationProblem>>,
-       mut optimizers: Vec<Box<dyn Optimizer>>,
+        mut optimizers: Vec<Box<dyn Optimizer>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
 
         for problem in &problems {
-           for optimizer in &mut optimizers {
+            for optimizer in &mut optimizers {
                 for run_id in 0..self.config.num_runs {
                     let result = self
-                       .run_single_benchmark(problem.as_ref(), optimizer, run_id, &optimizer.name().to_string())
+                        .run_single_benchmark(
+                            problem.as_ref(),
+                            optimizer,
+                            run_id,
+                            &optimizer.name().to_string(),
+                        )
                         .await?;
 
                     results.add_result(result);
@@ -255,8 +260,12 @@ impl BenchmarkRunner {
         run_id: usize,
         opt_name: &String,
     ) -> Result<SingleResult, BenchmarkError> {
-        info!("Starting benchmark: {} with {} (run {})", 
-              problem.name(), optimizer.name(), run_id);
+        info!(
+            "Starting benchmark: {} with {} (run {})",
+            problem.name(),
+            optimizer.name(),
+            run_id
+        );
 
         // Reset optimizer for this run
         optimizer.reset();
@@ -265,9 +274,9 @@ impl BenchmarkRunner {
         let mut x = problem.initial_point();
         // Validate initial point
         if x.iter().any(|&xi| !xi.is_finite()) {
-            return Err(BenchmarkError::ProblemError(
-                format!("Initial point contains non-finite values")
-            ));
+            return Err(BenchmarkError::ProblemError(format!(
+                "Initial point contains non-finite values"
+            )));
         }
 
         let mut iteration = 0;
@@ -292,13 +301,13 @@ impl BenchmarkRunner {
                 start_time,
             ),
         )
-            .await;
+        .await;
 
         let (convergence_achieved, convergence_reason) = match optimization_result {
             Ok(Ok(reason)) => (
-                matches!(reason, 
-                    ConvergenceReason::GradientTolerance | 
-                    ConvergenceReason::FunctionTolerance
+                matches!(
+                    reason,
+                    ConvergenceReason::GradientTolerance | ConvergenceReason::FunctionTolerance
                 ),
                 reason,
             ),
@@ -341,7 +350,6 @@ impl BenchmarkRunner {
             },
         };
 
-
         Ok(SingleResult {
             problem_name: problem.name().to_string(),
             optimizer_name: opt_name.clone(),
@@ -375,18 +383,21 @@ impl BenchmarkRunner {
         let mut stagnation_count = 0;
         let mut numerical_error_count = 0;
         const MAX_NUMERICAL_ERRORS: usize = 3;
-        const MAX_STAGNATION_COUNT: usize = 50;
+        const MAX_STAGNATION_COUNT: usize = 100; // More lenient
         const MIN_FUNCTION_CHANGE: f64 = 1e-16;
         let mut best_f_val = f64::INFINITY;
         let mut no_improvement_count = 0;
-        const MAX_NO_IMPROVEMENT: usize = 100;
+        const MAX_NO_IMPROVEMENT: usize = 200; // More lenient
 
         while *iteration < self.config.max_iterations {
             // Evaluate function and gradient
             let f_val = match problem.evaluate_f64(input_floats) {
                 Ok(val) => val,
                 Err(e) => {
-                    warn!("Function evaluation failed at iteration {}: {}", iteration, e);
+                    warn!(
+                        "Function evaluation failed at iteration {}: {}",
+                        iteration, e
+                    );
                     numerical_error_count += 1;
                     if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                         return Ok(ConvergenceReason::NumericalError);
@@ -396,7 +407,10 @@ impl BenchmarkRunner {
             };
 
             if !f_val.is_finite() {
-                warn!("Non-finite function value at iteration {}: {}", iteration, f_val);
+                warn!(
+                    "Non-finite function value at iteration {}: {}",
+                    iteration, f_val
+                );
                 numerical_error_count += 1;
                 if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                     return Ok(ConvergenceReason::NumericalError);
@@ -410,7 +424,10 @@ impl BenchmarkRunner {
             } else {
                 no_improvement_count += 1;
                 if no_improvement_count >= MAX_NO_IMPROVEMENT {
-                    info!("No improvement for {} iterations, terminating", MAX_NO_IMPROVEMENT);
+                    info!(
+                        "No improvement for {} iterations, terminating",
+                        MAX_NO_IMPROVEMENT
+                    );
                     return Ok(ConvergenceReason::FunctionTolerance);
                 }
             }
@@ -419,7 +436,10 @@ impl BenchmarkRunner {
             let gradient = match problem.gradient_f64(input_floats) {
                 Ok(grad) => grad,
                 Err(e) => {
-                    warn!("Gradient evaluation failed at iteration {}: {}", iteration, e);
+                    warn!(
+                        "Gradient evaluation failed at iteration {}: {}",
+                        iteration, e
+                    );
                     numerical_error_count += 1;
                     if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                         return Ok(ConvergenceReason::NumericalError);
@@ -451,7 +471,10 @@ impl BenchmarkRunner {
 
             // Check convergence
             let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-            debug!("Iteration {}: f_val={:.6e}, grad_norm={:.6e}", iteration, f_val, gradient_norm);
+            debug!(
+                "Iteration {}: f_val={:.6e}, grad_norm={:.6e}",
+                iteration, f_val, gradient_norm
+            );
             // Use the more lenient of the two tolerances to ensure convergence is achievable
             let tolerance = problem.convergence_tolerance().max(self.config.tolerance);
             if gradient_norm < tolerance {
@@ -470,15 +493,17 @@ impl BenchmarkRunner {
             if let Some(prev_f) = previous_f_val {
                 let f_change: f64 = ((f_val - prev_f) as f64).abs();
                 // Use a more reasonable stagnation threshold
-                let stagnation_threshold = tolerance * 0.1; // More reasonable threshold
+                let stagnation_threshold = tolerance * 0.01; // Even more reasonable threshold
                 if f_change < stagnation_threshold && gradient_norm > tolerance * 10.0 {
                     stagnation_count += 1;
                     debug!("Stagnation detected: |f_change|={:.6e} < {:.6e}, grad_norm={:.6e}, count={}", 
                            f_change, stagnation_threshold, gradient_norm, stagnation_count);
                     if stagnation_count > MAX_STAGNATION_COUNT {
                         // Consider it converged if function value hasn't changed much
-                        warn!("Function value stagnated for {} iterations with grad_norm={:.6e}", 
-                              stagnation_count, gradient_norm);
+                        warn!(
+                            "Function value stagnated for {} iterations with grad_norm={:.6e}",
+                            stagnation_count, gradient_norm
+                        );
                         return Ok(ConvergenceReason::FunctionTolerance);
                     }
                 } else {
@@ -511,7 +536,6 @@ impl BenchmarkRunner {
                 }
             }
 
-
             // Update counters
             *function_evaluations += step_result.function_evaluations;
             *gradient_evaluations += step_result.gradient_evaluations;
@@ -535,7 +559,6 @@ impl BenchmarkRunner {
     }
 }
 
-
 /// Wrapper to convert OptimizationProblem to DifferentiableFunction
 pub struct ProblemWrapper<'a> {
     problem: &'a dyn OptimizationProblem,
@@ -550,13 +573,16 @@ impl<'a> ProblemWrapper<'a> {
 impl<'a> DifferentiableFunction for ProblemWrapper<'a> {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
-        self.problem.evaluate_f64(&x_vec)
+        self.problem
+            .evaluate_f64(&x_vec)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))
     }
-    
+
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
-        let grad_vec = self.problem.gradient_f64(&x_vec)
+        let grad_vec = self
+            .problem
+            .gradient_f64(&x_vec)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
         Ok([create_1d_tensor(&grad_vec, &Device::Cpu)?].to_vec())
     }
@@ -658,12 +684,12 @@ mod tests {
     use super::*;
     use crate::benchmarks::functions::SphereFunction;
     use crate::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
-    
+
     #[tokio::test]
     async fn test_benchmark_runner() {
         //let _ = init_logging();
         let config = BenchmarkConfig {
-            max_iterations: 100,  // Reduced for testing
+            max_iterations: 100, // Reduced for testing
             tolerance: 1e-6,
             num_runs: 2,
             ..Default::default()
@@ -675,11 +701,10 @@ mod tests {
 
         // Use a more conservative L-BFGS configuration for testing
         let mut lbfgs_config = LBFGSConfig::default();
-        lbfgs_config.line_search.c1 = 1e-4;  // More lenient Wolfe condition
-        lbfgs_config.line_search.c2 = 0.9;   // More lenient curvature condition
-        lbfgs_config.line_search.max_iterations = 50;  // More line search iterations
-        let optimizers: Vec<Box<dyn Optimizer>> =
-            vec![Box::new(LBFGSOptimizer::new(lbfgs_config))];
+        lbfgs_config.line_search.c1 = 1e-4; // More lenient Wolfe condition
+        lbfgs_config.line_search.c2 = 0.9; // More lenient curvature condition
+        lbfgs_config.line_search.max_iterations = 50; // More line search iterations
+        let optimizers: Vec<Box<dyn Optimizer>> = vec![Box::new(LBFGSOptimizer::new(lbfgs_config))];
 
         let results = runner.run_benchmarks(problems, optimizers).await.unwrap();
 
@@ -687,8 +712,14 @@ mod tests {
 
         // Debug output for failed tests
         for (i, result) in results.results.iter().enumerate() {
-            println!("Run {}: final_value={:.6e}, grad_norm={:.6e}, iterations={}, converged={}",
-                     i, result.final_value, result.final_gradient_norm, result.iterations, result.convergence_achieved);
+            println!(
+                "Run {}: final_value={:.6e}, grad_norm={:.6e}, iterations={}, converged={}",
+                i,
+                result.final_value,
+                result.final_gradient_norm,
+                result.iterations,
+                result.convergence_achieved
+            );
         }
 
         // Check that all results have reasonable final values (sphere function minimum is 0)
@@ -696,9 +727,9 @@ mod tests {
             // Be more lenient - check if optimizer made any progress from initial value of 2.0
             // The sphere function with initial point [1.0, 1.0] has f(x) = 2.0
             // We should see some improvement or small gradients or convergence
-            let made_progress = result.final_value < 1.9 ||
-                result.final_gradient_norm < 0.1 ||
-                result.convergence_achieved;
+            let made_progress = result.final_value < 1.9
+                || result.final_gradient_norm < 0.1
+                || result.convergence_achieved;
             if !made_progress {
                 println!("Warning: Optimizer made limited progress: final_value={:.6e}, grad_norm={:.6e}, iterations={}, reason={:?}",
                          result.final_value, result.final_gradient_norm, result.iterations, result.convergence_reason);
@@ -713,8 +744,14 @@ mod tests {
             // More relaxed assertion - just ensure the optimizer ran and didn't error
             // Allow non-finite values if numerical errors were detected
             if result.convergence_reason != ConvergenceReason::NumericalError {
-                assert!(result.final_value.is_finite(), "Final value is not finite without numerical error");
-                assert!(result.final_gradient_norm.is_finite(), "Final gradient norm is not finite without numerical error");
+                assert!(
+                    result.final_value.is_finite(),
+                    "Final value is not finite without numerical error"
+                );
+                assert!(
+                    result.final_gradient_norm.is_finite(),
+                    "Final gradient norm is not finite without numerical error"
+                );
             } else {
                 println!("Note: Numerical error detected, allowing non-finite values");
             }

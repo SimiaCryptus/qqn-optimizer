@@ -1,9 +1,9 @@
 use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
-use crate::utils::math::DifferentiableFunction;
 
 /// Configuration parameters for the SGD optimizer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,8 +84,10 @@ impl SGDOptimizer {
     pub fn new(config: SGDConfig) -> Self {
         if config.verbose {
             info!("Creating SGD optimizer with verbose logging enabled");
-            debug!("SGD Config: lr={}, momentum={}, weight_decay={}, nesterov={}",
-                  config.learning_rate, config.momentum, config.weight_decay, config.nesterov);
+            debug!(
+                "SGD Config: lr={}, momentum={}, weight_decay={}, nesterov={}",
+                config.learning_rate, config.momentum, config.weight_decay, config.nesterov
+            );
         }
         Self {
             config,
@@ -102,22 +104,42 @@ impl SGDOptimizer {
         for (i, tensor) in tensors.iter().enumerate() {
             match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
                 Ok(values) => {
-                    debug!("  Tensor[{}]: shape={:?}, length={}", i, tensor.shape(), values.len());
+                    debug!(
+                        "  Tensor[{}]: shape={:?}, length={}",
+                        i,
+                        tensor.shape(),
+                        values.len()
+                    );
                     if values.len() <= 10 {
                         debug!("    Full data: {:?}", values);
                     } else {
-                        debug!("    First 5: {:?}, Last 5: {:?}", &values[..5], &values[values.len() - 5..]);
+                        debug!(
+                            "    First 5: {:?}, Last 5: {:?}",
+                            &values[..5],
+                            &values[values.len() - 5..]
+                        );
                     }
                     // Log statistics
                     let mean = values.iter().sum::<f64>() / values.len() as f64;
-                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
+                        / values.len() as f64;
                     let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
                     let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                    debug!("    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
-                          mean, variance.sqrt(), min_val, max_val);
+                    debug!(
+                        "    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
+                        mean,
+                        variance.sqrt(),
+                        min_val,
+                        max_val
+                    );
                 }
                 Err(e) => {
-                    debug!("  Tensor[{}]: shape={:?}, error reading values: {}", i, tensor.shape(), e);
+                    debug!(
+                        "  Tensor[{}]: shape={:?}, error reading values: {}",
+                        i,
+                        tensor.shape(),
+                        e
+                    );
                 }
             }
         }
@@ -183,13 +205,11 @@ impl SGDOptimizer {
     /// Compute convergence information for the current state.
     fn compute_convergence_info(&self, gradients: &[Tensor]) -> CandleResult<ConvergenceInfo> {
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
-        // Use a more lenient convergence criterion for SGD
-        let tolerance = if self.config.momentum > 0.0 {
-            1e-4 // More lenient for momentum-based SGD
-        } else {
-            1e-3 // Even more lenient for vanilla SGD
-        };
-
+        // Adaptive tolerance based on learning rate and momentum
+        let base_tolerance = 1e-5;
+        let lr_factor = (self.config.learning_rate / 0.01).max(0.1);
+        let momentum_factor = if self.config.momentum > 0.0 { 0.5 } else { 1.0 };
+        let tolerance = base_tolerance * lr_factor * momentum_factor;
 
         Ok(ConvergenceInfo {
             converged: gradient_norm < tolerance,
@@ -199,11 +219,9 @@ impl SGDOptimizer {
 }
 
 impl Optimizer for SGDOptimizer {
-
     fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
-
 
     fn step(
         &mut self,
@@ -224,13 +242,16 @@ impl Optimizer for SGDOptimizer {
 
         // Input validation
         if params.is_empty() || gradients.is_empty() {
-            return Err(candle_core::Error::Msg("Empty parameters or gradients".into()));
+            return Err(candle_core::Error::Msg(
+                "Empty parameters or gradients".into(),
+            ));
         }
         if params.len() != gradients.len() {
-            return Err(candle_core::Error::Msg(
-                format!("Parameter and gradient dimension mismatch: {} vs {}",
-                        params.len(), gradients.len())
-            ));
+            return Err(candle_core::Error::Msg(format!(
+                "Parameter and gradient dimension mismatch: {} vs {}",
+                params.len(),
+                gradients.len()
+            )));
         }
 
         // Apply weight decay
@@ -238,7 +259,10 @@ impl Optimizer for SGDOptimizer {
 
         // Compute gradient norm for logging
         let grad_norm = crate::utils::math::compute_magnitude(&gradients)?;
-        debug!("SGD step {}: grad_norm={:.6e}", self.state.iteration, grad_norm);
+        debug!(
+            "SGD step {}: grad_norm={:.6e}",
+            self.state.iteration, grad_norm
+        );
         self.log_scalar("Gradient Norm", grad_norm);
 
         // Update momentum and get final update direction
@@ -262,9 +286,10 @@ impl Optimizer for SGDOptimizer {
         for (i, param) in params.iter().enumerate() {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
-                return Err(candle_core::Error::Msg(
-                    format!("Non-finite parameter detected at index {} after update", i)
-                ));
+                return Err(candle_core::Error::Msg(format!(
+                    "Non-finite parameter detected at index {} after update",
+                    i
+                )));
             }
         }
 
@@ -283,10 +308,18 @@ impl Optimizer for SGDOptimizer {
 
         let mut metadata = OptimizationMetadata::default();
         metadata.timing_info.step_duration = step_duration;
-        metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
-        metadata.optimizer_data.insert("update_norm".to_string(), update_norm);
-        metadata.optimizer_data.insert("learning_rate".to_string(), self.config.learning_rate);
-        metadata.optimizer_data.insert("momentum".to_string(), self.config.momentum);
+        metadata
+            .optimizer_data
+            .insert("gradient_norm".to_string(), grad_norm);
+        metadata
+            .optimizer_data
+            .insert("update_norm".to_string(), update_norm);
+        metadata
+            .optimizer_data
+            .insert("learning_rate".to_string(), self.config.learning_rate);
+        metadata
+            .optimizer_data
+            .insert("momentum".to_string(), self.config.momentum);
 
         Ok(StepResult {
             step_size: self.config.learning_rate,
@@ -300,7 +333,6 @@ impl Optimizer for SGDOptimizer {
     fn reset(&mut self) {
         self.state.reset();
     }
-
 
     fn name(&self) -> &str {
         if self.config.momentum > 0.0 {
@@ -376,7 +408,6 @@ mod tests {
         assert!(state.momentum_buffer.is_none());
     }
 
-
     #[test]
     fn test_sgd_optimizer_creation() {
         let config = SGDConfig::default();
@@ -393,7 +424,6 @@ mod tests {
         assert_eq!(config.weight_decay, 0.0);
         assert!(!config.nesterov);
     }
-
 
     #[test]
     fn test_sgd_with_momentum() {
@@ -648,9 +678,7 @@ mod tests {
         };
         let mut optimizer = SGDOptimizer::new(config);
         let function = QuadraticFunction;
-        let mut params = vec![
-            Tensor::new(&[1.0f64], &Device::Cpu)?,
-        ];
+        let mut params = vec![Tensor::new(&[1.0f64], &Device::Cpu)?];
         // Take a step to initialize momentum
         let _ = optimizer.step(&mut params, &function)?;
         assert_eq!(optimizer.state.iteration, 1);
@@ -673,9 +701,7 @@ mod tests {
         };
         let mut optimizer = SGDOptimizer::new(config);
         let function = QuadraticFunction;
-        let mut params = vec![
-            Tensor::new(&[1.0f64], &Device::Cpu)?,
-        ];
+        let mut params = vec![Tensor::new(&[1.0f64], &Device::Cpu)?];
         // This should produce verbose output (captured by logger)
         let result = optimizer.step(&mut params, &function)?;
         assert!(result.metadata.timing_info.step_duration.as_nanos() > 0);
@@ -690,9 +716,7 @@ mod tests {
         };
         let mut optimizer = SGDOptimizer::new(config);
         let function = QuadraticFunction;
-        let mut params = vec![
-            Tensor::new(&[2.0f64], &Device::Cpu)?,
-        ];
+        let mut params = vec![Tensor::new(&[2.0f64], &Device::Cpu)?];
         let result = optimizer.step(&mut params, &function)?;
         // Check metadata
         assert!(result.metadata.optimizer_data.contains_key("gradient_norm"));

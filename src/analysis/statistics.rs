@@ -687,10 +687,7 @@ impl StatisticalAnalysis {
         }
     }
 
-    fn confidence_interval_mean_diff(
-        group_a: &[f64],
-        group_b: &[f64],
-    ) -> (f64, f64) {
+    fn confidence_interval_mean_diff(group_a: &[f64], group_b: &[f64]) -> (f64, f64) {
         let mean_a = Self::mean(group_a);
         let mean_b = Self::mean(group_b);
         let std_a = Self::std_dev(group_a);
@@ -730,7 +727,6 @@ impl StatisticalAnalysis {
             }
         }
 
-
         let se = ((var_a / n_a) + (var_b / n_b)).sqrt();
         let t_stat = if se == 0.0 {
             0.0
@@ -757,7 +753,6 @@ impl StatisticalAnalysis {
             return (t_stat, 0.5); // Return neutral p-value for invalid df
         }
 
-
         // Calculate p-value using t-distribution
         let p_value = if df >= 1.0 && t_stat.is_finite() {
             match StudentsT::new(0.0, 1.0, df) {
@@ -776,7 +771,7 @@ impl StatisticalAnalysis {
                         0.5 // Fallback for invalid CDF result
                     }
                 }
-                Err(_) => 0.5 // Fallback for invalid distribution parameters
+                Err(_) => 0.5, // Fallback for invalid distribution parameters
             }
         } else {
             0.5

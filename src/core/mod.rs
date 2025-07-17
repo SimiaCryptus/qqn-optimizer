@@ -23,7 +23,6 @@ pub enum OptError {
     InvalidInput(String),
 }
 
-
 pub mod lbfgs;
 pub mod line_search;
 pub mod optimizer;
@@ -36,7 +35,6 @@ pub use line_search::{
 pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
 
-
 /// Tolerance for numerical comparisons
 pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
 
@@ -45,8 +43,8 @@ pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
 
 /// Default L-BFGS history size
 pub const DEFAULT_LBFGS_HISTORY: usize = 10;
-pub mod sgd;
 pub mod adam;
+pub mod sgd;
 
 pub use sgd::{SGDConfig, SGDOptimizer, SGDState};
 

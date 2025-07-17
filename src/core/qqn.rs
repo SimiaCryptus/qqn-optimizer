@@ -1,10 +1,16 @@
 use crate::core::lbfgs::LBFGSState;
-use crate::core::line_search::{create_1d_problem, create_1d_problem_linear, create_line_search, LineSearch, LineSearchResult, ParametricCurve};
-use crate::core::optimizer::{OptimizationMetadata};
+use crate::core::line_search::{
+    create_1d_problem, create_1d_problem_linear, create_line_search, LineSearch, LineSearchResult,
+    ParametricCurve,
+};
+use crate::core::optimizer::OptimizationMetadata;
 use crate::core::Optimizer;
 use crate::core::StepResult;
 use crate::core::{ConvergenceInfo, TerminationReason};
-use crate::utils::math::{DifferentiableFunction, combine_tensors, compute_magnitude, create_1d_tensor, log_tensor, scale_tensors};
+use crate::utils::math::{
+    combine_tensors, compute_magnitude, create_1d_tensor, log_tensor, scale_tensors,
+    DifferentiableFunction,
+};
 use crate::LineSearchConfig;
 use anyhow::{anyhow, Result as AnyhowResult};
 use candle_core::{Device, Error, Result as CandleResult, Tensor};
@@ -128,7 +134,6 @@ impl QQNOptimizer {
         log_tensor(tensors);
     }
 
-
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
         if self.config.verbose {
@@ -142,7 +147,10 @@ impl QQNOptimizer {
             return;
         }
         debug!("=== QQN Optimization State (Iteration {}) ===", iteration);
-        debug!("  L-BFGS History Length: {}", self.state.lbfgs_state.history_length());
+        debug!(
+            "  L-BFGS History Length: {}",
+            self.state.lbfgs_state.history_length()
+        );
         debug!("  L-BFGS Gamma: {:.6e}", self.state.lbfgs_state.gamma());
         debug!("  Additional Info: {}", additional_info);
     }
@@ -226,38 +234,38 @@ impl QQNOptimizer {
         // Create a parametric curve adapter for the quadratic path
         let curve = quadratic_path.clone();
         // Get the initial derivative of the quadratic path for line search
-        let initial_derivative = curve.initial_derivative()
-            .map_err(|e| candle_core::Error::Msg(format!("Failed to get initial derivative: {}", e)))?;
-
+        let initial_derivative = curve.initial_derivative().map_err(|e| {
+            candle_core::Error::Msg(format!("Failed to get initial derivative: {}", e))
+        })?;
 
         // Create objective and gradient functions
-
 
         // Create 1D problem
         let fn1 = |x: &[f64]| -> anyhow::Result<f64> {
             let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-            function.evaluate(&tensors).map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
+            function
+                .evaluate(&tensors)
+                .map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
         };
         let fn2 = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
             let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-            let grads = function.gradient(&tensors)
+            let grads = function
+                .gradient(&tensors)
                 .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
             let mut result = Vec::new();
             for grad_tensor in grads {
-                let flattened = grad_tensor.flatten_all()
+                let flattened = grad_tensor
+                    .flatten_all()
                     .map_err(|e| anyhow::anyhow!("Failed to flatten gradient: {}", e))?;
-                let values = flattened.to_vec1::<f64>()
+                let values = flattened
+                    .to_vec1::<f64>()
                     .map_err(|e| anyhow::anyhow!("Failed to convert gradient to vec: {}", e))?;
                 result.extend(values);
             }
             Ok(result)
         };
-        let problem = create_1d_problem(
-            Box::new(curve),
-            &initial_derivative,
-            &fn1,
-            &fn2,
-        ).map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+        let problem = create_1d_problem(Box::new(curve), &initial_derivative, &fn1, &fn2)
+            .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
 
         // Perform line search
         let result = match self.line_search.optimize_1d(&problem) {
@@ -296,12 +304,14 @@ impl QQNOptimizer {
         let grad_norm = compute_magnitude(gradients)?;
         let direction = if grad_norm > 1000.0 {
             let scale_factor = 1000.0 / grad_norm;
-            warn!("Large gradient norm {:.2e}, scaling direction by {:.2e}", grad_norm, scale_factor);
+            warn!(
+                "Large gradient norm {:.2e}, scaling direction by {:.2e}",
+                grad_norm, scale_factor
+            );
             scale_tensors(&direction, scale_factor)?
         } else {
             direction
         };
-
 
         // Convert to f64 for line search
         let params_f64: Vec<f64> = nd_params
@@ -333,14 +343,20 @@ impl QQNOptimizer {
             let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
                 let _1d_params = create_1d_tensor(x, nd_params[0].device())?;
                 let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-                function.evaluate(&tensors).map_err(|e| anyhow!("Function evaluation failed: {}", e))
+                function
+                    .evaluate(&tensors)
+                    .map_err(|e| anyhow!("Function evaluation failed: {}", e))
             };
             let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
                 let _1d_params = create_1d_tensor(x, nd_params[0].device())?;
                 let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-                let grads = function.gradient(&tensors)
+                let grads = function
+                    .gradient(&tensors)
                     .map_err(|e| anyhow!("Gradient evaluation failed: {}", e))?;
-                debug!("Steepest descent line search: x={:?}, tensors={:?}, grads={:?}", x, tensors, grads);
+                debug!(
+                    "Steepest descent line search: x={:?}, tensors={:?}, grads={:?}",
+                    x, tensors, grads
+                );
                 Ok(grads
                     .iter()
                     .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
@@ -354,14 +370,14 @@ impl QQNOptimizer {
                 &gradients_f64,
                 &objective_fn,
                 &gradient_fn,
-            ).map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            )
+            .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
 
             // Perform line search
-            self.line_search.optimize_1d(&problem)
-                .map_err(|e| {
-                    warn!("Line search failed: {}", e);
-                    candle_core::Error::Msg(format!("Line search failed: {}", e))
-                })
+            self.line_search.optimize_1d(&problem).map_err(|e| {
+                warn!("Line search failed: {}", e);
+                candle_core::Error::Msg(format!("Line search failed: {}", e))
+            })
         };
 
         // If line search failed, try a very small fixed step
@@ -426,8 +442,11 @@ impl QQNOptimizer {
         })
     }
 
-
-    fn compute_scale_factor(&mut self, params: &mut [Tensor], step_norm: f64) -> Result<f64, Error> {
+    fn compute_scale_factor(
+        &mut self,
+        params: &mut [Tensor],
+        step_norm: f64,
+    ) -> Result<f64, Error> {
         // Safety check: if step is too large, scale it down
         // Make max step norm adaptive based on current parameter magnitude
         let param_norm = compute_magnitude(params)?;
@@ -445,14 +464,22 @@ impl QQNOptimizer {
             self.log_scalar("Scaling Factor", max_step_norm / step_norm);
             max_step_norm / step_norm
         } else {
-            debug!("Max step norm: {:.6e} (based on param norm: {:.6e})", max_step_norm, param_norm);
+            debug!(
+                "Max step norm: {:.6e} (based on param norm: {:.6e})",
+                max_step_norm, param_norm
+            );
             self.log_scalar("Scaling Factor", 1.0);
             1.0
         };
         Ok(scaling_factor)
     }
 
-    fn apply_step(&mut self, params: &mut [Tensor], direction: &Vec<Tensor>, scaling_factor: f64) -> Result<(), Error> {
+    fn apply_step(
+        &mut self,
+        params: &mut [Tensor],
+        direction: &Vec<Tensor>,
+        scaling_factor: f64,
+    ) -> Result<(), Error> {
         for (param, dir) in params.iter_mut().zip(direction.iter()) {
             let scaled_dir = dir.affine(scaling_factor, 0.0)?;
             *param = param.add(&scaled_dir)?;
@@ -473,11 +500,9 @@ impl QQNOptimizer {
 }
 
 impl Optimizer for QQNOptimizer {
-
     fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
-
 
     fn step(
         &mut self,
@@ -547,10 +572,15 @@ impl Optimizer for QQNOptimizer {
         }
 
         let quadratic_path = self.create_quadratic_path(params, &gradients, &lbfgs_direction)?;
-        let line_search_result = self.find_optimal_t_line_search(&quadratic_path.clone(), function)?;
+        let line_search_result =
+            self.find_optimal_t_line_search(&quadratic_path.clone(), function)?;
         info!("Found optimal t = {:.6}", line_search_result.step_size);
         self.log_scalar("Optimal t", line_search_result.step_size);
-        self.log_line_search_details(line_search_result.step_size, line_search_result.function_evaluations, line_search_result.gradient_evaluations);
+        self.log_line_search_details(
+            line_search_result.step_size,
+            line_search_result.function_evaluations,
+            line_search_result.gradient_evaluations,
+        );
 
         let direction = quadratic_path.evaluate_direction(line_search_result.step_size)?;
         self.log_tensor_data("Final Direction", &direction);
@@ -648,7 +678,6 @@ impl Optimizer for QQNOptimizer {
         self.state.lbfgs_state.reset();
     }
 
-
     fn name(&self) -> &str {
         "QQN"
     }
@@ -667,7 +696,11 @@ pub struct QuadraticPath {
 
 impl QuadraticPath {
     /// Create a new quadratic path
-    pub fn new(start_point: Vec<Tensor>, negative_gradient: Vec<Tensor>, lbfgs_direction: Vec<Tensor>) -> Self {
+    pub fn new(
+        start_point: Vec<Tensor>,
+        negative_gradient: Vec<Tensor>,
+        lbfgs_direction: Vec<Tensor>,
+    ) -> Self {
         Self {
             start_point,
             negative_gradient,
@@ -711,7 +744,9 @@ impl QuadraticPath {
         // Handle special case where both coefficients are zero (t=0)
         if gradient_coeff.abs() < 1e-15 && lbfgs_coeff.abs() < 1e-15 {
             // Return zero direction
-            return Ok(self.negative_gradient.iter()
+            return Ok(self
+                .negative_gradient
+                .iter()
                 .map(|t| t.zeros_like())
                 .collect::<Result<Vec<_>, _>>()?);
         }
@@ -783,7 +818,8 @@ impl<'a> ParametricCurve for QuadraticPath {
     }
     fn initial_derivative(&self) -> AnyhowResult<Vec<f64>> {
         // Get the derivative of the quadratic path at t=0
-        let deriv = self.derivative(0.0)
+        let deriv = self
+            .derivative(0.0)
             .map_err(|e| anyhow::anyhow!("Failed to compute derivative: {}", e))?;
         // Convert to f64 vector
         Ok(deriv
@@ -1061,7 +1097,10 @@ mod tests {
         let function = NaNGradientFunction;
         let result = optimizer.step(&mut params, &function);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Non-finite gradient"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Non-finite gradient"));
         Ok(())
     }
     #[test]
