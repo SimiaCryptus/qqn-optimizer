@@ -1,12 +1,12 @@
 use crate::benchmarks::functions::{OptimizationProblem};
-use crate::core::optimizer::{OptimizerBox};
+use crate::core::optimizer::{Optimizer};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use candle_core::{Device, Tensor};
 use tokio::time::timeout;
-use crate::utils::math::{create_1d_tensor, f64_to_tensors, DifferentiableFunction};
+use crate::utils::math::{create_1d_tensor, DifferentiableFunction};
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -228,15 +228,15 @@ impl BenchmarkRunner {
     pub async fn run_benchmarks(
         &self,
         problems: Vec<Box<dyn OptimizationProblem>>,
-        optimizers: Vec<Box<dyn OptimizerBox>>,
+       mut optimizers: Vec<Box<dyn Optimizer>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
 
         for problem in &problems {
-            for optimizer in &optimizers {
+           for optimizer in &mut optimizers {
                 for run_id in 0..self.config.num_runs {
                     let result = self
-                        .run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id, &optimizer.name().to_string())
+                       .run_single_benchmark(problem.as_ref(), optimizer, run_id, &optimizer.name().to_string())
                         .await?;
 
                     results.add_result(result);
@@ -251,16 +251,15 @@ impl BenchmarkRunner {
     pub async fn run_single_benchmark(
         &self,
         problem: &dyn OptimizationProblem,
-        optimizer: &dyn OptimizerBox,
+        optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
         opt_name: &String,
     ) -> Result<SingleResult, BenchmarkError> {
         info!("Starting benchmark: {} with {} (run {})", 
               problem.name(), optimizer.name(), run_id);
 
-        // Clone optimizer for this run
-        let mut opt = optimizer.clone_box();
-        opt.reset();
+        // Reset optimizer for this run
+        optimizer.reset();
 
         // Initialize parameters
         let mut x = problem.initial_point();
@@ -284,7 +283,7 @@ impl BenchmarkRunner {
             time_limit,
             self.optimization_loop(
                 problem,
-                opt.as_mut(),
+                optimizer.as_mut(),
                 &mut x,
                 &mut iteration,
                 &mut function_evaluations,
@@ -364,8 +363,8 @@ impl BenchmarkRunner {
     async fn optimization_loop(
         &self,
         problem: &dyn OptimizationProblem,
-        optimizer: &mut dyn OptimizerBox,
-        x: &mut [f64],
+        optimizer: &mut dyn Optimizer,
+        input_floats: &mut [f64],
         iteration: &mut usize,
         function_evaluations: &mut usize,
         gradient_evaluations: &mut usize,
@@ -384,7 +383,7 @@ impl BenchmarkRunner {
 
         while *iteration < self.config.max_iterations {
             // Evaluate function and gradient
-            let f_val = match problem.evaluate_f64(x) {
+            let f_val = match problem.evaluate_f64(input_floats) {
                 Ok(val) => val,
                 Err(e) => {
                     warn!("Function evaluation failed at iteration {}: {}", iteration, e);
@@ -417,7 +416,7 @@ impl BenchmarkRunner {
             }
 
             *function_evaluations += 1;
-            let gradient = match problem.gradient_f64(x) {
+            let gradient = match problem.gradient_f64(input_floats) {
                 Ok(grad) => grad,
                 Err(e) => {
                     warn!("Gradient evaluation failed at iteration {}: {}", iteration, e);
@@ -444,7 +443,7 @@ impl BenchmarkRunner {
             trace.record_iteration(
                 *iteration,
                 f_val,
-                x,
+                input_floats,
                 &gradient,
                 0.0, // Will be updated after step
                 start_time.elapsed(),
@@ -488,18 +487,30 @@ impl BenchmarkRunner {
             }
             previous_f_val = Some(f_val);
 
-            // Perform optimization step
-            let device = &Device::Cpu;
-            let mut tensors = [create_1d_tensor(x, device).map_err(|e| {
-                BenchmarkError::ProblemError(format!("Failed to create tensor: {}", e))
-            })?];
-            f64_to_tensors(x, &tensors)
-                .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
             // Create wrapper that lives long enough for the step call
-            let problem_wrapper = ProblemWrapper::new(problem);
+            let mut tensors = [create_1d_tensor(input_floats, &Device::Cpu)
+                .map_err(|e| BenchmarkError::ConfigError(e.to_string()))?];
             let step_result = optimizer
-                .step(&mut tensors, &problem_wrapper)
+                .step(&mut tensors, &ProblemWrapper::new(problem))
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
+            // Update input floats with new parameters
+            for tensor in tensors.iter() {
+                if let Ok(values) = tensor.to_vec1::<f64>() {
+                    if values.len() != input_floats.len() {
+                        return Err(BenchmarkError::ConfigError(
+                            "Parameter size mismatch after optimization step".to_string(),
+                        ));
+                    }
+                    for (i, &value) in values.iter().enumerate() {
+                        input_floats[i] = value;
+                    }
+                } else {
+                    return Err(BenchmarkError::ConfigError(
+                        "Failed to convert tensor to f64 vector".to_string(),
+                    ));
+                }
+            }
+
 
             // Update counters
             *function_evaluations += step_result.function_evaluations;
@@ -511,7 +522,7 @@ impl BenchmarkRunner {
             }
 
             // Check for numerical errors
-            if x.iter().any(|&xi| !xi.is_finite()) {
+            if input_floats.iter().any(|&xi| !xi.is_finite()) {
                 warn!("Non-finite parameter detected at iteration {}", iteration);
                 return Ok(ConvergenceReason::NumericalError);
             }
@@ -547,7 +558,7 @@ impl<'a> DifferentiableFunction for ProblemWrapper<'a> {
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
         let grad_vec = self.problem.gradient_f64(&x_vec)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        crate::utils::math::f64_to_tensors(&grad_vec, params)
+        Ok([create_1d_tensor(&grad_vec, &Device::Cpu)?].to_vec())
     }
 }
 
@@ -668,7 +679,7 @@ mod tests {
         lbfgs_config.line_search.c1 = 1e-4;  // More lenient Wolfe condition
         lbfgs_config.line_search.c2 = 0.9;   // More lenient curvature condition
         lbfgs_config.line_search.max_iterations = 50;  // More line search iterations
-        let optimizers: Vec<Box<dyn OptimizerBox>> =
+        let optimizers: Vec<Box<dyn Optimizer>> =
             vec![Box::new(LBFGSOptimizer::new(lbfgs_config))];
 
         let results = runner.run_benchmarks(problems, optimizers).await.unwrap();

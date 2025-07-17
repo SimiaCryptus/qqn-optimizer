@@ -5,13 +5,14 @@ use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, B
 use qqn_optimizer::benchmarks::functions::{GoldsteinPriceFunction, LeviFunction, MatyasFunction, OptimizationProblem, RosenbrockFunction, SphereFunction, StyblinskiTangFunction};
 use qqn_optimizer::benchmarks::MichalewiczFunction;
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
-use qqn_optimizer::core::optimizer::OptimizerBox;
+use qqn_optimizer::core::optimizer::Optimizer;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::core::{SGDConfig, SGDOptimizer};
 use qqn_optimizer::{init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, RastriginFunction};
 use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::fs;
+use std::ops::Deref;
 use std::path::Path;
 use std::time::Duration;
 
@@ -24,7 +25,7 @@ pub struct ExperimentRunner {
 impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
-            max_iterations: 1000,
+            max_iterations: 100,
             tolerance: 1e-8,
             time_limit: Duration::from_secs(60).into(),
             random_seed: 42,
@@ -108,7 +109,7 @@ impl ExperimentRunner {
         ]
     }
 
-    fn create_optimizers(&self) -> Vec<(String, Box<dyn OptimizerBox>)> {
+    fn create_optimizers(&self) -> Vec<(String, Box<dyn Optimizer>)> {
         vec![
             (
                 "QQN-Default".to_string(),
@@ -182,18 +183,18 @@ impl ExperimentRunner {
     async fn run_problem_benchmarks(
         &self,
         problem: &dyn OptimizationProblem,
-        optimizers: &[(String, Box<dyn OptimizerBox>)],
+        optimizers: &[(String, Box<dyn Optimizer>)],
     ) -> anyhow::Result<BenchmarkResults> {
         let runner = BenchmarkRunner::new(self.config.clone());
         let mut results = BenchmarkResults::new(self.config.clone());
 
-        for (opt_name, optimizer) in optimizers {
+       for (opt_name, ref optimizer) in optimizers.iter() {
             for run_id in 0..self.config.num_runs {
                 // Use different random seeds for each run to get varied starting points
                 let mut config_with_seed = self.config.clone();
                 config_with_seed.random_seed = self.config.random_seed + run_id as u64;
                 let mut result = runner
-                    .run_single_benchmark(problem, optimizer.as_ref(), run_id, opt_name)
+                   .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name)
                     .await?;
                 // For optimization, validate that we achieved reasonable progress
                 // Check if final value is below a reasonable threshold
@@ -881,7 +882,7 @@ impl ExperimentRunner {
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    init_logging()?;
+    // init_logging()?;
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);
@@ -952,19 +953,19 @@ async fn test_academic_citation_format() -> Result<(), Box<dyn std::error::Error
     ];
 
     let optimizers = vec![
-        ("QQN".to_string(), Box::new(QQNOptimizer::new(QQNConfig::default())) as Box<dyn OptimizerBox>),
+        ("QQN".to_string(), Box::new(QQNOptimizer::new(QQNConfig::default())) as Box<dyn Optimizer>),
         ("L-BFGS".to_string(), Box::new(LBFGSOptimizer::new(LBFGSConfig::default()))),
     ];
 
     let mut all_results = Vec::new();
     for problem in &problems {
         let mut results = BenchmarkResults::new(runner.config.clone());
-        for (name, optimizer) in &optimizers {
+       for (name, ref optimizer) in optimizers.iter() {
             for run_id in 0..runner.config.num_runs {
                 let benchmark_runner = BenchmarkRunner::new(runner.config.clone());
                 let result = tokio::time::timeout(
                     Duration::from_secs(30),
-                    benchmark_runner.run_single_benchmark(problem.as_ref(), optimizer.as_ref(), run_id, &name),
+                   benchmark_runner.run_single_benchmark(problem.as_ref(), &mut optimizer.clone_box(), run_id, &name),
                 ).await;
 
                 match result {

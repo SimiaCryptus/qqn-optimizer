@@ -8,7 +8,7 @@ pub mod utils;
 pub use core::{
     lbfgs::{LBFGSConfig, LBFGSOptimizer},
     line_search::{BacktrackingConfig, LineSearchConfig, LineSearchMethod, StrongWolfeConfig},
-    optimizer::{ConvergenceInfo, Optimizer, OptimizerBox, StepResult},
+    optimizer::{ConvergenceInfo, Optimizer, StepResult},
     qqn::{QQNConfig, QQNOptimizer},
 };
 

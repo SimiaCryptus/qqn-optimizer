@@ -4,12 +4,11 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
+pub(crate) use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result, Tensor};
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::fmt::Debug;
 use std::time::Duration;
-pub(crate) use crate::utils::math::DifferentiableFunction;
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,38 +29,15 @@ impl Default for OptimizationMetadata {
         }
     }
 }
-/// Trait object-safe version of Optimizer for dynamic dispatch
-pub trait OptimizerBox: Send + Sync + std::fmt::Debug {
-    fn step(
-        &mut self,
-        params: &mut [Tensor],
-        differentiable_function: &dyn DifferentiableFunction,
-    ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>>;
-
-    /// Reset the optimizer state
-    fn reset(&mut self);
-    /// Get the name of this optimizer
-    fn name(&self) -> &str;
-    /// Create a boxed clone of this optimizer
-    fn clone_box(&self) -> Box<dyn OptimizerBox>;
-    /// Check if the optimizer has converged
-    fn has_converged(&self) -> bool {
-        false
-    }
-}
 /// Core trait that all optimization algorithms must implement.
 ///
 /// This trait provides a unified interface for different optimization methods,
 /// enabling easy benchmarking and comparison between algorithms.
-pub trait Optimizer: Send + Sync + std::fmt::Debug {
-    /// Configuration type for this optimizer
-    type Config: Clone + Debug + Send + Sync;
-    /// Internal state type for this optimizer
-    type State: Clone + Debug + Send + Sync;
-    /// Create a new optimizer instance with the given configuration
-    fn new(config: Self::Config) -> Self
-    where
-        Self: Sized;
+pub trait Optimizer: Send + Sync + std::fmt::Debug + 'static {
+
+    /// Clone the optimizer (required for trait object safety)
+    fn clone_box(&self) -> Box<dyn Optimizer>;
+
 
     /// Perform a single optimization step using a differentiable function
     ///
@@ -80,9 +56,6 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
 
-    /// Get the current internal state of the optimizer
-    fn state(&self) -> &Self::State;
-
     /// Get the name of this optimizer (for reporting and analysis)
     fn name(&self) -> &str;
 
@@ -90,39 +63,8 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug {
     fn has_converged(&self) -> bool {
         false // Default implementation - most optimizers don't track convergence internally
     }
-    /// Create a boxed clone of this optimizer
-    fn clone_box(&self) -> Box<dyn OptimizerBox>
-    where
-        Self: Clone + 'static,
-    {
-        Box::new(self.clone())
-    }
-}
-/// Blanket implementation to make any Optimizer work as OptimizerBox
-impl<T> OptimizerBox for T
-where
-    T: Optimizer + Clone + 'static,
-{
-    fn step(
-        &mut self,
-        params: &mut [Tensor],
-        differentiable_function: &dyn DifferentiableFunction,
-    ) -> std::result::Result<StepResult, Box<dyn Error + Send + Sync>> {
-        let step_result = self.step(params, differentiable_function)?;
-        Ok(step_result)
-    }
-    fn reset(&mut self) {
-        Optimizer::reset(self);
-    }
-    fn name(&self) -> &str {
-        Optimizer::name(self)
-    }
-    fn clone_box(&self) -> Box<dyn OptimizerBox> {
-        Box::new(self.clone())
-    }
-    fn has_converged(&self) -> bool {
-        Optimizer::has_converged(self)
-    }
+    /// Get the current iteration number
+    fn iteration(&self) -> usize;
 }
 
 /// Result of a single optimization step
@@ -351,14 +293,13 @@ impl ConvergenceChecker {
             .unwrap_or(false);
 
         // Check parameter change convergence
-        let parameter_change = match self.previous_parameters { Some(ref prev_params) => {
-            Some(crate::utils::math::compute_parameter_change(
+        let parameter_change = match self.previous_parameters {
+            Some(ref prev_params) => Some(crate::utils::math::compute_parameter_change(
                 parameters,
                 prev_params,
-            )?)
-        } _ => {
-            None
-        }};
+            )?),
+            _ => None,
+        };
         let parameter_converged = parameter_change
             .map(|change| change < self.config.parameter_tolerance)
             .unwrap_or(false);
@@ -418,8 +359,7 @@ mod tests {
 
     #[test]
     fn test_convergence_info_builder() {
-        let info = ConvergenceInfo::default()
-            .with_function_change(1e-10);
+        let info = ConvergenceInfo::default().with_function_change(1e-10);
 
         assert_eq!(info.function_change, Some(1e-10));
     }

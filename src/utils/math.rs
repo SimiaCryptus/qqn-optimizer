@@ -7,47 +7,12 @@
 //! - Common mathematical functions for optimization
 
 use anyhow::{anyhow, Result};
-use candle_core::{Result as CandleResult, Tensor};
+use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, warn};
 
 /// Create a 1D tensor from a Vec<f64>
-pub fn create_1d_tensor(values: &[f64], device: &candle_core::Device) -> CandleResult<Tensor> {
+pub fn create_1d_tensor(values: &[f64], device: &Device) -> CandleResult<Tensor> {
     Tensor::new(values, device)
-}
-
-pub(crate) fn f64_to_tensors(values: &[f64], template: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-    // Calculate total number of elements needed
-    let total_elements: usize = template.iter()
-        .map(|t| t.shape().elem_count())
-        .sum();
-    if values.len() < total_elements {
-        return Err(candle_core::Error::Msg(format!(
-            "Insufficient values: got {} but need {}",
-            values.len(),
-            total_elements
-        )));
-    }
-
-    let mut offset = 0;
-    let mut result = Vec::new();
-    for t in template {
-        let shape = t.shape();
-        let numel = shape.elem_count();
-        // Check if we have enough values remaining
-        if offset + numel > values.len() {
-            return Err(candle_core::Error::Msg(format!(
-                "Not enough values: need {} more but only {} available",
-                numel,
-                values.len().saturating_sub(offset)
-            )));
-        }
-
-        let slice = &values[offset..offset + numel];
-        let tensor = Tensor::from_slice(slice, shape, t.device())?;
-        result.push(tensor);
-        offset += numel;
-    }
-    Ok(result)
 }
 
 pub(crate) fn tensors_to_f64(tensors: &[Tensor]) -> CandleResult<Vec<f64>> {
@@ -214,6 +179,16 @@ pub trait DifferentiableFunction: Send + Sync {
     fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
 }
 
+pub fn tensor_from_vec(values: Vec<f64>) -> Tensor {
+    Tensor::from_vec(values.clone(), values.len(), &Device::Cpu).unwrap()
+}
+
+pub fn tensors_to_vec(tensors: &[Tensor]) -> Vec<f64> {
+    tensors.iter()
+        .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+        .collect()
+}
+
 
 /// Wrapper for separate objective and gradient functions
 pub struct SeparateFunctions<F, G>
@@ -360,7 +335,7 @@ mod tests {
             Tensor::zeros(&[3], candle_core::DType::F64, &device)?,
         ];
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
-        let tensors = f64_to_tensors(&values, &template)?;
+        let tensors = [create_1d_tensor(&values, &Device::Cpu)?].to_vec();
         assert_eq!(tensors.len(), 2);
         // Check first tensor (2x2)
         let first_values = tensors[0].flatten_all()?.to_vec1::<f64>()?;
@@ -370,7 +345,7 @@ mod tests {
         assert_eq!(second_values, vec![5.0, 6.0, 7.0]);
         // Test insufficient values
         let short_values = vec![1.0, 2.0];
-        assert!(f64_to_tensors(&short_values, &template).is_err());
+        assert!(Ok([create_1d_tensor(&short_values, &Device::Cpu)?].to_vec()).is_err());
         Ok(())
     }
     #[test]

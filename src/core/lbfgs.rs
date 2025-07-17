@@ -9,8 +9,8 @@ use crate::core::line_search::create_line_search;
 use crate::core::line_search::{LineSearch, LineSearchConfig};
 use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
 use crate::core::optimizer::{OptimizationMetadata};
-use crate::utils::math::{compute_magnitude, dot_product, f64_to_tensors, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
-use candle_core::{Result as CandleResult, Tensor};
+use crate::utils::math::{compute_magnitude, create_1d_tensor, dot_product, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
+use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -533,12 +533,11 @@ impl LBFGSOptimizer {
 }
 
 impl Optimizer for LBFGSOptimizer {
-    type Config = LBFGSConfig;
-    type State = LBFGSState;
 
-    fn new(config: Self::Config) -> Self {
-        Self::new(config)
+    fn clone_box(&self) -> Box<dyn Optimizer> {
+        Box::new(self.clone())
     }
+
 
     fn step(
         &mut self,
@@ -713,11 +712,11 @@ impl Optimizer for LBFGSOptimizer {
         let line_search_result = {
             // Create objective and gradient functions that work with f64 vectors
             let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
-                let x_tensors = f64_to_tensors(x, params)?;
+                let x_tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
                 function.evaluate(&x_tensors).map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
             };
             let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-                let x_tensors = f64_to_tensors(x, params)?;
+                let x_tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
                 let grad_tensors = function.gradient(&x_tensors).map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
                 tensors_to_f64(&grad_tensors).map_err(|e| anyhow::anyhow!("Tensor conversion failed: {}", e))
             };
@@ -873,12 +872,12 @@ impl Optimizer for LBFGSOptimizer {
         self.state.reset();
     }
 
-    fn state(&self) -> &Self::State {
-        &self.state
-    }
 
     fn name(&self) -> &str {
         "L-BFGS"
+    }
+    fn iteration(&self) -> usize {
+        self.state.iteration()
     }
 }
 
@@ -1035,7 +1034,7 @@ mod tests {
         let optimizer = LBFGSOptimizer::new(config);
 
         assert_eq!(optimizer.name(), "L-BFGS");
-        assert_eq!(optimizer.state().history_length(), 0);
+        assert_eq!(optimizer.state.history_length(), 0);
     }
 
     #[test]
@@ -1050,9 +1049,9 @@ mod tests {
         optimizer.state.no_improvement_count = 3;
 
         optimizer.reset();
-        assert_eq!(optimizer.state().iteration(), 0);
-        assert_eq!(optimizer.state().history_length(), 0);
-        assert_eq!(optimizer.state().gamma(), 1.0);
+        assert_eq!(optimizer.state.iteration(), 0);
+        assert_eq!(optimizer.state.history_length(), 0);
+        assert_eq!(optimizer.state.gamma(), 1.0);
         assert!(optimizer.state.best_function_value.is_none());
         assert_eq!(optimizer.state.no_improvement_count, 0);
     }

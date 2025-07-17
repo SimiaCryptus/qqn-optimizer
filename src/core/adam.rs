@@ -350,12 +350,11 @@ impl AdamOptimizer {
 }
 
 impl Optimizer for AdamOptimizer {
-    type Config = AdamConfig;
-    type State = AdamState;
 
-    fn new(config: Self::Config) -> Self {
-        Self::new(config)
+    fn clone_box(&self) -> Box<dyn Optimizer> {
+        Box::new(self.clone())
     }
+
 
     fn step(
         &mut self,
@@ -484,9 +483,6 @@ impl Optimizer for AdamOptimizer {
         self.bad_step_count = 0;
     }
 
-    fn state(&self) -> &Self::State {
-        &self.state
-    }
 
     fn name(&self) -> &str {
         if self.config.amsgrad {
@@ -494,6 +490,9 @@ impl Optimizer for AdamOptimizer {
         } else {
             "Adam"
         }
+    }
+    fn iteration(&self) -> usize {
+        self.state.iteration()
     }
 }
 
@@ -571,7 +570,7 @@ mod tests {
         let optimizer = AdamOptimizer::new(config);
 
         assert_eq!(optimizer.name(), "Adam");
-        assert_eq!(optimizer.state().iteration(), 0);
+        assert_eq!(optimizer.state.iteration(), 0);
         assert_eq!(optimizer.current_lr, optimizer.config.learning_rate);
     }
     #[test]
@@ -612,7 +611,7 @@ mod tests {
         optimizer.bad_step_count = 3;
 
         optimizer.reset();
-        assert_eq!(optimizer.state().iteration(), 0);
+        assert_eq!(optimizer.state.iteration(), 0);
         assert!(optimizer.state.m.is_none());
         assert!(optimizer.state.v.is_none());
         assert_eq!(optimizer.current_lr, optimizer.config.learning_rate);

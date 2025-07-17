@@ -4,10 +4,10 @@ use crate::core::optimizer::{OptimizationMetadata};
 use crate::core::Optimizer;
 use crate::core::StepResult;
 use crate::core::{ConvergenceInfo, TerminationReason};
-use crate::utils::math::{DifferentiableFunction, combine_tensors, compute_magnitude, create_1d_tensor, f64_to_tensors, log_tensor, scale_tensors};
+use crate::utils::math::{DifferentiableFunction, combine_tensors, compute_magnitude, create_1d_tensor, log_tensor, scale_tensors};
 use crate::LineSearchConfig;
 use anyhow::{anyhow, Result as AnyhowResult};
-use candle_core::{Error, Result as CandleResult, Tensor};
+use candle_core::{Device, Error, Result as CandleResult, Tensor};
 use log::{debug, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -92,7 +92,7 @@ impl QQNState {
 #[derive(Debug)]
 pub struct QQNOptimizer {
     config: QQNConfig,
-    state: QQNState,
+    pub state: QQNState,
     line_search: Box<dyn LineSearch>,
 }
 impl Clone for QQNOptimizer {
@@ -219,7 +219,6 @@ impl QQNOptimizer {
     /// Find optimal t parameter for the quadratic path using line search
     fn find_optimal_t_line_search(
         &mut self,
-        params: &[Tensor],
         quadratic_path: &QuadraticPath,
         function: &dyn DifferentiableFunction,
     ) -> CandleResult<LineSearchResult> {
@@ -236,11 +235,11 @@ impl QQNOptimizer {
 
         // Create 1D problem
         let fn1 = |x: &[f64]| -> anyhow::Result<f64> {
-            let tensors = f64_to_tensors(x, params)?;
+            let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
             function.evaluate(&tensors).map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
         };
         let fn2 = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-            let tensors = f64_to_tensors(x, params)?;
+            let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
             let grads = function.gradient(&tensors)
                 .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
             let mut result = Vec::new();
@@ -333,12 +332,12 @@ impl QQNOptimizer {
             // Create objective and gradient functions
             let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
                 let _1d_params = create_1d_tensor(x, nd_params[0].device())?;
-                let tensors = f64_to_tensors(x, &[_1d_params])?;
+                let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
                 function.evaluate(&tensors).map_err(|e| anyhow!("Function evaluation failed: {}", e))
             };
             let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
                 let _1d_params = create_1d_tensor(x, nd_params[0].device())?;
-                let tensors = f64_to_tensors(x, &[_1d_params])?;
+                let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
                 let grads = function.gradient(&tensors)
                     .map_err(|e| anyhow!("Gradient evaluation failed: {}", e))?;
                 debug!("Steepest descent line search: x={:?}, tensors={:?}, grads={:?}", x, tensors, grads);
@@ -474,12 +473,11 @@ impl QQNOptimizer {
 }
 
 impl Optimizer for QQNOptimizer {
-    type Config = QQNConfig;
-    type State = QQNState;
 
-    fn new(config: Self::Config) -> Self {
-        Self::new(config)
+    fn clone_box(&self) -> Box<dyn Optimizer> {
+        Box::new(self.clone())
     }
+
 
     fn step(
         &mut self,
@@ -549,7 +547,7 @@ impl Optimizer for QQNOptimizer {
         }
 
         let quadratic_path = self.create_quadratic_path(params, &gradients, &lbfgs_direction)?;
-        let line_search_result = self.find_optimal_t_line_search(params, &quadratic_path.clone(), function)?;
+        let line_search_result = self.find_optimal_t_line_search(&quadratic_path.clone(), function)?;
         info!("Found optimal t = {:.6}", line_search_result.step_size);
         self.log_scalar("Optimal t", line_search_result.step_size);
         self.log_line_search_details(line_search_result.step_size, line_search_result.function_evaluations, line_search_result.gradient_evaluations);
@@ -650,12 +648,12 @@ impl Optimizer for QQNOptimizer {
         self.state.lbfgs_state.reset();
     }
 
-    fn state(&self) -> &Self::State {
-        &self.state
-    }
 
     fn name(&self) -> &str {
         "QQN"
+    }
+    fn iteration(&self) -> usize {
+        self.state.iteration
     }
 }
 

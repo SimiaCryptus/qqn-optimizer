@@ -9,7 +9,6 @@
 pub mod evaluation;
 pub mod functions;
 pub mod ml_problems;
-pub mod runner;
 
 // Re-export commonly used types
 

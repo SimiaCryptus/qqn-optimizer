@@ -27,7 +27,7 @@ impl Default for SGDConfig {
             momentum: 0.0,
             weight_decay: 0.0,
             nesterov: false,
-            verbose: false,
+            verbose: true,
         }
     }
 }
@@ -199,12 +199,11 @@ impl SGDOptimizer {
 }
 
 impl Optimizer for SGDOptimizer {
-    type Config = SGDConfig;
-    type State = SGDState;
 
-    fn new(config: Self::Config) -> Self {
-        Self::new(config)
+    fn clone_box(&self) -> Box<dyn Optimizer> {
+        Box::new(self.clone())
     }
+
 
     fn step(
         &mut self,
@@ -302,9 +301,6 @@ impl Optimizer for SGDOptimizer {
         self.state.reset();
     }
 
-    fn state(&self) -> &Self::State {
-        &self.state
-    }
 
     fn name(&self) -> &str {
         if self.config.momentum > 0.0 {
@@ -316,6 +312,9 @@ impl Optimizer for SGDOptimizer {
         } else {
             "SGD"
         }
+    }
+    fn iteration(&self) -> usize {
+        self.state.iteration()
     }
 }
 
@@ -384,7 +383,7 @@ mod tests {
         let optimizer = SGDOptimizer::new(config);
 
         assert_eq!(optimizer.name(), "SGD");
-        assert_eq!(optimizer.state().iteration(), 0);
+        assert_eq!(optimizer.state.iteration(), 0);
     }
     #[test]
     fn test_sgd_config_default() {
@@ -426,7 +425,7 @@ mod tests {
         optimizer.state.iteration = 5;
 
         optimizer.reset();
-        assert_eq!(optimizer.state().iteration(), 0);
+        assert_eq!(optimizer.state.iteration(), 0);
         assert!(optimizer.state.momentum_buffer.is_none());
     }
     #[test]

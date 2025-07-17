@@ -64,11 +64,7 @@ fn main() -> Result<()> {
             println!("Converged! Gradient norm: {:.2e}", grad_norm);
             break;
         }
-
-        // Convert Vec<f64> to Tensor for optimizer
-        let mut x_tensor = vec![Tensor::from_slice(&initial_point, initial_point.len(), &device)?];
-
-
+        
         // Create a function object that implements both objective and gradient computation
         let function = SeparateFunctions::new(
             |params: &[Tensor]| -> candle_core::Result<f64> {
@@ -81,6 +77,9 @@ fn main() -> Result<()> {
                 Ok(vec![Tensor::from_slice(&grad, grad.len(), &device).map_err(|e| candle_core::Error::Msg(e.to_string()))?])
             },
         );
+
+        // Convert Vec<f64> to Tensor for optimizer
+        let mut x_tensor = vec![Tensor::from_slice(&initial_point, initial_point.len(), &device)?];
 
         // Perform optimization step
         let step_result = optimizer.step(&mut x_tensor, &function)?;
