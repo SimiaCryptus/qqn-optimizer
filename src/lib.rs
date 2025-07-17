@@ -45,7 +45,7 @@ pub fn init_logging_with_mode(compact: bool) -> Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "qqn_optimizer=debug".into());
+        .unwrap_or_else(|_| "qqn_optimizer=info".into());
 
     let registry = tracing_subscriber::registry().with(env_filter);
 
@@ -59,7 +59,7 @@ pub fn init_logging_with_mode(compact: bool) -> Result<()> {
                     .with_thread_ids(false)
                     .with_thread_names(false)
                     .with_file(false)
-                    .with_line_number(false)
+                    .with_line_number(false),
             )
             .try_init()
             .map_err(|e| anyhow::anyhow!("Failed to initialize logging: {}", e))?;
@@ -69,7 +69,6 @@ pub fn init_logging_with_mode(compact: bool) -> Result<()> {
             .try_init()
             .map_err(|e| anyhow::anyhow!("Failed to initialize logging: {}", e))?;
     }
-
 
     Ok(())
 }

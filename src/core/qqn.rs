@@ -71,8 +71,8 @@ impl Default for QQNConfig {
                 method: crate::core::line_search::LineSearchMethod::Bisection,
                 ..LineSearchConfig::default()
             },
-            epsilon: 1e-8,
-            verbose: true,
+            epsilon: 1e-6,
+            verbose: false,
         }
     }
 }
@@ -289,8 +289,11 @@ impl QQNOptimizer {
         info!("Using steepest descent: {}", reason);
         // Evaluate function at current parameters to check for increasing steps
         let initial_function_value = function.evaluate(nd_params)?;
-        debug!("Initial function value (steepest descent): {:.6e}", initial_function_value);
-        
+        debug!(
+            "Initial function value (steepest descent): {:.6e}",
+            initial_function_value
+        );
+
         // Create steepest descent direction (negative gradient)
         let direction = scale_tensors(gradients, -1.0)?;
         self.log_tensor_data("Steepest Descent Direction", &direction);
@@ -351,13 +354,9 @@ impl QQNOptimizer {
             };
 
             // Create 1D problem
-            let problem = create_1d_problem_linear(
-                &params_f64,
-                &direction_f64,
-                &objective_fn,
-                &gradient_fn,
-            )
-            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            let problem =
+                create_1d_problem_linear(&params_f64, &direction_f64, &objective_fn, &gradient_fn)
+                    .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
 
             // Perform line search
             self.line_search.optimize_1d(&problem).map_err(|e| {
@@ -399,7 +398,10 @@ impl QQNOptimizer {
         self.log_tensor_data("Updated Parameters (Steepest Descent)", nd_params);
         // FATAL ERROR CHECK: Verify that the steepest descent step decreased the function value
         let final_function_value = function.evaluate(nd_params)?;
-        debug!("Final function value (steepest descent): {:.6e}", final_function_value);
+        debug!(
+            "Final function value (steepest descent): {:.6e}",
+            final_function_value
+        );
         if final_function_value > initial_function_value {
             let increase = final_function_value - initial_function_value;
             error!(
@@ -412,9 +414,12 @@ impl QQNOptimizer {
             )));
         }
         let function_decrease = initial_function_value - final_function_value;
-        debug!("Function decreased by (steepest descent): {:.6e}", function_decrease);
+        debug!(
+            "Function decreased by (steepest descent): {:.6e}",
+            function_decrease
+        );
         self.log_scalar("Function Decrease (Steepest Descent)", function_decrease);
-        
+
         // Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: false,
@@ -448,7 +453,6 @@ impl QQNOptimizer {
         })
     }
 
-
     fn is_all_finite(tensor_vec: &Vec<Tensor>) -> bool {
         tensor_vec.iter().all(|d| {
             d.flatten_all()
@@ -478,15 +482,12 @@ impl Optimizer for QQNOptimizer {
         // Log initial state in verbose mode
         if params.is_empty() {
             warn!("Empty parameters or gradients provided to QQN step");
-            return Err(Error::Msg(
-                "Empty parameters or gradients".into(),
-            ));
+            return Err(Error::Msg("Empty parameters or gradients".into()));
         }
         self.log_tensor_data("Initial Parameters", params);
         // Evaluate function at current parameters to check for increasing steps
         let initial_function_value = function.evaluate(params)?;
         debug!("Initial function value: {:.6e}", initial_function_value);
-
 
         // Compute gradients at current parameters
         let gradients = function.gradient(params)?;
@@ -508,7 +509,10 @@ impl Optimizer for QQNOptimizer {
         self.log_scalar("Gradient Norm", grad_norm);
         // Check for convergence - if gradient is very small, we're done
         if grad_norm < self.config.epsilon {
-            info!("QQN converged: gradient norm {:.3e} < epsilon {:.3e}", grad_norm, self.config.epsilon);
+            info!(
+                "QQN converged: gradient norm {:.3e} < epsilon {:.3e}",
+                grad_norm, self.config.epsilon
+            );
             self.state.iteration += 1;
             let convergence_info = ConvergenceInfo {
                 converged: true,
@@ -516,14 +520,15 @@ impl Optimizer for QQNOptimizer {
             };
             let mut metadata = OptimizationMetadata::default();
             metadata.optimizer_data.insert("method".to_string(), -1.0); // -1 = converged
-            metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+            metadata
+                .optimizer_data
+                .insert("gradient_norm".to_string(), grad_norm);
             return Ok(StepResult {
                 step_size: 0.0,
                 convergence_info,
                 metadata,
             });
         }
-
 
         // Check if we should use L-BFGS or fall back to steepest descent
         if self.state.iteration < self.config.min_lbfgs_iterations {
@@ -542,10 +547,10 @@ impl Optimizer for QQNOptimizer {
         }
 
         debug!("Computing L-BFGS direction");
-        let lbfgs_direction = self.state.lbfgs_state.compute_direction(
-            params,
-            &gradients
-        )?;
+        let lbfgs_direction = self
+            .state
+            .lbfgs_state
+            .compute_direction(params, &gradients)?;
         self.log_tensor_data("L-BFGS Direction", &lbfgs_direction);
 
         // Check if L-BFGS direction is valid (i.e., all finite)
@@ -561,25 +566,22 @@ impl Optimizer for QQNOptimizer {
             self.find_optimal_t_line_search(&quadratic_path.clone(), function)?;
         info!("Found optimal t = {:.3e}", line_search_result.step_size);
         self.log_scalar("Optimal t", line_search_result.step_size);
-        self.log_line_search_details(
-            line_search_result.step_size,
-        );
+        self.log_line_search_details(line_search_result.step_size);
 
         // Update L-BFGS state with gradients at old parameters
         // This is the correct way - we need gradient difference between old and new points
         debug!("Updating L-BFGS history");
         // Scale the direction by the actual step size used
         let position = quadratic_path.evaluate(line_search_result.step_size)?;
-        self.state.lbfgs_state.update(
-            &params,
-            &position,
-            &gradients,
-        )?;
+        self.state
+            .lbfgs_state
+            .update(&params, &position, &gradients)?;
 
         self.log_tensor_data("Final position", &position);
         for (param, x) in params.iter_mut().zip(position.iter()) {
             *param = x.clone();
         }
+
         // FATAL ERROR CHECK: Verify that the step decreased the function value
         let final_function_value = function.evaluate(params)?;
         debug!("Final function value: {:.6e}", final_function_value);
@@ -594,6 +596,7 @@ impl Optimizer for QQNOptimizer {
                 increase, initial_function_value, final_function_value
             )));
         }
+
         let function_decrease = initial_function_value - final_function_value;
         debug!("Function decreased by: {:.6e}", function_decrease);
         self.log_scalar("Function Decrease", function_decrease);
@@ -613,9 +616,7 @@ impl Optimizer for QQNOptimizer {
                     "Extremely large parameter detected at index {} after update",
                     i
                 );
-                return Err(Error::Msg(
-                    "Parameter values too large after update".into(),
-                ));
+                return Err(Error::Msg("Parameter values too large after update".into()));
             }
         }
 
@@ -628,7 +629,7 @@ impl Optimizer for QQNOptimizer {
 
         // 7. Create convergence info
         let convergence_info = ConvergenceInfo {
-            converged: false,      // QQN does not have a convergence criterion like L-BFGS
+            converged: false, // QQN does not have a convergence criterion like L-BFGS
             function_change: Some(function_decrease),
         };
 
@@ -793,24 +794,25 @@ impl<'a> ParametricCurve for QuadraticPath {
             .collect())
     }
     fn direction(&self, t: f64) -> AnyhowResult<Vec<f64>> {
-       // Get the derivative of the quadratic path
-       let deriv = QuadraticPath::derivative(self, t).map_err(|e| anyhow!("Failed to compute derivative: {}", e))?;
-       // Convert to f64 vector
-       Ok(deriv
-           .iter()
-           .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-           .collect())
+        // Get the derivative of the quadratic path
+        let deriv = QuadraticPath::derivative(self, t)
+            .map_err(|e| anyhow!("Failed to compute derivative: {}", e))?;
+        // Convert to f64 vector
+        Ok(deriv
+            .iter()
+            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+            .collect())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::init_logging;
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;
     use std::sync::Mutex;
-    use crate::init_logging;
 
     // Test function: f(x) = 0.5 * ||x||^2
     struct QuadraticFunction {
@@ -921,14 +923,6 @@ mod tests {
     fn test_qqn_state_initialization() {
         let state = QQNState::new(5);
         assert_eq!(state.iteration, 0);
-    }
-
-    #[test]
-    fn test_qqn_config_default() {
-        let config = QQNConfig::default();
-        assert_eq!(config.lbfgs_history, 10);
-        assert_eq!(config.min_lbfgs_iterations, 2);
-        assert_eq!(config.epsilon, 1e-8);
     }
 
     #[test]

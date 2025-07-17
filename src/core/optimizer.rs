@@ -317,7 +317,6 @@ mod tests {
     use super::*;
     use candle_core::{Device, Tensor};
 
-
     #[test]
     fn test_convergence_info_builder() {
         let info = ConvergenceInfo::default().with_function_change(1e-10);

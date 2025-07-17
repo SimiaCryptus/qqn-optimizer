@@ -79,9 +79,9 @@ let c = a.matmul(&b)?;  // Matrix multiplication
 ### Optimization Framework
 
 ```rust
-use candle_nn::optim::{Optimizer, SGD};
+use candle_nn::optim::{Optimizer, GD};
 
-let mut optimizer = SGD::new(params, 0.01) ?;
+let mut optimizer = GD::new(params, 0.01) ?;
 optimizer.step( & grads) ?;
 ```
 

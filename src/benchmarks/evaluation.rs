@@ -3,12 +3,12 @@ use crate::core::optimizer::Optimizer;
 use crate::utils::math::{create_1d_tensor, DifferentiableFunction};
 use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
-use rand::Rng;
 use tokio::time::timeout;
 
 /// Wrapper for Duration that implements bincode traits
@@ -39,18 +39,22 @@ impl From<DurationWrapper> for Duration {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkConfig {
     pub max_iterations: usize,
+    pub maximum_function_calls: usize,
     pub tolerance: f64,
     pub time_limit: DurationWrapper,
     pub num_runs: usize,
+    pub include_ml_problems: bool,
 }
 
 impl Default for BenchmarkConfig {
     fn default() -> Self {
         Self {
             max_iterations: 10000,
+            maximum_function_calls: 50000,
             tolerance: 1e-12,
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             num_runs: 10,
+            include_ml_problems: true,
         }
     }
 }
@@ -178,7 +182,7 @@ impl BenchmarkResults {
             gradient_evaluations: 0,
         }
     }
-    
+
     pub fn add_result(&mut self, result: SingleResult) {
         self.results.push(result);
     }
@@ -293,7 +297,6 @@ impl BenchmarkRunner {
             *xi += rng.random_range(-noise..noise); // Random perturbation
         }
 
-
         let mut iteration = 0;
         let mut function_evaluations = 0;
         let mut gradient_evaluations = 0;
@@ -343,7 +346,7 @@ impl BenchmarkRunner {
         // Update trace with final counts
         trace.total_function_evaluations = function_evaluations + 1; // +1 for final evaluation
         trace.total_gradient_evaluations = gradient_evaluations + 1; // +1 for final gradient
-        
+
         info!("Benchmark complete: {} with {} (run {}): final_value={:.6e}, grad_norm={:.6e}, iterations={}", 
               problem.name(), optimizer.name(), run_id, final_value, final_gradient_norm, iteration);
         let execution_time = start_time.elapsed();
@@ -412,6 +415,15 @@ impl BenchmarkRunner {
         const MAX_NO_IMPROVEMENT: usize = 200; // More lenient
 
         while *iteration < self.config.max_iterations {
+            // Check if we've exceeded maximum function calls
+            if *function_evaluations >= self.config.maximum_function_calls {
+                info!(
+                    "Maximum function evaluations reached: {}",
+                    self.config.maximum_function_calls
+                );
+                return Ok(ConvergenceReason::MaxFunctionEvaluations);
+            }
+
             // Evaluate function and gradient
             let f_val = match problem.evaluate_f64(input_floats) {
                 Ok(val) => val,
@@ -531,14 +543,32 @@ impl BenchmarkRunner {
             // Get current evaluation counts before the step
             let func_evals_before = problem_wrapper.get_function_evaluations();
             let grad_evals_before = problem_wrapper.get_gradient_evaluations();
-            
+
             let step_result = optimizer
                 .step(&mut tensors, problem_wrapper)
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
             // Update counters with the evaluations that happened during this step
             *function_evaluations += problem_wrapper.get_function_evaluations() - func_evals_before;
             *gradient_evaluations += problem_wrapper.get_gradient_evaluations() - grad_evals_before;
-            
+            // Check again after step in case the optimizer made multiple function calls
+            if *function_evaluations >= self.config.maximum_function_calls {
+                info!(
+                    "Maximum function evaluations reached after step: {}",
+                    self.config.maximum_function_calls
+                );
+                return Ok(ConvergenceReason::MaxFunctionEvaluations);
+            }
+
+            *iteration += 1;
+
+            if step_result.convergence_info.converged || step_result.step_size <= 0.0 {
+                info!(
+                    "Converged by optimizer at iteration {}: step_size={:.6e}",
+                    iteration, step_result.step_size
+                );
+                return Ok(ConvergenceReason::GradientTolerance);
+            }
+
             // Update input floats with new parameters
             for tensor in tensors.iter() {
                 if let Ok(values) = tensor.to_vec1::<f64>() {
@@ -557,7 +587,6 @@ impl BenchmarkRunner {
                 }
             }
 
-
             // Update step size in trace
             if let Some(last_iteration) = trace.iterations.last_mut() {
                 last_iteration.step_size = step_result.step_size;
@@ -568,8 +597,6 @@ impl BenchmarkRunner {
                 warn!("Non-finite parameter detected at iteration {}", iteration);
                 return Ok(ConvergenceReason::NumericalError);
             }
-
-            *iteration += 1;
         }
         info!("Maximum iterations reached");
 
@@ -586,7 +613,7 @@ pub struct ProblemWrapper<'a> {
 
 impl<'a> ProblemWrapper<'a> {
     pub fn new(problem: &'a dyn OptimizationProblem) -> Self {
-        Self { 
+        Self {
             problem,
             function_evaluations: Arc::new(AtomicUsize::new(0)),
             gradient_evaluations: Arc::new(AtomicUsize::new(0)),
@@ -725,7 +752,8 @@ mod tests {
     async fn test_benchmark_runner() {
         //let _ = init_logging();
         let config = BenchmarkConfig {
-            max_iterations: 100, // Reduced for testing
+            max_iterations: 100,          // Reduced for testing
+            maximum_function_calls: 1000, // Limit function calls for testing
             tolerance: 1e-6,
             num_runs: 2,
             ..Default::default()

@@ -85,7 +85,7 @@ nonlinear relationships between methods and lack the geometric flexibility neede
 quadratic model is trusted. While effective, these methods operate by constraining the search region rather than
 modifying the search direction interpolation, representing a fundamentally different paradigm from QQN.
 
-**Switching Methods** [[Keskar & Berahas, 2016]](#keskar-berahas-2016) alternate between L-BFGS and SGD based on
+**Switching Methods** [[Keskar & Berahas, 2016]](#keskar-berahas-2016) alternate between L-BFGS and GD based on
 progress metrics. However, discrete switching causes optimization instability at transition points and requires complex
 heuristics for switching criteria.
 

@@ -5,9 +5,9 @@ use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 
-/// Configuration parameters for the SGD optimizer.
+/// Configuration parameters for the GD optimizer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SGDConfig {
+pub struct GDConfig {
     /// Learning rate (step size)
     pub learning_rate: f64,
     /// Momentum coefficient (0.0 = no momentum, 0.9 = high momentum)
@@ -20,21 +20,21 @@ pub struct SGDConfig {
     pub verbose: bool,
 }
 
-impl Default for SGDConfig {
+impl Default for GDConfig {
     fn default() -> Self {
         Self {
             learning_rate: 0.1,
             momentum: 0.0,
             weight_decay: 0.0,
             nesterov: false,
-            verbose: true,
+            verbose: false,
         }
     }
 }
 
-/// State information for SGD optimization.
+/// State information for GD optimization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SGDState {
+pub struct GDState {
     /// Current iteration number
     pub iteration: usize,
     /// Momentum buffer (velocity)
@@ -42,8 +42,8 @@ pub struct SGDState {
     pub momentum_buffer: Option<Vec<Tensor>>,
 }
 
-impl SGDState {
-    /// Create a new SGD state.
+impl GDState {
+    /// Create a new GD state.
     pub fn new() -> Self {
         Self {
             iteration: 0,
@@ -51,7 +51,7 @@ impl SGDState {
         }
     }
 
-    /// Reset the SGD state to initial conditions.
+    /// Reset the GD state to initial conditions.
     pub fn reset(&mut self) {
         self.iteration = 0;
         self.momentum_buffer = None;
@@ -63,14 +63,14 @@ impl SGDState {
     }
 }
 
-/// SGD optimizer implementation.
+/// GD optimizer implementation.
 #[derive(Debug)]
-pub struct SGDOptimizer {
-    config: SGDConfig,
-    state: SGDState,
+pub struct GDOptimizer {
+    config: GDConfig,
+    state: GDState,
 }
 
-impl Clone for SGDOptimizer {
+impl Clone for GDOptimizer {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
@@ -79,19 +79,19 @@ impl Clone for SGDOptimizer {
     }
 }
 
-impl SGDOptimizer {
-    /// Create a new SGD optimizer with the given configuration.
-    pub fn new(config: SGDConfig) -> Self {
+impl GDOptimizer {
+    /// Create a new GD optimizer with the given configuration.
+    pub fn new(config: GDConfig) -> Self {
         if config.verbose {
-            info!("Creating SGD optimizer with verbose logging enabled");
+            info!("Creating GD optimizer with verbose logging enabled");
             debug!(
-                "SGD Config: lr={}, momentum={}, weight_decay={}, nesterov={}",
+                "GD Config: lr={}, momentum={}, weight_decay={}, nesterov={}",
                 config.learning_rate, config.momentum, config.weight_decay, config.nesterov
             );
         }
         Self {
             config,
-            state: SGDState::new(),
+            state: GDState::new(),
         }
     }
 
@@ -100,7 +100,7 @@ impl SGDOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== SGD: {} ===", name);
+        debug!("=== GD: {} ===", name);
         for (i, tensor) in tensors.iter().enumerate() {
             match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
                 Ok(values) => {
@@ -148,7 +148,7 @@ impl SGDOptimizer {
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
         if self.config.verbose {
-            debug!("  SGD {}: {:.12e}", name, value);
+            debug!("  GD {}: {:.12e}", name, value);
         }
     }
 
@@ -218,7 +218,7 @@ impl SGDOptimizer {
     }
 }
 
-impl Optimizer for SGDOptimizer {
+impl Optimizer for GDOptimizer {
     fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
@@ -230,7 +230,7 @@ impl Optimizer for SGDOptimizer {
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
         if self.config.verbose {
-            debug!("=== SGD Step {} Starting ===", self.state.iteration);
+            debug!("=== GD Step {} Starting ===", self.state.iteration);
         }
 
         // Compute gradients at current parameters
@@ -260,7 +260,7 @@ impl Optimizer for SGDOptimizer {
         // Compute gradient norm for logging
         let grad_norm = crate::utils::math::compute_magnitude(&gradients)?;
         debug!(
-            "SGD step {}: grad_norm={:.6e}",
+            "GD step {}: grad_norm={:.6e}",
             self.state.iteration, grad_norm
         );
         self.log_scalar("Gradient Norm", grad_norm);
@@ -301,7 +301,7 @@ impl Optimizer for SGDOptimizer {
         let step_duration = start_time.elapsed();
 
         if self.config.verbose {
-            debug!("=== SGD Step {} Completed ===", self.state.iteration - 1);
+            debug!("=== GD Step {} Completed ===", self.state.iteration - 1);
             debug!("  Step Duration: {:?}", step_duration);
             debug!("  Converged: {}", convergence_info.converged);
         }
@@ -335,12 +335,12 @@ impl Optimizer for SGDOptimizer {
     fn name(&self) -> &str {
         if self.config.momentum > 0.0 {
             if self.config.nesterov {
-                "SGD-Nesterov"
+                "GD-Nesterov"
             } else {
-                "SGD-Momentum"
+                "GD-Momentum"
             }
         } else {
-            "SGD"
+            "GD"
         }
     }
     fn iteration(&self) -> usize {
@@ -391,14 +391,14 @@ mod tests {
     }
 
     #[test]
-    fn test_sgd_state_creation() {
-        let state = SGDState::new();
+    fn test_gd_state_creation() {
+        let state = GDState::new();
         assert_eq!(state.iteration(), 0);
         assert!(state.momentum_buffer.is_none());
     }
     #[test]
-    fn test_sgd_state_reset() {
-        let mut state = SGDState::new();
+    fn test_gd_state_reset() {
+        let mut state = GDState::new();
         state.iteration = 10;
         state.momentum_buffer = Some(vec![]);
         state.reset();
@@ -407,39 +407,39 @@ mod tests {
     }
 
     #[test]
-    fn test_sgd_optimizer_creation() {
-        let config = SGDConfig::default();
-        let optimizer = SGDOptimizer::new(config);
+    fn test_gd_optimizer_creation() {
+        let config = GDConfig::default();
+        let optimizer = GDOptimizer::new(config);
 
-        assert_eq!(optimizer.name(), "SGD");
+        assert_eq!(optimizer.name(), "GD");
         assert_eq!(optimizer.state.iteration(), 0);
     }
 
     #[test]
-    fn test_sgd_with_momentum() {
-        let config = SGDConfig {
+    fn test_gd_with_momentum() {
+        let config = GDConfig {
             momentum: 0.9,
             ..Default::default()
         };
-        let optimizer = SGDOptimizer::new(config);
-        assert_eq!(optimizer.name(), "SGD-Momentum");
+        let optimizer = GDOptimizer::new(config);
+        assert_eq!(optimizer.name(), "GD-Momentum");
     }
 
     #[test]
-    fn test_sgd_with_nesterov() {
-        let config = SGDConfig {
+    fn test_gd_with_nesterov() {
+        let config = GDConfig {
             momentum: 0.9,
             nesterov: true,
             ..Default::default()
         };
-        let optimizer = SGDOptimizer::new(config);
-        assert_eq!(optimizer.name(), "SGD-Nesterov");
+        let optimizer = GDOptimizer::new(config);
+        assert_eq!(optimizer.name(), "GD-Nesterov");
     }
 
     #[test]
-    fn test_sgd_reset() {
-        let config = SGDConfig::default();
-        let mut optimizer = SGDOptimizer::new(config);
+    fn test_gd_reset() {
+        let config = GDConfig::default();
+        let mut optimizer = GDOptimizer::new(config);
 
         // Manually set some state
         optimizer.state.iteration = 5;
@@ -449,12 +449,12 @@ mod tests {
         assert!(optimizer.state.momentum_buffer.is_none());
     }
     #[test]
-    fn test_sgd_basic_optimization() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_basic_optimization() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         // Start at x = [2.0, -3.0]
         let mut params = vec![
@@ -473,13 +473,13 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_with_momentum_optimization() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_with_momentum_optimization() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.01,
             momentum: 0.9,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![
             Tensor::new(&[5.0f64], &Device::Cpu)?,
@@ -502,13 +502,13 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_with_weight_decay() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_with_weight_decay() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
             weight_decay: 0.1,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![
             Tensor::new(&[2.0f64], &Device::Cpu)?,
@@ -532,14 +532,14 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_nesterov_momentum() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_nesterov_momentum() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.05,
             momentum: 0.9,
             nesterov: true,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![
             Tensor::new(&[3.0f64], &Device::Cpu)?,
@@ -557,12 +557,12 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_step_with_gradients() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_step_with_gradients() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![
             Tensor::new(&[1.0f64], &Device::Cpu)?,
@@ -577,12 +577,12 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_convergence_detection() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_convergence_detection() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         // Start very close to optimum
         let mut params = vec![
@@ -594,13 +594,13 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_rosenbrock_optimization() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_rosenbrock_optimization() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.001,
             momentum: 0.9,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = RosenbrockFunction;
         // Start at a challenging point
         let mut params = vec![
@@ -621,22 +621,22 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_empty_parameters_error() {
-        let config = SGDConfig::default();
-        let mut optimizer = SGDOptimizer::new(config);
+    fn test_gd_empty_parameters_error() {
+        let config = GDConfig::default();
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params: Vec<Tensor> = vec![];
         let result = optimizer.step(&mut params, &function);
         assert!(result.is_err());
     }
     #[test]
-    fn test_sgd_multidimensional_parameters() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_multidimensional_parameters() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
             momentum: 0.5,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         // Use 2D tensors
         let mut params = vec![
@@ -657,13 +657,13 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_state_persistence() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_state_persistence() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
             momentum: 0.9,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![Tensor::new(&[1.0f64], &Device::Cpu)?];
         // Take a step to initialize momentum
@@ -680,13 +680,13 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_verbose_mode() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_verbose_mode() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.1,
-            verbose: true,
+            verbose: false,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![Tensor::new(&[1.0f64], &Device::Cpu)?];
         // This should produce verbose output (captured by logger)
@@ -695,13 +695,13 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_sgd_metadata_collection() -> CandleResult<()> {
-        let config = SGDConfig {
+    fn test_gd_metadata_collection() -> CandleResult<()> {
+        let config = GDConfig {
             learning_rate: 0.05,
             momentum: 0.9,
             ..Default::default()
         };
-        let mut optimizer = SGDOptimizer::new(config);
+        let mut optimizer = GDOptimizer::new(config);
         let function = QuadraticFunction;
         let mut params = vec![Tensor::new(&[2.0f64], &Device::Cpu)?];
         let result = optimizer.step(&mut params, &function)?;

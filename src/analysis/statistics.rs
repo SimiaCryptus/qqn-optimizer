@@ -1,7 +1,7 @@
+use crate::benchmarks::evaluation::{BenchmarkResults, SingleResult};
 use serde::{Deserialize, Serialize};
 use statrs::distribution::{ContinuousCDF, StudentsT};
 use std::collections::HashMap;
-use crate::benchmarks::evaluation::{BenchmarkResults, SingleResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticalAnalysis {
@@ -663,9 +663,12 @@ impl StatisticalAnalysis {
         if values.is_empty() {
             return 0.0;
         }
-        let mut sorted = values.iter().filter(
-            |&&x| x.is_finite() && !x.is_nan(),
-        ).cloned().collect::<Vec<f64>>().to_vec();
+        let mut sorted = values
+            .iter()
+            .filter(|&&x| x.is_finite() && !x.is_nan())
+            .cloned()
+            .collect::<Vec<f64>>()
+            .to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let mid = sorted.len() / 2;
         if sorted.len() % 2 == 0 {
@@ -802,7 +805,7 @@ impl StatisticalAnalysis {
             }
             combined.push((value, 1)); // 1 for group B
         }
-        
+
         let mut rank_sum_a = 0.0;
         for (i, &(_, group)) in combined.iter().enumerate() {
             if group == 0 {

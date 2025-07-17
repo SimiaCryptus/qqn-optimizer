@@ -12,7 +12,7 @@ use qqn_optimizer::benchmarks::MichalewiczFunction;
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::Optimizer;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
-use qqn_optimizer::core::{SGDConfig, SGDOptimizer};
+use qqn_optimizer::core::{GDConfig, GDOptimizer};
 use qqn_optimizer::{
     init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, LineSearchConfig, LineSearchMethod, RastriginFunction,
 };
@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper};
+use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult};
 
 /// Comprehensive benchmark experiment runner
 pub struct ExperimentRunner {
@@ -33,11 +33,16 @@ impl ExperimentRunner {
     pub fn new(output_dir: String) -> Self {
         let config = BenchmarkConfig {
             max_iterations: 1000,
+            maximum_function_calls: 1000,
             tolerance: 1e-8,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
-            num_runs: 10,
+            num_runs: 5,
+            include_ml_problems: false,
         };
 
+        Self { output_dir, config }
+    }
+    pub fn new_with_config(output_dir: String, config: BenchmarkConfig) -> Self {
         Self { output_dir, config }
     }
     /// Generate synthetic linear regression data
@@ -155,7 +160,7 @@ impl ExperimentRunner {
     }
 
     fn create_test_problems(&self) -> Vec<Box<dyn OptimizationProblem>> {
-        vec![
+        let mut problems: Vec<Box<dyn OptimizationProblem>> = vec![
             Box::new(SphereFunction::new(2)),
             Box::new(SphereFunction::new(10)),
             Box::new(RosenbrockFunction::new(2)),
@@ -172,44 +177,52 @@ impl ExperimentRunner {
             Box::new(AckleyFunction::new(5)),
             Box::new(StyblinskiTangFunction::new(2)),
             Box::new(StyblinskiTangFunction::new(5)),
-            // Machine Learning Problems
-            Box::new(
-                LogisticRegression::synthetic(100, 5)
-                    .expect("Failed to create synthetic logistic regression"),
-            ),
-            Box::new(
-                LogisticRegression::synthetic(200, 10)
-                    .expect("Failed to create synthetic logistic regression"),
-            ),
-            Box::new(LinearRegression::new(
-                Self::generate_linear_regression_data(100, 5).0,
-                Self::generate_linear_regression_data(100, 5).1,
-                0.01,
-            )),
-            Box::new(LinearRegression::new(
-                Self::generate_linear_regression_data(200, 10).0,
-                Self::generate_linear_regression_data(200, 10).1,
-                0.01,
-            )),
-            Box::new(
-                NeuralNetworkTraining::mlp_classification(vec![5, 10, 3])
-                    .expect("Failed to create MLP"),
-            ),
-            Box::new(
-                NeuralNetworkTraining::mlp_classification(vec![10, 20, 5])
-                    .expect("Failed to create MLP"),
-            ),
-            Box::new(SupportVectorMachine::new(
-                Self::generate_svm_data(100, 5).0,
-                Self::generate_svm_data(100, 5).1,
-                1.0,
-            )),
-            Box::new(SupportVectorMachine::new(
-                Self::generate_svm_data(200, 10).0,
-                Self::generate_svm_data(200, 10).1,
-                1.0,
-            )),
-        ]
+        ];
+
+        // Add Machine Learning Problems if enabled
+        if self.config.include_ml_problems {
+            let ml_problems: Vec<Box<dyn OptimizationProblem>> = vec![
+                Box::new(
+                    LogisticRegression::synthetic(100, 5)
+                        .expect("Failed to create synthetic logistic regression"),
+                ),
+                Box::new(
+                    LogisticRegression::synthetic(200, 10)
+                        .expect("Failed to create synthetic logistic regression"),
+                ),
+                Box::new(LinearRegression::new(
+                    Self::generate_linear_regression_data(100, 5).0,
+                    Self::generate_linear_regression_data(100, 5).1,
+                    0.01,
+                )),
+                Box::new(LinearRegression::new(
+                    Self::generate_linear_regression_data(200, 10).0,
+                    Self::generate_linear_regression_data(200, 10).1,
+                    0.01,
+                )),
+                Box::new(
+                    NeuralNetworkTraining::mlp_classification(vec![5, 10, 3])
+                        .expect("Failed to create MLP"),
+                ),
+                Box::new(
+                    NeuralNetworkTraining::mlp_classification(vec![10, 20, 5])
+                        .expect("Failed to create MLP"),
+                ),
+                Box::new(SupportVectorMachine::new(
+                    Self::generate_svm_data(100, 5).0,
+                    Self::generate_svm_data(100, 5).1,
+                    1.0,
+                )),
+                Box::new(SupportVectorMachine::new(
+                    Self::generate_svm_data(200, 10).0,
+                    Self::generate_svm_data(200, 10).1,
+                    1.0,
+                )),
+            ];
+            problems.extend(ml_problems);
+        }
+
+        problems
     }
 
     fn create_optimizers(&self) -> Vec<(String, Box<dyn Optimizer>)> {
@@ -298,33 +311,33 @@ impl ExperimentRunner {
                 })),
             ),
             (
-                "SGD".to_string(),
-                Box::new(SGDOptimizer::new(Default::default())),
+                "GD".to_string(),
+                Box::new(GDOptimizer::new(Default::default())),
             ),
             (
-                "SGD-Fast".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
+                "GD-Fast".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
                     learning_rate: 0.5,
                     ..Default::default()
                 })),
             ),
             (
-                "SGD-Slow".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
+                "GD-Slow".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
                     learning_rate: 0.01,
                     ..Default::default()
                 })),
             ),
             (
-                "SGD-Momentum".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
+                "GD-Momentum".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
                     momentum: 0.9,
                     ..Default::default()
                 })),
             ),
             (
-                "SGD-Nesterov".to_string(),
-                Box::new(SGDOptimizer::new(SGDConfig {
+                "GD-Nesterov".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
                     momentum: 0.9,
                     nesterov: true,
                     ..Default::default()
@@ -744,18 +757,40 @@ impl ExperimentRunner {
 
         // Sort by mean final value (lower is better)
         perf_data.sort_by(|a, b| {
-            // Sort by success rate (higher is better), then by total evaluations (lower is better)
-            let success_rate_cmp = b.6.partial_cmp(&a.6).unwrap_or(std::cmp::Ordering::Equal);
-            if success_rate_cmp != std::cmp::Ordering::Equal {
+            use std::cmp::Ordering;
+
+            // Helper function to handle all special f64 values for total ordering
+            fn safe_f64_cmp(a: f64, b: f64) -> Ordering {
+                match (a.is_nan(), b.is_nan()) {
+                    (true, true) => Ordering::Equal,
+                    (true, false) => Ordering::Greater, // NaN is considered "worse"
+                    (false, true) => Ordering::Less,    // Non-NaN is "better"
+                    (false, false) => {
+                        // Use total_cmp for proper handling of infinities and signed zeros
+                        a.total_cmp(&b)
+                    }
+                }
+            }
+
+            // Primary sort: success rate (higher is better)
+            let success_rate_cmp = safe_f64_cmp(b.6, a.6); // Note: b, a for descending
+            if success_rate_cmp != Ordering::Equal {
                 return success_rate_cmp;
             }
 
-            // If success rates are equal, sort by total evaluations (function + gradient)
-            let total_evals_a = a.4 + a.5; // mean_function_evals + mean_gradient_evals
-            let total_evals_b = b.4 + b.5;
-            total_evals_a
-                .partial_cmp(&total_evals_b)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            // At this point, both have the same success rate
+            // Check if this success rate is zero/NaN
+            let is_zero_success = a.6 == 0.0 || a.6.is_nan();
+
+            if is_zero_success {
+                // Both have 0% success or NaN - sort by mean final value (lower is better)
+                safe_f64_cmp(a.1, b.1)
+            } else {
+                // Both have same non-zero success rate - sort by total evaluations (lower is better)
+                let total_evals_a = a.4 + a.5;
+                let total_evals_b = b.4 + b.5;
+                total_evals_a.total_cmp(&total_evals_b)
+            }
         });
 
         for (
@@ -933,11 +968,11 @@ impl ExperimentRunner {
             all_results,
             &optimizers,
             &problems,
-            |results| {
-                let success_count = results.iter().filter(|r| r.convergence_achieved).count();
+            |optimizer_results| {
+                let success_count = optimizer_results.iter().filter(|r| r.convergence_achieved).count();
                 format!(
                     "{:.1}",
-                    (success_count as f64 / results.len() as f64) * 100.0
+                    (success_count as f64 / optimizer_results.len() as f64) * 100.0
                 )
             },
         )?);
@@ -946,12 +981,9 @@ impl ExperimentRunner {
             all_results,
             &optimizers,
             &problems,
-            |results| {
+            |optimizer_results| {
                 let mean =
-                    results.iter().map(|r| r.final_value)
-                        .filter(|&v| v.is_some())
-                        .map(|v| v.unwrap())
-                        .sum::<f64>() / (results.len() as f64);
+                    optimizer_results.iter().map(|r| r.final_value).sum::<f64>() / (optimizer_results.len() as f64);
                 format!("{:.2e}", mean)
             },
         )?);
@@ -960,13 +992,12 @@ impl ExperimentRunner {
             all_results,
             &optimizers,
             &problems,
-            |results| {
-                let mean = results
+            |optimizer_results| {
+                let mean = optimizer_results
                     .iter()
-                   .flat_map(|r| r.results.iter())
-                   .map(|single_result| single_result.iterations as f64)
-                   .sum::<f64>()
-                   / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
+                    .map(|r| r.iterations as f64)
+                    .sum::<f64>()
+                    / optimizer_results.len() as f64;
                 format!("{:.1}", mean)
             },
         )?);
@@ -975,13 +1006,12 @@ impl ExperimentRunner {
             all_results,
             &optimizers,
             &problems,
-            |results| {
-                let mean = results
+            |optimizer_results| {
+                let mean = optimizer_results
                     .iter()
-                    .flat_map(|r| r.results.iter())
-                    .map(|single_result| single_result.function_evaluations as f64)
+                    .map(|r| r.function_evaluations as f64)
                     .sum::<f64>()
-                    / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
+                    / optimizer_results.len() as f64;
                 format!("{:.1}", mean)
             },
         )?);
@@ -990,13 +1020,12 @@ impl ExperimentRunner {
             all_results,
             &optimizers,
             &problems,
-            |results| {
-                let mean = results
+            |optimizer_results| {
+                let mean = optimizer_results
                     .iter()
-                    .flat_map(|r| r.results.iter())
-                    .map(|single_result| single_result.gradient_evaluations as f64)
+                    .map(|r| r.gradient_evaluations as f64)
                     .sum::<f64>()
-                    / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
+                    / optimizer_results.len() as f64;
                 format!("{:.1}", mean)
             },
         )?);
@@ -1005,13 +1034,12 @@ impl ExperimentRunner {
             all_results,
             &optimizers,
             &problems,
-            |results| {
-                let mean = results
+            |optimizer_results| {
+                let mean = optimizer_results
                     .iter()
-                    .flat_map(|r| r.results.iter())
-                    .map(|single_result| single_result.execution_time.as_secs_f64())
+                    .map(|r| r.execution_time.as_secs_f64())
                     .sum::<f64>()
-                    / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
+                    / optimizer_results.len() as f64;
                 format!("{:.3}", mean)
             },
         )?);
@@ -1035,32 +1063,11 @@ impl ExperimentRunner {
         metric_fn: F,
     ) -> anyhow::Result<String>
     where
-        F: Fn(&[&BenchmarkResults]) -> String,
+        F: Fn(&[SingleResult]) -> String,
     {
-        let mut table = format!(
-            r#"
-            <h3>{}</h3>
-            <table style="font-size: 0.9em;">
-                <tr>
-                    <th style="min-width: 120px;">Optimizer</th>
-"#,
-            title
-        );
-        // Add problem headers
-        for problem in problems {
-            table.push_str(&format!(r#"                    <th style="min-width: 100px; writing-mode: vertical-lr; text-orientation: mixed;">{}</th>
-"#, problem));
-        }
-        table.push_str("                </tr>\n");
         // Calculate values for ranking
         let mut problem_values: HashMap<String, Vec<(String, f64)>> = HashMap::new();
         for optimizer in optimizers {
-            table.push_str(&format!(
-                r#"                <tr>
-                    <td style="text-align: left; font-weight: bold;">{}</td>
-"#,
-                optimizer
-            ));
             for problem in problems {
                 let results = all_results
                     .iter()
@@ -1071,19 +1078,11 @@ impl ExperimentRunner {
                     .results
                     .iter()
                     .filter(|r| r.optimizer_name == *optimizer)
+                    .cloned()
                     .collect();
                 if optimizer_results.is_empty() {
-                    table.push_str(
-                        r#"                    <td>-</td>
-"#,
-                    );
                 } else {
-                    let value_str = metric_fn(&[results]);
-                    table.push_str(&format!(
-                        r#"                    <td>{}</td>
-"#,
-                        value_str
-                    ));
+                    let value_str = metric_fn(&optimizer_results);
                     // Store numeric value for ranking (extract from formatted string)
                     let numeric_value = if title.contains("Success Rate") {
                         value_str
@@ -1102,13 +1101,11 @@ impl ExperimentRunner {
                         .push((optimizer.clone(), numeric_value));
                 }
             }
-            table.push_str("                </tr>\n");
         }
-        table.push_str("            </table>\n");
         // Now generate a version with highlighting
         let mut highlighted_table = format!(
             r#"
-            <h3>{} (with Performance Highlighting)</h3>
+            <h3>{}</h3>
             <table style="font-size: 0.9em;">
                 <tr>
                     <th style="min-width: 120px;">Optimizer</th>
@@ -1149,6 +1146,7 @@ impl ExperimentRunner {
                     .results
                     .iter()
                     .filter(|r| r.optimizer_name == *optimizer)
+                    .cloned()
                     .collect();
                 if optimizer_results.is_empty() {
                     highlighted_table.push_str(
@@ -1156,7 +1154,7 @@ impl ExperimentRunner {
 "#,
                     );
                 } else {
-                    let value_str = metric_fn(&[results]);
+                    let value_str = metric_fn(&optimizer_results);
                     // Determine ranking class
                     let class = if let Some(rankings) = problem_rankings.get(problem) {
                         let position = rankings
@@ -1183,7 +1181,7 @@ impl ExperimentRunner {
             highlighted_table.push_str("                </tr>\n");
         }
         highlighted_table.push_str("            </table>\n");
-        Ok(format!("{}{}", table, highlighted_table))
+        Ok(highlighted_table)
     }
 
     fn generate_performance_profiles(
@@ -1308,7 +1306,7 @@ impl ExperimentRunner {
                <li>Convergence validation uses lenient bounds to account for the inherent difficulty of optimization problems.</li>
                 <li>No single optimizer dominated across all problem types, highlighting the importance of adaptive methods.</li>
                 <li>ML problems showed different convergence patterns compared to mathematical test functions.</li>
-                <li>Adam and SGD variants showed competitive performance on ML problems, while QQN and L-BFGS excelled on mathematical functions.</li>
+                <li>Adam and GD variants showed competitive performance on ML problems, while QQN and L-BFGS excelled on mathematical functions.</li>
             </ul>
             
             <h3>Recommendations for Practitioners</h3>
@@ -1316,7 +1314,7 @@ impl ExperimentRunner {
                <li>Use reasonable success thresholds rather than exact optimal value matching.</li>
                <li>Consider both final value and gradient norm when assessing convergence quality.</li>
                 <li>L-BFGS remains competitive for well-conditioned convex problems.</li>
-                <li>For machine learning applications, consider Adam or SGD with momentum as strong baselines.</li>
+                <li>For machine learning applications, consider Adam or GD with momentum as strong baselines.</li>
                 <li>QQN shows promise as a hybrid approach that works well across both problem types.</li>
                 <li>Always run multiple random seeds and report statistical significance.</li>
                 <li>Problem-specific tuning of hyperparameters can significantly impact performance.</li>
@@ -1575,7 +1573,7 @@ impl ExperimentRunner {
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    //init_logging()?;
+    init_logging()?;
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);

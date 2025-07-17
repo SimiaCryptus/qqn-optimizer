@@ -48,7 +48,7 @@ impl Default for AdamConfig {
             weight_decay: 0.0,
             amsgrad: false,
             max_line_search_iter: 10,
-            verbose: true,
+            verbose: false,
         }
     }
 }
@@ -671,7 +671,7 @@ mod tests {
         let config = AdamConfig {
             learning_rate: 0.1,
             lr_schedule: "constant".to_string(),
-            verbose: true,
+            verbose: false,
             ..Default::default()
         };
         let mut optimizer = AdamOptimizer::new(config);
@@ -853,7 +853,7 @@ mod tests {
             learning_rate: 0.01,
             lr_schedule: "constant".to_string(),
             gradient_clip: None, // Disable gradient clipping for Rosenbrock
-            verbose: true,
+            verbose: false,
             ..Default::default()
         };
         let mut optimizer = AdamOptimizer::new(config);
@@ -955,7 +955,7 @@ mod tests {
         let device = Device::Cpu;
         let config = AdamConfig {
             learning_rate: 0.1,
-            verbose: true,
+            verbose: false,
             ..Default::default()
         };
         let mut optimizer = AdamOptimizer::new(config);

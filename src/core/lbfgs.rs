@@ -68,7 +68,7 @@ impl Default for LBFGSConfig {
             gradient_clip: 1e4,     // Clip very large gradients
             enable_recovery: true,
             recovery_patience: 3, // Trigger recovery sooner
-            verbose: true,
+            verbose: false,
         }
     }
 }
@@ -141,7 +141,11 @@ impl LBFGSState {
     }
 
     /// Compute the L-BFGS search direction using the two-loop recursion
-    pub fn compute_direction(&mut self, params: &[Tensor], gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+    pub fn compute_direction(
+        &mut self,
+        params: &[Tensor],
+        gradient: &[Tensor],
+    ) -> CandleResult<Vec<Tensor>> {
         // Validate input
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
@@ -157,7 +161,6 @@ impl LBFGSState {
             )));
         }
 
-        
         if !self.disable_checks {
             // Check gradient magnitude to avoid numerical issues
             let grad_norm = compute_magnitude(gradient)?;
@@ -226,7 +229,7 @@ impl LBFGSState {
             let y_i = &self.y_history[i];
             let scaled_y = vector_scale(y_i, alpha_i)?;
             q = vector_subtract(&q, &scaled_y)?;
-            
+
             if !self.disable_checks {
                 // Check if q has become non-finite
                 for (_j, q_tensor) in q.iter().enumerate() {
@@ -249,7 +252,7 @@ impl LBFGSState {
 
         // Apply initial Hessian approximation scaling
         debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
-        
+
         let safe_gamma = if !self.disable_checks {
             // Additional safety check for gamma
             if !self.gamma.is_finite() || self.gamma <= 0.0 {
@@ -287,7 +290,7 @@ impl LBFGSState {
             // r = r + (alpha_i - beta) * s_i
             let correction = vector_scale(s_i, correction_factor)?;
             r = vector_add(&r, &correction)?;
-            
+
             if !self.disable_checks {
                 // Check if r has become non-finite
                 for (_j, r_tensor) in r.iter().enumerate() {
@@ -304,13 +307,13 @@ impl LBFGSState {
                 }
             }
         }
-        
+
         // Return the negative of r to get a descent direction
         let direction = r
             .iter()
             .map(|t| t.neg())
             .collect::<CandleResult<Vec<_>>>()?;
-            
+
         if !self.disable_checks {
             // Final check on the direction
             // Verify the direction is finite
@@ -353,11 +356,14 @@ impl LBFGSState {
 
         // Compute parameter difference: s_k = new_params - old_params
         let s_k = vector_subtract(new_params, old_params)?;
-        
+
         // Check if there was any actual movement
         let s_k_norm = compute_magnitude(&s_k)?;
         if s_k_norm < self.epsilon() {
-            debug!("L-BFGS: Parameter change too small ({}), skipping update", s_k_norm);
+            debug!(
+                "L-BFGS: Parameter change too small ({}), skipping update",
+                s_k_norm
+            );
             self.prev_gradient = Some(new_gradient.to_vec());
             return Ok(());
         }
@@ -382,7 +388,6 @@ impl LBFGSState {
             // Implement Powell's damping for negative curvature
             let curvature_threshold = self.epsilon() * grad_norm.max(1.0);
             let (s_k_final, y_k_final, s_dot_y_final) = if s_dot_y < curvature_threshold {
-
                 if self.disable_checks {
                     // When used in QQN, skip Powell damping and accept the update
                     (s_k, y_k, s_dot_y)
@@ -709,8 +714,7 @@ impl Optimizer for LBFGSOptimizer {
                     let update = dir.broadcast_mul(&step_size_tensor)?;
                     *param = param.add(&update)?;
                 }
-                self.state
-                    .update(&old_params_vec, params, &gradients)?;
+                self.state.update(&old_params_vec, params, &gradients)?;
             }
 
             let convergence_info = self.compute_convergence_info(&gradients)?;
@@ -786,8 +790,7 @@ impl Optimizer for LBFGSOptimizer {
                 *param = param.add(&step)?;
             }
             // Update L-BFGS state
-            self.state
-                .update(&old_params, params, &gradients)?;
+            self.state.update(&old_params, params, &gradients)?;
             let convergence_info = self.compute_convergence_info(&gradients)?;
             let step_duration = start_time.elapsed();
             let mut metadata = OptimizationMetadata::default();
@@ -808,7 +811,7 @@ impl Optimizer for LBFGSOptimizer {
         // Convert tensors to f64 vectors for line search
         let current_point = tensors_to_f64(params)?;
         let direction_f64 = tensors_to_f64(&search_direction)?;
-        
+
         // Perform line search in a separate scope to avoid borrow conflicts
         let line_search_result = {
             // Create objective and gradient functions that work with f64 vectors
@@ -951,8 +954,7 @@ impl Optimizer for LBFGSOptimizer {
         }
 
         // Update L-BFGS state with new information
-        self.state
-            .update(&old_params, params, &gradients)?;
+        self.state.update(&old_params, params, &gradients)?;
         self.log_lbfgs_state("After state update");
 
         // Compute convergence information
@@ -1137,7 +1139,7 @@ mod tests {
         let params0 = vec![Tensor::from_slice(&[0.0, 0.0], &[2], &device)?];
         let params1 = vec![Tensor::from_slice(&[-0.1, -0.2], &[2], &device)?];
         let grad1 = vec![Tensor::from_slice(&[2.0, 4.0], &[2], &device)?];
-        
+
         // Second iteration: gradient [1.0, 1.0], move from [-0.1, -0.2] to [-0.2, -0.4]
         let params2 = vec![Tensor::from_slice(&[-0.2, -0.4], &[2], &device)?];
         let grad2 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
@@ -1200,7 +1202,7 @@ mod tests {
         let grad2 = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?]; // Same gradient
 
         state.update(&old_params, &new_params, &grad1)?;
-        state.update(&new_params, &old_params, &grad2)?;  // Move back to test zero curvature
+        state.update(&new_params, &old_params, &grad2)?; // Move back to test zero curvature
 
         // With Powell damping, zero curvature gets corrected and update is accepted
         // The original test expected rejection, but Powell damping allows acceptance
@@ -1444,7 +1446,7 @@ mod tests {
         let params = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
         let gradient = vec![
             Tensor::from_slice(&[1.0], &[1], &device)?,
-            Tensor::from_slice(&[2.0], &[1], &device)?
+            Tensor::from_slice(&[2.0], &[1], &device)?,
         ];
         let result = state.compute_direction(&params, &gradient);
         assert!(result.is_err());

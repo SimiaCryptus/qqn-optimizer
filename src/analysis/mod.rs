@@ -12,14 +12,14 @@ pub mod statistics;
 
 // Re-export commonly used types
 
+use crate::benchmarks::evaluation::BenchmarkResults;
+use crate::core::OptResult;
 pub use plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter};
 pub use statistics::{
     ConvergenceComparison, EffectSize, PerformanceProfiles, RobustnessAnalysis, SignificanceTest,
     StatisticalAnalysis,
 };
-use crate::benchmarks::evaluation::BenchmarkResults;
-use crate::core::OptResult;
 
 /// Generate comprehensive analysis report
 pub fn generate_full_analysis(results: &BenchmarkResults) -> OptResult<AnalysisReport> {

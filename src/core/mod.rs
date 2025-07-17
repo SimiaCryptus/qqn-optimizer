@@ -44,9 +44,9 @@ pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
 /// Default L-BFGS history size
 pub const DEFAULT_LBFGS_HISTORY: usize = 10;
 pub mod adam;
-pub mod sgd;
+pub mod gd;
 
-pub use sgd::{SGDConfig, SGDOptimizer, SGDState};
+pub use gd::{GDConfig, GDOptimizer, GDState};
 
 #[cfg(test)]
 mod tests {

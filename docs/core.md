@@ -164,12 +164,12 @@ Under standard assumptions (Lipschitz continuous gradient, strong convexity), QQ
 
 ```
 src/core/
-├── mod.rs           # Module exports and error types
-├── optimizer.rs     # Optimizer trait and common types
+├── mod.rs          # Module exports and error types
+├── optimizer.rs    # Optimizer trait and common types
 ├── lbfgs.rs        # L-BFGS implementation
 ├── qqn.rs          # QQN optimizer implementation
 ├── line_search.rs  # Line search algorithms
-└── sgd.rs          # SGD implementation (for comparison)
+└── gd.rs           # GD implementation (for comparison)
 ```
 
 #### 2.2.2 Key Traits and Interfaces
@@ -416,7 +416,7 @@ max_iterations: 50,
 ..Default::default ()
 },
 epsilon: 1e-8,
-verbose: true,
+verbose: false,
 };
 let optimizer = QQNOptimizer::new(config);
 ```

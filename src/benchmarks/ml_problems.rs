@@ -254,7 +254,6 @@ impl OptimizationProblem for NeuralNetworkTraining {
     fn optimal_value(&self) -> Option<f64> {
         None // Neural network training doesn't have a known global optimum
     }
-
 }
 
 /// Linear regression optimization problem
