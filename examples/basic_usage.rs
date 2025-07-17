@@ -90,7 +90,6 @@ fn main() -> Result<()> {
         // Print step information
         if iteration % 50 == 0 {
             println!("  Step size: {:.6}", step_result.step_size);
-            println!("  Function evaluations: {}", step_result.function_evaluations);
         }
 
         iteration += 1;

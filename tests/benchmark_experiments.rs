@@ -134,6 +134,39 @@ impl ExperimentRunner {
                     ..Default::default()
                 })),
             ),
+
+            (
+                "QQN-CubicQuadraticInterpolation".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::CubicQuadraticInterpolation,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+
+            (
+                "QQN-GoldenSection".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::GoldenSection,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+
+            (
+                "QQN-MoreThuente".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::MoreThuente,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
             (
                 "QQN-Conservative".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
@@ -524,6 +557,16 @@ impl ExperimentRunner {
 
         // Sort by mean final value (lower is better)
         perf_data.sort_by(|a, b| {
+            // check for NaN values and handle them gracefully
+            if a.1.is_nan() && b.1.is_nan() {
+                return std::cmp::Ordering::Equal;
+            }
+            if a.1.is_nan() {
+                return std::cmp::Ordering::Greater;
+            }
+            if b.1.is_nan() {
+                return std::cmp::Ordering::Less;
+            }
             a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
         });
 

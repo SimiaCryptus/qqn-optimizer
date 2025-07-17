@@ -156,14 +156,12 @@ impl QQNOptimizer {
     }
 
     /// Log line search details if verbose mode is enabled
-    fn log_line_search_details(&self, optimal_t: f64, f_evals: usize, g_evals: usize) {
+    fn log_line_search_details(&self, optimal_t: f64) {
         if !self.config.verbose {
             return;
         }
         debug!("=== Line Search Results ===");
         debug!("  Optimal t: {:.12e}", optimal_t);
-        debug!("  Function evaluations: {}", f_evals);
-        debug!("  Gradient evaluations: {}", g_evals);
     }
 
     pub fn create_quadratic_path(
@@ -275,8 +273,6 @@ impl QQNOptimizer {
                 LineSearchResult {
                     step_size: 1.0, // Default to 1.0 if search fails
                     success: false,
-                    function_evaluations: 1, // At least one evaluation was attempted
-                    gradient_evaluations: 1, // At least one gradient evaluation was attempted
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
                 }
             }
@@ -386,8 +382,6 @@ impl QQNOptimizer {
             line_search_result = Ok(LineSearchResult {
                 step_size: 1e-8,
                 success: true,
-                function_evaluations: 1,
-                gradient_evaluations: 0,
                 termination_reason: TerminationReason::WolfeConditionsSatisfied,
             });
         }
@@ -435,8 +429,6 @@ impl QQNOptimizer {
             .insert("reason".to_string(), reason.len() as f64); // Store reason length as proxy
         Ok(StepResult {
             step_size: line_search_result.step_size,
-            function_evaluations: line_search_result.function_evaluations,
-            gradient_evaluations: line_search_result.gradient_evaluations,
             convergence_info,
             metadata,
         })
@@ -578,8 +570,6 @@ impl Optimizer for QQNOptimizer {
         self.log_scalar("Optimal t", line_search_result.step_size);
         self.log_line_search_details(
             line_search_result.step_size,
-            line_search_result.function_evaluations,
-            line_search_result.gradient_evaluations,
         );
 
         let direction = quadratic_path.evaluate_direction(line_search_result.step_size)?;
@@ -665,8 +655,6 @@ impl Optimizer for QQNOptimizer {
 
         Ok(StepResult {
             step_size: line_search_result.step_size,
-            function_evaluations: line_search_result.function_evaluations,
-            gradient_evaluations: line_search_result.gradient_evaluations,
             convergence_info,
             metadata,
         })
@@ -996,9 +984,6 @@ mod tests {
         let values = params[0].to_vec1::<f64>()?;
         assert!(values[0].abs() < 2.0);
         assert!(values[1].abs() < 3.0);
-        // Check that function and gradient were evaluated
-        assert!(result.function_evaluations > 0);
-        assert!(result.gradient_evaluations > 0);
         assert_eq!(optimizer.state.iteration, 1);
         Ok(())
     }
@@ -1050,8 +1035,6 @@ mod tests {
         let values = params[0].to_vec1::<f64>()?;
         assert!(values[0].abs() < 2.0);
         assert!(values[1].abs() < 3.0);
-        // Function should be evaluated for line search, but gradient count should be lower
-        assert!(result.function_evaluations > 0);
         Ok(())
     }
     #[test]

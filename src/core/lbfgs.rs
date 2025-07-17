@@ -719,8 +719,6 @@ impl Optimizer for LBFGSOptimizer {
 
             return Ok(StepResult {
                 step_size,
-                function_evaluations: 0,
-                gradient_evaluations: 0,
                 convergence_info,
                 metadata,
             });
@@ -797,8 +795,6 @@ impl Optimizer for LBFGSOptimizer {
                 .insert("conservative_step_size".to_string(), conservative_step);
             return Ok(StepResult {
                 step_size: conservative_step,
-                function_evaluations: 1,
-                gradient_evaluations: 0,
                 convergence_info,
                 metadata,
             });
@@ -845,14 +841,6 @@ impl Optimizer for LBFGSOptimizer {
             debug!("=== Line Search Result ===");
             debug!("  Step Size: {:.12e}", line_search_result.step_size);
             debug!("  Success: {}", line_search_result.success);
-            debug!(
-                "  Function Evaluations: {}",
-                line_search_result.function_evaluations
-            );
-            debug!(
-                "  Gradient Evaluations: {}",
-                line_search_result.gradient_evaluations
-            );
         }
         // Limit the actual step size based on maximum parameter change
         let mut actual_step_size = line_search_result.step_size;
@@ -894,8 +882,6 @@ impl Optimizer for LBFGSOptimizer {
                         self.state.reset();
                         return Ok(StepResult {
                             step_size: 0.0,
-                            function_evaluations: line_search_result.function_evaluations,
-                            gradient_evaluations: line_search_result.gradient_evaluations,
                             convergence_info: ConvergenceInfo {
                                 converged: false,
                                 function_change: None,
@@ -1010,8 +996,6 @@ impl Optimizer for LBFGSOptimizer {
 
         Ok(StepResult {
             step_size: actual_step_size,
-            function_evaluations: line_search_result.function_evaluations,
-            gradient_evaluations: line_search_result.gradient_evaluations,
             convergence_info,
             metadata,
         })

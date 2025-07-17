@@ -75,41 +75,11 @@ pub struct StepResult {
     /// Step size used in this iteration
     pub step_size: f64,
 
-    /// Number of function evaluations used in this step
-    pub function_evaluations: usize,
-
-    /// Number of gradient evaluations used in this step
-    pub gradient_evaluations: usize,
-
     /// Information about convergence status
     pub convergence_info: ConvergenceInfo,
 
     /// Additional optimizer-specific metadata
     pub metadata: OptimizationMetadata,
-}
-
-impl StepResult {
-    /// Create a new step result with basic information
-    pub fn new(step_size: f64, function_evals: usize, gradient_evals: usize) -> Self {
-        Self {
-            step_size,
-            function_evaluations: function_evals,
-            gradient_evaluations: gradient_evals,
-            convergence_info: ConvergenceInfo::default(),
-            metadata: OptimizationMetadata::default(),
-        }
-    }
-
-    /// Create a step result indicating convergence
-    pub fn converged(step_size: f64, function_evals: usize, gradient_evals: usize) -> Self {
-        Self {
-            step_size,
-            function_evaluations: function_evals,
-            gradient_evaluations: gradient_evals,
-            convergence_info: ConvergenceInfo::converged(),
-            metadata: OptimizationMetadata::default(),
-        }
-    }
 }
 
 /// Information about convergence status and criteria
@@ -347,17 +317,6 @@ mod tests {
     use super::*;
     use candle_core::{Device, Tensor};
 
-    #[test]
-    fn test_step_result_creation() {
-        let result = StepResult::new(0.1, 1, 1);
-        assert_eq!(result.step_size, 0.1);
-        assert_eq!(result.function_evaluations, 1);
-        assert_eq!(result.gradient_evaluations, 1);
-        assert!(!result.convergence_info.converged);
-
-        let converged_result = StepResult::converged(0.05, 2, 1);
-        assert!(converged_result.convergence_info.converged);
-    }
 
     #[test]
     fn test_convergence_info_builder() {

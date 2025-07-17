@@ -663,7 +663,9 @@ impl StatisticalAnalysis {
         if values.is_empty() {
             return 0.0;
         }
-        let mut sorted = values.to_vec();
+        let mut sorted = values.iter().filter(
+            |&&x| x.is_finite() && !x.is_nan(),
+        ).cloned().collect::<Vec<f64>>().to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let mid = sorted.len() / 2;
         if sorted.len() % 2 == 0 {
@@ -789,14 +791,18 @@ impl StatisticalAnalysis {
         let mut combined: Vec<(f64, usize)> = Vec::new();
 
         for &value in group_a {
+            if !value.is_finite() || value.is_nan() {
+                continue; // Skip non-finite values
+            }
             combined.push((value, 0)); // 0 for group A
         }
         for &value in group_b {
+            if !value.is_finite() || value.is_nan() {
+                continue; // Skip non-finite values
+            }
             combined.push((value, 1)); // 1 for group B
         }
-
-        combined.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-
+        
         let mut rank_sum_a = 0.0;
         for (i, &(_, group)) in combined.iter().enumerate() {
             if group == 0 {

@@ -244,8 +244,6 @@ impl<'a> ParametricCurve for FunctionLinearCurve<'a> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineSearchResult {
     pub step_size: f64,
-    pub function_evaluations: usize,
-    pub gradient_evaluations: usize,
     pub success: bool,
     pub termination_reason: TerminationReason,
 }
@@ -276,6 +274,9 @@ pub enum LineSearchMethod {
     StrongWolfe,
     Backtracking,
     Bisection,
+   GoldenSection,
+   MoreThuente,
+   CubicQuadraticInterpolation,
 }
 
 impl Default for LineSearchConfig {
@@ -322,6 +323,34 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
             window_shrink_factor: 0.5,
             verbose: config.verbose,
         })),
+       LineSearchMethod::GoldenSection => Box::new(GoldenSectionLineSearch::new(GoldenSectionConfig {
+           max_iterations: config.max_iterations,
+           tolerance: 1e-8,
+           min_step: config.min_step,
+           max_step: config.max_step,
+           initial_step: config.initial_step,
+           verbose: config.verbose,
+       })),
+       LineSearchMethod::MoreThuente => Box::new(MoreThuenteLineSearch::new(MoreThuenteConfig {
+           c1: config.c1,
+           c2: config.c2,
+           max_iterations: config.max_iterations,
+           min_step: config.min_step,
+           max_step: config.max_step,
+           initial_step: config.initial_step,
+           verbose: config.verbose,
+           ..Default::default()
+       })),
+       LineSearchMethod::CubicQuadraticInterpolation => Box::new(CubicQuadraticLineSearch::new(CubicQuadraticConfig {
+           c1: config.c1,
+           c2: config.c2,
+           max_iterations: config.max_iterations,
+           min_step: config.min_step,
+           max_step: config.max_step,
+           initial_step: config.initial_step,
+           verbose: config.verbose,
+           ..Default::default()
+       })),
     }
 }
 
@@ -534,8 +563,6 @@ impl LineSearch for StrongWolfeLineSearch {
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
-                    function_evaluations: f_evals + zoom_f_evals,
-                    gradient_evaluations: g_evals + zoom_g_evals,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
                 });
@@ -553,8 +580,6 @@ impl LineSearch for StrongWolfeLineSearch {
                 ));
                 return Ok(LineSearchResult {
                     step_size: alpha,
-                    function_evaluations: f_evals,
-                    gradient_evaluations: g_evals,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
                 });
@@ -571,8 +596,6 @@ impl LineSearch for StrongWolfeLineSearch {
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
-                    function_evaluations: f_evals + zoom_f_evals,
-                    gradient_evaluations: g_evals + zoom_g_evals,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
                 });
@@ -597,8 +620,6 @@ impl LineSearch for StrongWolfeLineSearch {
         ));
         Ok(LineSearchResult {
             step_size: alpha_prev,
-            function_evaluations: f_evals,
-            gradient_evaluations: g_evals,
             success: false,
             termination_reason: TerminationReason::MaxIterationsReached,
         })
@@ -815,8 +836,6 @@ impl LineSearch for BisectionLineSearch {
         if step_size < self.config.min_step {
             return Ok(LineSearchResult {
                 step_size,
-                function_evaluations: f_evals,
-                gradient_evaluations: g_evals,
                 success: false,
                 termination_reason: TerminationReason::StepSizeTooSmall,
             });
@@ -830,8 +849,6 @@ impl LineSearch for BisectionLineSearch {
         ));
         Ok(LineSearchResult {
             step_size,
-            function_evaluations: f_evals,
-            gradient_evaluations: g_evals + 1, // +1 for final gradient check
             success,
             termination_reason: if success {
                 TerminationReason::WolfeConditionsSatisfied
@@ -885,8 +902,6 @@ impl LineSearch for BacktrackingLineSearch {
             if f_alpha <= armijo_threshold {
                 return Ok(LineSearchResult {
                     step_size: alpha,
-                    function_evaluations: f_evals,
-                    gradient_evaluations: 0,
                     success: true,
                     termination_reason: TerminationReason::ArmijoConditionSatisfied,
                 });
@@ -903,8 +918,6 @@ impl LineSearch for BacktrackingLineSearch {
         // Line search failed
         Ok(LineSearchResult {
             step_size: alpha,
-            function_evaluations: f_evals,
-            gradient_evaluations: 0,
             success: false,
             termination_reason: TerminationReason::StepSizeTooSmall,
         })
@@ -939,6 +952,611 @@ pub fn bisection_line_search() -> Box<dyn LineSearch> {
 }
 pub fn bisection_with_config(config: BisectionConfig) -> Box<dyn LineSearch> {
     Box::new(BisectionLineSearch::new(config))
+}
+/// Configuration for Golden Section line search
+#[derive(Debug, Clone)]
+pub struct GoldenSectionConfig {
+    pub max_iterations: usize,
+    pub tolerance: f64,
+    pub min_step: f64,
+    pub max_step: f64,
+    pub initial_step: f64,
+    pub verbose: bool,
+}
+impl Default for GoldenSectionConfig {
+    fn default() -> Self {
+        Self {
+            max_iterations: 100,
+            tolerance: 1e-8,
+            min_step: 1e-16,
+            max_step: 1e16,
+            initial_step: 1.0,
+            verbose: false,
+        }
+    }
+}
+/// Golden Section line search implementation
+/// Uses the golden ratio to narrow down the interval containing the minimum
+#[derive(Debug, Clone)]
+pub struct GoldenSectionLineSearch {
+    config: GoldenSectionConfig,
+}
+impl GoldenSectionLineSearch {
+    pub fn new(config: GoldenSectionConfig) -> Self {
+        Self { config }
+    }
+    fn log_verbose(&self, message: &str) {
+        if self.config.verbose {
+            debug!("GoldenSection: {}", message);
+        }
+    }
+    /// Golden ratio constant
+    const PHI: f64 = 1.618033988749895;
+    const RESPHI: f64 = 2.0 - Self::PHI; // 1/phi
+    /// Find minimum using golden section search
+    fn find_minimum(&self, problem: &OneDimensionalProblem) -> Result<(f64, usize, usize)> {
+        let mut a = 0.0;
+        let mut b = self.config.initial_step;
+        let mut f_evals = 0;
+        let g_evals = 0;
+        // First, find a bracket [a, b] where the minimum lies
+        // Expand until we find a point where function starts increasing
+        let mut f_a = (problem.objective)(a)?;
+        f_evals += 1;
+        let mut f_b = (problem.objective)(b)?;
+        f_evals += 1;
+        // If f(b) > f(a), we might already have a bracket
+        if f_b > f_a {
+            // Try to find a better bracket by expanding in the other direction
+            let mut c = a - (b - a);
+            if c < 0.0 {
+                c = self.config.min_step;
+            }
+            let f_c = (problem.objective)(c)?;
+            f_evals += 1;
+            if f_c < f_a {
+                // Minimum is to the left of a
+                b = a;
+                a = c;
+                f_b = f_a;
+                f_a = f_c;
+            }
+        } else {
+            // Expand to the right to find bracket
+            while f_b <= f_a && b < self.config.max_step {
+                let new_b = b * 2.0;
+                if new_b > self.config.max_step {
+                    break;
+                }
+                a = b;
+                f_a = f_b;
+                b = new_b;
+                f_b = (problem.objective)(b)?;
+                f_evals += 1;
+            }
+        }
+        self.log_verbose(&format!("Initial bracket: [{:.6e}, {:.6e}]", a, b));
+        // Golden section search
+        let mut x1 = a + Self::RESPHI * (b - a);
+        let mut x2 = a + (1.0 - Self::RESPHI) * (b - a);
+        let mut f1 = (problem.objective)(x1)?;
+        let mut f2 = (problem.objective)(x2)?;
+        f_evals += 2;
+        for i in 0..self.config.max_iterations {
+            self.log_verbose(&format!(
+                "Iteration {}: interval=[{:.6e}, {:.6e}], x1={:.6e}, x2={:.6e}, f1={:.6e}, f2={:.6e}",
+                i, a, b, x1, x2, f1, f2
+            ));
+            if (b - a) < self.config.tolerance {
+                break;
+            }
+            if f1 < f2 {
+                // Minimum is in [a, x2]
+                b = x2;
+                x2 = x1;
+                f2 = f1;
+                x1 = a + Self::RESPHI * (b - a);
+                f1 = (problem.objective)(x1)?;
+                f_evals += 1;
+            } else {
+                // Minimum is in [x1, b]
+                a = x1;
+                x1 = x2;
+                f1 = f2;
+                x2 = a + (1.0 - Self::RESPHI) * (b - a);
+                f2 = (problem.objective)(x2)?;
+                f_evals += 1;
+            }
+        }
+        let final_x = if f1 < f2 { x1 } else { x2 };
+        self.log_verbose(&format!("Golden section completed with x={:.6e}", final_x));
+        Ok((final_x, f_evals, g_evals))
+    }
+}
+impl LineSearch for GoldenSectionLineSearch {
+    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem<'a>) -> Result<LineSearchResult> {
+        let directional_derivative = problem.initial_directional_derivative;
+        if directional_derivative >= 0.0 {
+            return Err(anyhow!("Direction is not a descent direction"));
+        }
+        let (step_size, f_evals, g_evals) = self.find_minimum(problem)?;
+        let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
+        Ok(LineSearchResult {
+            step_size,
+            success,
+            termination_reason: if success {
+                TerminationReason::WolfeConditionsSatisfied
+            } else {
+                TerminationReason::StepSizeTooSmall
+            },
+        })
+    }
+    fn reset(&mut self) {
+        // Golden section search is stateless
+    }
+    fn clone_box(&self) -> Box<dyn LineSearch> {
+        Box::new(self.clone())
+    }
+}
+/// Configuration for More-Thuente line search
+#[derive(Debug, Clone)]
+pub struct MoreThuenteConfig {
+    pub c1: f64,
+    pub c2: f64,
+    pub max_iterations: usize,
+    pub min_step: f64,
+    pub max_step: f64,
+    pub initial_step: f64,
+    pub verbose: bool,
+    pub xtol: f64,      // Relative tolerance for step size
+    pub ftol: f64,      // Tolerance for function decrease
+}
+impl Default for MoreThuenteConfig {
+    fn default() -> Self {
+        Self {
+            c1: 1e-4,
+            c2: 0.9,
+            max_iterations: 50,
+            min_step: 1e-16,
+            max_step: 1e16,
+            initial_step: 1.0,
+            verbose: false,
+            xtol: 1e-15,
+            ftol: 1e-4,
+        }
+    }
+}
+/// More-Thuente line search implementation
+/// Based on the algorithm described in "Line Search Algorithms with Guaranteed Sufficient Decrease"
+#[derive(Debug, Clone)]
+pub struct MoreThuenteLineSearch {
+    config: MoreThuenteConfig,
+}
+impl MoreThuenteLineSearch {
+    pub fn new(config: MoreThuenteConfig) -> Self {
+        Self { config }
+    }
+    fn log_verbose(&self, message: &str) {
+        if self.config.verbose {
+            debug!("MoreThuente: {}", message);
+        }
+    }
+    /// Check strong Wolfe conditions
+    fn check_wolfe_conditions(&self, f0: f64, f_alpha: f64, grad_alpha: f64, alpha: f64, grad0: f64) -> (bool, bool) {
+        let armijo = f_alpha <= f0 + self.config.c1 * alpha * grad0;
+        let curvature = grad_alpha.abs() <= self.config.c2 * grad0.abs();
+        (armijo, curvature)
+    }
+    /// Cubic interpolation step
+    fn cubic_interpolation(&self, x1: f64, f1: f64, g1: f64, x2: f64, f2: f64, g2: f64) -> f64 {
+        let d1 = g1 + g2 - 3.0 * (f1 - f2) / (x1 - x2);
+        let d2_sq = d1 * d1 - g1 * g2;
+        if d2_sq < 0.0 {
+            // Fall back to quadratic interpolation
+            return self.quadratic_interpolation(x1, f1, g1, x2, f2);
+        }
+        let d2 = d2_sq.sqrt();
+        let sign = if x2 > x1 { 1.0 } else { -1.0 };
+        x2 - (x2 - x1) * (g2 + d2 * sign - d1) / (g2 - g1 + 2.0 * d2 * sign)
+    }
+    /// Quadratic interpolation step
+    fn quadratic_interpolation(&self, x1: f64, f1: f64, g1: f64, x2: f64, f2: f64) -> f64 {
+        let a = (f2 - f1 - g1 * (x2 - x1)) / ((x2 - x1) * (x2 - x1));
+        if a.abs() < 1e-15 {
+            return 0.5 * (x1 + x2); // Linear case
+        }
+        x1 - g1 / (2.0 * a)
+    }
+    /// Update interval using More-Thuente rules
+    fn update_interval(&self,
+                      stx: &mut f64, fx: &mut f64, gx: &mut f64,
+                      sty: &mut f64, fy: &mut f64, gy: &mut f64,
+                      stp: f64, fp: f64, gp: f64,
+                      brackt: &mut bool) -> f64 {
+        let sgnd = gp * (*gx / gx.abs());
+        // Case 1: Higher function value
+        if fp > *fx {
+            let theta = 3.0 * (*fx - fp) / (stp - *stx) + *gx + gp;
+            let s = (theta.abs().max(gx.abs()).max(gp.abs()));
+            let mut gamma = s * ((theta / s).powi(2) - (*gx / s) * (gp / s)).sqrt();
+            if stp < *stx {
+                gamma = -gamma;
+            }
+            let p = (gamma - *gx) + theta;
+            let q = ((gamma - *gx) + gamma) + gp;
+            let r = p / q;
+            let stpc = *stx + r * (stp - *stx);
+            let stpq = *stx + ((*gx / ((*fx - fp) / (stp - *stx) + *gx)) / 2.0) * (stp - *stx);
+            let stpf = if (stpc - *stx).abs() < (stpq - *stx).abs() {
+                stpc
+            } else {
+                stpc + (stpq - stpc) / 2.0
+            };
+            *brackt = true;
+            stpf
+        }
+        // Case 2: Lower function value, derivatives have opposite signs
+        else if sgnd < 0.0 {
+            let theta = 3.0 * (*fx - fp) / (stp - *stx) + *gx + gp;
+            let s = theta.abs().max(gx.abs()).max(gp.abs());
+            let mut gamma = s * ((theta / s).powi(2) - (*gx / s) * (gp / s)).sqrt();
+            if stp > *stx {
+                gamma = -gamma;
+            }
+            let p = (gamma - gp) + theta;
+            let q = (gamma - gp) + gamma + *gx;
+            let r = p / q;
+            let stpc = stp + r * (*stx - stp);
+            let stpq = stp + (gp / (gp - *gx)) * (*stx - stp);
+            let stpf = if (stpc - stp).abs() > (stpq - stp).abs() {
+                stpc
+            } else {
+                stpq
+            };
+            *brackt = true;
+            stpf
+        }
+        // Case 3: Lower function value, derivatives have same sign, decreasing
+        else if gp.abs() < gx.abs() {
+            let theta = 3.0 * (*fx - fp) / (stp - *stx) + *gx + gp;
+            let s = theta.abs().max(gx.abs()).max(gp.abs());
+            let mut gamma = if s == 0.0 {
+                0.0
+            } else {
+                s * ((theta / s).powi(2) - (*gx / s) * (gp / s)).sqrt()
+            };
+            if stp > *stx {
+                gamma = -gamma;
+            }
+            let p = (gamma - gp) + theta;
+            let q = ((gamma - gp) + gamma) + *gx;
+            let r = p / q;
+            let stpc = if r < 0.0 && gamma != 0.0 {
+                stp + r * (*stx - stp)
+            } else if stp > *stx {
+                self.config.max_step
+            } else {
+                self.config.min_step
+            };
+            let stpq = stp + (gp / (gp - *gx)) * (*stx - stp);
+            let stpf = if *brackt {
+                if (stp - stpc).abs() < (stp - stpq).abs() {
+                    stpc
+                } else {
+                    stpq
+                }
+            } else {
+                if (stp - stpc).abs() > (stp - stpq).abs() {
+                    stpc
+                } else {
+                    stpq
+                }
+            };
+            stpf
+        }
+        // Case 4: Lower function value, derivatives have same sign, not decreasing
+        else {
+            if *brackt {
+                let theta = 3.0 * (fp - *fy) / (*sty - stp) + *gy + gp;
+                let s = theta.abs().max(gy.abs()).max(gp.abs());
+                let mut gamma = s * ((theta / s).powi(2) - (*gy / s) * (gp / s)).sqrt();
+                if stp > *sty {
+                    gamma = -gamma;
+                }
+                let p = (gamma - gp) + theta;
+                let q = ((gamma - gp) + gamma) + *gy;
+                let r = p / q;
+                let stpc = stp + r * (*sty - stp);
+                stpc
+            } else if stp > *stx {
+                self.config.max_step
+            } else {
+                self.config.min_step
+            }
+        }
+    }
+}
+impl LineSearch for MoreThuenteLineSearch {
+    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem<'a>) -> Result<LineSearchResult> {
+        let f0 = (problem.objective)(0.0)?;
+        let g0 = problem.initial_directional_derivative;
+        if g0 >= 0.0 {
+            return Err(anyhow!("Direction is not a descent direction"));
+        }
+        let mut stp = self.config.initial_step;
+        let mut stx = 0.0;
+        let mut fx = f0;
+        let mut gx = g0;
+        let mut sty = 0.0;
+        let mut fy = f0;
+        let mut gy = g0;
+        let mut brackt = false;
+        let mut f_evals = 1;
+        let mut g_evals = 0;
+        self.log_verbose(&format!("Starting More-Thuente with f(0)={:.6e}, g(0)={:.6e}", f0, g0));
+        for iter in 0..self.config.max_iterations {
+            // Evaluate function and gradient at current step
+            let fp = (problem.objective)(stp)?;
+            let gp = (problem.gradient)(stp)?;
+            f_evals += 1;
+            g_evals += 1;
+            self.log_verbose(&format!(
+                "Iteration {}: stp={:.6e}, f={:.6e}, g={:.6e}",
+                iter, stp, fp, gp
+            ));
+            // Check Wolfe conditions
+            let (armijo, curvature) = self.check_wolfe_conditions(f0, fp, gp, stp, g0);
+            if armijo && curvature {
+                self.log_verbose("Wolfe conditions satisfied");
+                return Ok(LineSearchResult {
+                    step_size: stp,
+                    success: true,
+                    termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                });
+            }
+            // Update interval and get new trial step
+            let new_stp = self.update_interval(&mut stx, &mut fx, &mut gx,
+                                             &mut sty, &mut fy, &mut gy,
+                                             stp, fp, gp, &mut brackt);
+            // Update the interval endpoints
+            if fp > f0 + self.config.c1 * stp * g0 || (fp >= fx && iter > 0) {
+                sty = stp;
+                fy = fp;
+                gy = gp;
+            } else {
+                if gp.abs() <= self.config.c2 * g0.abs() {
+                    break;
+                }
+                sty = stx;
+                fy = fx;
+                gy = gx;
+                stx = stp;
+                fx = fp;
+                gx = gp;
+            }
+            stp = new_stp.max(self.config.min_step).min(self.config.max_step);
+            // Check for convergence
+            if (stp - stx).abs() < self.config.xtol * stp.max(1.0) {
+                break;
+            }
+        }
+        Ok(LineSearchResult {
+            step_size: stp,
+            success: true,
+            termination_reason: TerminationReason::MaxIterationsReached,
+        })
+    }
+    fn reset(&mut self) {
+        // More-Thuente is stateless
+    }
+    fn clone_box(&self) -> Box<dyn LineSearch> {
+        Box::new(self.clone())
+    }
+}
+/// Configuration for Cubic/Quadratic interpolation line search
+#[derive(Debug, Clone)]
+pub struct CubicQuadraticConfig {
+    pub c1: f64,
+    pub c2: f64,
+    pub max_iterations: usize,
+    pub min_step: f64,
+    pub max_step: f64,
+    pub initial_step: f64,
+    pub verbose: bool,
+    pub interpolation_safeguard: f64, // Minimum fraction of interval to move
+    pub extrapolation_factor: f64,    // Factor for extrapolation steps
+}
+impl Default for CubicQuadraticConfig {
+    fn default() -> Self {
+        Self {
+            c1: 1e-4,
+            c2: 0.9,
+            max_iterations: 50,
+            min_step: 1e-16,
+            max_step: 1e16,
+            initial_step: 1.0,
+            verbose: false,
+            interpolation_safeguard: 0.1,
+            extrapolation_factor: 2.0,
+        }
+    }
+}
+/// Cubic/Quadratic interpolation line search
+#[derive(Debug, Clone)]
+pub struct CubicQuadraticLineSearch {
+    config: CubicQuadraticConfig,
+}
+impl CubicQuadraticLineSearch {
+    pub fn new(config: CubicQuadraticConfig) -> Self {
+        Self { config }
+    }
+    fn log_verbose(&self, message: &str) {
+        if self.config.verbose {
+            debug!("CubicQuadratic: {}", message);
+        }
+    }
+    /// Cubic interpolation between two points with function and gradient values
+    fn cubic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64, gb: f64) -> Option<f64> {
+        let d1 = ga + gb - 3.0 * (fa - fb) / (a - b);
+        let d2_squared = d1 * d1 - ga * gb;
+        if d2_squared < 0.0 {
+            return None; // No real solution
+        }
+        let d2 = d2_squared.sqrt();
+        let sign = if b > a { 1.0 } else { -1.0 };
+        let numerator = gb + d2 * sign - d1;
+        let denominator = gb - ga + 2.0 * d2 * sign;
+        if denominator.abs() < 1e-15 {
+            return None;
+        }
+        let t = b - (b - a) * numerator / denominator;
+        // Safeguard: ensure we move at least a minimum fraction
+        let min_move = self.config.interpolation_safeguard * (b - a).abs();
+        let max_a = a.max(b);
+        let min_a = a.min(b);
+        if t < min_a + min_move {
+            Some(min_a + min_move)
+        } else if t > max_a - min_move {
+            Some(max_a - min_move)
+        } else {
+            Some(t)
+        }
+    }
+    /// Quadratic interpolation using function values and one gradient
+    fn quadratic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64) -> Option<f64> {
+        let denom = 2.0 * (fb - fa - ga * (b - a));
+        if denom.abs() < 1e-15 {
+            return None;
+        }
+        let t = a - ga * (b - a) * (b - a) / denom;
+        // Safeguard
+        let min_move = self.config.interpolation_safeguard * (b - a).abs();
+        let max_a = a.max(b);
+        let min_a = a.min(b);
+        if t < min_a + min_move {
+            Some(min_a + min_move)
+        } else if t > max_a - min_move {
+            Some(max_a - min_move)
+        } else {
+            Some(t)
+        }
+    }
+    /// Check Wolfe conditions
+    fn check_wolfe(&self, f0: f64, f_alpha: f64, g_alpha: f64, alpha: f64, g0: f64) -> (bool, bool) {
+        let armijo = f_alpha <= f0 + self.config.c1 * alpha * g0;
+        let curvature = g_alpha.abs() <= self.config.c2 * g0.abs();
+        (armijo, curvature)
+    }
+}
+impl LineSearch for CubicQuadraticLineSearch {
+    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem<'a>) -> Result<LineSearchResult> {
+        let f0 = (problem.objective)(0.0)?;
+        let g0 = problem.initial_directional_derivative;
+        if g0 >= 0.0 {
+            return Err(anyhow!("Direction is not a descent direction"));
+        }
+        let mut alpha = self.config.initial_step;
+        let mut alpha_prev = 0.0;
+        let mut f_prev = f0;
+        let mut g_prev = g0;
+        let mut f_evals = 1;
+        let mut g_evals = 0;
+        self.log_verbose(&format!("Starting with f(0)={:.6e}, g(0)={:.6e}", f0, g0));
+        for iter in 0..self.config.max_iterations {
+            // Evaluate at current step
+            let f_alpha = (problem.objective)(alpha)?;
+            let g_alpha = (problem.gradient)(alpha)?;
+            f_evals += 1;
+            g_evals += 1;
+            self.log_verbose(&format!(
+                "Iteration {}: alpha={:.6e}, f={:.6e}, g={:.6e}",
+                iter, alpha, f_alpha, g_alpha
+            ));
+            // Check Wolfe conditions
+            let (armijo, curvature) = self.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
+            if armijo && curvature {
+                self.log_verbose("Wolfe conditions satisfied");
+                return Ok(LineSearchResult {
+                    step_size: alpha,
+                    success: true,
+                    termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                });
+            }
+            // If Armijo condition fails or function increased, interpolate
+            if !armijo || (iter > 0 && f_alpha >= f_prev) {
+                self.log_verbose("Interpolating due to Armijo failure or function increase");
+                // Try cubic interpolation first
+                let new_alpha = if iter > 0 {
+                    self.cubic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha, g_alpha)
+                        .or_else(|| self.quadratic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha))
+                        .unwrap_or(0.5 * (alpha_prev + alpha))
+                } else {
+                    // First iteration, use quadratic interpolation
+                    self.quadratic_interpolate(0.0, f0, g0, alpha, f_alpha)
+                        .unwrap_or(0.5 * alpha)
+                };
+                alpha = new_alpha.max(self.config.min_step).min(self.config.max_step);
+                self.log_verbose(&format!("Interpolated new alpha: {:.6e}", alpha));
+                continue;
+            }
+            // If curvature condition fails but Armijo is satisfied
+            if !curvature {
+                if g_alpha * g0 > 0.0 {
+                    // Gradient has wrong sign, interpolate
+                    let new_alpha = self.cubic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha, g_alpha)
+                        .or_else(|| self.quadratic_interpolate(alpha_prev, f_prev, g_prev, alpha, f_alpha))
+                        .unwrap_or(0.5 * (alpha_prev + alpha));
+                    alpha = new_alpha.max(self.config.min_step).min(self.config.max_step);
+                    self.log_verbose(&format!("Interpolated for wrong gradient sign: {:.6e}", alpha));
+                } else {
+                    // Gradient magnitude too large, extrapolate
+                    alpha_prev = alpha;
+                    f_prev = f_alpha;
+                    g_prev = g_alpha;
+                    alpha = (alpha * self.config.extrapolation_factor).min(self.config.max_step);
+                    self.log_verbose(&format!("Extrapolated: {:.6e}", alpha));
+                }
+                continue;
+            }
+            // Update for next iteration
+            alpha_prev = alpha;
+            f_prev = f_alpha;
+            g_prev = g_alpha;
+            alpha *= self.config.extrapolation_factor;
+            alpha = alpha.min(self.config.max_step);
+        }
+        // Return best point found
+        Ok(LineSearchResult {
+            step_size: alpha,
+            success: false,
+            termination_reason: TerminationReason::MaxIterationsReached,
+        })
+    }
+    fn reset(&mut self) {
+        // Stateless
+    }
+    fn clone_box(&self) -> Box<dyn LineSearch> {
+        Box::new(self.clone())
+    }
+}
+/// Factory functions for new line search methods
+pub fn golden_section_line_search() -> Box<dyn LineSearch> {
+    Box::new(GoldenSectionLineSearch::new(GoldenSectionConfig::default()))
+}
+pub fn more_thuente_line_search() -> Box<dyn LineSearch> {
+    Box::new(MoreThuenteLineSearch::new(MoreThuenteConfig::default()))
+}
+pub fn cubic_quadratic_line_search() -> Box<dyn LineSearch> {
+    Box::new(CubicQuadraticLineSearch::new(CubicQuadraticConfig::default()))
+}
+pub fn golden_section_with_config(config: GoldenSectionConfig) -> Box<dyn LineSearch> {
+    Box::new(GoldenSectionLineSearch::new(config))
+}
+pub fn more_thuente_with_config(config: MoreThuenteConfig) -> Box<dyn LineSearch> {
+    Box::new(MoreThuenteLineSearch::new(config))
+}
+pub fn cubic_quadratic_with_config(config: CubicQuadraticConfig) -> Box<dyn LineSearch> {
+    Box::new(CubicQuadraticLineSearch::new(config))
 }
 
 #[cfg(test)]
@@ -1281,5 +1899,106 @@ mod tests {
         let _cloned5 = ls5.clone_box();
         let ls6 = bisection_with_config(BisectionConfig::default());
         let _cloned6 = ls6.clone_box();
+       // Test new factory functions
+       let ls7 = golden_section_line_search();
+       let _cloned7 = ls7.clone_box();
+       let ls8 = more_thuente_line_search();
+       let _cloned8 = ls8.clone_box();
+       let ls9 = cubic_quadratic_line_search();
+       let _cloned9 = ls9.clone_box();
+       let ls10 = golden_section_with_config(GoldenSectionConfig::default());
+       let _cloned10 = ls10.clone_box();
+       let ls11 = more_thuente_with_config(MoreThuenteConfig::default());
+       let _cloned11 = ls11.clone_box();
+       let ls12 = cubic_quadratic_with_config(CubicQuadraticConfig::default());
+       let _cloned12 = ls12.clone_box();
+    }
+    #[test]
+    fn test_golden_section_quadratic() {
+        let mut line_search = GoldenSectionLineSearch::new(GoldenSectionConfig {
+            verbose: false,
+            ..GoldenSectionConfig::default()
+        });
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let current_gradient = quadratic_gradient1(&current_point).unwrap();
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &current_gradient,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        assert!(result.step_size > 0.0);
+        // Golden section should find a reasonable step size
+        assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-2);
+    }
+    #[test]
+    fn test_more_thuente_quadratic() {
+        let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig {
+            verbose: false,
+            ..MoreThuenteConfig::default()
+        });
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let current_gradient = quadratic_gradient1(&current_point).unwrap();
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &current_gradient,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        assert!(result.step_size > 0.0);
+        // More-Thuente should find optimal step for quadratic
+        assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
+    }
+    #[test]
+    fn test_cubic_quadratic_interpolation() {
+        let mut line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig {
+            verbose: false,
+            ..CubicQuadraticConfig::default()
+        });
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let current_gradient = quadratic_gradient1(&current_point).unwrap();
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &current_gradient,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        assert!(result.step_size > 0.0);
+        // Cubic/quadratic interpolation should find good step
+        assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
+    }
+    #[test]
+    fn test_create_line_search_new_methods() {
+        // Test creating new line search methods through factory
+        let config = LineSearchConfig {
+            method: LineSearchMethod::GoldenSection,
+            ..Default::default()
+        };
+        let ls = create_line_search(config);
+        let _cloned = ls.clone_box();
+        let config = LineSearchConfig {
+            method: LineSearchMethod::MoreThuente,
+            ..Default::default()
+        };
+        let ls = create_line_search(config);
+        let _cloned = ls.clone_box();
+        let config = LineSearchConfig {
+            method: LineSearchMethod::CubicQuadraticInterpolation,
+            ..Default::default()
+        };
+        let ls = create_line_search(config);
+        let _cloned = ls.clone_box();
     }
 }

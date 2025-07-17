@@ -535,8 +535,6 @@ impl Optimizer for AdamOptimizer {
 
         Ok(StepResult {
             step_size: self.current_lr * step_size,
-            function_evaluations: 1,
-            gradient_evaluations: 1,
             convergence_info,
             metadata,
         })
@@ -686,8 +684,6 @@ mod tests {
         // Run a few optimization steps
         for i in 0..50 {
             let result = optimizer.step(&mut params, &function)?;
-            assert!(result.function_evaluations > 0);
-            assert!(result.gradient_evaluations > 0);
             // Print progress for debugging
             let current_values = params[0].flatten_all()?.to_vec1::<f64>()?;
             let current_function_value = function.evaluate(&params)?;

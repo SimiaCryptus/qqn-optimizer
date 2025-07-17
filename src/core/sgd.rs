@@ -323,8 +323,6 @@ impl Optimizer for SGDOptimizer {
 
         Ok(StepResult {
             step_size: self.config.learning_rate,
-            function_evaluations: 0, // SGD doesn't do line search
-            gradient_evaluations: 1,
             convergence_info,
             metadata,
         })
@@ -466,8 +464,6 @@ mod tests {
         // Take a few optimization steps
         for _ in 0..10 {
             let result = optimizer.step(&mut params, &function)?;
-            assert_eq!(result.gradient_evaluations, 1);
-            assert_eq!(result.function_evaluations, 0);
         }
         // Check that parameters moved towards zero
         let x = params[0].to_vec1::<f64>()?[0];

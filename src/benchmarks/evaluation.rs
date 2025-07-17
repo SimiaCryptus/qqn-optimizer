@@ -5,6 +5,8 @@ use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 use rand::Rng;
 use tokio::time::timeout;
@@ -291,7 +293,8 @@ impl BenchmarkRunner {
         let start_time = Instant::now();
 
         let mut trace = OptimizationTrace::new();
-
+        // Create a single problem wrapper that will track evaluations across the entire run
+        let problem_wrapper = ProblemWrapper::new(problem);
         // Main optimization loop with timeout
         let time_limit: Duration = self.config.time_limit.clone().into();
         let optimization_result = timeout(
@@ -305,6 +308,7 @@ impl BenchmarkRunner {
                 &mut gradient_evaluations,
                 &mut trace,
                 start_time,
+                &problem_wrapper,
             ),
         )
         .await;
@@ -329,6 +333,10 @@ impl BenchmarkRunner {
             .gradient_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+        // Update trace with final counts
+        trace.total_function_evaluations = function_evaluations + 1; // +1 for final evaluation
+        trace.total_gradient_evaluations = gradient_evaluations + 1; // +1 for final gradient
+        
         info!("Benchmark complete: {} with {} (run {}): final_value={:.6e}, grad_norm={:.6e}, iterations={}", 
               problem.name(), optimizer.name(), run_id, final_value, final_gradient_norm, iteration);
         let execution_time = start_time.elapsed();
@@ -340,12 +348,12 @@ impl BenchmarkRunner {
                 0.0
             },
             function_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                function_evaluations as f64 / execution_time.as_secs_f64()
+                trace.total_function_evaluations as f64 / execution_time.as_secs_f64()
             } else {
                 0.0
             },
             gradient_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                gradient_evaluations as f64 / execution_time.as_secs_f64()
+                trace.total_gradient_evaluations as f64 / execution_time.as_secs_f64()
             } else {
                 0.0
             },
@@ -363,8 +371,8 @@ impl BenchmarkRunner {
             final_value,
             final_gradient_norm,
             iterations: iteration,
-            function_evaluations,
-            gradient_evaluations,
+            function_evaluations: trace.total_function_evaluations,
+            gradient_evaluations: trace.total_gradient_evaluations,
             convergence_achieved,
             execution_time,
             trace,
@@ -384,6 +392,7 @@ impl BenchmarkRunner {
         gradient_evaluations: &mut usize,
         trace: &mut OptimizationTrace,
         start_time: Instant,
+        problem_wrapper: &ProblemWrapper<'_>,
     ) -> Result<ConvergenceReason, BenchmarkError> {
         let mut previous_f_val = None;
         let mut stagnation_count = 0;
@@ -411,6 +420,7 @@ impl BenchmarkRunner {
                     continue;
                 }
             };
+            *function_evaluations += 1;
 
             if !f_val.is_finite() {
                 warn!(
@@ -438,7 +448,6 @@ impl BenchmarkRunner {
                 }
             }
 
-            *function_evaluations += 1;
             let gradient = match problem.gradient_f64(input_floats) {
                 Ok(grad) => grad,
                 Err(e) => {
@@ -453,8 +462,8 @@ impl BenchmarkRunner {
                     continue;
                 }
             };
-
             *gradient_evaluations += 1;
+
             // Check for non-finite gradients
             if gradient.iter().any(|&g| !g.is_finite()) {
                 warn!("Non-finite gradient at iteration {}", iteration);
@@ -521,9 +530,17 @@ impl BenchmarkRunner {
             // Create wrapper that lives long enough for the step call
             let mut tensors = [create_1d_tensor(input_floats, &Device::Cpu)
                 .map_err(|e| BenchmarkError::ConfigError(e.to_string()))?];
+            // Get current evaluation counts before the step
+            let func_evals_before = problem_wrapper.get_function_evaluations();
+            let grad_evals_before = problem_wrapper.get_gradient_evaluations();
+            
             let step_result = optimizer
-                .step(&mut tensors, &ProblemWrapper::new(problem))
+                .step(&mut tensors, problem_wrapper)
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
+            // Update counters with the evaluations that happened during this step
+            *function_evaluations += problem_wrapper.get_function_evaluations() - func_evals_before;
+            *gradient_evaluations += problem_wrapper.get_gradient_evaluations() - grad_evals_before;
+            
             // Update input floats with new parameters
             for tensor in tensors.iter() {
                 if let Ok(values) = tensor.to_vec1::<f64>() {
@@ -542,9 +559,6 @@ impl BenchmarkRunner {
                 }
             }
 
-            // Update counters
-            *function_evaluations += step_result.function_evaluations;
-            *gradient_evaluations += step_result.gradient_evaluations;
 
             // Update step size in trace
             if let Some(last_iteration) = trace.iterations.last_mut() {
@@ -568,16 +582,33 @@ impl BenchmarkRunner {
 /// Wrapper to convert OptimizationProblem to DifferentiableFunction
 pub struct ProblemWrapper<'a> {
     problem: &'a dyn OptimizationProblem,
+    function_evaluations: Arc<AtomicUsize>,
+    gradient_evaluations: Arc<AtomicUsize>,
 }
 
 impl<'a> ProblemWrapper<'a> {
     pub fn new(problem: &'a dyn OptimizationProblem) -> Self {
-        Self { problem }
+        Self { 
+            problem,
+            function_evaluations: Arc::new(AtomicUsize::new(0)),
+            gradient_evaluations: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+    pub fn get_function_evaluations(&self) -> usize {
+        self.function_evaluations.load(Ordering::Relaxed)
+    }
+    pub fn get_gradient_evaluations(&self) -> usize {
+        self.gradient_evaluations.load(Ordering::Relaxed)
+    }
+    pub fn reset_counters(&self) {
+        self.function_evaluations.store(0, Ordering::Relaxed);
+        self.gradient_evaluations.store(0, Ordering::Relaxed);
     }
 }
 
 impl<'a> DifferentiableFunction for ProblemWrapper<'a> {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
+        self.function_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
         self.problem
             .evaluate_f64(&x_vec)
@@ -585,6 +616,7 @@ impl<'a> DifferentiableFunction for ProblemWrapper<'a> {
     }
 
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
+        self.gradient_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
         let grad_vec = self
             .problem
