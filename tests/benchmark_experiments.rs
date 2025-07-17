@@ -8,7 +8,7 @@ use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 use qqn_optimizer::core::optimizer::Optimizer;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::core::{SGDConfig, SGDOptimizer};
-use qqn_optimizer::{init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, RastriginFunction};
+use qqn_optimizer::{init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, LineSearchConfig, LineSearchMethod, RastriginFunction};
 use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::fs;
@@ -116,6 +116,26 @@ impl ExperimentRunner {
                 Box::new(QQNOptimizer::new(QQNConfig::default())),
             ),
             (
+                "QQN-StrongWolfe".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::StrongWolfe,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-Backtracking".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Backtracking,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
                 "QQN-Conservative".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
                     lbfgs_history: 15,
@@ -139,6 +159,20 @@ impl ExperimentRunner {
                 Box::new(SGDOptimizer::new(Default::default())),
             ),
             (
+                "SGD-Fast".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.5,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "SGD-Slow".to_string(),
+                Box::new(SGDOptimizer::new(SGDConfig {
+                    learning_rate: 0.01,
+                    ..Default::default()
+                })),
+            ),
+            (
                 "SGD-Momentum".to_string(),
                 Box::new(SGDOptimizer::new(SGDConfig {
                     momentum: 0.9,
@@ -156,6 +190,41 @@ impl ExperimentRunner {
             (
                 "Adam".to_string(),
                 Box::new(AdamOptimizer::new(Default::default())),
+            ),
+            (
+                "Adam-ConstantLR".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    lr_schedule: "constant".to_string(),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-CosineLR".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    lr_schedule: "cosine".to_string(),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-ExponentialLR".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    lr_schedule: "exponential".to_string(),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-Slow".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.01,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-Fast".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.5,
+                    ..Default::default()
+                })),
             ),
             (
                 "Adam-AMSGrad".to_string(),
