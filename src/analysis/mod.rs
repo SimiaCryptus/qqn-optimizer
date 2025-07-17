@@ -18,7 +18,6 @@ pub use statistics::{
     ConvergenceComparison, EffectSize, PerformanceProfiles, RobustnessAnalysis, SignificanceTest,
     StatisticalAnalysis,
 };
-
 use crate::benchmarks::evaluation::BenchmarkResults;
 use crate::core::OptResult;
 

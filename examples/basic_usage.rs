@@ -28,6 +28,7 @@ fn main() -> Result<()> {
             min_step: 1e-16,
             max_step: 1e16,
             verbose: true, // Enable verbose output for line search
+            line_bracket_method: 1, // 1: gradient-based bracketing, 2: function-value-based bracketing
         },
         epsilon: 1e-8,             // Numerical stability constant
         verbose: true,          // Enable verbose output

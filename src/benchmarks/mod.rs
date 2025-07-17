@@ -12,10 +12,6 @@ pub mod ml_problems;
 
 // Re-export commonly used types
 
-pub use evaluation::{
-    BenchmarkConfig, BenchmarkResults, BenchmarkRunner, ConvergenceReason, OptimizationTrace,
-    SingleResult,
-};
 pub use functions::{
     AckleyFunction, BealeFunction, BoothFunction, GriewankFunction, HimmelblauFunction,
     LevyFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SchwefelFunction,

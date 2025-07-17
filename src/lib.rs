@@ -12,7 +12,6 @@ pub use core::{
 };
 
 pub use benchmarks::{
-    evaluation::{BenchmarkResults, BenchmarkRunner},
     functions::{
         AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
         SphereFunction,

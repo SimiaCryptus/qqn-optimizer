@@ -781,16 +781,6 @@ impl QuadraticPath {
     pub fn lbfgs_direction(&self) -> &[Tensor] {
         &self.lbfgs_direction
     }
-
-    fn d(&self, t: f64) -> Result<Result<Vec<f64>, Error>, Error> {
-        // Get the derivative of the quadratic path
-        let deriv = self.derivative(t)?;
-        // Convert to f64 vector
-        Ok(Ok(deriv
-            .iter()
-            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-            .collect()))
-    }
 }
 impl<'a> ParametricCurve for QuadraticPath {
     fn position(&self, t: f64) -> AnyhowResult<Vec<f64>> {

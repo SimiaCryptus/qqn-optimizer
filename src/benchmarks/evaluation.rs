@@ -29,7 +29,6 @@ impl From<Duration> for DurationWrapper {
         DurationWrapper { nanos: nanos_u64 }
     }
 }
-
 impl From<DurationWrapper> for Duration {
     fn from(wrapper: DurationWrapper) -> Self {
         Duration::from_nanos(wrapper.nanos)
@@ -179,7 +178,7 @@ impl BenchmarkResults {
             gradient_evaluations: 0,
         }
     }
-
+    
     pub fn add_result(&mut self, result: SingleResult) {
         self.results.push(result);
     }

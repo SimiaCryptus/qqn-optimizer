@@ -1,8 +1,8 @@
-use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace};
 use anyhow::Result;
 use plotters::backend::BitMapBackend;
 use plotters::prelude::*;
 use std::collections::HashMap;
+use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace};
 
 #[derive(Debug, Clone)]
 pub struct PlotConfig {

@@ -1048,7 +1048,6 @@ impl GoldenSectionLineSearch {
     fn find_minimum(&self, problem: &OneDimensionalProblem) -> Result<f64> {
         let mut a = 0.0;
         let mut b = self.config.initial_step;
-        let g_evals = 0;
         // First, find a bracket [a, b] where the minimum lies
         // Expand until we find a point where function starts increasing
         let mut f_a = (problem.objective)(a)?;

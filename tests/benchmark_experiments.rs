@@ -14,41 +14,15 @@ use qqn_optimizer::core::optimizer::Optimizer;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
 use qqn_optimizer::core::{SGDConfig, SGDOptimizer};
 use qqn_optimizer::{
-    init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, BenchmarkResults,
-    BenchmarkRunner, LineSearchConfig, LineSearchMethod, RastriginFunction,
+    init_logging, AckleyFunction, AdamConfig, AdamOptimizer, BealeFunction, LineSearchConfig, LineSearchMethod, RastriginFunction,
 };
 use rand::{Rng, SeedableRng};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
+use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BenchmarkConfig {
-    pub max_iterations: usize,
-    pub tolerance: f64,
-    pub max_function_evaluations: usize,
-    #[serde(with = "humantime_serde")]
-    pub time_limit: Duration,
-    pub random_seed: u64,
-    pub num_runs: usize,
-    pub parallel_runs: bool,
-}
-
-impl Default for BenchmarkConfig {
-    fn default() -> Self {
-        Self {
-            max_iterations: 1000,
-            tolerance: 1e-6,
-            max_function_evaluations: 10000,
-            time_limit: Duration::from_secs(600), // 10 minutes
-            random_seed: 42,
-            num_runs: 10,
-            parallel_runs: true,
-        }
-    }
-}
 /// Comprehensive benchmark experiment runner
 pub struct ExperimentRunner {
     output_dir: String,
@@ -60,11 +34,8 @@ impl ExperimentRunner {
         let config = BenchmarkConfig {
             max_iterations: 1000,
             tolerance: 1e-8,
-            max_function_evaluations: 0,
-            time_limit: Duration::from_secs(60).into(),
-            random_seed: 0,
+            time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 10,
-            parallel_runs: false,
         };
 
         Self { output_dir, config }
@@ -462,16 +433,9 @@ impl ExperimentRunner {
 
         // Detailed Results for Each Problem
         for (problem_name, results) in all_results {
-            let problem = problems
-                .iter()
-                .find(|p| p.name() == problem_name)
-                .ok_or_else(|| {
-                    anyhow::anyhow!("Problem '{}' not found in benchmark problems", problem_name)
-                })?;
             html_content.push_str(&self.generate_problem_section(
                 problem_name,
                 results,
-                problem,
             )?);
         }
 
@@ -674,7 +638,6 @@ impl ExperimentRunner {
         &self,
         problem_name: &str,
         results: &BenchmarkResults,
-        problem: &Box<dyn OptimizationProblem>,
     ) -> anyhow::Result<String> {
         let mut section = format!(
             r#"
@@ -985,7 +948,10 @@ impl ExperimentRunner {
             &problems,
             |results| {
                 let mean =
-                    results.iter().map(|r| r.final_value).sum::<f64>() / results.len() as f64;
+                    results.iter().map(|r| r.final_value)
+                        .filter(|&v| v.is_some())
+                        .map(|v| v.unwrap())
+                        .sum::<f64>() / (results.len() as f64);
                 format!("{:.2e}", mean)
             },
         )?);
@@ -995,8 +961,12 @@ impl ExperimentRunner {
             &optimizers,
             &problems,
             |results| {
-                let mean =
-                    results.iter().map(|r| r.iterations as f64).sum::<f64>() / results.len() as f64;
+                let mean = results
+                    .iter()
+                   .flat_map(|r| r.results.iter())
+                   .map(|single_result| single_result.iterations as f64)
+                   .sum::<f64>()
+                   / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
                 format!("{:.1}", mean)
             },
         )?);
@@ -1008,9 +978,10 @@ impl ExperimentRunner {
             |results| {
                 let mean = results
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
+                    .flat_map(|r| r.results.iter())
+                    .map(|single_result| single_result.function_evaluations as f64)
                     .sum::<f64>()
-                    / results.len() as f64;
+                    / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
                 format!("{:.1}", mean)
             },
         )?);
@@ -1022,9 +993,10 @@ impl ExperimentRunner {
             |results| {
                 let mean = results
                     .iter()
-                    .map(|r| r.gradient_evaluations as f64)
+                    .flat_map(|r| r.results.iter())
+                    .map(|single_result| single_result.gradient_evaluations as f64)
                     .sum::<f64>()
-                    / results.len() as f64;
+                    / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
                 format!("{:.1}", mean)
             },
         )?);
@@ -1036,9 +1008,10 @@ impl ExperimentRunner {
             |results| {
                 let mean = results
                     .iter()
-                    .map(|r| r.execution_time.as_secs_f64())
+                    .flat_map(|r| r.results.iter())
+                    .map(|single_result| single_result.execution_time.as_secs_f64())
                     .sum::<f64>()
-                    / results.len() as f64;
+                    / results.iter().map(|r| r.results.len()).sum::<usize>() as f64;
                 format!("{:.3}", mean)
             },
         )?);
@@ -1105,7 +1078,7 @@ impl ExperimentRunner {
 "#,
                     );
                 } else {
-                    let value_str = metric_fn(&optimizer_results);
+                    let value_str = metric_fn(&[results]);
                     table.push_str(&format!(
                         r#"                    <td>{}</td>
 "#,
@@ -1183,7 +1156,7 @@ impl ExperimentRunner {
 "#,
                     );
                 } else {
-                    let value_str = metric_fn(&optimizer_results);
+                    let value_str = metric_fn(&[results]);
                     // Determine ranking class
                     let class = if let Some(rankings) = problem_rankings.get(problem) {
                         let position = rankings
