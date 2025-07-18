@@ -1902,7 +1902,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         // Test that f(0) gives the current function value
         let f0 = (problem.objective)(0.0).unwrap();
         let expected_f0 = quadratic_function(&current_point).unwrap();
@@ -1931,7 +1931,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
 
         assert!(result.success);
@@ -1956,7 +1956,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
 
         let result = line_search.optimize_1d(&problem).unwrap();
 
@@ -1979,7 +1979,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem);
 
         assert!(result.is_err());
@@ -2001,7 +2001,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
 
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -2023,7 +2023,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem);
         assert!(result.is_err());
     }
@@ -2096,7 +2096,7 @@ mod tests {
             &rosenbrock,
             &rosenbrock_gradient,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -2157,7 +2157,7 @@ mod tests {
             &difficult_function,
             &difficult_gradient,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem).map_or_else(
             |e| {
                 debug!("Line search failed: {}", e);
@@ -2226,7 +2226,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -2245,7 +2245,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -2266,7 +2266,7 @@ mod tests {
             &quadratic_function,
             &quadratic_gradient1,
         )
-        .unwrap();
+            .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);

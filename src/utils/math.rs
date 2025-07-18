@@ -385,7 +385,7 @@ mod tests {
         let b = vec![4.0, 5.0, 6.0];
         let result = dot_product_f64(&a, &b)?;
         assert_relative_eq!(result, 32.0, epsilon = 1e-10); // 1*4 + 2*5 + 3*6 = 32
-                                                            // Test mismatched lengths
+        // Test mismatched lengths
         let c = vec![1.0, 2.0];
         assert!(dot_product_f64(&a, &c).is_err());
         // Test empty vectors

@@ -304,7 +304,9 @@ impl BenchmarkRunner {
 
         let mut trace = OptimizationTrace::new();
         // Create a single problem wrapper that will track evaluations across the entire run
-        let problem_wrapper = ProblemWrapper::new(problem);
+        // Clone the problem to create an owned version
+        let problem_clone: Box<dyn OptimizationProblem> = problem.clone_problem();
+        let problem_wrapper = Arc::new(ProblemWrapper::new(problem_clone));
         // Main optimization loop with timeout
         let time_limit: Duration = self.config.time_limit.clone().into();
         let optimization_result = timeout(
@@ -318,10 +320,10 @@ impl BenchmarkRunner {
                 &mut gradient_evaluations,
                 &mut trace,
                 start_time,
-                &problem_wrapper,
+                problem_wrapper,
             ),
         )
-        .await;
+            .await;
 
         let (convergence_achieved, convergence_reason) = match optimization_result {
             Ok(Ok(reason)) => (
@@ -402,7 +404,7 @@ impl BenchmarkRunner {
         gradient_evaluations: &mut usize,
         trace: &mut OptimizationTrace,
         start_time: Instant,
-        problem_wrapper: &ProblemWrapper<'_>,
+        problem_wrapper: Arc<ProblemWrapper>,
     ) -> Result<ConvergenceReason, BenchmarkError> {
         let mut previous_f_val = None;
         let mut stagnation_count = 0;
@@ -545,7 +547,7 @@ impl BenchmarkRunner {
             let grad_evals_before = problem_wrapper.get_gradient_evaluations();
 
             let step_result = optimizer
-                .step(&mut tensors, problem_wrapper)
+                .step(&mut tensors, problem_wrapper.clone())
                 .map_err(|e| BenchmarkError::OptimizerError(e.to_string()))?;
             // Update counters with the evaluations that happened during this step
             *function_evaluations += problem_wrapper.get_function_evaluations() - func_evals_before;
@@ -605,14 +607,14 @@ impl BenchmarkRunner {
 }
 
 /// Wrapper to convert OptimizationProblem to DifferentiableFunction
-pub struct ProblemWrapper<'a> {
-    problem: &'a dyn OptimizationProblem,
+pub struct ProblemWrapper {
+    problem: Box<dyn OptimizationProblem>,
     function_evaluations: Arc<AtomicUsize>,
     gradient_evaluations: Arc<AtomicUsize>,
 }
 
-impl<'a> ProblemWrapper<'a> {
-    pub fn new(problem: &'a dyn OptimizationProblem) -> Self {
+impl ProblemWrapper {
+    pub fn new(problem: Box<dyn OptimizationProblem>) -> Self {
         Self {
             problem,
             function_evaluations: Arc::new(AtomicUsize::new(0)),
@@ -631,7 +633,7 @@ impl<'a> ProblemWrapper<'a> {
     }
 }
 
-impl<'a> DifferentiableFunction for ProblemWrapper<'a> {
+impl<'a> DifferentiableFunction for ProblemWrapper {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         self.function_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;

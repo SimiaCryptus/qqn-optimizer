@@ -8,11 +8,12 @@
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
+use qqn_optimizer::utils::math::SeparateFunctions;
 use qqn_optimizer::{
     LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig,
     QQNOptimizer, RosenbrockFunction,
 };
-use qqn_optimizer::utils::math::SeparateFunctions;
+use std::sync::Arc;
 
 fn main() -> Result<()> {
     // Configure the QQN optimizer
@@ -37,7 +38,7 @@ fn main() -> Result<()> {
     let mut optimizer = QQNOptimizer::new(config);
 
     // Define the optimization problem (2D Rosenbrock function)
-    let problem = RosenbrockFunction::new(2);
+    let problem = Arc::new(RosenbrockFunction::new(2));
     let mut initial_point = problem.initial_point(); // Random initial point in 2D
     let device = Device::Cpu;
 
@@ -65,32 +66,39 @@ fn main() -> Result<()> {
             println!("Converged! Gradient norm: {:.2e}", grad_norm);
             break;
         }
-        
+
         // Create a function object that implements both objective and gradient computation
-        let function = SeparateFunctions::new(
-            |params: &[Tensor]| -> candle_core::Result<f64> {
-                let x_vec = params[0].to_vec1::<f64>()?;
-                problem.evaluate_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+        let function = Arc::new(SeparateFunctions::new(
+            {
+                let problem = problem.clone();
+                move |params: &[Tensor]| -> candle_core::Result<f64> {
+                    let x_vec = params[0].to_vec1::<f64>()?;
+                    problem.evaluate_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+                }
             },
-            |params: &[Tensor]| -> candle_core::Result<Vec<Tensor>> {
-                let x_vec = params[0].to_vec1::<f64>()?;
-                let grad = problem.gradient_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-                Ok(vec![Tensor::from_slice(&grad, grad.len(), &device).map_err(|e| candle_core::Error::Msg(e.to_string()))?])
+            {
+                let problem = problem.clone();
+                let device = device.clone();
+                move |params: &[Tensor]| -> candle_core::Result<Vec<Tensor>> {
+                    let x_vec = params[0].to_vec1::<f64>()?;
+                    let grad = problem.gradient_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+                    Ok(vec![Tensor::from_slice(&grad, grad.len(), &device).map_err(|e| candle_core::Error::Msg(e.to_string()))?])
+                }
             },
-        );
+        ));
 
         // Convert Vec<f64> to Tensor for optimizer
         let mut x_tensor = vec![Tensor::from_slice(&initial_point, initial_point.len(), &device)?];
 
         // Perform optimization step
-        let step_result = optimizer.step(&mut x_tensor, &function)?;
+        let _step_result = optimizer.step(&mut x_tensor, function.clone())?;
 
         // Convert result back to Vec<f64>
         initial_point = x_tensor[0].to_vec1::<f64>()?;
 
         // Print step information
         if iteration % 50 == 0 {
-            println!("  Step size: {:.6}", step_result.step_size);
+            println!("  Step size: {:.6}", _step_result.step_size);
         }
 
         iteration += 1;

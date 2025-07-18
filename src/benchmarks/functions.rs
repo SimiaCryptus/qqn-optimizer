@@ -184,10 +184,10 @@ impl OptimizationProblem for GoldsteinPriceFunction {
         let x2 = x[1];
         let term1 = 1.0
             + (x1 + x2 + 1.0).powi(2)
-                * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
+            * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
         let term2 = 30.0
             + (2.0 * x1 - 3.0 * x2).powi(2)
-                * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
+            * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
         Ok(term1 * term2)
     }
     fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>> {

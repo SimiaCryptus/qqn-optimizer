@@ -1,8 +1,8 @@
 use candle_core::Tensor;
-use qqn_optimizer::benchmarks::functions::OptimizationProblem;
 use qqn_optimizer::core::optimizer::Optimizer;
 use qqn_optimizer::core::qqn::{QQNConfig, QQNOptimizer};
-use qqn_optimizer::utils::math::{tensor_from_vec, tensors_to_vec, DifferentiableFunction, SeparateFunctions};
+use qqn_optimizer::utils::math::{tensor_from_vec, SeparateFunctions};
+use std::sync::Arc;
 
 #[test]
 fn test_qqn_numerical_stability() {
@@ -19,13 +19,14 @@ fn test_qqn_numerical_stability() {
         let grad = vec![2.0 * x[0], 2.0 * x[1]];
         Ok(vec![tensor_from_vec(grad)])
     };
-    let function = SeparateFunctions::new(objective_fn, gradient_fn);
+    let function = Arc::new(SeparateFunctions::new(objective_fn, gradient_fn));
 
 
     // Test with very small gradients
     let mut params = vec![tensor_from_vec(vec![1.0, 1.0])];
 
-    let result = optimizer.step(&mut params, &function);
+    let result = optimizer.step(&mut params, function.clone());
+    let result = optimizer.step(&mut params, function.clone());
     if let Err(e) = &result {
         println!("Tiny gradient step error: {:?}", e);
     }
@@ -46,7 +47,7 @@ fn test_qqn_numerical_stability() {
 
     // Test with parameters that would give large gradients
     let mut large_params = vec![tensor_from_vec(vec![1e3, 1e3])];
-    let result2 = optimizer.step(&mut large_params, &function);
+    let result2 = optimizer.step(&mut large_params, function.clone());
     if let Err(e) = &result2 {
         println!("Large gradient step error: {:?}", e);
     }
@@ -71,7 +72,7 @@ fn test_qqn_reset_functionality() {
         let grad = vec![2.0 * x[0], 2.0 * x[1]];
         Ok(vec![tensor_from_vec(grad)])
     };
-    let function = SeparateFunctions::new(objective_fn, gradient_fn);
+    let function = Arc::new(SeparateFunctions::new(objective_fn, gradient_fn));
 
 
     // Perform several steps
@@ -79,7 +80,7 @@ fn test_qqn_reset_functionality() {
     let mut iterations_before_reset = 0;
 
     for _ in 0..5 {
-        if let Ok(_) = optimizer.step(&mut params, &function) {
+        if let Ok(_) = optimizer.step(&mut params, function.clone()) {
             iterations_before_reset += 1;
         }
     }

@@ -3,6 +3,7 @@ use crate::utils::math::DifferentiableFunction;
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Instant;
 
 /// Configuration parameters for the GD optimizer.
@@ -204,7 +205,7 @@ impl GDOptimizer {
         // More sophisticated adaptive learning rate that's less conservative
         // Use a gentler scaling that doesn't overly penalize large gradients
         let base_lr = self.config.learning_rate;
-        
+
         // Use a sigmoid-like function for smoother adaptation
         // This prevents overly aggressive reduction for moderately large gradients
         let scale_threshold = 50.0; // Threshold for when to start scaling
@@ -214,7 +215,7 @@ impl GDOptimizer {
             // Gentler scaling: 1 / (1 + log(grad_norm / threshold))
             1.0 / (1.0 + (grad_norm / scale_threshold).ln())
         };
-        
+
         let adaptive_lr = base_lr * adaptive_factor;
         // Ensure we don't go below minimum learning rate
         adaptive_lr.max(self.config.min_learning_rate)
@@ -260,22 +261,22 @@ impl GDOptimizer {
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
         // More reasonable convergence criteria for challenging functions like Rosenbrock
         let base_tolerance = 1e-4; // Less strict base tolerance
-        
+
         // Scale tolerance based on problem characteristics
         let lr_factor = (self.config.learning_rate / 0.01).max(0.1).min(10.0);
-        let momentum_factor = if self.config.momentum > 0.0 { 
+        let momentum_factor = if self.config.momentum > 0.0 {
             0.8 // Less aggressive scaling for momentum
-        } else { 
-            1.0 
+        } else {
+            1.0
         };
-        
+
         // For functions with large gradients, use relative tolerance
         let relative_tolerance = if gradient_norm > 100.0 {
             gradient_norm * 1e-6 // Relative to current gradient magnitude
         } else {
             base_tolerance * lr_factor * momentum_factor
         };
-        
+
         let tolerance = relative_tolerance.max(1e-6); // Minimum absolute tolerance
 
         Ok(ConvergenceInfo {
@@ -293,7 +294,7 @@ impl Optimizer for GDOptimizer {
     fn step(
         &mut self,
         params: &mut [Tensor],
-        function: &dyn DifferentiableFunction,
+        function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
         if self.config.verbose {
@@ -350,7 +351,7 @@ impl Optimizer for GDOptimizer {
         let update_norm = crate::utils::math::compute_magnitude(&update_direction)?;
         self.log_scalar("Update Norm", update_norm);
 
-/// Apply the update: x_{k+1} = x_k - lr * update_direction
+        /// Apply the update: x_{k+1} = x_k - lr * update_direction
         for (param, update) in params.iter_mut().zip(update_direction.iter()) {
             let lr_tensor = Tensor::new(effective_lr, param.device())?;
             let step = update.broadcast_mul(&lr_tensor)?;
@@ -459,7 +460,6 @@ impl Optimizer for GDOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
     use candle_core::{Device, Tensor};
 
     /// Simple quadratic function for testing: f(x) = 0.5 * x^T * x
@@ -566,7 +566,7 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // Start at x = [2.0, -3.0]
         let mut params = vec![
             Tensor::new(&[2.0f64], &Device::Cpu)?,
@@ -574,7 +574,10 @@ mod tests {
         ];
         // Take a few optimization steps
         for _ in 0..10 {
-            let result = optimizer.step(&mut params, &function)?;
+            let result = optimizer.step(&mut params, function.clone())?;
+        }
+        for _ in 0..10 {
+            let result = optimizer.step(&mut params, function.clone())?;
         }
         // Check that parameters moved towards zero
         let x = params[0].to_vec1::<f64>()?[0];
@@ -591,19 +594,19 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![
             Tensor::new(&[5.0f64], &Device::Cpu)?,
             Tensor::new(&[-5.0f64], &Device::Cpu)?,
         ];
         // Momentum should be initialized after first step
         assert!(optimizer.state.momentum_buffer.is_none());
-        let _ = optimizer.step(&mut params, &function)?;
+        let _ = optimizer.step(&mut params, function.clone())?;
         assert!(optimizer.state.momentum_buffer.is_some());
         assert_eq!(optimizer.state.momentum_buffer.as_ref().unwrap().len(), 2);
         // Take more steps
         for _ in 0..50 {
-            let _ = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, function.clone())?;
         }
         // Check convergence
         let x = params[0].to_vec1::<f64>()?[0];
@@ -620,14 +623,14 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![
             Tensor::new(&[2.0f64], &Device::Cpu)?,
             Tensor::new(&[2.0f64], &Device::Cpu)?,
         ];
         // With weight decay, parameters should decay faster
         for _ in 0..15 {
-            let _ = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, function.clone())?;
         }
         let x = params[0].to_vec1::<f64>()?[0];
         let y = params[1].to_vec1::<f64>()?[0];
@@ -651,14 +654,14 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![
             Tensor::new(&[3.0f64], &Device::Cpu)?,
             Tensor::new(&[-3.0f64], &Device::Cpu)?,
         ];
         // Take several steps
         for _ in 0..25 {
-            let _ = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, function.clone())?;
         }
         // Nesterov momentum should converge efficiently
         let x = params[0].to_vec1::<f64>()?[0];
@@ -676,12 +679,12 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![
             Tensor::new(&[1.0f64], &Device::Cpu)?,
             Tensor::new(&[-1.0f64], &Device::Cpu)?,
         ];
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         // Check parameters were updated
         let x = params[0].to_vec1::<f64>()?[0];
         let y = params[1].to_vec1::<f64>()?[0];
@@ -696,13 +699,13 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // Start very close to optimum
         let mut params = vec![
             Tensor::new(&[1e-5f64], &Device::Cpu)?,
             Tensor::new(&[-1e-5f64], &Device::Cpu)?,
         ];
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         assert!(result.convergence_info.converged);
         Ok(())
     }
@@ -714,7 +717,7 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = RosenbrockFunction;
+        let function = Arc::new(RosenbrockFunction);
         // Start at a challenging point
         let mut params = vec![
             Tensor::new(&[-1.0f64], &Device::Cpu)?,
@@ -722,7 +725,7 @@ mod tests {
         ];
         // Take many steps (Rosenbrock is difficult)
         for _ in 0..1000 {
-            let _ = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, function.clone())?;
         }
         // Should make progress towards (1, 1)
         let x = params[0].to_vec1::<f64>()?[0];
@@ -737,9 +740,9 @@ mod tests {
     fn test_gd_empty_parameters_error() {
         let config = GDConfig::default();
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params: Vec<Tensor> = vec![];
-        let result = optimizer.step(&mut params, &function);
+        let result = optimizer.step(&mut params, function);
         assert!(result.is_err());
     }
     #[test]
@@ -752,7 +755,7 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // Use 2D tensors
         let mut params = vec![
             Tensor::new(&[[1.0f64, 2.0], [3.0, 4.0]], &Device::Cpu)?,
@@ -760,7 +763,7 @@ mod tests {
         ];
         // Take optimization steps
         for _ in 0..20 {
-            let _ = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, function.clone())?;
         }
         // Check all values moved significantly towards zero
         for param in &params {
@@ -783,17 +786,17 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![Tensor::new(&[1.0f64], &Device::Cpu)?];
         // Take a step to initialize momentum
-        let _ = optimizer.step(&mut params, &function)?;
+        let _ = optimizer.step(&mut params, function.clone())?;
         assert_eq!(optimizer.state.iteration, 1);
         assert!(optimizer.state.momentum_buffer.is_some());
         // Clone the state
         let saved_iteration = optimizer.state.iteration;
         // Take more steps
         for _ in 0..5 {
-            let _ = optimizer.step(&mut params, &function)?;
+            let _ = optimizer.step(&mut params, function.clone())?;
         }
         assert_eq!(optimizer.state.iteration, saved_iteration + 5);
         Ok(())
@@ -806,10 +809,10 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![Tensor::new(&[1.0f64], &Device::Cpu)?];
         // This should produce verbose output (captured by logger)
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         assert!(result.metadata.timing_info.step_duration.as_nanos() > 0);
         Ok(())
     }
@@ -821,9 +824,9 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![Tensor::new(&[2.0f64], &Device::Cpu)?];
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         // Check metadata
         assert!(result.metadata.optimizer_data.contains_key("gradient_norm"));
         assert!(result.metadata.optimizer_data.contains_key("update_norm"));
@@ -840,10 +843,10 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // Start with large values to create large gradients
         let mut params = vec![Tensor::new(&[10.0f64], &Device::Cpu)?];
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         // Check that gradient clipping was applied
         assert!(result
             .metadata
@@ -862,10 +865,10 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // Start with very large values to create large gradients that exceed the threshold
         let mut params = vec![Tensor::new(&[100.0f64], &Device::Cpu)?];
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         // Check that adaptive learning rate was used
         let effective_lr = result.metadata.optimizer_data["learning_rate"];
         let base_lr = result.metadata.optimizer_data["base_learning_rate"];
@@ -882,7 +885,7 @@ mod tests {
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);
-        let function = RosenbrockFunction;
+        let function = Arc::new(RosenbrockFunction);
         // Start at a challenging point
         let mut params = vec![
             Tensor::new(&[-1.0f64], &Device::Cpu)?,
@@ -891,7 +894,7 @@ mod tests {
         // Take many steps - should not diverge
         let mut last_finite = true;
         for i in 0..100 {
-            let result = optimizer.step(&mut params, &function)?;
+            let result = optimizer.step(&mut params, function.clone())?;
             // Check that parameters remain finite
             let x = params[0].to_vec1::<f64>()?[0];
             let y = params[1].to_vec1::<f64>()?[0];

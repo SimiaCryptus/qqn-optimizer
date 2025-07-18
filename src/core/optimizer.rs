@@ -5,9 +5,11 @@
 //! and convergence behavior.
 
 pub(crate) use crate::utils::math::DifferentiableFunction;
-use candle_core::{Result, Tensor};
+use candle_core::Result as CandleResult;
+use candle_core::Tensor;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Additional metadata that optimizers can provide
@@ -52,8 +54,8 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug + 'static {
     fn step(
         &mut self,
         params: &mut [Tensor],
-        function: &dyn DifferentiableFunction,
-    ) -> Result<StepResult>;
+        function: Arc<dyn DifferentiableFunction + Send + Sync>,
+    ) -> CandleResult<StepResult>;
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
@@ -247,7 +249,7 @@ impl ConvergenceChecker {
         function_value: f64,
         gradients: &[Tensor],
         parameters: &[Tensor],
-    ) -> Result<ConvergenceInfo> {
+    ) -> CandleResult<ConvergenceInfo> {
         self.iteration_count += 1;
 
         // Compute gradient norm
@@ -333,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    fn test_convergence_checker_basic() -> Result<()> {
+    fn test_convergence_checker_basic() -> CandleResult<()> {
         let config = ConvergenceConfig {
             gradient_tolerance: 1e-3,
             ..Default::default()

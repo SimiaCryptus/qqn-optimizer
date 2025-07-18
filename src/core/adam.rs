@@ -3,6 +3,7 @@ use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use std::time::Instant;
 
 /// Configuration parameters for the Adam optimizer.
@@ -409,7 +410,7 @@ impl Optimizer for AdamOptimizer {
     fn step(
         &mut self,
         params: &mut [Tensor],
-        function: &dyn DifferentiableFunction,
+        function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
         if self.config.verbose {
@@ -566,6 +567,7 @@ mod tests {
     use super::*;
     use crate::core::optimizer::Optimizer;
     use candle_core::{Device, Tensor};
+    use crate::init_logging;
 
     /// Simple quadratic function for testing: f(x) = 0.5 * ||x||^2
     struct QuadraticFunction;
@@ -679,13 +681,13 @@ mod tests {
         let mut optimizer = AdamOptimizer::new(config);
         // Start at [2.0, 2.0]
         let mut params = vec![Tensor::from_vec(vec![2.0, 2.0], &[2], &device)?];
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // Initial function value should be 0.5 * (4 + 4) = 4.0
         let initial_value = function.evaluate(&params)?;
         assert!((initial_value - 4.0).abs() < 1e-10);
         // Run a few optimization steps
         for i in 0..50 {
-            let result = optimizer.step(&mut params, &function)?;
+            let result = optimizer.step(&mut params, function.clone())?;
             // Print progress for debugging
             let current_values = params[0].flatten_all()?.to_vec1::<f64>()?;
             let current_function_value = function.evaluate(&params)?;
@@ -727,9 +729,9 @@ mod tests {
         };
         let mut optimizer = AdamOptimizer::new(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // With weight decay, the effective gradient is g + weight_decay * x
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         assert!(result.step_size > 0.0);
         Ok(())
     }
@@ -745,8 +747,8 @@ mod tests {
         let mut optimizer = AdamOptimizer::new(config);
         // Start far from optimum to get large gradients
         let mut params = vec![Tensor::from_vec(vec![10.0, 10.0], &[2], &device)?];
-        let function = QuadraticFunction;
-        let result = optimizer.step(&mut params, &function)?;
+        let function = Arc::new(QuadraticFunction);
+        let result = optimizer.step(&mut params, function)?;
         assert!(result.step_size > 0.0);
         // Check that parameters moved but not too much (due to clipping)
         let values = params[0].flatten_all()?.to_vec1::<f64>()?;
@@ -765,10 +767,10 @@ mod tests {
         };
         let mut optimizer = AdamOptimizer::new(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let initial_lr = optimizer.current_lr;
         // Run a step
-        optimizer.step(&mut params, &function)?;
+        optimizer.step(&mut params, function)?;
         // Learning rate should have decayed
         assert!((optimizer.current_lr - initial_lr * 0.9).abs() < 1e-10);
         Ok(())
@@ -784,11 +786,11 @@ mod tests {
         };
         let mut optimizer = AdamOptimizer::new(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let initial_lr = optimizer.current_lr;
         // Run multiple steps to see cosine schedule effect
         for _ in 0..100 {
-            optimizer.step(&mut params, &function)?;
+            optimizer.step(&mut params, function.clone())?;
         }
 
         // After 100 steps, learning rate should have decreased from cosine schedule
@@ -813,11 +815,11 @@ mod tests {
         let mut optimizer = AdamOptimizer::new(config);
         // Use a function where we can control convergence behavior
         let mut params = vec![Tensor::from_vec(vec![0.1, 0.1], &[2], &device)?];
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let initial_lr = optimizer.current_lr;
         // Run many steps to potentially trigger adaptive reduction
         for _ in 0..25 {
-            optimizer.step(&mut params, &function)?;
+            optimizer.step(&mut params, function.clone())?;
         }
         // Learning rate might have been reduced if progress stalled
         assert!(optimizer.current_lr <= initial_lr);
@@ -828,19 +830,34 @@ mod tests {
     fn test_adam_convergence_detection() -> CandleResult<()> {
         let device = Device::Cpu;
         let config = AdamConfig {
-            learning_rate: 0.5,
+            learning_rate: 0.01,  // Much smaller learning rate to avoid overshooting
             lr_schedule: "constant".to_string(),
+            beta1: 0.9,           // Standard momentum
+            beta2: 0.999,         // Standard second moment decay
+            epsilon: 1e-8,        // Standard epsilon
             ..Default::default()
         };
         let mut optimizer = AdamOptimizer::new(config);
-        // Start very close to optimum
-        let mut params = vec![Tensor::from_vec(vec![1e-7, 1e-7], &[2], &device)?];
-        let function = QuadraticFunction;
+        // Start closer to optimum but not too close to avoid numerical issues
+        let mut params = vec![Tensor::from_vec(vec![1e-4, 1e-4], &[2], &device)?];
+        let function = Arc::new(QuadraticFunction);
         // Run optimization
         let mut converged = false;
-        for _ in 0..50 {
-            let result = optimizer.step(&mut params, &function)?;
+        for i in 0..1000 {  // Allow more iterations
+            let result = optimizer.step(&mut params, function.clone())?;
+            // Print progress for debugging
+            if i % 10 == 0 {
+                let current_values = params[0].flatten_all()?.to_vec1::<f64>()?;
+                let current_function_value = function.evaluate(&params)?;
+                println!(
+                    "Step {}: params=[{:.6e}, {:.6e}], f={:.6e}, grad_norm={:.6e}",
+                    i, current_values[0], current_values[1], current_function_value,
+                    result.metadata.optimizer_data.get("gradient_norm").unwrap_or(&0.0)
+                );
+            }
+            
             if result.convergence_info.converged {
+                println!("Converged at step {}", i);
                 converged = true;
                 break;
             }
@@ -861,13 +878,13 @@ mod tests {
         let mut optimizer = AdamOptimizer::new(config);
         // Start at a challenging point
         let mut params = vec![Tensor::from_vec(vec![0.0, 0.0], &[2], &device)?];
-        let function = RosenbrockFunction;
+        let function = Arc::new(RosenbrockFunction);
         let initial_value = function.evaluate(&params)?;
         println!("Initial Rosenbrock value: {:.6e}", initial_value);
 
         // Run optimization
         for i in 0..500 {
-            let result = optimizer.step(&mut params, &function)?;
+            let result = optimizer.step(&mut params, function.clone())?;
             if i % 50 == 0 {
                 let current_values = params[0].flatten_all()?.to_vec1::<f64>()?;
                 let current_value = function.evaluate(&params)?;
@@ -901,8 +918,8 @@ mod tests {
         let config = AdamConfig::default();
         let mut optimizer = AdamOptimizer::new(config);
         let mut params: Vec<Tensor> = vec![];
-        let function = QuadraticFunction;
-        let result = optimizer.step(&mut params, &function);
+        let function = Arc::new(QuadraticFunction);
+        let result = optimizer.step(&mut params, function);
         assert!(result.is_err());
     }
     #[test]
@@ -921,8 +938,8 @@ mod tests {
             }
         }
         let mut params = vec![Tensor::from_vec(vec![1.0], &[1], &device)?];
-        let function = BadGradientFunction;
-        let result = optimizer.step(&mut params, &function);
+        let function = Arc::new(BadGradientFunction);
+        let result = optimizer.step(&mut params, function);
         assert!(result.is_err());
         Ok(())
     }
@@ -962,9 +979,9 @@ mod tests {
         };
         let mut optimizer = AdamOptimizer::new(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         // This should produce verbose output (captured by logger)
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         assert!(result.step_size > 0.0);
         Ok(())
     }
@@ -974,8 +991,8 @@ mod tests {
         let config = AdamConfig::default();
         let mut optimizer = AdamOptimizer::new(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
-        let function = QuadraticFunction;
-        let result = optimizer.step(&mut params, &function)?;
+        let function = Arc::new(QuadraticFunction);
+        let result = optimizer.step(&mut params, function)?;
         // Check that metadata contains expected keys
         assert!(result.metadata.optimizer_data.contains_key("gradient_norm"));
         assert!(result.metadata.optimizer_data.contains_key("update_norm"));

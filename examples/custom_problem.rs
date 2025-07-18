@@ -8,11 +8,12 @@
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
+use qqn_optimizer::utils::math::DifferentiableFunction;
 use qqn_optimizer::{
     LBFGSConfig, LBFGSOptimizer, OptimizationProblem, Optimizer,
     QQNConfig, QQNOptimizer,
 };
-use qqn_optimizer::utils::math::DifferentiableFunction;
+use std::sync::Arc;
 
 /// Custom quadratic optimization problem: f(x) = 0.5 * x^T * A * x + b^T * x + c
 /// where A is a positive definite matrix, b is a vector, and c is a scalar.
@@ -121,17 +122,17 @@ impl OptimizationProblem for QuadraticProblem {
         Some(self.optimal_value)
     }
 
-   fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
-       Box::new(QuadraticProblem {
-           name: self.name.clone(),
-           dimension: self.dimension,
-           matrix_a: self.matrix_a.clone(),
-           vector_b: self.vector_b.clone(),
-           constant_c: self.constant_c,
-           optimal_point: self.optimal_point.clone(),
-           optimal_value: self.optimal_value,
-       })
-   }
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(QuadraticProblem {
+            name: self.name.clone(),
+            dimension: self.dimension,
+            matrix_a: self.matrix_a.clone(),
+            vector_b: self.vector_b.clone(),
+            constant_c: self.constant_c,
+            optimal_point: self.optimal_point.clone(),
+            optimal_value: self.optimal_value,
+        })
+    }
 }
 impl DifferentiableFunction for QuadraticProblem {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
@@ -167,86 +168,86 @@ fn main() -> Result<()> {
     println!("===================================");
 
     // Create a moderately ill-conditioned quadratic problem
-    let problem = QuadraticProblem::new(10, 100.0);
+    let problem = Arc::new(QuadraticProblem::new(10, 100.0));
 
     println!("Problem: {}", problem.name());
     println!("Dimension: {}", problem.dimension());
     println!("Optimal value: {:.6}", problem.optimal_value().unwrap());
     println!("Optimal point: {:?}", problem.optimal_point);
 
-// Test with QQN optimizer
-     println!("\n--- QQN Optimizer ---");
-     let qqn_result = run_optimizer(
-         &problem,
-         Box::new(QQNOptimizer::new(QQNConfig::default())),
-         "QQN",
-     )?;
-     // Test with L-BFGS optimizer
-     println!("\n--- L-BFGS Optimizer ---");
-     let lbfgs_result = run_optimizer(
-         &problem,
-         Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-         "L-BFGS",
-     )?;
-     // Compare results
-     println!("\n--- Comparison ---");
-     println!("QQN:    {} iterations, final value: {:.6}", qqn_result.0, qqn_result.1);
-     println!("L-BFGS: {} iterations, final value: {:.6}", lbfgs_result.0, lbfgs_result.1);
-     let qqn_error = (qqn_result.1 - problem.optimal_value().unwrap()).abs();
-     let lbfgs_error = (lbfgs_result.1 - problem.optimal_value().unwrap()).abs();
-     println!("QQN error:    {:.2e}", qqn_error);
-     println!("L-BFGS error: {:.2e}", lbfgs_error);
-     if qqn_result.0 < lbfgs_result.0 {
-         println!("✓ QQN converged faster!");
-     } else if qqn_result.0 == lbfgs_result.0 {
-         println!("= Both optimizers converged in the same number of iterations");
-     } else {
-         println!("⚠ L-BFGS converged faster");
-     }
-     Ok(())
- }
- fn run_optimizer(
-     problem: &QuadraticProblem,
-     mut optimizer: Box<dyn Optimizer>,
-     name: &str,
- ) -> Result<(usize, f64)> {
-     let initial_point = problem.initial_point();
-     let device = Device::Cpu;
-     // Convert initial point to tensors
-     let mut params: Vec<Tensor> = initial_point.iter()
-         .map(|&val| Tensor::from_slice(&[val], (1,), &device))
-         .collect::<candle_core::Result<Vec<_>>>()
-         .map_err(|e| anyhow::anyhow!("Failed to create tensors: {}", e))?;
-     let mut iteration = 0;
-     let max_iterations = 1000;
-     println!("Starting {} optimization...", name);
-     while iteration < max_iterations {
-         // Convert tensors back to f64 for convergence checking
-         let x: Vec<f64> = params.iter()
-             .map(|t| t.to_scalar::<f64>())
-             .collect::<candle_core::Result<Vec<_>>>()
-             .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
-         let gradient = problem.gradient_f64(&x)?;
-         let grad_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-         // Perform optimization step
-         let _step_result = optimizer.step(&mut params, problem)
-             .map_err(|e| anyhow::anyhow!("Optimizer step failed: {}", e))?;
-         iteration += 1;
-         // Print progress occasionally
-         if iteration % 50 == 0 {
-             let x: Vec<f64> = params.iter()
-                 .map(|t| t.to_scalar::<f64>())
-                 .collect::<candle_core::Result<Vec<_>>>()
-                 .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
-             let f_val = problem.evaluate_f64(&x)?;
-             println!("  Iteration {}: f = {:.6}, ||∇f|| = {:.2e}", iteration, f_val, grad_norm);
-         }
-     }
-     // Convert final parameters back to f64 for evaluation
-     let final_x: Vec<f64> = params.iter()
-         .map(|t| t.to_scalar::<f64>())
-         .collect::<candle_core::Result<Vec<_>>>()
-         .map_err(|e| anyhow::anyhow!("Failed to extract final values: {}", e))?;
-     let final_value = problem.evaluate_f64(&final_x)?;
-     Ok((iteration, final_value))
- }
+    // Test with QQN optimizer
+    println!("\n--- QQN Optimizer ---");
+    let qqn_result = run_optimizer(
+        problem.clone(),
+        Box::new(QQNOptimizer::new(QQNConfig::default())),
+        "QQN",
+    )?;
+    // Test with L-BFGS optimizer
+    println!("\n--- L-BFGS Optimizer ---");
+    let lbfgs_result = run_optimizer(
+        problem.clone(),
+        Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+        "L-BFGS",
+    )?;
+    // Compare results
+    println!("\n--- Comparison ---");
+    println!("QQN:    {} iterations, final value: {:.6}", qqn_result.0, qqn_result.1);
+    println!("L-BFGS: {} iterations, final value: {:.6}", lbfgs_result.0, lbfgs_result.1);
+    let qqn_error = (qqn_result.1 - problem.optimal_value().unwrap()).abs();
+    let lbfgs_error = (lbfgs_result.1 - problem.optimal_value().unwrap()).abs();
+    println!("QQN error:    {:.2e}", qqn_error);
+    println!("L-BFGS error: {:.2e}", lbfgs_error);
+    if qqn_result.0 < lbfgs_result.0 {
+        println!("✓ QQN converged faster!");
+    } else if qqn_result.0 == lbfgs_result.0 {
+        println!("= Both optimizers converged in the same number of iterations");
+    } else {
+        println!("⚠ L-BFGS converged faster");
+    }
+    Ok(())
+}
+fn run_optimizer(
+    problem: Arc<QuadraticProblem>,
+    mut optimizer: Box<dyn Optimizer>,
+    name: &str,
+) -> Result<(usize, f64)> {
+    let initial_point = problem.initial_point();
+    let device = Device::Cpu;
+    // Convert initial point to tensors
+    let mut params: Vec<Tensor> = initial_point.iter()
+        .map(|&val| Tensor::from_slice(&[val], (1,), &device))
+        .collect::<candle_core::Result<Vec<_>>>()
+        .map_err(|e| anyhow::anyhow!("Failed to create tensors: {}", e))?;
+    let mut iteration = 0;
+    let max_iterations = 1000;
+    println!("Starting {} optimization...", name);
+    while iteration < max_iterations {
+        // Convert tensors back to f64 for convergence checking
+        let x: Vec<f64> = params.iter()
+            .map(|t| t.to_scalar::<f64>())
+            .collect::<candle_core::Result<Vec<_>>>()
+            .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
+        let gradient = problem.gradient_f64(&x)?;
+        let grad_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+        // Perform optimization step
+        let _step_result = optimizer.step(&mut params, problem.clone())
+            .map_err(|e| anyhow::anyhow!("Optimizer step failed: {}", e))?;
+        iteration += 1;
+        // Print progress occasionally
+        if iteration % 50 == 0 {
+            let x: Vec<f64> = params.iter()
+                .map(|t| t.to_scalar::<f64>())
+                .collect::<candle_core::Result<Vec<_>>>()
+                .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
+            let f_val = problem.evaluate_f64(&x)?;
+            println!("  Iteration {}: f = {:.6}, ||∇f|| = {:.2e}", iteration, f_val, grad_norm);
+        }
+    }
+    // Convert final parameters back to f64 for evaluation
+    let final_x: Vec<f64> = params.iter()
+        .map(|t| t.to_scalar::<f64>())
+        .collect::<candle_core::Result<Vec<_>>>()
+        .map_err(|e| anyhow::anyhow!("Failed to extract final values: {}", e))?;
+    let final_value = problem.evaluate_f64(&final_x)?;
+    Ok((iteration, final_value))
+}

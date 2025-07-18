@@ -17,6 +17,7 @@ use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::sync::Arc;
 use std::time::Instant;
 
 // Convert to 1D problem for line search
@@ -622,7 +623,7 @@ impl Optimizer for LBFGSOptimizer {
     fn step(
         &mut self,
         params: &mut [Tensor],
-        function: &dyn DifferentiableFunction,
+        function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult> {
         let start_time = Instant::now();
         if self.config.verbose {
@@ -836,7 +837,7 @@ impl Optimizer for LBFGSOptimizer {
                 &objective_fn,
                 &gradient_fn,
             )
-            .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+                .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
             // Perform line search
             line_search
                 .optimize_1d(&problem)
@@ -1022,34 +1023,20 @@ impl Optimizer for LBFGSOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RosenbrockFunction;
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;
     use std::sync::Mutex;
 
-    // Test function: Rosenbrock function
-    struct RosenbrockFunction {
-        eval_count: Arc<Mutex<usize>>,
-        grad_count: Arc<Mutex<usize>>,
-    }
-    impl RosenbrockFunction {
-        fn new() -> Self {
-            Self {
-                eval_count: Arc::new(Mutex::new(0)),
-                grad_count: Arc::new(Mutex::new(0)),
-            }
-        }
-    }
     impl DifferentiableFunction for RosenbrockFunction {
         fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
-            *self.eval_count.lock().unwrap() += 1;
             let x = params[0].to_vec1::<f64>()?;
             let term1 = (1.0 - x[0]).powi(2);
             let term2 = 100.0 * (x[1] - x[0].powi(2)).powi(2);
             Ok(term1 + term2)
         }
         fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-            *self.grad_count.lock().unwrap() += 1;
             let x = params[0].to_vec1::<f64>()?;
             let y = params[1].to_vec1::<f64>()?;
 
@@ -1244,15 +1231,20 @@ mod tests {
         let mut config = LBFGSConfig::default();
         config.verbose = false;
         let mut optimizer = LBFGSOptimizer::new(config);
-        let function = QuadraticFunction;
+        let function = Arc::new(QuadraticFunction);
         let mut params = vec![Tensor::from_slice(&[5.0, -3.0], &[2], &device)?];
         // Run a few optimization steps
         for _ in 0..10 {
-            let result = optimizer.step(&mut params, &function)?;
+            let result = optimizer.step(&mut params, function.clone())?;
             if result.convergence_info.converged {
                 break;
             }
         }
+        // Should converge close to [0, 0]
+        let final_params = params[0].to_vec1::<f64>()?;
+        assert!(final_params[0].abs() < 1e-4);
+        assert!(final_params[1].abs() < 1e-4);
+        let result = optimizer.step(&mut params, function)?;
         // Should converge close to [0, 0]
         let final_params = params[0].to_vec1::<f64>()?;
         assert!(final_params[0].abs() < 1e-4);
@@ -1267,14 +1259,14 @@ mod tests {
         config.verbose = false;
         config.max_step_size = 1.0;
         let mut optimizer = LBFGSOptimizer::new(config);
-        let function = RosenbrockFunction::new();
+        let function = Arc::new(RosenbrockFunction::new(2));
         let mut params = vec![
             Tensor::from_slice(&[-1.2], &[1], &device)?,
             Tensor::from_slice(&[1.0], &[1], &device)?,
         ];
         // Run optimization steps
         for i in 0..100 {
-            let result = optimizer.step(&mut params, &function)?;
+            let result = optimizer.step(&mut params, (function.clone()))?;
             // Check if we're making progress
             if i > 0 && result.step_size < 1e-10 {
                 break;
@@ -1310,9 +1302,9 @@ mod tests {
                 Ok(vec![Tensor::from_slice(&[1000.0], &[1], device)?])
             }
         }
-        let function = LargeGradientFunction;
+        let function = Arc::new(LargeGradientFunction);
         let mut params = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
-        let result = optimizer.step(&mut params, &function)?;
+        let result = optimizer.step(&mut params, function)?;
         // Step should be taken despite large gradient
         assert!(result.step_size > 0.0);
         Ok(())
@@ -1336,11 +1328,11 @@ mod tests {
                 Ok(vec![Tensor::from_slice(&[0.1], &[1], device)?])
             }
         }
-        let function = ConstantFunction;
+        let function = Arc::new(ConstantFunction);
         let mut params = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
         // Run enough steps to trigger recovery
         for _ in 0..5 {
-            optimizer.step(&mut params, &function)?;
+            optimizer.step(&mut params, function.clone())?;
         }
         // Recovery should have been triggered (no_improvement_count should be reset)
         // Note: history might not be empty because the current step can add to it after recovery
@@ -1365,10 +1357,10 @@ mod tests {
                 Ok(vec![Tensor::from_slice(&[f64::NAN], &[1], device)?])
             }
         }
-        let function = NaNFunction;
+        let function = Arc::new(NaNFunction);
         let mut params = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
         // Should handle NaN gracefully (fallback to steepest descent)
-        let result = optimizer.step(&mut params, &function);
+        let result = optimizer.step(&mut params, function);
         assert!(result.is_ok());
         Ok(())
     }
@@ -1420,7 +1412,7 @@ mod tests {
         }
         let function = MismatchedFunction;
         let mut params = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
-        let result = optimizer.step(&mut params, &function);
+        let result = optimizer.step(&mut params, Arc::new(function));
         assert!(result.is_err());
         Ok(())
     }

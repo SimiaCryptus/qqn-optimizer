@@ -639,8 +639,8 @@ impl ExperimentRunner {
 
         let mut sorted_optimizers: Vec<_> = optimizer_stats.iter().collect();
         sorted_optimizers.sort_by(|a, b| {
-            let rate_a = a.1 .0 as f64 / a.1 .1 as f64;
-            let rate_b = b.1 .0 as f64 / b.1 .1 as f64;
+            let rate_a = a.1.0 as f64 / a.1.1 as f64;
+            let rate_b = b.1.0 as f64 / b.1.1 as f64;
             rate_b.partial_cmp(&rate_a).unwrap()
         });
 
@@ -962,20 +962,19 @@ impl ExperimentRunner {
 
         // Perform QQN vs non-QQN comparisons only
         let mut comparisons_made = 0;
-        
+
         for qqn_opt in &qqn_optimizers {
             for non_qqn_opt in &non_qqn_optimizers {
-                
                 let values_qqn = &optimizer_results[qqn_opt];
                 let values_non_qqn = &optimizer_results[non_qqn_opt];
-                
+
                 // Perform Welch's t-test (unequal variances)
                 match self.welch_t_test(values_qqn, values_non_qqn) {
                     Ok((t_stat, p_value)) => {
                         let effect_size = self.cohens_d(values_qqn, values_non_qqn);
                         let significant = p_value < 0.05;
                         let significance_class = if significant { "best" } else { "" };
-                        
+
                         section.push_str(&format!(
                             r#"                <tr class="{}">
                                 <td>{}</td>
@@ -1011,7 +1010,7 @@ impl ExperimentRunner {
                 }
             }
         }
-        
+
         if comparisons_made == 0 {
             section.push_str(r#"                <tr>
                     <td colspan="7"><em>No valid QQN vs non-QQN comparisons could be performed.</em></td>
@@ -1308,10 +1307,6 @@ impl ExperimentRunner {
     {
 
 
-                
-
-
-        
         // Generate table with proper highlighting
         let mut highlighted_table = format!(
             r#"
@@ -1322,7 +1317,7 @@ impl ExperimentRunner {
 "#,
             title
         );
-        
+
         // Add problem headers
         for problem in problems {
             highlighted_table.push_str(&format!(r#"                    <th style="min-width: 100px; writing-mode: vertical-lr; text-orientation: mixed;">{}</th>
@@ -1331,7 +1326,6 @@ impl ExperimentRunner {
         highlighted_table.push_str("                </tr>\n");
 
 
-        
         for optimizer in optimizers {
             highlighted_table.push_str(&format!(
                 r#"                <tr>
@@ -1339,13 +1333,13 @@ impl ExperimentRunner {
 "#,
                 optimizer
             ));
-            
+
             for problem in problems {
                 let results = all_results
                     .iter()
                     .find(|(name, _)| name == problem)
                     .map(|(_, results)| results);
-                    
+
                 if let Some(results) = results {
                     let optimizer_results: Vec<_> = results
                         .results
@@ -1362,7 +1356,7 @@ impl ExperimentRunner {
                     } else {
                         let value_str = metric_fn(&optimizer_results);
 
-                            
+
                         // Use main performance rankings for consistent highlighting
                         let class = if let Some(rankings) = main_rankings.get(problem) {
                             let rank = rankings
@@ -1370,7 +1364,7 @@ impl ExperimentRunner {
                                 .find(|(opt, _)| opt == optimizer)
                                 .map(|(_, rank)| *rank)
                                 .unwrap_or(usize::MAX);
-                            
+
                             match rank {
                                 0 => "best",
                                 1 if rankings.len() > 1 => "second",
@@ -1805,7 +1799,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
         Duration::from_secs(30000),
         runner.run_comparative_benchmarks(),
     )
-    .await;
+        .await;
 
     match result {
         Ok(Ok(())) => {
@@ -1901,7 +1895,7 @@ async fn test_academic_citation_format() -> Result<(), Box<dyn std::error::Error
                         &name,
                     ),
                 )
-                .await;
+                    .await;
 
                 match result {
                     Ok(Ok(benchmark_result)) => {
@@ -1926,7 +1920,7 @@ async fn test_academic_citation_format() -> Result<(), Box<dyn std::error::Error
         Duration::from_secs(60),
         runner.generate_html_report(&all_results, &problems),
     )
-    .await;
+        .await;
 
     match report_result {
         Ok(Ok(())) => {
