@@ -15,6 +15,7 @@ use crate::LineSearchConfig;
 use anyhow::{anyhow, Result as AnyhowResult};
 use candle_core::{Device, Error, Result as CandleResult, Tensor};
 use log::{debug, error, info, trace, warn};
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -684,8 +685,8 @@ pub struct QuadraticPath {
     start_point: Vec<Tensor>,
     negative_gradient: Vec<Tensor>,
     lbfgs_direction: Vec<Tensor>,
-    position_cache: Arc<Mutex<HashMap<String, Vec<f64>>>>,
-    gradient_cache: Arc<Mutex<HashMap<String, Vec<f64>>>>,
+    position_cache: Arc<Mutex<HashMap<OrderedFloat<f64>, Vec<f64>>>>,
+    gradient_cache: Arc<Mutex<HashMap<OrderedFloat<f64>, Vec<f64>>>>,
     lbfgs_state: Arc<Mutex<LBFGSState>>,
     function: Arc<dyn DifferentiableFunction + Send + Sync>,
 }
@@ -812,13 +813,10 @@ impl QuadraticPath {
     pub fn lbfgs_direction(&self) -> &[Tensor] {
         &self.lbfgs_direction
     }
-    /// Create a cache key for the given t value
-    fn cache_key(t: f64) -> String {
-        format!("{:.15}", t) // Use high precision for cache key
-    }
+
     /// Check if we have both position and gradient cached for the same t, and update L-BFGS if so
     fn maybe_update_lbfgs(&self, t: f64) -> CandleResult<()> {
-        let key = Self::cache_key(t);
+        let key = OrderedFloat(t);
         let position_cache = self.position_cache.lock().unwrap();
         let gradient_cache = self.gradient_cache.lock().unwrap();
         if let (Some(position_f64), Some(gradient_f64)) =
@@ -861,7 +859,7 @@ impl QuadraticPath {
 }
 impl<'a> ParametricCurve for QuadraticPath {
     fn position(&self, t: f64) -> AnyhowResult<Vec<f64>> {
-        let key = Self::cache_key(t);
+        let key = OrderedFloat(t);
         // Check cache first
         {
             let cache = self.position_cache.lock().unwrap();
@@ -894,7 +892,7 @@ impl<'a> ParametricCurve for QuadraticPath {
     }
 
     fn direction(&self, t: f64) -> AnyhowResult<Vec<f64>> {
-        let key = Self::cache_key(t);
+        let key = OrderedFloat(t);
         // Check cache first
         {
             let cache = self.gradient_cache.lock().unwrap();

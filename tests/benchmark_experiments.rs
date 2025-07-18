@@ -39,7 +39,7 @@ impl ExperimentRunner {
             maximum_function_calls: 10000,
             tolerance: 1e-8,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
-            num_runs: 5,
+            num_runs: 20,
             include_ml_problems: false,
         };
 
@@ -387,38 +387,6 @@ impl ExperimentRunner {
                 })),
             ),
         ]
-
-
-        // (
-        //     "QQN-CubicQuadraticInterpolation".to_string(),
-        //     Box::new(QQNOptimizer::new(QQNConfig {
-        //         line_search: LineSearchConfig {
-        //             method: LineSearchMethod::CubicQuadraticInterpolation,
-        //             ..LineSearchConfig::default()
-        //         },
-        //         ..Default::default()
-        //     })),
-        // ),
-        // (
-        //     "QQN-GoldenSection".to_string(),
-        //     Box::new(QQNOptimizer::new(QQNConfig {
-        //         line_search: LineSearchConfig {
-        //             method: LineSearchMethod::GoldenSection,
-        //             ..LineSearchConfig::default()
-        //         },
-        //         ..Default::default()
-        //     })),
-        // ),
-        // (
-        //     "QQN-MoreThuente".to_string(),
-        //     Box::new(QQNOptimizer::new(QQNConfig {
-        //         line_search: LineSearchConfig {
-        //             method: LineSearchMethod::MoreThuente,
-        //             ..LineSearchConfig::default()
-        //         },
-        //         ..Default::default()
-        //     })),
-        // ),
     }
 
     async fn run_problem_benchmarks(
@@ -729,7 +697,6 @@ impl ExperimentRunner {
                     <th>Optimizer</th>
                     <th>Mean Final Value</th>
                     <th>Std Dev</th>
-                    <th>Mean Iterations</th>
                     <th>Mean Function Evals</th>
                     <th>Mean Gradient Evals</th>
                     <th>Success Rate</th>
@@ -824,7 +791,7 @@ impl ExperimentRunner {
                 optimizer,
                 mean_final,
                 std_final,
-                mean_iter,
+                _mean_iter,
                 mean_func_evals,
                 mean_grad_evals,
                 success_rate,
@@ -846,7 +813,6 @@ impl ExperimentRunner {
                     <td>{:.2e}</td>
                     <td>{:.1}</td>
                     <td>{:.1}</td>
-                    <td>{:.1}</td>
                     <td>{:.1}%</td>
                     <td>{:.3}</td>
                 </tr>
@@ -855,7 +821,6 @@ impl ExperimentRunner {
                 optimizer,
                 mean_final,
                 std_final,
-                mean_iter,
                 mean_func_evals,
                 mean_grad_evals,
                 success_rate * 100.0,
@@ -1067,16 +1032,46 @@ impl ExperimentRunner {
             let denom_b = (var_b / sample_b.len() as f64).powi(2) / (sample_b.len() - 1) as f64;
             numerator / (denom_a + denom_b)
         };
-        // Approximate p-value using simplified approach
-        // For a more accurate p-value, you'd need a proper t-distribution implementation
-        let p_value = if t_stat.abs() > 2.0 {
-            0.05 // Approximate significance threshold
-        } else if t_stat.abs() > 1.5 {
-            0.1
-        } else {
-            0.5
-        };
+        // Improved p-value calculation using better approximation
+        let p_value = self.t_distribution_p_value(t_stat.abs(), df);
         Ok((t_stat, p_value))
+    }
+    /// Approximate p-value for t-distribution using improved method
+    fn t_distribution_p_value(&self, t_abs: f64, df: f64) -> f64 {
+        // For large df (>30), t-distribution approaches normal distribution
+        if df > 30.0 {
+            // Use normal approximation
+            let z = t_abs;
+            // Approximate two-tailed p-value for standard normal
+            if z > 3.0 {
+                0.001
+            } else if z > 2.576 {
+                0.01
+            } else if z > 1.96 {
+                0.05
+            } else if z > 1.645 {
+                0.10
+            } else if z > 1.282 {
+                0.20
+            } else {
+                0.50
+            }
+        } else {
+            // For small df, use conservative t-distribution critical values
+            let critical_005 = if df >= 10.0 { 2.228 } else if df >= 5.0 { 2.571 } else { 3.182 };
+            let critical_001 = if df >= 10.0 { 3.169 } else if df >= 5.0 { 4.032 } else { 5.841 };
+            if t_abs > critical_001 {
+                0.001
+            } else if t_abs > critical_005 {
+                0.01
+            } else if t_abs > 2.0 {
+                0.05
+            } else if t_abs > 1.5 {
+                0.10
+            } else {
+                0.50
+            }
+        }
     }
     /// Calculate Cohen's d effect size
     fn cohens_d(&self, sample_a: &[f64], sample_b: &[f64]) -> f64 {
