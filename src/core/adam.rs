@@ -40,14 +40,14 @@ impl Default for AdamConfig {
             learning_rate: 0.1, // Higher learning rate for better convergence
             lr_schedule: "adaptive".to_string(),
             lr_decay: 0.999,
-            min_learning_rate: 1e-8,
-            gradient_clip: Some(10.0), // Tighter gradient clipping
+            min_learning_rate: 1e-12,
+            gradient_clip: Some(1.0), // Tighter gradient clipping
             beta1: 0.9,
-            beta2: 0.999,
-            epsilon: 1e-8,
+            beta2: 0.9999,
+            epsilon: 1e-12,
             weight_decay: 0.0,
             amsgrad: false,
-            max_line_search_iter: 10,
+            max_line_search_iter: 20,
             verbose: false,
         }
     }
@@ -236,22 +236,22 @@ impl AdamOptimizer {
             }
             "cosine" => {
                 let t = self.state.iteration as f64;
-                let cosine_decay = 0.5 * (1.0 + (std::f64::consts::PI * t / 1000.0).cos());
+                let cosine_decay = 0.5 * (1.0 + (std::f64::consts::PI * t / 10000.0).cos()); // Slower cosine decay
                 self.current_lr = self.config.min_learning_rate
                     + (self.config.learning_rate - self.config.min_learning_rate) * cosine_decay;
             }
             "adaptive" => {
-                // More conservative adaptive learning rate schedule
+                // More aggressive adaptive learning rate schedule for finding minima
                 if let (Some(prev_val), Some(curr_val)) = (self.prev_function_value, current_value)
                 {
                     let relative_improvement = (prev_val - curr_val) / prev_val.abs().max(1e-12);
 
-                    // Only reduce LR if function value is actually increasing or very small improvement
-                    if curr_val > prev_val || relative_improvement < 1e-8 {
+                    // Reduce LR more aggressively when improvement is small
+                    if curr_val > prev_val || relative_improvement < 1e-10 {
                         self.bad_step_count += 1;
-                        // Require more consecutive bad steps and use gentler reduction
-                        if self.bad_step_count >= 20 {
-                            self.current_lr *= 0.8; // Less aggressive reduction
+                        // Require fewer consecutive bad steps and use more aggressive reduction
+                        if self.bad_step_count >= 5 {
+                            self.current_lr *= 0.5; // More aggressive reduction
                             self.current_lr = self.current_lr.max(self.config.min_learning_rate);
                             self.bad_step_count = 0;
                             if self.config.verbose {
@@ -261,6 +261,10 @@ impl AdamOptimizer {
                         }
                     } else {
                         self.bad_step_count = 0;
+                        // Optionally increase learning rate when making good progress
+                        if relative_improvement > 1e-6 && self.current_lr < self.config.learning_rate * 0.1 {
+                            self.current_lr = (self.current_lr * 1.1).min(self.config.learning_rate * 0.1);
+                        }
                     }
                 }
             }
@@ -356,23 +360,21 @@ impl AdamOptimizer {
     ) -> CandleResult<ConvergenceInfo> {
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
 
-        // More reasonable convergence criteria: gradient norm is primary, function change is secondary
-        let grad_tolerance = 1e-6;
-        let func_tolerance = 1e-12;
+        // Tighter convergence criteria to find better minima
+        let grad_tolerance = 1e-10;
+        let func_tolerance = 1e-15;
 
         let grad_converged = gradient_norm < grad_tolerance;
         let func_converged = function_change
             .map(|change| change.abs() < func_tolerance)
             .unwrap_or(false);
 
-        // Primary convergence criterion is gradient norm, but also consider function change
-        // If gradient norm is very small, we're converged regardless of function change
-        // If gradient norm is moderately small and function change is also small, we're converged
-        let converged = if gradient_norm < 1e-8 {
-            // Very small gradient norm - definitely converged
+        // Stricter convergence criteria - require both gradient and function change to be small
+        let converged = if gradient_norm < 1e-12 {
+            // Extremely small gradient norm - definitely converged
             true
         } else if grad_converged {
-            // Moderately small gradient norm - check function change too
+            // Small gradient norm - require function change to also be small
             function_change
                 .map(|change| change.abs() < func_tolerance)
                 .unwrap_or(true)
