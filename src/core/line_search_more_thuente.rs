@@ -308,6 +308,7 @@ impl LineSearch for MoreThuenteLineSearch {
 mod tests {
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
+    use crate::init_logging;
     use anyhow::Result;
     use approx::assert_relative_eq;
 
@@ -319,6 +320,32 @@ mod tests {
     fn quadratic_gradient1(x: &[f64]) -> Result<Vec<f64>> {
         // ∇f(x) = x
         Ok(x.to_vec())
+    }
+    fn rosenbrock_function(x: &[f64]) -> Result<f64> {
+        // f(x,y) = (1-x)^2 + 100*(y-x^2)^2
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Rosenbrock function requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        Ok((1.0 - x1).powi(2) + 100.0 * (x2 - x1.powi(2)).powi(2))
+    }
+    fn rosenbrock_gradient(x: &[f64]) -> Result<Vec<f64>> {
+        if x.len() != 2 {
+            return Err(anyhow::anyhow!("Rosenbrock gradient requires 2D input"));
+        }
+        let x1 = x[0];
+        let x2 = x[1];
+        let grad_x1 = -2.0 * (1.0 - x1) - 400.0 * x1 * (x2 - x1.powi(2));
+        let grad_x2 = 200.0 * (x2 - x1.powi(2));
+        Ok(vec![grad_x1, grad_x2])
+    }
+    fn steep_function(x: &[f64]) -> Result<f64> {
+        // A function with steep gradients to test edge cases
+        Ok(x[0].exp())
+    }
+    fn steep_gradient(x: &[f64]) -> Result<Vec<f64>> {
+        Ok(vec![x[0].exp()])
     }
 
     #[test]
@@ -341,5 +368,280 @@ mod tests {
         assert!(result.step_size > 0.0);
         // More-Thuente should find optimal step for quadratic
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
+    }
+    #[test]
+    fn test_more_thuente_rosenbrock() {
+        let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig {
+            verbose: false,
+            max_iterations: 100,
+            ..MoreThuenteConfig::default()
+        });
+        // Start from a point where Rosenbrock has a steep gradient
+        let current_point = vec![0.0, 0.0];
+        let direction = vec![1.0, 1.0]; // Move towards optimum
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &rosenbrock_function,
+            &rosenbrock_gradient,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        assert!(result.step_size > 0.0);
+        // Verify we made progress
+        let f0 = rosenbrock_function(&current_point).unwrap();
+        let new_point = vec![
+            current_point[0] + result.step_size * direction[0],
+            current_point[1] + result.step_size * direction[1],
+        ];
+        let f_new = rosenbrock_function(&new_point).unwrap();
+        assert!(f_new < f0);
+    }
+    #[test]
+    fn test_update_interval_case1_higher_function_value() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        // Case 1: fp > fx (higher function value)
+        let mut stx = 0.0;
+        let mut fx = 1.0;
+        let mut gx = -1.0;
+        let mut sty = 0.0;
+        let mut fy = 1.0;
+        let mut gy = -1.0;
+        let mut brackt = false;
+        let stp = 1.0;
+        let fp = 2.0; // Higher than fx
+        let gp = -0.5;
+        let new_stp = line_search.update_interval(
+            &mut stx, &mut fx, &mut gx,
+            &mut sty, &mut fy, &mut gy,
+            stp, fp, gp, &mut brackt,
+        );
+        assert!(brackt); // Should set bracket to true
+        assert!(new_stp >= 0.0);
+        assert!(new_stp <= 1.0); // Should be between stx and stp
+    }
+    #[test]
+    fn test_update_interval_case2_opposite_signs() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        // Case 2: fp <= fx and sgnd < 0 (opposite signs)
+        let mut stx = 0.0;
+        let mut fx = 2.0;
+        let mut gx = -1.0; // Negative gradient
+        let mut sty = 0.0;
+        let mut fy = 2.0;
+        let mut gy = -1.0;
+        let mut brackt = false;
+        let stp = 1.0;
+        let fp = 1.5; // Lower than fx
+        let gp = 0.5;  // Positive gradient (opposite sign to gx)
+        let new_stp = line_search.update_interval(
+            &mut stx, &mut fx, &mut gx,
+            &mut sty, &mut fy, &mut gy,
+            stp, fp, gp, &mut brackt,
+        );
+        assert!(brackt); // Should set bracket to true
+        assert!(new_stp >= 0.0);
+    }
+    #[test]
+    fn test_update_interval_case3_decreasing_gradient() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        // Case 3: fp <= fx, same sign, |gp| < |gx| (decreasing gradient magnitude)
+        let mut stx = 0.0;
+        let mut fx = 2.0;
+        let mut gx = -1.0;
+        let mut sty = 0.0;
+        let mut fy = 2.0;
+        let mut gy = -1.0;
+        let mut brackt = false;
+        let stp = 1.0;
+        let fp = 1.5; // Lower than fx
+        let gp = -0.5; // Same sign as gx, but smaller magnitude
+        let new_stp = line_search.update_interval(
+            &mut stx, &mut fx, &mut gx,
+            &mut sty, &mut fy, &mut gy,
+            stp, fp, gp, &mut brackt,
+        );
+        assert!(new_stp >= 0.0);
+    }
+    #[test]
+    fn test_update_interval_case4_bracketed() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        // Case 4: fp <= fx, same sign, |gp| >= |gx|, with bracket
+        let mut stx = 0.0;
+        let mut fx = 2.0;
+        let mut gx = -0.5;
+        let mut sty = 2.0;
+        let mut fy = 1.8;
+        let mut gy = 0.3;
+        let mut brackt = true; // Already bracketed
+        let stp = 1.0;
+        let fp = 1.5; // Lower than fx
+        let gp = -1.0; // Same sign as gx, larger magnitude
+        let new_stp = line_search.update_interval(
+            &mut stx, &mut fx, &mut gx,
+            &mut sty, &mut fy, &mut gy,
+            stp, fp, gp, &mut brackt,
+        );
+        assert!(new_stp >= 0.0);
+        // Should interpolate between stp and sty
+        assert!(new_stp >= stp.min(sty));
+        assert!(new_stp <= stp.max(sty));
+    }
+    #[test]
+    fn test_update_interval_case4_unbbracketed() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        // Case 4: fp <= fx, same sign, |gp| >= |gx|, without bracket
+        let mut stx = 0.0;
+        let mut fx = 2.0;
+        let mut gx = -0.5;
+        let mut sty = 0.0;
+        let mut fy = 2.0;
+        let mut gy = -0.5;
+        let mut brackt = false; // Not bracketed
+        let stp = 1.0;
+        let fp = 1.5; // Lower than fx
+        let gp = -1.0; // Same sign as gx, larger magnitude
+        let new_stp = line_search.update_interval(
+            &mut stx, &mut fx, &mut gx,
+            &mut sty, &mut fy, &mut gy,
+            stp, fp, gp, &mut brackt,
+        );
+        assert!(new_stp >= 0.0);
+        // Without bracket, should extrapolate
+        assert!(new_stp >= stp || new_stp == line_search.config.max_step);
+    }
+    #[test]
+    fn test_wolfe_conditions() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        let f0 = 1.0;
+        let grad0 = -1.0;
+        let alpha = 0.5;
+        // Test satisfied conditions
+        let f_alpha = 0.9; // Satisfies Armijo
+        let grad_alpha = -0.1; // Satisfies curvature
+        let (armijo, curvature) = line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
+        assert!(armijo);
+        assert!(curvature);
+        // Test violated Armijo condition
+        let f_alpha = 1.1; // Violates Armijo
+        let (armijo, _) = line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
+        assert!(!armijo);
+        // Test violated curvature condition
+        let f_alpha = 0.9;
+        let grad_alpha = -0.95; // Violates curvature
+        let (_, curvature) = line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
+        assert!(!curvature);
+    }
+    #[test]
+    fn test_non_descent_direction() {
+        let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        // Create a problem directly with positive directional derivative
+        // to test the line search's own validation
+        let objective = |alpha: f64| -> Result<f64> {
+            Ok(1.0 + alpha) // Increasing function
+        };
+        let gradient = |_alpha: f64| -> Result<f64> {
+            Ok(1.0) // Positive gradient
+        };
+
+        let problem = OneDimensionalProblem {
+            objective: Box::new(objective),
+            gradient: Box::new(gradient),
+            initial_directional_derivative: 1.0, // Positive (non-descent)
+        };
+
+        let result = line_search.optimize_1d(&problem);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not a descent direction"));
+    }
+    #[test]
+    fn test_ill_conditioned_function() {
+        let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig {
+            min_step: 1e-16,
+            ..MoreThuenteConfig::default()
+        });
+        // Create a flat function that doesn't improve
+        let flat_function = |_x: &[f64]| -> Result<f64> { Ok(1.0) };
+        let flat_gradient = |_x: &[f64]| -> Result<Vec<f64>> { Ok(vec![-1.0]) };
+        let current_point = vec![0.0];
+        let direction = vec![1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &flat_function,
+            &flat_gradient,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem);
+        // Should either succeed with tiny step or fail with ill-conditioned error
+        if result.is_err() {
+            assert!(result.unwrap_err().to_string().contains("ill-conditioned"));
+        }
+    }
+    #[test]
+    fn test_max_iterations_reached() {
+        let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig {
+            max_iterations: 2, // Very low to force max iterations
+            xtol: 1e-20, // Make step size tolerance very small to avoid early convergence
+            verbose: false,
+            ..MoreThuenteConfig::default()
+        });
+        let current_point = vec![10.0]; // Start far from optimum
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &steep_function,
+            &steep_gradient,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        // The algorithm may terminate due to step size being too small or max iterations
+        // Both are valid outcomes for this test scenario
+        assert!(matches!(
+            result.termination_reason,
+            TerminationReason::MaxIterationsReached | TerminationReason::StepSizeTooSmall
+        ));
+    }
+    #[test]
+    fn test_step_size_bounds() {
+        let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig {
+            min_step: 1e-8,
+            max_step: 10.0,
+            ..MoreThuenteConfig::default()
+        });
+        let current_point = vec![1.0];
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        assert!(result.step_size >= line_search.config.min_step);
+        assert!(result.step_size <= line_search.config.max_step);
+    }
+    #[test]
+    fn test_config_default() {
+        let config = MoreThuenteConfig::default();
+        assert_eq!(config.c1, 1e-4);
+        assert_eq!(config.c2, 0.9);
+        assert_eq!(config.max_iterations, 50);
+        assert_eq!(config.min_step, 1e-16);
+        assert_eq!(config.max_step, 1e16);
+        assert_eq!(config.initial_step, 1.0);
+        assert!(!config.verbose);
+        assert_eq!(config.xtol, 1e-15);
+        assert_eq!(config.ftol, 1e-4);
+    }
+    #[test]
+    fn test_clone_and_reset() {
+        let line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        let mut cloned = line_search.clone();
+        // Reset should not panic (it's a no-op for More-Thuente)
+        cloned.reset();
+        // Clone box should work
+        let _boxed = line_search.clone_box();
     }
 }

@@ -281,6 +281,7 @@ impl LineSearch for CubicQuadraticLineSearch {
 mod tests {
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
+    use crate::init_logging;
     use approx::assert_relative_eq;
 
     fn quadratic_function(x: &[f64]) -> anyhow::Result<f64> {
@@ -291,6 +292,172 @@ mod tests {
     fn quadratic_gradient1(x: &[f64]) -> anyhow::Result<Vec<f64>> {
         // ∇f(x) = x
         Ok(x.to_vec())
+    }
+    #[test]
+    fn test_cubic_interpolate_basic() {
+        let line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig::default());
+        // Test with a simple cubic function: f(x) = x^3 - 2x^2 + x
+        // f'(x) = 3x^2 - 4x + 1
+        let a = 0.0;
+        let fa = 0.0; // f(0) = 0
+        let ga = 1.0; // f'(0) = 1
+        let b = 2.0;
+        let fb = 2.0; // f(2) = 8 - 8 + 2 = 2
+        let gb = 5.0; // f'(2) = 12 - 8 + 1 = 5
+        let result = line_search.cubic_interpolate(a, fa, ga, b, fb, gb);
+        assert!(result.is_some());
+        let t = result.unwrap();
+        assert!(t > a && t < b);
+    }
+    #[test]
+    fn test_cubic_interpolate_edge_cases() {
+        let line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig::default());
+        // Test with identical points (should return None)
+        let result = line_search.cubic_interpolate(1.0, 2.0, 1.0, 1.0, 2.0, 1.0);
+        assert!(result.is_none());
+        // Test with negative discriminant (should return None)
+        // We need d1^2 - ga*gb < 0, so ga*gb > d1^2
+        // Let's use ga=10, gb=10 (so ga*gb=100) and make d1 small
+        // d1 = ga + gb - 3*(fa-fb)/h = 10 + 10 - 3*(fa-fb)/1 = 20 - 3*(fa-fb)
+        // To make d1^2 < 100, we need |d1| < 10, so |20 - 3*(fa-fb)| < 10
+        // This gives us 10 < 20 - 3*(fa-fb) < 30, so -10 < -3*(fa-fb) < 10
+        // Therefore -10/3 < fa-fb < 10/3, so let's use fa=0, fb=-1 (fa-fb=1)
+        // d1 = 20 - 3*1 = 17, d2_squared = 289 - 100 = 189 > 0 (still positive!)
+        // We need ga*gb to be much larger. Let's try ga=100, gb=100 (ga*gb=10000)
+        // d1 = 100 + 100 - 3*(0-(-1))/1 = 200 - 3 = 197
+        // d2_squared = 197^2 - 10000 = 38809 - 10000 = 28809 > 0 (still positive!)
+        // The issue is that d1 grows faster than we can make ga*gb grow
+        // Let's try a different approach: make d1 = 0 by choosing fa, fb carefully
+        // d1 = ga + gb - 3*(fa-fb)/h = 0, so ga + gb = 3*(fa-fb)/h
+        // With ga=6, gb=6, h=1: 12 = 3*(fa-fb), so fa-fb = 4
+        // Let's use fa=4, fb=0: d1 = 6 + 6 - 3*4 = 0, d2_squared = 0 - 36 = -36 < 0
+        let result = line_search.cubic_interpolate(0.0, 4.0, 6.0, 1.0, 0.0, 6.0);
+        assert!(result.is_none());
+        // To get zero denominator: gb - ga + 2*d2 = 0
+        // Let's use ga = gb (equal gradients) and make d2 = 0
+        // d2 = sqrt(d1^2 - ga*gb), so d1^2 = ga*gb makes d2 = 0
+        // d1 = ga + gb - 3*(fa-fb)/h
+        // With ga = gb = g, we need: (2g - 3*(fa-fb)/h)^2 = g^2
+        // This gives us: 2g - 3*(fa-fb)/h = ±g
+        // Case 1: 2g - 3*(fa-fb)/h = g => g = 3*(fa-fb)/h
+        // Case 2: 2g - 3*(fa-fb)/h = -g => 3g = 3*(fa-fb)/h => g = (fa-fb)/h
+
+        // Let's use Case 1: h=1, fa-fb=2, so g=6
+        let result = line_search.cubic_interpolate(0.0, 2.0, 6.0, 1.0, 0.0, 6.0);
+        // This gives d1 = 6 + 6 - 3*2 = 6, d2_squared = 36 - 36 = 0, d2 = 0
+        // denominator = 6 - 6 + 2*0 = 0
+        assert!(result.is_none());
+    }
+    #[test]
+    fn test_cubic_interpolate_safeguard() {
+        let config = CubicQuadraticConfig {
+            interpolation_safeguard: 0.3, // 30% minimum move
+            ..CubicQuadraticConfig::default()
+        };
+        let line_search = CubicQuadraticLineSearch::new(config);
+        // Create a case where interpolation would suggest a point too close to boundary
+        let a = 0.0;
+        let b = 1.0;
+        let result = line_search.cubic_interpolate(a, 1.0, -1.0, b, 0.5, -0.1);
+        if let Some(t) = result {
+            // Should be at least 30% away from boundaries
+            assert!(t >= a + 0.3 * (b - a));
+            assert!(t <= b - 0.3 * (b - a));
+        }
+    }
+    #[test]
+    fn test_quadratic_interpolate_basic() {
+        let line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig::default());
+        // Test with a simple quadratic function: f(x) = x^2 - 2x + 1
+        // f'(0) = -2, minimum at x = 1
+        let a = 0.0;
+        let fa = 1.0; // f(0) = 1
+        let ga = -2.0; // f'(0) = -2
+        let b = 2.0;
+        let fb = 1.0; // f(2) = 4 - 4 + 1 = 1
+        let result = line_search.quadratic_interpolate(a, fa, ga, b, fb);
+        assert!(result.is_some());
+        let t = result.unwrap();
+        // Should interpolate close to the minimum at x = 1
+        assert_relative_eq!(t, 1.0, epsilon = 0.1);
+    }
+    #[test]
+    fn test_quadratic_interpolate_edge_cases() {
+        let line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig::default());
+        // Test with identical points (should return None)
+        let result = line_search.quadratic_interpolate(1.0, 2.0, 1.0, 1.0, 2.0);
+        assert!(result.is_none());
+        // Test with zero denominator (linear function)
+        let result = line_search.quadratic_interpolate(0.0, 0.0, 1.0, 1.0, 1.0);
+        assert!(result.is_none());
+    }
+    #[test]
+    fn test_quadratic_interpolate_safeguard() {
+        let config = CubicQuadraticConfig {
+            interpolation_safeguard: 0.2, // 20% minimum move
+            ..CubicQuadraticConfig::default()
+        };
+        let line_search = CubicQuadraticLineSearch::new(config);
+        // Create a case where interpolation would suggest a point too close to boundary
+        let a = 0.0;
+        let b = 1.0;
+        let result = line_search.quadratic_interpolate(a, 1.0, -0.1, b, 0.99);
+        if let Some(t) = result {
+            // Should be at least 20% away from boundaries
+            assert!(t >= a + 0.2 * (b - a));
+            assert!(t <= b - 0.2 * (b - a));
+        }
+    }
+    #[test]
+    fn test_check_wolfe_conditions() {
+        let config = CubicQuadraticConfig {
+            c1: 1e-4,
+            c2: 0.9,
+            ..CubicQuadraticConfig::default()
+        };
+        let line_search = CubicQuadraticLineSearch::new(config);
+        let f0 = 1.0;
+        let g0 = -1.0; // descent direction
+        let alpha = 0.5;
+        // Test case where both conditions are satisfied
+        let f_alpha = 0.9; // satisfies Armijo: 0.9 <= 1.0 + 1e-4 * 0.5 * (-1.0)
+        let g_alpha = -0.1; // satisfies curvature: 0.1 <= 0.9 * 1.0
+        let (armijo, curvature) = line_search.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
+        assert!(armijo);
+        assert!(curvature);
+        // Test case where Armijo fails
+        let f_alpha = 1.1; // violates Armijo
+        let (armijo, _curvature) = line_search.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
+        assert!(!armijo);
+        // Test case where curvature fails
+        let f_alpha = 0.9;
+        let g_alpha = -0.95; // violates curvature: 0.95 > 0.9 * 1.0
+        let (armijo, curvature) = line_search.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
+        assert!(armijo);
+        assert!(!curvature);
+    }
+    #[test]
+    fn test_line_search_with_interpolation_fallback() {
+        let mut line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig {
+            initial_step: 2.0, // Start with a large step to trigger interpolation
+            verbose: false,
+            ..CubicQuadraticConfig::default()
+        });
+        // Use a function where large initial step will violate Armijo condition
+        let current_point = vec![1.0];
+        let direction = vec![-1.0];
+        // f(x) = x^2, so f(1 - 2*t) = (1-2t)^2 = 1 - 4t + 4t^2
+        // At t=2: f = 1 - 8 + 16 = 9 (much larger than f(0) = 1)
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem).unwrap();
+        assert!(result.success);
+        assert!(result.step_size > 0.0);
+        assert!(result.step_size < 2.0); // Should be smaller than initial step due to interpolation
     }
 
 

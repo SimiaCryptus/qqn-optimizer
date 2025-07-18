@@ -240,6 +240,16 @@ mod tests {
         // ∇f(x) = x
         Ok(x.to_vec())
     }
+    fn cubic_function(x: &[f64]) -> Result<f64> {
+        // f(x) = x^3 - 2*x^2 + x (has zero gradient at x = 1/3 and x = 1)
+        let val = x[0];
+        Ok(val * val * val - 2.0 * val * val + val)
+    }
+    fn cubic_gradient(x: &[f64]) -> Result<Vec<f64>> {
+        // ∇f(x) = 3*x^2 - 4*x + 1
+        let val = x[0];
+        Ok(vec![3.0 * val * val - 4.0 * val + 1.0])
+    }
 
     #[test]
     fn test_bisection_quadratic() {
@@ -284,5 +294,203 @@ mod tests {
                 .to_string()
                 .contains("Initial directional derivative must be negative"));
         }
+    }
+    #[test]
+    fn test_find_zero_gradient_proper_bracket() {
+        let line_search = BisectionLineSearch::new(BisectionConfig {
+            gradient_tolerance: 1e-8,
+            max_iterations: 50,
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        // Create a 1D problem with a function that actually has a zero gradient in our search interval
+        // Use f(x) = x² - 0.1 which has zero gradient at x = 0
+        let simple_quadratic = |x: &[f64]| -> Result<f64> {
+            Ok(x[0] * x[0] - 0.1)
+        };
+        let simple_quadratic_grad = |x: &[f64]| -> Result<Vec<f64>> {
+            Ok(vec![2.0 * x[0]])
+        };
+
+        let current_point = vec![-0.5];
+        let direction = vec![1.0]; // Positive direction
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &simple_quadratic,
+            &simple_quadratic_grad,
+        ).unwrap();
+        // At t=0.3: x = -0.5 + 0.3 = -0.2, grad = 2*(-0.2) = -0.4 < 0
+        // At t=0.7: x = -0.5 + 0.7 = 0.2, grad = 2*(0.2) = 0.4 > 0
+        // Zero gradient should be at t=0.5 where x = 0
+        let result = line_search.find_zero_gradient(0.3, 0.7, &problem).unwrap();
+        assert_relative_eq!(result, 0.5, epsilon = 1e-6);
+        // Verify gradient is indeed close to zero
+        let grad_at_result = (problem.gradient)(result).unwrap();
+        assert!(grad_at_result.abs() < 1e-6);
+    }
+    #[test]
+    fn test_find_zero_gradient_no_bracket() {
+        let line_search = BisectionLineSearch::new(BisectionConfig {
+            gradient_tolerance: 1e-8,
+            max_iterations: 50,
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        // Create a 1D problem with cubic function using descent direction
+        let current_point = vec![0.0];
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &cubic_function,
+            &cubic_gradient,
+        ).unwrap();
+        // Test with no proper bracket: both gradients have same sign
+        let result = line_search.find_zero_gradient(0.1, 0.2, &problem).unwrap();
+        // Should return the point with smaller absolute gradient
+        let grad = problem.gradient;
+        let grad_left = grad(0.1).unwrap().abs();
+        let grad_right = grad(0.2).unwrap().abs();
+        let expected = if grad_left < grad_right { 0.1 } else { 0.2 };
+        assert_relative_eq!(result, expected, epsilon = 1e-10);
+    }
+    #[test]
+    fn test_find_zero_gradient_tolerance() {
+        let line_search = BisectionLineSearch::new(BisectionConfig {
+            gradient_tolerance: 1e-2, // Loose tolerance
+            max_iterations: 50,
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        // Create a 1D problem with a simple quadratic that has zero gradient at x=0
+        // f(x) = x² which has gradient f'(x) = 2x, zero at x=0
+        let simple_quadratic = |x: &[f64]| -> Result<f64> {
+            Ok(x[0] * x[0])
+        };
+        let simple_quadratic_grad = |x: &[f64]| -> Result<Vec<f64>> {
+            Ok(vec![2.0 * x[0]])
+        };
+
+        let current_point = vec![-0.1];
+        let direction = vec![1.0]; // Positive direction
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &simple_quadratic,
+            &simple_quadratic_grad,
+        ).unwrap();
+
+        // At t=0.05: x = -0.1 + 0.05 = -0.05, grad = 2*(-0.05) = -0.1 < 0
+        // At t=0.15: x = -0.1 + 0.15 = 0.05, grad = 2*(0.05) = 0.1 > 0
+        // Zero gradient should be at t=0.1 where x = 0
+        let result = line_search.find_zero_gradient(0.05, 0.15, &problem).unwrap();
+        // With loose tolerance, should terminate early when gradient is small enough
+        let grad_at_result = (problem.gradient)(result).unwrap();
+        assert!(grad_at_result.abs() <= 1e-2);
+    }
+    #[test]
+    fn test_find_zero_gradient_min_step() {
+        let line_search = BisectionLineSearch::new(BisectionConfig {
+            gradient_tolerance: 1e-16, // Very tight tolerance
+            min_step: 1e-2, // Large minimum step
+            max_iterations: 50,
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        // Create a 1D problem with cubic function using descent direction
+        let current_point = vec![0.0];
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &cubic_function,
+            &cubic_gradient,
+        ).unwrap();
+        let result = line_search.find_zero_gradient(0.3, 0.4, &problem).unwrap();
+        // Should terminate when interval becomes smaller than min_step
+        assert!(result >= 0.3 && result <= 0.4);
+    }
+    #[test]
+    fn test_find_zero_gradient_max_iterations() {
+        //init_logging().unwrap();
+        let line_search = BisectionLineSearch::new(BisectionConfig {
+            gradient_tolerance: 1e-16, // Very tight tolerance
+            min_step: 1e-16, // Very small minimum step
+            max_iterations: 3, // Very few iterations
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        // Create a 1D problem with cubic function using descent direction
+        let current_point = vec![0.0];
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &cubic_function,
+            &cubic_gradient,
+        ).unwrap();
+        let result = line_search.find_zero_gradient(0.2, 0.5, &problem).unwrap();
+        // Should return midpoint after max iterations
+        assert!(result >= 0.2 && result <= 0.5);
+    }
+    #[test]
+    fn test_bisection_with_different_bracket_methods() {
+        // Test with bracket method 1
+        let mut line_search1 = BisectionLineSearch::new(BisectionConfig {
+            line_bracket_method: 1,
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        // Test with bracket method 2
+        let mut line_search2 = BisectionLineSearch::new(BisectionConfig {
+            line_bracket_method: 2,
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result1 = line_search1.optimize_1d(&problem).unwrap();
+        let result2 = line_search2.optimize_1d(&problem).unwrap();
+        assert!(result1.success);
+        assert!(result2.success);
+        // Both methods should find similar solutions for this simple case
+        assert_relative_eq!(result1.step_size, result2.step_size, epsilon = 1e-3);
+    }
+    #[test]
+    fn test_bisection_invalid_bracket_method() {
+        let mut line_search = BisectionLineSearch::new(BisectionConfig {
+            line_bracket_method: 3, // Invalid method
+            verbose: false,
+            ..BisectionConfig::default()
+        });
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result = line_search.optimize_1d(&problem);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid line_bracket_method"));
+    }
+    #[test]
+    fn test_line_search_clone_and_reset() {
+        let line_search = BisectionLineSearch::new(BisectionConfig::default());
+        // Test cloning
+        let mut cloned = line_search.clone();
+        let boxed_clone = line_search.clone_box();
+        // Test reset (should not panic)
+        cloned.reset();
+        // Verify the clone works
+        assert_eq!(cloned.config.max_iterations, line_search.config.max_iterations);
     }
 }

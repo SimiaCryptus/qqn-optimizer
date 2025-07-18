@@ -23,6 +23,16 @@ pub struct OneDimensionalProblem<'a> {
     pub initial_directional_derivative: f64,
 
 }
+impl<'a> Debug for OneDimensionalProblem<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OneDimensionalProblem")
+            .field("initial_directional_derivative", &self.initial_directional_derivative)
+            .field("objective", &"<closure>")
+            .field("gradient", &"<closure>")
+            .finish()
+    }
+}
+
 impl<'a> OneDimensionalProblem<'a> {
     pub fn new(
         objective: Box<dyn Fn(f64) -> Result<f64> + Send + Sync + 'a>,
@@ -166,7 +176,7 @@ pub struct LineSearchResult {
     pub termination_reason: TerminationReason,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TerminationReason {
     WolfeConditionsSatisfied,
     ArmijoConditionSatisfied,

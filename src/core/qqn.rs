@@ -1129,7 +1129,7 @@ mod tests {
     }
     #[test]
     fn test_qqn_step_with_quadratic_function() -> CandleResult<()> {
-        init_logging().unwrap();
+        //init_logging().unwrap();
         let device = Device::Cpu;
         let mut config = QQNConfig::default();
         config.verbose = false;
