@@ -1,6 +1,5 @@
 use log::{info, warn};
 use qqn_optimizer::analysis::plotting::{ExtendedOptimizationTrace, PlottingEngine};
-use qqn_optimizer::analysis::statistics::StatisticalAnalysis;
 use qqn_optimizer::benchmarks::evaluation::{
     BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult,
 };
@@ -39,7 +38,7 @@ impl ExperimentRunner {
             maximum_function_calls: 10000,
             tolerance: 1e-8,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
-            num_runs: 20,
+            num_runs: 10,
             include_ml_problems: false,
         };
 

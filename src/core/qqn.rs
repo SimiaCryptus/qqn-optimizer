@@ -264,10 +264,16 @@ impl QQNOptimizer {
             Ok(result)
         };
         let problem = create_1d_problem(Box::new(curve), &fn1, &fn2)
-            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
-
+            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)));
+        if problem.is_err() {
+            warn!("Failed to create 1D problem for line search: {}", problem.as_ref().err().unwrap());
+            return Err(Error::Msg(format!(
+                "Failed to create 1D problem for line search: {}",
+                problem.as_ref().err().unwrap()
+            )));
+        }
         // Perform line search
-        let result = match self.line_search.optimize_1d(&problem) {
+        let result = match self.line_search.optimize_1d(&problem?) {
             Ok(res) => res,
             Err(e) => {
                 warn!("Line search failed: {}", e);
@@ -557,23 +563,37 @@ impl Optimizer for QQNOptimizer {
         let lbfgs_direction = self
             .state
             .lbfgs_state
-            .compute_direction(params, &gradients)?;
+            .estimate_optimum(params, &gradients)?;
         self.log_tensor_data("L-BFGS Direction", &lbfgs_direction);
 
         // Check if L-BFGS direction is valid (i.e., all finite)
         if !Self::is_all_finite(&lbfgs_direction) {
-            self.state.iteration += 1;
-            return self.steepest_descent_step(
+            let result = self.steepest_descent_step(
                 params,
                 &gradients,
                 function.clone(),
                 "invalid L-BFGS direction",
-            );
+            )?;
+            self.state.iteration += 1;
+            return Ok(result);
         }
 
+        debug!("L-BFGS direction computed successfully: {:?}->{:?}", params, lbfgs_direction);
         let quadratic_path =
             self.create_quadratic_path(params, &gradients, &lbfgs_direction, function.clone())?;
-        let line_search_result = self.find_optimal_t_line_search(&quadratic_path.clone())?;
+        let line_search_result = self.find_optimal_t_line_search(&quadratic_path.clone());
+        if line_search_result.is_err() {
+            warn!("Line search failed: {}", line_search_result.as_ref().err().unwrap());
+            let result = self.steepest_descent_step(
+                params,
+                &gradients,
+                function.clone(),
+                "line search failure",
+            )?;
+            self.state.iteration += 1;
+            return Ok(result);
+        }
+        let line_search_result = line_search_result?;
         info!("Found optimal t = {:.3e}", line_search_result.step_size);
         self.log_scalar("Optimal t", line_search_result.step_size);
         self.log_line_search_details(line_search_result.step_size);
@@ -714,6 +734,10 @@ impl QuadraticPath {
         lbfgs_state: Arc<Mutex<LBFGSState>>,
         function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> Self {
+        let start_point = start_point
+            .iter()
+            .map(|t| t.clone().to_device(&Device::Cpu).unwrap())
+            .collect::<Vec<_>>();
         Self {
             start_point,
             negative_gradient,
@@ -819,8 +843,7 @@ impl QuadraticPath {
         let key = OrderedFloat(t);
         let position_cache = self.position_cache.lock().unwrap();
         let gradient_cache = self.gradient_cache.lock().unwrap();
-        if let (Some(position_f64), Some(gradient_f64)) =
-            (position_cache.get(&key), gradient_cache.get(&key))
+        if let (Some(position_f64), Some(gradient_f64)) = (position_cache.get(&key), gradient_cache.get(&key))
         {
             // We have both position and gradient for this t, update L-BFGS
             trace!("Updating L-BFGS state for t={}", t);
@@ -921,11 +944,6 @@ impl<'a> ParametricCurve for QuadraticPath {
             .function
             .gradient(&position_tensors)
             .map_err(|e| anyhow!("Failed to evaluate gradient: {}", e))?;
-
-        // Get the derivative of the quadratic path
-        let deriv = self
-            .derivative(t)
-            .map_err(|e| anyhow!("Failed to compute path derivative: {}", e))?;
 
         // Convert to f64 vector
         let gradient_f64: Vec<f64> = gradients
@@ -1111,6 +1129,7 @@ mod tests {
     }
     #[test]
     fn test_qqn_step_with_quadratic_function() -> CandleResult<()> {
+        init_logging().unwrap();
         let device = Device::Cpu;
         let mut config = QQNConfig::default();
         config.verbose = false;
@@ -1120,7 +1139,7 @@ mod tests {
         let mut params = vec![Tensor::from_slice(&[2.0, 3.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction::new());
         // Take a step
-        let result = optimizer.step(&mut params, function)?;
+        let _result = optimizer.step(&mut params, function)?;
         // Should move towards origin
         let values = params[0].to_vec1::<f64>()?;
         assert!(values[0].abs() < 2.0);
@@ -1152,7 +1171,7 @@ mod tests {
         let mut optimizer = QQNOptimizer::new(config);
         let mut params = vec![Tensor::from_slice(&[2.0, 3.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction::new());
-        let result = optimizer.step(&mut params, function)?;
+        let _result = optimizer.step(&mut params, function)?;
         // Should move towards origin
         let values = params[0].to_vec1::<f64>()?;
         assert!(values[0].abs() < 2.0);

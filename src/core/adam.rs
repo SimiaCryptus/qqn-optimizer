@@ -567,7 +567,6 @@ mod tests {
     use super::*;
     use crate::core::optimizer::Optimizer;
     use candle_core::{Device, Tensor};
-    use crate::init_logging;
 
     /// Simple quadratic function for testing: f(x) = 0.5 * ||x||^2
     struct QuadraticFunction;

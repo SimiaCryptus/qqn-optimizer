@@ -29,8 +29,8 @@ pub mod optimizer;
 pub mod qqn;
 pub use lbfgs::{LBFGSConfig, LBFGSOptimizer, LBFGSState};
 pub use line_search::{
-    BacktrackingConfig, BacktrackingLineSearch, LineSearch, LineSearchConfig, LineSearchMethod,
-    LineSearchResult, StrongWolfeConfig, StrongWolfeLineSearch, TerminationReason,
+    LineSearch, LineSearchConfig, LineSearchMethod,
+    LineSearchResult, TerminationReason,
 };
 pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
@@ -45,8 +45,17 @@ pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
 pub const DEFAULT_LBFGS_HISTORY: usize = 10;
 pub mod adam;
 pub mod gd;
+mod line_search_cubic_quadratic;
+mod line_search_golden_section;
+mod line_search_more_thuente;
+mod line_search_bisection;
+mod line_search_backtracking;
+pub(crate) mod line_search_strong_wolfe;
 
 pub use gd::{GDConfig, GDOptimizer, GDState};
+pub use line_search_backtracking::BacktrackingLineSearch;
+pub use line_search_strong_wolfe::StrongWolfeConfig;
+pub use line_search_strong_wolfe::StrongWolfeLineSearch;
 
 #[cfg(test)]
 mod tests {

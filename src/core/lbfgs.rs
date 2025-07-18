@@ -142,22 +142,22 @@ impl LBFGSState {
     }
 
     /// Compute the L-BFGS search direction using the two-loop recursion
-    pub fn compute_direction(
+    pub fn estimate_optimum(
         &mut self,
-        params: &[Tensor],
+        position: &[Tensor],
         gradient: &[Tensor],
     ) -> CandleResult<Vec<Tensor>> {
         // Validate input
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
         }
-        if params.is_empty() {
+        if position.is_empty() {
             return Err(candle_core::Error::Msg("Empty parameter vector".into()));
         }
-        if params.len() != gradient.len() {
+        if position.len() != gradient.len() {
             return Err(candle_core::Error::Msg(format!(
                 "Parameter and gradient dimension mismatch: {} vs {}",
-                params.len(),
+                position.len(),
                 gradient.len()
             )));
         }
@@ -192,7 +192,6 @@ impl LBFGSState {
         }
 
         if self.s_history.is_empty() {
-            // No history available, use steepest descent
             debug!("L-BFGS: No history, using steepest descent");
             return Ok(gradient
                 .iter()
@@ -362,10 +361,9 @@ impl LBFGSState {
         let s_k_norm = compute_magnitude(&s_k)?;
         if s_k_norm < self.epsilon() {
             debug!(
-                "L-BFGS: Parameter change too small ({}), skipping update",
-                s_k_norm
+                "L-BFGS: Parameter change too small ({:.6e}), {:?}={:?}-{:?}, skipping update",
+                s_k_norm, s_k, new_params, old_params
             );
-            self.prev_gradient = Some(new_gradient.to_vec());
             return Ok(());
         }
 
@@ -676,7 +674,7 @@ impl Optimizer for LBFGSOptimizer {
 
         // Compute L-BFGS search direction
         self.log_lbfgs_state("Before computing direction");
-        let search_direction = self.state.compute_direction(params, &gradients)?;
+        let search_direction = self.state.estimate_optimum(params, &gradients)?;
         self.log_tensor_data("L-BFGS Search Direction", &search_direction);
 
         // Validate search direction
@@ -1027,7 +1025,6 @@ mod tests {
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;
-    use std::sync::Mutex;
 
     impl DifferentiableFunction for RosenbrockFunction {
         fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
@@ -1081,7 +1078,7 @@ mod tests {
 
         let gradient = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
 
-        let direction = state.compute_direction(&params, &gradient)?;
+        let direction = state.estimate_optimum(&params, &gradient)?;
 
         // Should return negative gradient (steepest descent)
         let expected = vec![Tensor::from_slice(&[-1.0, -2.0], (2,), &device)?];
@@ -1136,7 +1133,7 @@ mod tests {
         // Now compute a direction with history
         let current_params = vec![Tensor::from_slice(&[-0.2, -0.4], &[2], &device)?];
         let grad3 = vec![Tensor::from_slice(&[0.8, 0.4], &[2], &device)?];
-        let direction = state.compute_direction(&current_params, &grad3)?;
+        let direction = state.estimate_optimum(&current_params, &grad3)?;
         // Direction should be different from steepest descent due to history
         let steepest_descent = vec![Tensor::from_slice(&[-0.8, -0.4], &[2], &device)?];
         let dir_values = direction[0].to_vec1::<f64>()?;
@@ -1244,8 +1241,7 @@ mod tests {
         let final_params = params[0].to_vec1::<f64>()?;
         assert!(final_params[0].abs() < 1e-4);
         assert!(final_params[1].abs() < 1e-4);
-        let result = optimizer.step(&mut params, function)?;
-        // Should converge close to [0, 0]
+        let _result = optimizer.step(&mut params, function)?;
         let final_params = params[0].to_vec1::<f64>()?;
         assert!(final_params[0].abs() < 1e-4);
         assert!(final_params[1].abs() < 1e-4);
@@ -1266,7 +1262,7 @@ mod tests {
         ];
         // Run optimization steps
         for i in 0..100 {
-            let result = optimizer.step(&mut params, (function.clone()))?;
+            let result = optimizer.step(&mut params, function.clone())?;
             // Check if we're making progress
             if i > 0 && result.step_size < 1e-10 {
                 break;
@@ -1388,7 +1384,7 @@ mod tests {
         // Empty gradient should return error
         let empty_gradient: Vec<Tensor> = vec![];
         let empty_params: Vec<Tensor> = vec![];
-        let result = state.compute_direction(&empty_params, &empty_gradient);
+        let result = state.estimate_optimum(&empty_params, &empty_gradient);
         assert!(result.is_err());
         Ok(())
     }
@@ -1423,7 +1419,7 @@ mod tests {
         // Very small gradient
         let params = vec![Tensor::from_slice(&[1.0, 1.0], &[2], &device)?];
         let gradient = vec![Tensor::from_slice(&[1e-12, 1e-12], &[2], &device)?];
-        let direction = state.compute_direction(&params, &gradient)?;
+        let direction = state.estimate_optimum(&params, &gradient)?;
         // Should still return a valid direction (negative gradient)
         let dir_values = direction[0].to_vec1::<f64>()?;
         assert!(dir_values[0].is_finite());
@@ -1440,7 +1436,7 @@ mod tests {
             Tensor::from_slice(&[1.0], &[1], &device)?,
             Tensor::from_slice(&[2.0], &[1], &device)?,
         ];
-        let result = state.compute_direction(&params, &gradient);
+        let result = state.estimate_optimum(&params, &gradient);
         assert!(result.is_err());
         Ok(())
     }

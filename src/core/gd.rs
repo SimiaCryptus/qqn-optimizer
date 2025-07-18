@@ -1,6 +1,6 @@
 use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 use crate::utils::math::DifferentiableFunction;
-use candle_core::{Device, Result as CandleResult, Tensor};
+use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -351,7 +351,6 @@ impl Optimizer for GDOptimizer {
         let update_norm = crate::utils::math::compute_magnitude(&update_direction)?;
         self.log_scalar("Update Norm", update_norm);
 
-        /// Apply the update: x_{k+1} = x_k - lr * update_direction
         for (param, update) in params.iter_mut().zip(update_direction.iter()) {
             let lr_tensor = Tensor::new(effective_lr, param.device())?;
             let step = update.broadcast_mul(&lr_tensor)?;
@@ -362,7 +361,7 @@ impl Optimizer for GDOptimizer {
         // Additional validation for challenging optimization landscapes
         let param_change_norm = {
             let mut changes = Vec::new();
-            for (old_param, new_param) in params.iter().zip(params.iter()) {
+            for (_old_param, _new_param) in params.iter().zip(params.iter()) {
                 // This is a simplified check - in practice you'd store old params
                 changes.push(update_direction[0].affine(effective_lr, 0.0)?);
             }
@@ -574,14 +573,11 @@ mod tests {
         ];
         // Take a few optimization steps
         for _ in 0..10 {
-            let result = optimizer.step(&mut params, function.clone())?;
+            let _result = optimizer.step(&mut params, function.clone())?;
         }
         for _ in 0..10 {
-            let result = optimizer.step(&mut params, function.clone())?;
+            let _result = optimizer.step(&mut params, function.clone())?;
         }
-        // Check that parameters moved towards zero
-        let x = params[0].to_vec1::<f64>()?[0];
-        let y = params[1].to_vec1::<f64>()?[0];
         Ok(())
     }
     #[test]
@@ -684,7 +680,7 @@ mod tests {
             Tensor::new(&[1.0f64], &Device::Cpu)?,
             Tensor::new(&[-1.0f64], &Device::Cpu)?,
         ];
-        let result = optimizer.step(&mut params, function)?;
+        let _result = optimizer.step(&mut params, function)?;
         // Check parameters were updated
         let x = params[0].to_vec1::<f64>()?[0];
         let y = params[1].to_vec1::<f64>()?[0];
@@ -893,8 +889,8 @@ mod tests {
         ];
         // Take many steps - should not diverge
         let mut last_finite = true;
-        for i in 0..100 {
-            let result = optimizer.step(&mut params, function.clone())?;
+        for _i in 0..100 {
+            let _result = optimizer.step(&mut params, function.clone())?;
             // Check that parameters remain finite
             let x = params[0].to_vec1::<f64>()?[0];
             let y = params[1].to_vec1::<f64>()?[0];

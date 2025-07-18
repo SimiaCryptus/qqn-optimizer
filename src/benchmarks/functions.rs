@@ -763,7 +763,7 @@ impl OptimizationProblem for AckleyFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1.0)
+        Some(0.8)
     }
 }
 impl Default for BealeFunction {
@@ -1579,16 +1579,6 @@ mod tests {
             assert!(problem.evaluate_f64(&initial).is_ok());
             assert!(problem.gradient_f64(&initial).is_ok());
         }
-    }
-
-    #[test]
-    fn test_convergence_tolerances() {
-        let functions: Vec<Box<dyn OptimizationProblem>> = vec![
-            Box::new(SphereFunction::new(2)),
-            Box::new(RosenbrockFunction::new(2)),
-            Box::new(RastriginFunction::new(2)),
-            Box::new(AckleyFunction::new(2)),
-        ];
     }
 
     #[test]

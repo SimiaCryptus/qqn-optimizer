@@ -6,7 +6,7 @@ pub mod utils;
 // Re-export commonly used types
 pub use core::{
     lbfgs::{LBFGSConfig, LBFGSOptimizer},
-    line_search::{BacktrackingConfig, LineSearchConfig, LineSearchMethod, StrongWolfeConfig},
+    line_search::{LineSearchConfig, LineSearchMethod},
     optimizer::{ConvergenceInfo, Optimizer, StepResult},
     qqn::{QQNConfig, QQNOptimizer},
 };
@@ -28,6 +28,8 @@ pub use analysis::{
 // Error types
 pub use anyhow::{Error, Result};
 
+// Re-export commonly used types
+pub use self::core::line_search_strong_wolfe::StrongWolfeConfig;
 pub use crate::core::adam::{AdamConfig, AdamOptimizer, AdamState};
 
 /// Current version of the QQN optimizer framework
