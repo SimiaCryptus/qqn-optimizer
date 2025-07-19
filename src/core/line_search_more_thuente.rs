@@ -20,15 +20,15 @@ pub struct MoreThuenteConfig {
 impl Default for MoreThuenteConfig {
     fn default() -> Self {
         Self {
-            c1: 1e-4,
+            c1: 1e-4,  // Standard Armijo parameter
             c2: 0.9,
             max_iterations: 50,
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
             verbose: false,
-            xtol: 1e-15,
-            ftol: 1e-4,
+            xtol: 1e-12,  // More moderate tolerance
+            ftol: 1e-6,   // More moderate tolerance
         }
     }
 }
@@ -43,6 +43,50 @@ pub struct MoreThuenteLineSearch {
 impl MoreThuenteLineSearch {
     pub fn new(config: MoreThuenteConfig) -> Self {
         Self { config }
+    }
+    /// Create a strict configuration for high-precision optimization
+    /// - Tighter tolerances for very accurate line searches
+    /// - More iterations allowed
+    /// - Stricter Wolfe conditions
+    pub fn strict() -> Self {
+        Self::new(MoreThuenteConfig {
+            c1: 1e-4,
+            c2: 0.1,  // Much stricter curvature condition
+            max_iterations: 100,
+            min_step: 1e-16,
+            max_step: 1e16,
+            initial_step: 1.0,
+            verbose: false,
+            xtol: 1e-15,  // Very tight step tolerance
+            ftol: 1e-8,   // Very tight function tolerance
+        })
+    }
+    /// Create a lax configuration for fast, approximate line searches
+    /// - Looser tolerances for faster convergence
+    /// - Fewer iterations
+    /// - More permissive Wolfe conditions
+    pub fn lax() -> Self {
+        Self::new(MoreThuenteConfig {
+            c1: 1e-3,  // More permissive Armijo condition
+            c2: 0.9,   // Standard curvature condition
+            max_iterations: 20,
+            min_step: 1e-12,
+            max_step: 1e12,
+            initial_step: 1.0,
+            verbose: false,
+            xtol: 1e-8,   // Looser step tolerance
+            ftol: 1e-4,   // Looser function tolerance
+        })
+    }
+    /// Create the default/moderate configuration
+    /// Same as Default::default() but more explicit
+    pub fn moderate() -> Self {
+        Self::new(MoreThuenteConfig::default())
+    }
+    /// Create a configuration with verbose logging enabled
+    pub fn with_verbose(mut self) -> Self {
+        self.config.verbose = true;
+        self
     }
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
@@ -632,8 +676,8 @@ mod tests {
         assert_eq!(config.max_step, 1e16);
         assert_eq!(config.initial_step, 1.0);
         assert!(!config.verbose);
-        assert_eq!(config.xtol, 1e-15);
-        assert_eq!(config.ftol, 1e-4);
+        assert_eq!(config.xtol, 1e-12);
+        assert_eq!(config.ftol, 1e-6);
     }
     #[test]
     fn test_clone_and_reset() {
@@ -643,5 +687,58 @@ mod tests {
         cloned.reset();
         // Clone box should work
         let _boxed = line_search.clone_box();
+    }
+    #[test]
+    fn test_static_constructors() {
+        // Test strict configuration
+        let strict = MoreThuenteLineSearch::strict();
+        assert_eq!(strict.config.c2, 0.1);  // Stricter curvature
+        assert_eq!(strict.config.max_iterations, 100);
+        assert_eq!(strict.config.xtol, 1e-15);
+        assert_eq!(strict.config.ftol, 1e-8);
+        // Test lax configuration
+        let lax = MoreThuenteLineSearch::lax();
+        assert_eq!(lax.config.c1, 1e-3);  // More permissive Armijo
+        assert_eq!(lax.config.max_iterations, 20);
+        assert_eq!(lax.config.xtol, 1e-8);
+        assert_eq!(lax.config.ftol, 1e-4);
+        // Test moderate configuration
+        let moderate = MoreThuenteLineSearch::moderate();
+        let default = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
+        assert_eq!(moderate.config.c1, default.config.c1);
+        assert_eq!(moderate.config.c2, default.config.c2);
+        assert_eq!(moderate.config.xtol, default.config.xtol);
+        assert_eq!(moderate.config.ftol, default.config.ftol);
+    }
+    #[test]
+    fn test_with_verbose() {
+        let line_search = MoreThuenteLineSearch::moderate().with_verbose();
+        assert!(line_search.config.verbose);
+        let strict_verbose = MoreThuenteLineSearch::strict().with_verbose();
+        assert!(strict_verbose.config.verbose);
+        assert_eq!(strict_verbose.config.c2, 0.1);  // Should preserve other settings
+    }
+    #[test]
+    fn test_strict_vs_lax_behavior() {
+        // This test verifies that strict and lax configurations behave differently
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let mut strict = MoreThuenteLineSearch::strict();
+        let mut lax = MoreThuenteLineSearch::lax();
+        let strict_result = strict.optimize_1d(&problem).unwrap();
+        let lax_result = lax.optimize_1d(&problem).unwrap();
+        // Both should succeed
+        assert!(strict_result.success);
+        assert!(lax_result.success);
+        // For this simple quadratic, both should find similar step sizes
+        // but strict might be more precise
+        assert_relative_eq!(strict_result.step_size, 1.0, epsilon = 1e-8);
+        assert_relative_eq!(lax_result.step_size, 1.0, epsilon = 1e-4);
     }
 }

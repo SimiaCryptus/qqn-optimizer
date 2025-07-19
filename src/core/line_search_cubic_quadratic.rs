@@ -22,8 +22,8 @@ impl Default for CubicQuadraticConfig {
     fn default() -> Self {
         Self {
             c1: 1e-4,
-            c2: 0.9,
-            max_iterations: 50,
+            c2: 0.1,
+            max_iterations: 20,
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
@@ -43,6 +43,52 @@ pub struct CubicQuadraticLineSearch {
 
 impl CubicQuadraticLineSearch {
     pub fn new(config: CubicQuadraticConfig) -> Self {
+        Self { config }
+    }
+    /// Create a strict configuration for high-precision optimization
+    /// - Stricter Wolfe conditions (c1=1e-4, c2=0.1)
+    /// - More iterations allowed (50)
+    /// - Smaller safeguards for more precise interpolation
+    /// - Conservative extrapolation
+    pub fn strict() -> Self {
+        Self {
+            config: CubicQuadraticConfig {
+                c1: 1e-4,
+                c2: 0.1,
+                max_iterations: 50,
+                min_step: 1e-16,
+                max_step: 1e16,
+                initial_step: 1.0,
+                verbose: false,
+                interpolation_safeguard: 0.05,
+                extrapolation_factor: 1.5,
+                line_bracket_method: 1,
+            }
+        }
+    }
+    /// Create a lax configuration for faster, less precise optimization
+    /// - Relaxed Wolfe conditions (c1=1e-3, c2=0.9)
+    /// - Fewer iterations (10)
+    /// - Larger safeguards for more robust interpolation
+    /// - Aggressive extrapolation
+    pub fn lax() -> Self {
+        Self {
+            config: CubicQuadraticConfig {
+                c1: 1e-3,
+                c2: 0.9,
+                max_iterations: 10,
+                min_step: 1e-12,
+                max_step: 1e12,
+                initial_step: 1.0,
+                verbose: false,
+                interpolation_safeguard: 0.2,
+                extrapolation_factor: 3.0,
+                line_bracket_method: 1,
+            }
+        }
+    }
+    /// Create with custom configuration
+    pub fn with_config(config: CubicQuadraticConfig) -> Self {
         Self { config }
     }
     fn log_verbose(&self, message: &str) {
@@ -481,5 +527,52 @@ mod tests {
         assert!(result.step_size > 0.0);
         // Cubic/quadratic interpolation should find good step
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
+    }
+    #[test]
+    fn test_strict_configuration() {
+        let line_search = CubicQuadraticLineSearch::strict();
+        assert_eq!(line_search.config.c1, 1e-4);
+        assert_eq!(line_search.config.c2, 0.1);
+        assert_eq!(line_search.config.max_iterations, 50);
+        assert_eq!(line_search.config.interpolation_safeguard, 0.05);
+        assert_eq!(line_search.config.extrapolation_factor, 1.5);
+    }
+    #[test]
+    fn test_lax_configuration() {
+        let line_search = CubicQuadraticLineSearch::lax();
+        assert_eq!(line_search.config.c1, 1e-3);
+        assert_eq!(line_search.config.c2, 0.9);
+        assert_eq!(line_search.config.max_iterations, 10);
+        assert_eq!(line_search.config.interpolation_safeguard, 0.2);
+        assert_eq!(line_search.config.extrapolation_factor, 3.0);
+    }
+    #[test]
+    fn test_strict_vs_lax_behavior() {
+        let current_point = vec![2.0, 3.0];
+        let direction = vec![-2.0, -3.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        // Test strict configuration
+        let mut strict_search = CubicQuadraticLineSearch::strict();
+        let strict_result = strict_search.optimize_1d(&problem).unwrap();
+        // Test lax configuration  
+        let mut lax_search = CubicQuadraticLineSearch::lax();
+        let lax_result = lax_search.optimize_1d(&problem).unwrap();
+        // Both should succeed
+        assert!(strict_result.success);
+        assert!(lax_result.success);
+        // Both should find reasonable step sizes
+        assert!(strict_result.step_size > 0.0);
+        assert!(lax_result.step_size > 0.0);
+    }
+    #[test]
+    fn test_with_config() {
+        let custom_config = CubicQuadraticConfig { c1: 1e-5, ..CubicQuadraticConfig::default() };
+        let line_search = CubicQuadraticLineSearch::with_config(custom_config);
+        assert_eq!(line_search.config.c1, 1e-5);
     }
 }

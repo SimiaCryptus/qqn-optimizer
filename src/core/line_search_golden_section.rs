@@ -17,7 +17,7 @@ pub struct GoldenSectionConfig {
 impl Default for GoldenSectionConfig {
     fn default() -> Self {
         Self {
-            max_iterations: 100,
+            max_iterations: 50,
             tolerance: 1e-8,
             min_step: 1e-16,
             max_step: 1e16,
@@ -26,6 +26,42 @@ impl Default for GoldenSectionConfig {
         }
     }
 }
+impl GoldenSectionConfig {
+    /// Create a strict configuration for high-precision optimization
+    /// - Higher iteration limit for thorough search
+    /// - Tighter tolerance for precise convergence
+    /// - Smaller minimum step for fine-grained control
+    pub fn strict() -> Self {
+        Self {
+            max_iterations: 200,
+            tolerance: 1e-12,
+            min_step: 1e-20,
+            max_step: 1e10,
+            initial_step: 1.0,
+            verbose: false,
+        }
+    }
+    /// Create a lax configuration for fast, approximate optimization
+    /// - Lower iteration limit for speed
+    /// - Looser tolerance for quick convergence
+    /// - Larger minimum step to avoid getting stuck
+    pub fn lax() -> Self {
+        Self {
+            max_iterations: 20,
+            tolerance: 1e-4,
+            min_step: 1e-10,
+            max_step: 1e20,
+            initial_step: 1.0,
+            verbose: false,
+        }
+    }
+    /// Create a configuration with verbose logging enabled
+    pub fn with_verbose(mut self) -> Self {
+        self.verbose = true;
+        self
+    }
+}
+
 
 /// Golden Section line search implementation
 /// Uses the golden ratio to narrow down the interval containing the minimum
@@ -395,13 +431,42 @@ mod tests {
     #[test]
     fn test_golden_section_config_default() {
         let config = GoldenSectionConfig::default();
-        assert_eq!(config.max_iterations, 100);
+        assert_eq!(config.max_iterations, 50);
         assert_eq!(config.tolerance, 1e-8);
         assert_eq!(config.min_step, 1e-16);
         assert_eq!(config.max_step, 1e16);
         assert_eq!(config.initial_step, 1.0);
         assert!(!config.verbose);
     }
+    #[test]
+    fn test_golden_section_config_strict() {
+        let config = GoldenSectionConfig::strict();
+        assert_eq!(config.max_iterations, 200);
+        assert_eq!(config.tolerance, 1e-12);
+        assert_eq!(config.min_step, 1e-20);
+        assert_eq!(config.max_step, 1e10);
+        assert_eq!(config.initial_step, 1.0);
+        assert!(!config.verbose);
+    }
+    #[test]
+    fn test_golden_section_config_lax() {
+        let config = GoldenSectionConfig::lax();
+        assert_eq!(config.max_iterations, 20);
+        assert_eq!(config.tolerance, 1e-4);
+        assert_eq!(config.min_step, 1e-10);
+        assert_eq!(config.max_step, 1e20);
+        assert_eq!(config.initial_step, 1.0);
+        assert!(!config.verbose);
+    }
+    #[test]
+    fn test_golden_section_config_with_verbose() {
+        let config = GoldenSectionConfig::default().with_verbose();
+        assert!(config.verbose);
+        let strict_verbose = GoldenSectionConfig::strict().with_verbose();
+        assert!(strict_verbose.verbose);
+        assert_eq!(strict_verbose.max_iterations, 200);
+    }
+
     #[test]
     fn test_golden_section_clone_and_reset() {
         let line_search = GoldenSectionLineSearch::new(GoldenSectionConfig::default());

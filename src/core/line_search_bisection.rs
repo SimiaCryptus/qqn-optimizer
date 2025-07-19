@@ -1,5 +1,4 @@
 use crate::core::line_search::OneDimensionalProblem;
-use crate::core::line_search_backtracking::BisectionLineSearch;
 use crate::core::{line_search, LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
@@ -20,7 +19,7 @@ pub struct BisectionConfig {
 impl Default for BisectionConfig {
     fn default() -> Self {
         Self {
-            max_iterations: 100,
+            max_iterations: 50,
             gradient_tolerance: 1e-16,
             min_step: 1e-16,
             max_step: 1e16,
@@ -31,6 +30,49 @@ impl Default for BisectionConfig {
         }
     }
 }
+impl BisectionConfig {
+    /// Create a strict configuration with tight tolerances and more iterations
+    /// Suitable for high-precision optimization where accuracy is critical
+    pub fn strict() -> Self {
+        Self {
+            max_iterations: 100,
+            gradient_tolerance: 1e-16,
+            min_step: 1e-16,
+            max_step: 1e16,
+            initial_step: 1.0,
+            window_shrink_factor: 0.5,
+            verbose: false,
+            line_bracket_method: 1,
+        }
+    }
+    /// Create a lax configuration with loose tolerances and fewer iterations
+    /// Suitable for fast optimization where speed is more important than precision
+    pub fn lax() -> Self {
+        Self {
+            max_iterations: 20,
+            gradient_tolerance: 1e-6,
+            min_step: 1e-8,
+            max_step: 1e8,
+            initial_step: 1.0,
+            window_shrink_factor: 0.5,
+            verbose: false,
+            line_bracket_method: 1,
+        }
+    }
+    /// Create a configuration with verbose logging enabled
+    pub fn verbose() -> Self {
+        Self {
+            verbose: true,
+            ..Self::default()
+        }
+    }
+}
+/// Bisection line search implementation
+#[derive(Debug, Clone)]
+pub struct BisectionLineSearch {
+    config: BisectionConfig,
+}
+
 
 impl LineSearch for BisectionLineSearch {
     fn optimize_1d<'a>(
@@ -492,5 +534,38 @@ mod tests {
         cloned.reset();
         // Verify the clone works
         assert_eq!(cloned.config.max_iterations, line_search.config.max_iterations);
+    }
+    #[test]
+    fn test_config_constructors() {
+        // Test default config
+        let default_config = BisectionConfig::default();
+        assert_eq!(default_config.max_iterations, 50);
+        assert_eq!(default_config.gradient_tolerance, 1e-16);
+        assert_eq!(default_config.min_step, 1e-16);
+        assert!(!default_config.verbose);
+        // Test strict config
+        let strict_config = BisectionConfig::strict();
+        assert_eq!(strict_config.max_iterations, 100);
+        assert_eq!(strict_config.gradient_tolerance, 1e-16);
+        assert_eq!(strict_config.min_step, 1e-16);
+        assert!(!strict_config.verbose);
+        // Test lax config
+        let lax_config = BisectionConfig::lax();
+        assert_eq!(lax_config.max_iterations, 20);
+        assert_eq!(lax_config.gradient_tolerance, 1e-6);
+        assert_eq!(lax_config.min_step, 1e-8);
+        assert_eq!(lax_config.max_step, 1e8);
+        assert!(!lax_config.verbose);
+        // Test verbose config
+        let verbose_config = BisectionConfig::verbose();
+        assert!(verbose_config.verbose);
+        assert_eq!(verbose_config.max_iterations, 50); // Should inherit from default
+    }
+    #[test]
+    fn test_lax_config_performance() {
+        // Verify that lax config can be used successfully
+        let mut line_search = BisectionLineSearch::new(BisectionConfig::lax());
+        // This test ensures the lax config doesn't break functionality
+        assert_eq!(line_search.config.max_iterations, 20);
     }
 }

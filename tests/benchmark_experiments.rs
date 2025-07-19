@@ -272,6 +272,36 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "QQN-CubicQuadraticInterpolation".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::CubicQuadraticInterpolation,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-GoldenSection".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::GoldenSection,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-MoreThuente".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::MoreThuente,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
                 "L-BFGS".to_string(),
                 Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
             ),

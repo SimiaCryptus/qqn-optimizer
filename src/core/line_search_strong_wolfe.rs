@@ -19,7 +19,7 @@ pub struct StrongWolfeConfig {
 impl Default for StrongWolfeConfig {
     fn default() -> Self {
         Self {
-            c1: 1e-4,
+            c1: 1e-4,              // Standard Nocedal & Wright recommendation
             c2: 0.9,
             max_iterations: 50,
             min_step: 1e-16,
@@ -29,6 +29,46 @@ impl Default for StrongWolfeConfig {
         }
     }
 }
+impl StrongWolfeConfig {
+    /// Strict configuration with tight tolerances for high-precision optimization
+    /// - Smaller c1 for stricter sufficient decrease
+    /// - Smaller c2 for stricter curvature condition
+    /// - More iterations allowed
+    /// - Tighter step size bounds
+    pub fn strict() -> Self {
+        Self {
+            c1: 1e-6,              // Very strict sufficient decrease
+            c2: 0.1,               // Very strict curvature condition
+            max_iterations: 100,   // More iterations for precision
+            min_step: 1e-20,       // Smaller minimum step
+            max_step: 1e10,        // Conservative maximum step
+            initial_step: 1.0,
+            verbose: false,
+        }
+    }
+    /// Lax configuration with relaxed tolerances for robust optimization
+    /// - Larger c1 for more lenient sufficient decrease
+    /// - Larger c2 for more lenient curvature condition
+    /// - Fewer iterations for efficiency
+    /// - Wider step size bounds
+    pub fn lax() -> Self {
+        Self {
+            c1: 1e-2,              // Relaxed sufficient decrease
+            c2: 0.99,              // Very relaxed curvature condition
+            max_iterations: 20,    // Fewer iterations for efficiency
+            min_step: 1e-12,       // Larger minimum step
+            max_step: 1e20,        // Larger maximum step
+            initial_step: 1.0,
+            verbose: false,
+        }
+    }
+    /// Enable verbose logging for any configuration
+    pub fn with_verbose(mut self) -> Self {
+        self.verbose = true;
+        self
+    }
+}
+
 
 /// Strong Wolfe line search implementation
 #[derive(Debug, Clone)]

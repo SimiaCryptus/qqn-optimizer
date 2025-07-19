@@ -1,3 +1,4 @@
+use crate::core::line_search_bisection::BisectionLineSearch;
 use crate::utils::math::dot_product_f64;
 use anyhow::{anyhow, Error, Result};
 use log::debug;
@@ -226,7 +227,7 @@ impl Default for LineSearchConfig {
 /// Create a line search algorithm from configuration
 pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
     use crate::core::line_search_backtracking::{
-        BacktrackingConfig, BacktrackingLineSearch, BisectionLineSearch,
+        BacktrackingConfig, BacktrackingLineSearch,
     };
     use crate::core::line_search_bisection::BisectionConfig;
     use crate::core::line_search_cubic_quadratic::{CubicQuadraticConfig, CubicQuadraticLineSearch};

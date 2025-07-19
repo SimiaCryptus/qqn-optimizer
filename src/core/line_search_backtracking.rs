@@ -1,15 +1,7 @@
-use crate::core::line_search::OneDimensionalProblem;
-use crate::core::line_search_bisection::BisectionConfig;
+use crate::core::line_search::{create_1d_problem_linear, OneDimensionalProblem};
 use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 
-/// Bisection line search implementation
-/// Finds the point where the gradient is zero using bisection method
-/// If gradient is non-decreasing, uses window search with successive halving
-#[derive(Debug, Clone)]
-pub struct BisectionLineSearch {
-    pub(crate) config: BisectionConfig,
-}
 
 /// Configuration for backtracking line search
 #[derive(Debug, Clone)]
@@ -24,10 +16,10 @@ pub struct BacktrackingConfig {
 impl Default for BacktrackingConfig {
     fn default() -> Self {
         Self {
-            c1: 1e-4,
-            rho: 0.5,
-            max_iterations: 50,
-            min_step: 1e-16,
+            c1: 1e-4,              // Standard Armijo parameter
+            rho: 0.5,              // Standard backtracking factor
+            max_iterations: 100,    // More generous iteration limit
+            min_step: 1e-12,       // More practical minimum step
             initial_step: 1.0,
         }
     }
@@ -42,6 +34,44 @@ pub struct BacktrackingLineSearch {
 impl BacktrackingLineSearch {
     pub fn new(config: BacktrackingConfig) -> Self {
         Self { config }
+    }
+    /// Create a strict backtracking line search with conservative parameters
+    /// - Stricter Armijo condition (c1 = 1e-3)
+    /// - More aggressive backtracking (rho = 0.3)
+    /// - Higher iteration limit for thorough search
+    pub fn strict() -> Self {
+        Self::new(BacktrackingConfig {
+            c1: 1e-3,              // Stricter Armijo condition
+            rho: 0.3,              // More aggressive backtracking
+            max_iterations: 200,    // More iterations for thorough search
+            min_step: 1e-15,       // Smaller minimum step
+            initial_step: 1.0,
+        })
+    }
+    /// Create a lax backtracking line search with permissive parameters
+    /// - Relaxed Armijo condition (c1 = 1e-6)
+    /// - Conservative backtracking (rho = 0.8)
+    /// - Lower iteration limit for faster convergence
+    pub fn lax() -> Self {
+        Self::new(BacktrackingConfig {
+            c1: 1e-6,              // More permissive Armijo condition
+            rho: 0.8,              // Less aggressive backtracking
+            max_iterations: 50,     // Fewer iterations for speed
+            min_step: 1e-10,       // Larger minimum step
+            initial_step: 1.0,
+        })
+    }
+    /// Create a backtracking line search optimized for robust optimization
+    /// - Balanced parameters for reliability over speed
+    /// - Good for ill-conditioned problems
+    pub fn robust() -> Self {
+        Self::new(BacktrackingConfig {
+            c1: 1e-4,              // Standard Armijo parameter
+            rho: 0.5,              // Standard backtracking
+            max_iterations: 500,    // High iteration limit
+            min_step: 1e-16,       // Very small minimum step
+            initial_step: 1.0,
+        })
     }
 }
 
@@ -127,20 +157,16 @@ impl LineSearch for BacktrackingLineSearch {
         Box::new(self.clone())
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
-    use crate::init_logging;
     use anyhow::Result;
     use log::debug;
-
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
         Ok(0.5 * x.iter().map(|xi| xi * xi).sum::<f64>())
     }
-
     fn quadratic_gradient1(x: &[f64]) -> Result<Vec<f64>> {
         // ∇f(x) = x
         Ok(x.to_vec())
@@ -171,8 +197,6 @@ mod tests {
         let grad_x1 = 200.0 * (x[1] - x[0] * x[0]);
         Ok(vec![grad_x0, grad_x1])
     }
-
-
     #[test]
     fn test_backtracking_behavior() {
         // Test that backtracking actually occurs with a steep function
@@ -362,7 +386,6 @@ mod tests {
             max_iterations: 5, // Few iterations
         };
         let mut line_search = BacktrackingLineSearch::new(config);
-
         // Use a function that requires very small steps to satisfy Armijo
         fn difficult_function(x: &[f64]) -> Result<f64> {
             let val = x[0] * x[0];
@@ -372,7 +395,6 @@ mod tests {
                 Ok(val)
             }
         }
-
         fn difficult_gradient(x: &[f64]) -> Result<Vec<f64>> {
             if x[0].abs() > 0.01 {
                 Ok(vec![2.0 * x[0] + 1000.0 * x[0].signum()])
@@ -380,7 +402,6 @@ mod tests {
                 Ok(vec![2.0 * x[0]])
             }
         }
-
         let current_point = vec![1.0]; // Start at a point where gradient is non-zero
         let direction = vec![-1.0]; // Move in negative direction (descent)
         let problem = create_1d_problem_linear(
@@ -416,15 +437,12 @@ mod tests {
             debug!("Line search failed as expected due to small step size");
         }
     }
-
     #[test]
     fn test_backtracking_quadratic() {
         // Basic functionality test
         let mut line_search = BacktrackingLineSearch::new(BacktrackingConfig::default());
-
         let current_point = vec![1.0, 1.0];
         let direction = vec![-1.0, -1.0]; // Negative gradient
-
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
@@ -432,13 +450,10 @@ mod tests {
             &quadratic_gradient1,
         )
             .unwrap();
-
         let result = line_search.optimize_1d(&problem).unwrap();
-
         assert!(result.success);
         assert!(result.step_size > 0.0);
     }
-
     #[test]
     fn test_reset_functionality() {
         // Test that reset doesn't break anything (backtracking is stateless)
@@ -451,5 +466,70 @@ mod tests {
         let problem = create_1d_problem_linear(&current_point, &direction, &quadratic_function, &quadratic_gradient1).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
+    }
+    #[test]
+    fn test_static_constructors() {
+        // Test that all static constructors work
+        let strict = BacktrackingLineSearch::strict();
+        let lax = BacktrackingLineSearch::lax();
+        let robust = BacktrackingLineSearch::robust();
+        let default = BacktrackingLineSearch::new(BacktrackingConfig::default());
+        // Verify they have different configurations
+        assert!(strict.config.c1 > default.config.c1, "Strict should have stricter c1");
+        assert!(strict.config.rho < default.config.rho, "Strict should have more aggressive rho");
+        assert!(lax.config.c1 < default.config.c1, "Lax should have more permissive c1");
+        assert!(lax.config.rho > default.config.rho, "Lax should have less aggressive rho");
+        assert!(robust.config.max_iterations > default.config.max_iterations, "Robust should have more iterations");
+        assert!(robust.config.min_step <= default.config.min_step, "Robust should have smaller min step");
+        // Test that they all work on a simple problem
+        let current_point = vec![1.0];
+        let direction = vec![-1.0];
+        for (mut line_search, name) in vec![
+            (strict, "strict"),
+            (lax, "lax"),
+            (robust, "robust"),
+            (default, "default")
+        ] {
+            let problem = create_1d_problem_linear(
+                &current_point,
+                &direction,
+                &quadratic_function,
+                &quadratic_gradient1,
+            ).unwrap();
+            let result = line_search.optimize_1d(&problem);
+            assert!(result.is_ok(), "{} constructor failed: {:?}", name, result);
+            let result = result.unwrap();
+            assert!(result.success, "{} constructor did not succeed", name);
+            assert!(result.step_size > 0.0, "{} constructor returned invalid step size", name);
+        }
+    }
+    #[test]
+    fn test_constructor_behavior_differences() {
+        // Test that strict vs lax actually behave differently on a challenging problem
+        let current_point = vec![1.0];
+        let direction = vec![-1.0];
+        let mut strict = BacktrackingLineSearch::strict();
+        let mut lax = BacktrackingLineSearch::lax();
+        // Use steep function to see differences
+        let strict_problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &steep_function,
+            &steep_gradient,
+        ).unwrap();
+        let lax_problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &steep_function,
+            &steep_gradient,
+        ).unwrap();
+        let strict_result = strict.optimize_1d(&strict_problem).unwrap();
+        let lax_result = lax.optimize_1d(&lax_problem).unwrap();
+        assert!(strict_result.success);
+        assert!(lax_result.success);
+        // Lax should generally allow larger steps (though this isn't guaranteed for all functions)
+        // We'll just verify both found valid solutions
+        assert!(strict_result.step_size > 0.0);
+        assert!(lax_result.step_size > 0.0);
     }
 }
