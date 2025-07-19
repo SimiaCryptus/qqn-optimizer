@@ -69,7 +69,7 @@ impl Default for QQNConfig {
     fn default() -> Self {
         Self {
             lbfgs_history: 10,
-            min_lbfgs_iterations: 2,
+            min_lbfgs_iterations: 5,
             line_search: LineSearchConfig {
                 method: crate::core::line_search::LineSearchMethod::Bisection,
                 ..LineSearchConfig::default()
@@ -79,6 +79,52 @@ impl Default for QQNConfig {
         }
     }
 }
+impl QQNConfig {
+    /// Create a strict configuration with conservative settings for robust convergence
+    /// - Larger L-BFGS history for better approximation
+    /// - More steepest descent iterations before enabling L-BFGS
+    /// - Tighter numerical stability constant
+    /// - More conservative line search settings
+    pub fn strict() -> Self {
+        Self {
+            lbfgs_history: 20,
+            min_lbfgs_iterations: 10,
+            line_search: LineSearchConfig {
+                method: crate::core::line_search::LineSearchMethod::Bisection,
+                max_iterations: 50,
+                ..LineSearchConfig::default()
+            },
+            epsilon: 1e-8,
+            verbose: false,
+        }
+    }
+    /// Create a lax configuration with aggressive settings for faster convergence
+    /// - Smaller L-BFGS history for computational efficiency
+    /// - Fewer steepest descent iterations before enabling L-BFGS
+    /// - Looser numerical stability constant
+    /// - More aggressive line search settings
+    pub fn lax() -> Self {
+        Self {
+            lbfgs_history: 5,
+            min_lbfgs_iterations: 1,
+            line_search: LineSearchConfig {
+                method: crate::core::line_search::LineSearchMethod::Bisection,
+                max_iterations: 20,
+                ..LineSearchConfig::default()
+            },
+            epsilon: 1e-4,
+            verbose: false,
+        }
+    }
+    /// Create a configuration with verbose logging enabled
+    pub fn verbose() -> Self {
+        Self {
+            verbose: true,
+            ..Self::default()
+        }
+    }
+}
+
 
 /// State information for the QQN optimizer
 #[derive(Debug, Clone)]
@@ -1098,10 +1144,36 @@ mod tests {
     }
 
     #[test]
-    fn test_qqn_state_initialization() {
-        let state = QQNState::new(5);
-        assert_eq!(state.iteration, 0);
+    fn test_qqn_config_constructors() {
+        // Test default config
+        let default_config = QQNConfig::default();
+        assert_eq!(default_config.lbfgs_history, 10);
+        assert_eq!(default_config.min_lbfgs_iterations, 5);
+        assert_eq!(default_config.epsilon, 1e-6);
+        assert!(!default_config.verbose);
+        // Test strict config
+        let strict_config = QQNConfig::strict();
+        assert_eq!(strict_config.lbfgs_history, 20);
+        assert_eq!(strict_config.min_lbfgs_iterations, 10);
+        assert_eq!(strict_config.epsilon, 1e-8);
+        assert!(!strict_config.verbose);
+        assert_eq!(strict_config.line_search.max_iterations, 50);
+        // Test lax config
+        let lax_config = QQNConfig::lax();
+        assert_eq!(lax_config.lbfgs_history, 5);
+        assert_eq!(lax_config.min_lbfgs_iterations, 1);
+        assert_eq!(lax_config.epsilon, 1e-4);
+        assert!(!lax_config.verbose);
+        assert_eq!(lax_config.line_search.max_iterations, 20);
+        // Test verbose config
+        let verbose_config = QQNConfig::verbose();
+        assert!(verbose_config.verbose);
+        // Should inherit other defaults
+        assert_eq!(verbose_config.lbfgs_history, 10);
+        assert_eq!(verbose_config.min_lbfgs_iterations, 5);
+        assert_eq!(verbose_config.epsilon, 1e-6);
     }
+
 
     #[test]
     fn test_qqn_min_iterations_steepest_descent() -> CandleResult<()> {

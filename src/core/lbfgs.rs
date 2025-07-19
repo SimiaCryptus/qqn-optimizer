@@ -55,24 +55,105 @@ impl Default for LBFGSConfig {
         Self {
             history_size: 10,
             line_search: LineSearchConfig {
-                c1: 1e-4,
-                c2: 0.1, // Much less strict curvature condition
+                c1: 1e-4,  // Standard Armijo condition
+                c2: 0.9,   // Standard curvature condition for L-BFGS
                 initial_step: 1.0,
-                max_step: 10.0, // Allow larger steps
+                max_step: 2.0,  // Moderate maximum step
                 ..LineSearchConfig::default()
             },
             epsilon: 1e-8,
             max_correction_pairs: 10,
-            max_step_size: 10.0, // Allow much larger steps
+            max_step_size: 2.0,   // Moderate step size limit
             min_step_size: 1e-16,
-            max_param_change: 10.0, // Allow larger parameter changes
-            gradient_clip: 1e4,     // Clip very large gradients
+            max_param_change: 1.0,  // Moderate parameter change limit
+            gradient_clip: 1e3,     // Moderate gradient clipping
             enable_recovery: true,
-            recovery_patience: 3, // Trigger recovery sooner
+            recovery_patience: 5,   // Standard recovery patience
             verbose: false,
         }
     }
 }
+impl LBFGSConfig {
+    /// Create a strict L-BFGS configuration with conservative settings.
+    /// 
+    /// This configuration prioritizes numerical stability and convergence guarantees
+    /// over speed. Suitable for problems where robustness is more important than
+    /// performance, or when dealing with ill-conditioned problems.
+    pub fn strict() -> Self {
+        Self {
+            history_size: 5,  // Smaller history to reduce memory effects
+            line_search: LineSearchConfig {
+                c1: 1e-4,     // Standard Armijo condition
+                c2: 0.9,      // Strict curvature condition
+                initial_step: 0.1,  // Conservative initial step
+                max_step: 1.0,      // Conservative maximum step
+                ..LineSearchConfig::default()
+            },
+            epsilon: 1e-10,   // Higher precision
+            max_correction_pairs: 5,
+            max_step_size: 0.5,     // Conservative step size
+            min_step_size: 1e-20,   // Allow very small steps
+            max_param_change: 0.1,  // Small parameter changes
+            gradient_clip: 1e2,     // Conservative gradient clipping
+            enable_recovery: true,
+            recovery_patience: 10,  // Patient recovery
+            verbose: false,
+        }
+    }
+    /// Create a lax L-BFGS configuration with aggressive settings.
+    /// 
+    /// This configuration prioritizes speed and allows larger steps, potentially
+    /// at the cost of numerical stability. Suitable for well-conditioned problems
+    /// where fast convergence is desired.
+    pub fn lax() -> Self {
+        Self {
+            history_size: 20,  // Larger history for better approximation
+            line_search: LineSearchConfig {
+                c1: 1e-4,      // Standard Armijo condition
+                c2: 0.1,       // Relaxed curvature condition
+                initial_step: 2.0,   // Aggressive initial step
+                max_step: 50.0,      // Large maximum step
+                ..LineSearchConfig::default()
+            },
+            epsilon: 1e-6,     // Lower precision for speed
+            max_correction_pairs: 20,
+            max_step_size: 50.0,     // Large step sizes allowed
+            min_step_size: 1e-12,    // Reasonable minimum
+            max_param_change: 100.0, // Large parameter changes allowed
+            gradient_clip: 1e6,      // High gradient clipping threshold
+            enable_recovery: true,
+            recovery_patience: 2,    // Quick recovery trigger
+            verbose: false,
+        }
+    }
+    /// Create a configuration optimized for use within the QQN algorithm.
+    /// 
+    /// This configuration disables some safety checks and uses settings that
+    /// work well when L-BFGS is used as a component of a larger optimization
+    /// algorithm rather than as a standalone optimizer.
+    pub fn for_qqn() -> Self {
+        Self {
+            history_size: 10,
+            line_search: LineSearchConfig {
+                c1: 1e-4,
+                c2: 0.5,       // Balanced curvature condition
+                initial_step: 1.0,
+                max_step: 10.0,
+                ..LineSearchConfig::default()
+            },
+            epsilon: 1e-8,
+            max_correction_pairs: 10,
+            max_step_size: 10.0,
+            min_step_size: 1e-16,
+            max_param_change: 10.0,
+            gradient_clip: 0.0,      // Disable gradient clipping for QQN
+            enable_recovery: false,  // Let QQN handle recovery
+            recovery_patience: 0,    // Not used when recovery disabled
+            verbose: false,
+        }
+    }
+}
+
 
 /// State information for L-BFGS optimization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1222,6 +1303,66 @@ mod tests {
 
         Ok(())
     }
+    #[test]
+    fn test_lbfgs_config_constructors() {
+        // Test default configuration
+        let default_config = LBFGSConfig::default();
+        assert_eq!(default_config.history_size, 10);
+        assert_eq!(default_config.line_search.c2, 0.9);
+        assert_eq!(default_config.max_step_size, 2.0);
+        assert_eq!(default_config.max_param_change, 1.0);
+        assert_eq!(default_config.recovery_patience, 5);
+        // Test strict configuration
+        let strict_config = LBFGSConfig::strict();
+        assert_eq!(strict_config.history_size, 5);
+        assert_eq!(strict_config.line_search.c2, 0.9);
+        assert_eq!(strict_config.max_step_size, 0.5);
+        assert_eq!(strict_config.max_param_change, 0.1);
+        assert_eq!(strict_config.recovery_patience, 10);
+        assert_eq!(strict_config.epsilon, 1e-10);
+        // Test lax configuration
+        let lax_config = LBFGSConfig::lax();
+        assert_eq!(lax_config.history_size, 20);
+        assert_eq!(lax_config.line_search.c2, 0.1);
+        assert_eq!(lax_config.max_step_size, 50.0);
+        assert_eq!(lax_config.max_param_change, 100.0);
+        assert_eq!(lax_config.recovery_patience, 2);
+        assert_eq!(lax_config.epsilon, 1e-6);
+        // Test QQN configuration
+        let qqn_config = LBFGSConfig::for_qqn();
+        assert_eq!(qqn_config.history_size, 10);
+        assert_eq!(qqn_config.line_search.c2, 0.5);
+        assert_eq!(qqn_config.gradient_clip, 0.0);
+        assert!(!qqn_config.enable_recovery);
+    }
+    #[test]
+    fn test_lbfgs_strict_config_behavior() -> CandleResult<()> {
+        let device = Device::Cpu;
+        let strict_config = LBFGSConfig::strict();
+        let mut optimizer = LBFGSOptimizer::new(strict_config);
+        let function = Arc::new(QuadraticFunction);
+        let mut params = vec![Tensor::from_slice(&[5.0, -3.0], &[2], &device)?];
+        // Run a step with strict configuration
+        let result = optimizer.step(&mut params, function)?;
+        // Should take conservative steps
+        assert!(result.step_size <= 0.5);
+        assert!(result.step_size > 0.0);
+        Ok(())
+    }
+    #[test]
+    fn test_lbfgs_config_ordering() {
+        // Verify that strict < default < lax in terms of aggressiveness
+        let strict = LBFGSConfig::strict();
+        let default = LBFGSConfig::default();
+        let lax = LBFGSConfig::lax();
+        assert!(strict.max_step_size < default.max_step_size);
+        assert!(default.max_step_size < lax.max_step_size);
+        assert!(strict.max_param_change < default.max_param_change);
+        assert!(default.max_param_change < lax.max_param_change);
+        assert!(strict.recovery_patience > default.recovery_patience);
+        assert!(default.recovery_patience > lax.recovery_patience);
+    }
+
     #[test]
     fn test_lbfgs_on_quadratic() -> CandleResult<()> {
         let device = Device::Cpu;

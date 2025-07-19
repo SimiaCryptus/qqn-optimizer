@@ -234,6 +234,14 @@ impl ExperimentRunner {
                 Box::new(QQNOptimizer::new(QQNConfig::default())),
             ),
             (
+                "QQN-Strict".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig::strict())),
+            ),
+            (
+                "QQN-Lax".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig::lax())),
+            ),
+            (
                 "QQN-SimpleBracket".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
@@ -254,10 +262,47 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "QQN-StrongWolfe-Strict".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::StrongWolfe,
+                        c1: 1e-6,
+                        c2: 0.1,
+                        max_iterations: 100,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
                 "QQN-Backtracking".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
                         method: LineSearchMethod::Backtracking,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-Backtracking-Strict".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Backtracking,
+                        c1: 1e-3,
+                        max_iterations: 200,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-Backtracking-Lax".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Backtracking,
+                        c1: 1e-6,
+                        max_iterations: 50,
                         ..LineSearchConfig::default()
                     },
                     ..Default::default()
@@ -272,10 +317,54 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "QQN-Aggressive".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    lbfgs_history: 5,
+                    min_lbfgs_iterations: 1,
+                    epsilon: 1e-4,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-LargeHistory".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    lbfgs_history: 30,
+                    min_lbfgs_iterations: 15,
+                    epsilon: 1e-8,
+                    ..Default::default()
+                })),
+            ),
+            (
                 "QQN-CubicQuadraticInterpolation".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
                         method: LineSearchMethod::CubicQuadraticInterpolation,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-CubicQuadratic-Strict".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::CubicQuadraticInterpolation,
+                        c1: 1e-4,
+                        c2: 0.1,
+                        max_iterations: 50,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-CubicQuadratic-Lax".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::CubicQuadraticInterpolation,
+                        c1: 1e-3,
+                        c2: 0.9,
+                        max_iterations: 10,
                         ..LineSearchConfig::default()
                     },
                     ..Default::default()
@@ -292,6 +381,28 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "QQN-GoldenSection-Strict".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::GoldenSection,
+                        max_iterations: 200,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-GoldenSection-Lax".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::GoldenSection,
+                        max_iterations: 20,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
                 "QQN-MoreThuente".to_string(),
                 Box::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
@@ -302,8 +413,42 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "QQN-MoreThuente-Strict".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::MoreThuente,
+                        c1: 1e-4,
+                        c2: 0.1,
+                        max_iterations: 100,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-MoreThuente-Lax".to_string(),
+                Box::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::MoreThuente,
+                        c1: 1e-3,
+                        c2: 0.9,
+                        max_iterations: 20,
+                        ..LineSearchConfig::default()
+                    },
+                    ..Default::default()
+                })),
+            ),
+            (
                 "L-BFGS".to_string(),
                 Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+            ),
+            (
+                "L-BFGS-Strict".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig::strict())),
+            ),
+            (
+                "L-BFGS-Lax".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig::lax())),
             ),
             (
                 "L-BFGS-Large".to_string(),
@@ -313,8 +458,47 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "L-BFGS-Small".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig {
+                    history_size: 5,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "L-BFGS-Conservative".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig {
+                    history_size: 15,
+                    max_step_size: 1.0,
+                    max_param_change: 0.5,
+                    gradient_clip: 10.0,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "L-BFGS-Aggressive".to_string(),
+                Box::new(LBFGSOptimizer::new(LBFGSConfig {
+                    history_size: 5,
+                    max_step_size: 10.0,
+                    max_param_change: 10.0,
+                    gradient_clip: 0.0,
+                    ..Default::default()
+                })),
+            ),
+            (
                 "GD".to_string(),
                 Box::new(GDOptimizer::new(Default::default())),
+            ),
+            (
+                "GD-Strict".to_string(),
+                Box::new(GDOptimizer::new(GDConfig::strict())),
+            ),
+            (
+                "GD-Lax".to_string(),
+                Box::new(GDOptimizer::new(GDConfig::lax())),
+            ),
+            (
+                "GD-Debug".to_string(),
+                Box::new(GDOptimizer::new(GDConfig::debug())),
             ),
             (
                 "GD-Rosenbrock-Tuned".to_string(),
@@ -341,9 +525,31 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "GD-VeryConservative".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.0001,
+                    momentum: 0.99,
+                    max_grad_norm: 10.0,
+                    adaptive_lr: true,
+                    nesterov: false,
+                    verbose: false,
+                    ..Default::default()
+                })),
+            ),
+            (
                 "GD-Fast".to_string(),
                 Box::new(GDOptimizer::new(GDConfig {
                     learning_rate: 0.5,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "GD-VeryFast".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 1.0,
+                    momentum: 0.5,
+                    max_grad_norm: 1000.0,
+                    adaptive_lr: false,
                     ..Default::default()
                 })),
             ),
@@ -355,9 +561,38 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "GD-VerySlow".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.001,
+                    momentum: 0.0,
+                    adaptive_lr: false,
+                    ..Default::default()
+                })),
+            ),
+            (
                 "GD-Momentum".to_string(),
                 Box::new(GDOptimizer::new(GDConfig {
                     momentum: 0.9,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "GD-HighMomentum".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.01,
+                    momentum: 0.99,
+                    nesterov: false,
+                    adaptive_lr: true,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "GD-LowMomentum".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.05,
+                    momentum: 0.5,
+                    nesterov: false,
+                    adaptive_lr: false,
                     ..Default::default()
                 })),
             ),
@@ -370,8 +605,51 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "GD-Nesterov-Aggressive".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.95,
+                    nesterov: true,
+                    max_grad_norm: 1000.0,
+                    adaptive_lr: false,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "GD-Adaptive".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.1,
+                    momentum: 0.8,
+                    adaptive_lr: true,
+                    max_grad_norm: 50.0,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "GD-NoAdaptive".to_string(),
+                Box::new(GDOptimizer::new(GDConfig {
+                    learning_rate: 0.01,
+                    momentum: 0.9,
+                    adaptive_lr: false,
+                    max_grad_norm: 100.0,
+                    ..Default::default()
+                })),
+            ),
+            (
                 "Adam".to_string(),
                 Box::new(AdamOptimizer::new(Default::default())),
+            ),
+            (
+                "Adam-Strict".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig::strict())),
+            ),
+            (
+                "Adam-Lax".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig::lax())),
+            ),
+            (
+                "Adam-DeepLearning".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig::deep_learning())),
             ),
             (
                 "Adam-ConstantLR".to_string(),
@@ -395,9 +673,24 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "Adam-AdaptiveLR".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    lr_schedule: "adaptive".to_string(),
+                    ..Default::default()
+                })),
+            ),
+            (
                 "Adam-Slow".to_string(),
                 Box::new(AdamOptimizer::new(AdamConfig {
                     learning_rate: 0.01,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-VerySlow".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.0001,
+                    lr_schedule: "constant".to_string(),
                     ..Default::default()
                 })),
             ),
@@ -409,9 +702,103 @@ impl ExperimentRunner {
                 })),
             ),
             (
+                "Adam-VeryFast".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.1,
+                    lr_schedule: "constant".to_string(),
+                    ..Default::default()
+                })),
+            ),
+            (
                 "Adam-AMSGrad".to_string(),
                 Box::new(AdamOptimizer::new(AdamConfig {
                     amsgrad: true,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-AMSGrad-Strict".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    amsgrad: true,
+                    learning_rate: 0.0001,
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(0.5),
+                    beta2: 0.9999,
+                    epsilon: 1e-12,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-AMSGrad-Lax".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    amsgrad: true,
+                    learning_rate: 0.01,
+                    lr_schedule: "exponential".to_string(),
+                    gradient_clip: None,
+                    beta2: 0.99,
+                    epsilon: 1e-6,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-HighBeta1".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    beta1: 0.95,
+                    beta2: 0.999,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-LowBeta1".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    beta1: 0.8,
+                    beta2: 0.999,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-HighBeta2".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    beta1: 0.9,
+                    beta2: 0.9999,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-LowBeta2".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    beta1: 0.9,
+                    beta2: 0.99,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-WeightDecay".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    weight_decay: 0.01,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-HighWeightDecay".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    weight_decay: 0.1,
+                    learning_rate: 0.001,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-GradientClip".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    gradient_clip: Some(1.0),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "Adam-StrictGradientClip".to_string(),
+                Box::new(AdamOptimizer::new(AdamConfig {
+                    gradient_clip: Some(0.1),
+                    learning_rate: 0.001,
                     ..Default::default()
                 })),
             ),
@@ -729,7 +1116,6 @@ impl ExperimentRunner {
                     <th>Mean Function Evals</th>
                     <th>Mean Gradient Evals</th>
                     <th>Success Rate</th>
-                    <th>Mean Time (s)</th>
                 </tr>
 "#,
         );
@@ -843,7 +1229,6 @@ impl ExperimentRunner {
                     <td>{:.1}</td>
                     <td>{:.1}</td>
                     <td>{:.1}%</td>
-                    <td>{:.3}</td>
                 </tr>
 "#,
                 class,
@@ -853,7 +1238,6 @@ impl ExperimentRunner {
                 mean_func_evals,
                 mean_grad_evals,
                 success_rate * 100.0,
-                mean_time
             ));
         }
 

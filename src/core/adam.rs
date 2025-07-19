@@ -38,14 +38,14 @@ pub struct AdamConfig {
 impl Default for AdamConfig {
     fn default() -> Self {
         Self {
-            learning_rate: 0.1, // Higher learning rate for better convergence
-            lr_schedule: "adaptive".to_string(),
+            learning_rate: 0.001, // Standard Adam learning rate
+            lr_schedule: "constant".to_string(),
             lr_decay: 0.999,
             min_learning_rate: 1e-12,
-            gradient_clip: Some(1.0), // Tighter gradient clipping
+            gradient_clip: None, // No gradient clipping by default
             beta1: 0.9,
-            beta2: 0.9999,
-            epsilon: 1e-12,
+            beta2: 0.999, // Standard Adam beta2
+            epsilon: 1e-8, // Standard Adam epsilon
             weight_decay: 0.0,
             amsgrad: false,
             max_line_search_iter: 20,
@@ -53,6 +53,80 @@ impl Default for AdamConfig {
         }
     }
 }
+impl AdamConfig {
+    /// Create a strict configuration for high-precision optimization.
+    /// 
+    /// This configuration uses:
+    /// - Lower learning rate for careful steps
+    /// - Adaptive learning rate schedule for automatic adjustment
+    /// - Gradient clipping to prevent instability
+    /// - Higher precision epsilon for numerical stability
+    /// - AMSGrad variant for better convergence guarantees
+    pub fn strict() -> Self {
+        Self {
+            learning_rate: 0.0001, // Very conservative learning rate
+            lr_schedule: "adaptive".to_string(),
+            lr_decay: 0.995,
+            min_learning_rate: 1e-15,
+            gradient_clip: Some(0.5), // Conservative gradient clipping
+            beta1: 0.9,
+            beta2: 0.9999, // Higher beta2 for more stable second moment estimates
+            epsilon: 1e-12, // Higher precision epsilon
+            weight_decay: 0.0,
+            amsgrad: true, // Use AMSGrad for better convergence
+            max_line_search_iter: 50, // More line search iterations
+            verbose: false,
+        }
+    }
+    /// Create a lax configuration for fast, approximate optimization.
+    /// 
+    /// This configuration uses:
+    /// - Higher learning rate for faster convergence
+    /// - Exponential decay to reduce learning rate over time
+    /// - No gradient clipping for maximum step sizes
+    /// - Standard precision settings
+    /// - Fewer line search iterations for speed
+    pub fn lax() -> Self {
+        Self {
+            learning_rate: 0.01, // Higher learning rate for speed
+            lr_schedule: "exponential".to_string(),
+            lr_decay: 0.99, // Faster decay
+            min_learning_rate: 1e-8, // Higher minimum learning rate
+            gradient_clip: None, // No gradient clipping
+            beta1: 0.9,
+            beta2: 0.99, // Lower beta2 for faster adaptation
+            epsilon: 1e-6, // Lower precision epsilon for speed
+            weight_decay: 0.0,
+            amsgrad: false, // Standard Adam for speed
+            max_line_search_iter: 5, // Fewer line search iterations
+            verbose: false,
+        }
+    }
+    /// Create a configuration optimized for deep learning tasks.
+    /// 
+    /// This configuration uses standard deep learning hyperparameters:
+    /// - Standard Adam learning rate
+    /// - Cosine annealing schedule
+    /// - Gradient clipping for stability
+    /// - Standard Adam hyperparameters
+    pub fn deep_learning() -> Self {
+        Self {
+            learning_rate: 0.001, // Standard for deep learning
+            lr_schedule: "cosine".to_string(),
+            lr_decay: 0.999,
+            min_learning_rate: 1e-6,
+            gradient_clip: Some(1.0), // Common in deep learning
+            beta1: 0.9,
+            beta2: 0.999,
+            epsilon: 1e-8,
+            weight_decay: 0.01, // Common L2 regularization
+            amsgrad: false,
+            max_line_search_iter: 10,
+            verbose: false,
+        }
+    }
+}
+
 
 /// State information for Adam optimization.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -825,6 +899,84 @@ mod tests {
         assert!(optimizer.current_lr >= optimizer.config.min_learning_rate);
         Ok(())
     }
+    #[test]
+    fn test_adam_strict_config() -> CandleResult<()> {
+        let config = AdamConfig::strict();
+        // Verify strict configuration properties
+        assert_eq!(config.learning_rate, 0.0001);
+        assert_eq!(config.lr_schedule, "adaptive");
+        assert_eq!(config.gradient_clip, Some(0.5));
+        assert_eq!(config.beta2, 0.9999);
+        assert_eq!(config.epsilon, 1e-12);
+        assert!(config.amsgrad);
+        assert_eq!(config.max_line_search_iter, 50);
+        let optimizer = AdamOptimizer::new(config);
+        assert_eq!(optimizer.name(), "Adam-AMSGrad");
+        Ok(())
+    }
+    #[test]
+    fn test_adam_lax_config() -> CandleResult<()> {
+        let config = AdamConfig::lax();
+        // Verify lax configuration properties
+        assert_eq!(config.learning_rate, 0.01);
+        assert_eq!(config.lr_schedule, "exponential");
+        assert_eq!(config.gradient_clip, None);
+        assert_eq!(config.beta2, 0.99);
+        assert_eq!(config.epsilon, 1e-6);
+        assert!(!config.amsgrad);
+        assert_eq!(config.max_line_search_iter, 5);
+        let optimizer = AdamOptimizer::new(config);
+        assert_eq!(optimizer.name(), "Adam");
+        Ok(())
+    }
+    #[test]
+    fn test_adam_deep_learning_config() -> CandleResult<()> {
+        let config = AdamConfig::deep_learning();
+        // Verify deep learning configuration properties
+        assert_eq!(config.learning_rate, 0.001);
+        assert_eq!(config.lr_schedule, "cosine");
+        assert_eq!(config.gradient_clip, Some(1.0));
+        assert_eq!(config.beta1, 0.9);
+        assert_eq!(config.beta2, 0.999);
+        assert_eq!(config.epsilon, 1e-8);
+        assert_eq!(config.weight_decay, 0.01);
+        assert!(!config.amsgrad);
+        Ok(())
+    }
+    #[test]
+    fn test_adam_strict_vs_lax_convergence() -> CandleResult<()> {
+        let device = Device::Cpu;
+        // Test strict configuration
+        let strict_config = AdamConfig::strict();
+        let mut strict_optimizer = AdamOptimizer::new(strict_config);
+        let mut strict_params = vec![Tensor::from_vec(vec![2.0, 2.0], &[2], &device)?];
+        let function = Arc::new(QuadraticFunction);
+        // Run a few steps with strict config
+        for _ in 0..10 {
+            strict_optimizer.step(&mut strict_params, function.clone())?;
+        }
+        let strict_final = strict_params[0].flatten_all()?.to_vec1::<f64>()?;
+        let strict_value = function.evaluate(&strict_params)?;
+        // Test lax configuration
+        let lax_config = AdamConfig::lax();
+        let mut lax_optimizer = AdamOptimizer::new(lax_config);
+        let mut lax_params = vec![Tensor::from_vec(vec![2.0, 2.0], &[2], &device)?];
+        // Run same number of steps with lax config
+        for _ in 0..10 {
+            lax_optimizer.step(&mut lax_params, function.clone())?;
+        }
+        let lax_final = lax_params[0].flatten_all()?.to_vec1::<f64>()?;
+        let lax_value = function.evaluate(&lax_params)?;
+        println!("Strict final: [{:.6}, {:.6}], value: {:.6e}", 
+                strict_final[0], strict_final[1], strict_value);
+        println!("Lax final: [{:.6}, {:.6}], value: {:.6e}", 
+                lax_final[0], lax_final[1], lax_value);
+        // Both should make progress, but lax might make larger steps
+        assert!(strict_value < 4.0); // Should improve from initial value of 4.0
+        assert!(lax_value < 4.0);
+        Ok(())
+    }
+
     #[test]
     fn test_adam_convergence_detection() -> CandleResult<()> {
         let device = Device::Cpu;
