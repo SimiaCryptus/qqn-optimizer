@@ -34,6 +34,51 @@ impl Default for CubicQuadraticConfig {
         }
     }
 }
+impl CubicQuadraticConfig {
+    /// Create a strict configuration for high-precision optimization
+    /// - Stricter Wolfe conditions (c1=1e-4, c2=0.1)
+    /// - More iterations allowed (50)
+    /// - Smaller safeguards for more precise interpolation
+    /// - Conservative extrapolation
+    pub fn strict() -> Self {
+        Self {
+            c1: 1e-4,
+            c2: 0.1,
+            max_iterations: 50,
+            min_step: 1e-16,
+            max_step: 1e16,
+            initial_step: 1.0,
+            verbose: false,
+            interpolation_safeguard: 0.05,
+            extrapolation_factor: 1.5,
+            line_bracket_method: 1,
+        }
+    }
+    /// Create a lax configuration for faster, less precise optimization
+    /// - Relaxed Wolfe conditions (c1=1e-3, c2=0.9)
+    /// - Fewer iterations (10)
+    /// - Larger safeguards for more robust interpolation
+    /// - Aggressive extrapolation
+    pub fn lax() -> Self {
+        Self {
+            c1: 1e-3,
+            c2: 0.9,
+            max_iterations: 10,
+            min_step: 1e-12,
+            max_step: 1e12,
+            initial_step: 1.0,
+            verbose: false,
+            interpolation_safeguard: 0.2,
+            extrapolation_factor: 3.0,
+            line_bracket_method: 1,
+        }
+    }
+    /// Create the default configuration
+    pub fn default_config() -> Self {
+        Self::default()
+    }
+}
+
 
 /// Cubic/Quadratic interpolation line search
 #[derive(Debug, Clone)]
@@ -45,48 +90,29 @@ impl CubicQuadraticLineSearch {
     pub fn new(config: CubicQuadraticConfig) -> Self {
         Self { config }
     }
+    /// Create with default configuration
+    pub fn default_search() -> Self {
+        Self::new(CubicQuadraticConfig::default())
+    }
+
     /// Create a strict configuration for high-precision optimization
     /// - Stricter Wolfe conditions (c1=1e-4, c2=0.1)
     /// - More iterations allowed (50)
     /// - Smaller safeguards for more precise interpolation
     /// - Conservative extrapolation
     pub fn strict() -> Self {
-        Self {
-            config: CubicQuadraticConfig {
-                c1: 1e-4,
-                c2: 0.1,
-                max_iterations: 50,
-                min_step: 1e-16,
-                max_step: 1e16,
-                initial_step: 1.0,
-                verbose: false,
-                interpolation_safeguard: 0.05,
-                extrapolation_factor: 1.5,
-                line_bracket_method: 1,
-            }
-        }
+        Self::new(CubicQuadraticConfig::strict())
     }
+
     /// Create a lax configuration for faster, less precise optimization
     /// - Relaxed Wolfe conditions (c1=1e-3, c2=0.9)
     /// - Fewer iterations (10)
     /// - Larger safeguards for more robust interpolation
     /// - Aggressive extrapolation
     pub fn lax() -> Self {
-        Self {
-            config: CubicQuadraticConfig {
-                c1: 1e-3,
-                c2: 0.9,
-                max_iterations: 10,
-                min_step: 1e-12,
-                max_step: 1e12,
-                initial_step: 1.0,
-                verbose: false,
-                interpolation_safeguard: 0.2,
-                extrapolation_factor: 3.0,
-                line_bracket_method: 1,
-            }
-        }
+        Self::new(CubicQuadraticConfig::lax())
     }
+
     /// Create with custom configuration
     pub fn with_config(config: CubicQuadraticConfig) -> Self {
         Self { config }
@@ -100,7 +126,7 @@ impl CubicQuadraticLineSearch {
     /// Cubic interpolation between two points with function and gradient values
     fn cubic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64, gb: f64) -> Option<f64> {
         let h = b - a;
-        if h.abs() < 1e-15 {
+        if h.abs() < f64::EPSILON {
             return None;
         }
 
@@ -116,7 +142,7 @@ impl CubicQuadraticLineSearch {
         let numerator2 = gb - d2 - d1;
         let denominator = gb - ga + 2.0 * d2;
 
-        if denominator.abs() < 1e-15 {
+        if denominator.abs() < f64::EPSILON * 10.0 {
             return None;
         }
 
@@ -155,12 +181,12 @@ impl CubicQuadraticLineSearch {
     /// Quadratic interpolation using function values and one gradient
     fn quadratic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64) -> Option<f64> {
         let h = b - a;
-        if h.abs() < 1e-15 {
+        if h.abs() < f64::EPSILON {
             return None;
         }
 
         let denom = 2.0 * (fb - fa - ga * h);
-        if denom.abs() < 1e-15 {
+        if denom.abs() < f64::EPSILON * 10.0 {
             return None;
         }
         let t = a - ga * h * h / denom;
@@ -199,7 +225,7 @@ impl LineSearch for CubicQuadraticLineSearch {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
         if g0 >= 0.0 {
-            return Err(anyhow!("Direction is not a descent direction"));
+            return Err(anyhow!("Direction is not a descent direction: g0 = {:.6e} >= 0. This indicates the search direction is pointing uphill.", g0));
         }
         // Verify we can make progress
         let test_step = self.config.min_step;
@@ -214,7 +240,20 @@ impl LineSearch for CubicQuadraticLineSearch {
                     termination_reason: TerminationReason::StepSizeTooSmall,
                 });
             }
-            return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
+                // Try a slightly larger step
+                let small_step = 1e-8;
+                let f_small = (problem.objective)(small_step)?;
+                if f_small < f0 {
+                    return Ok(LineSearchResult {
+                        step_size: small_step,
+                        success: true,
+                        termination_reason: TerminationReason::StepSizeTooSmall,
+                    });
+                }
+            return Err(anyhow!(
+                "Function appears to be ill-conditioned: no improvement possible within machine precision. f0={:.6e}, f_test={:.6e}, f_eps={:.6e}",
+                f0, f_test, f_eps
+            ));
         }
 
         let mut alpha = self.config.initial_step;
@@ -223,6 +262,10 @@ impl LineSearch for CubicQuadraticLineSearch {
         let mut g_prev = g0;
         let mut best_alpha = 0.0;
         let mut best_f = f0;
+        let mut bracket_low = 0.0;
+        let mut bracket_high = self.config.max_step;
+        let mut f_bracket_low = f0;
+        let mut f_bracket_high = f64::INFINITY;
 
         self.log_verbose(&format!(
             "Starting with f(0)={:.3e}, g(0)={:.3e}, initial_step={:.3e}",
@@ -239,11 +282,20 @@ impl LineSearch for CubicQuadraticLineSearch {
             }
 
             self.log_verbose(&format!(
-                "Iteration {}: alpha={:.3e}, f={:.3e}, g={:.3e}",
+                "Line Search Iteration {}: alpha={:.3e}, f={:.3e}, g={:.3e}",
                 iter, alpha, f_alpha, g_alpha
             ));
             // Check Wolfe conditions
             let (armijo, curvature) = self.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
+            // Update bracketing interval
+            if f_alpha < f0 {
+                bracket_low = alpha;
+                f_bracket_low = f_alpha;
+            } else {
+                bracket_high = alpha;
+                f_bracket_high = f_alpha;
+            }
+
             if armijo && curvature {
                 self.log_verbose("Wolfe conditions satisfied");
                 return Ok(LineSearchResult {
@@ -272,7 +324,10 @@ impl LineSearch for CubicQuadraticLineSearch {
                     .unwrap_or(0.5 * (left + right));
 
                 // Ensure the new step is within bounds
+                let bracket_size = bracket_high - bracket_low;
                 alpha = new_alpha
+                    .max(bracket_low + self.config.interpolation_safeguard * bracket_size)
+                    .min(bracket_high - self.config.interpolation_safeguard * bracket_size)
                     .max(self.config.min_step)
                     .min(self.config.max_step);
 
@@ -311,7 +366,10 @@ impl LineSearch for CubicQuadraticLineSearch {
                     termination_reason: TerminationReason::StepSizeTooSmall,
                 })
             } else {
-                Err(anyhow!("Line search failed to find any improvement"))
+                Err(anyhow!(
+                    "Line search failed to find any improvement. f0={:.6e}, best_f={:.6e} at alpha={:.6e}",
+                    f0, best_f, best_alpha
+                ))
             }
         }
     }
@@ -574,5 +632,91 @@ mod tests {
         let custom_config = CubicQuadraticConfig { c1: 1e-5, ..CubicQuadraticConfig::default() };
         let line_search = CubicQuadraticLineSearch::with_config(custom_config);
         assert_eq!(line_search.config.c1, 1e-5);
+    }
+    #[test]
+    fn test_clone_box() {
+        let line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig {
+            c1: 1e-5,
+            c2: 0.5,
+            ..CubicQuadraticConfig::default()
+        });
+        let cloned = line_search.clone_box();
+        // We can't directly compare the configs, but we can verify it works
+        // by using it in a line search
+        let current_point = vec![1.0];
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        // Convert to mutable reference to test
+        let mut cloned_mut = cloned;
+        let result = cloned_mut.optimize_1d(&problem);
+        assert!(result.is_ok());
+    }
+    #[test]
+    fn test_reset() {
+        let mut line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig::default());
+        // Since the line search is stateless, reset should not affect behavior
+        let current_point = vec![1.0];
+        let direction = vec![-1.0];
+        let problem = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &quadratic_function,
+            &quadratic_gradient1,
+        ).unwrap();
+        let result1 = line_search.optimize_1d(&problem).unwrap();
+        line_search.reset();
+        let result2 = line_search.optimize_1d(&problem).unwrap();
+        // Results should be identical since the algorithm is stateless
+        assert_eq!(result1.step_size, result2.step_size);
+        assert_eq!(result1.success, result2.success);
+    }
+    #[test]
+    fn test_strict_vs_lax_precision() {
+        // Use a more complex function where precision matters
+        fn rosenbrock_1d(x: &[f64]) -> anyhow::Result<f64> {
+            let t = x[0];
+            // f(t) = 100*(t^2 - 1)^2 + (t - 1)^2
+            Ok(100.0 * (t * t - 1.0).powi(2) + (t - 1.0).powi(2))
+        }
+        fn rosenbrock_1d_gradient(x: &[f64]) -> anyhow::Result<Vec<f64>> {
+            let t = x[0];
+            // f'(t) = 400*t*(t^2 - 1) + 2*(t - 1)
+            Ok(vec![400.0 * t * (t * t - 1.0) + 2.0 * (t - 1.0)])
+        }
+        let current_point = vec![0.5];
+        let direction = vec![-0.1]; // Small descent direction
+        let problem_strict = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &rosenbrock_1d,
+            &rosenbrock_1d_gradient,
+        ).unwrap();
+        let problem_lax = create_1d_problem_linear(
+            &current_point,
+            &direction,
+            &rosenbrock_1d,
+            &rosenbrock_1d_gradient,
+        ).unwrap();
+        let mut strict_search = CubicQuadraticLineSearch::strict();
+        let mut lax_search = CubicQuadraticLineSearch::lax();
+        let strict_result = strict_search.optimize_1d(&problem_strict).unwrap();
+        let lax_result = lax_search.optimize_1d(&problem_lax).unwrap();
+        // Both should succeed
+        assert!(strict_result.success);
+        assert!(lax_result.success);
+        // Evaluate function values at the found steps
+        let f_strict = rosenbrock_1d(&vec![current_point[0] + strict_result.step_size * direction[0]]).unwrap();
+        let f_lax = rosenbrock_1d(&vec![current_point[0] + lax_result.step_size * direction[0]]).unwrap();
+        let f_initial = rosenbrock_1d(&current_point).unwrap();
+        // Both should improve the function
+        assert!(f_strict < f_initial);
+        assert!(f_lax < f_initial);
+        // Strict should satisfy tighter Wolfe conditions
+        // This is implicitly tested by the different c1, c2 values
     }
 }

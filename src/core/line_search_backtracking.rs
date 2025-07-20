@@ -24,6 +24,39 @@ impl Default for BacktrackingConfig {
         }
     }
 }
+impl BacktrackingConfig {
+    /// Create a strict configuration with conservative parameters
+    /// - Stricter Armijo condition (c1 = 1e-3)
+    /// - More aggressive backtracking (rho = 0.3)
+    /// - Higher iteration limit for thorough search
+    pub fn strict() -> Self {
+        Self {
+            c1: 1e-3,              // Stricter Armijo condition
+            rho: 0.3,              // More aggressive backtracking
+            max_iterations: 200,    // More iterations for thorough search
+            min_step: 1e-15,       // Smaller minimum step
+            initial_step: 1.0,
+        }
+    }
+    /// Create a lax configuration with permissive parameters
+    /// - Relaxed Armijo condition (c1 = 1e-6)
+    /// - Conservative backtracking (rho = 0.8)
+    /// - Lower iteration limit for faster convergence
+    pub fn lax() -> Self {
+        Self {
+            c1: 1e-6,              // More permissive Armijo condition
+            rho: 0.8,              // Less aggressive backtracking
+            max_iterations: 50,     // Fewer iterations for speed
+            min_step: 1e-10,       // Larger minimum step
+            initial_step: 1.0,
+        }
+    }
+    /// Create the default configuration
+    pub fn default_config() -> Self {
+        Self::default()
+    }
+}
+
 
 /// Backtracking line search implementation (Armijo rule only)
 #[derive(Debug, Clone)]
@@ -35,31 +68,25 @@ impl BacktrackingLineSearch {
     pub fn new(config: BacktrackingConfig) -> Self {
         Self { config }
     }
+    /// Create with default configuration
+    pub fn default_search() -> Self {
+        Self::new(BacktrackingConfig::default())
+    }
+
     /// Create a strict backtracking line search with conservative parameters
     /// - Stricter Armijo condition (c1 = 1e-3)
     /// - More aggressive backtracking (rho = 0.3)
     /// - Higher iteration limit for thorough search
     pub fn strict() -> Self {
-        Self::new(BacktrackingConfig {
-            c1: 1e-3,              // Stricter Armijo condition
-            rho: 0.3,              // More aggressive backtracking
-            max_iterations: 200,    // More iterations for thorough search
-            min_step: 1e-15,       // Smaller minimum step
-            initial_step: 1.0,
-        })
+        Self::new(BacktrackingConfig::strict())
     }
+
     /// Create a lax backtracking line search with permissive parameters
     /// - Relaxed Armijo condition (c1 = 1e-6)
     /// - Conservative backtracking (rho = 0.8)
     /// - Lower iteration limit for faster convergence
     pub fn lax() -> Self {
-        Self::new(BacktrackingConfig {
-            c1: 1e-6,              // More permissive Armijo condition
-            rho: 0.8,              // Less aggressive backtracking
-            max_iterations: 50,     // Fewer iterations for speed
-            min_step: 1e-10,       // Larger minimum step
-            initial_step: 1.0,
-        })
+        Self::new(BacktrackingConfig::lax())
     }
     /// Create a backtracking line search optimized for robust optimization
     /// - Balanced parameters for reliability over speed

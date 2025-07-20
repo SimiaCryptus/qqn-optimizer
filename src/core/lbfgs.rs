@@ -9,10 +9,7 @@ use crate::core::line_search::create_line_search;
 use crate::core::line_search::{LineSearch, LineSearchConfig};
 use crate::core::optimizer::OptimizationMetadata;
 use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
-use crate::utils::math::{
-    compute_magnitude, create_1d_tensor, dot_product, tensors_to_f64, vector_add, vector_scale,
-    vector_subtract, DifferentiableFunction,
-};
+use crate::utils::math::{compute_magnitude, create_1d_tensor, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
@@ -184,6 +181,8 @@ pub struct LBFGSState {
     prev_params: Option<Vec<Tensor>>,
     /// Disable safety checks when used within QQN
     disable_checks: bool,
+    /// Maximum allowed gradient norm for numerical stability
+    max_gradient_norm: f64,
 }
 
 impl LBFGSState {
@@ -205,6 +204,7 @@ impl LBFGSState {
             no_improvement_count: 0,
             prev_params: None,
             disable_checks,
+            max_gradient_norm: 1e10,
         }
     }
 
@@ -229,24 +229,12 @@ impl LBFGSState {
         gradient: &[Tensor],
     ) -> CandleResult<Vec<Tensor>> {
         // Validate input
-        if gradient.is_empty() {
-            return Err(candle_core::Error::Msg("Empty gradient vector".into()));
-        }
-        if position.is_empty() {
-            return Err(candle_core::Error::Msg("Empty parameter vector".into()));
-        }
-        if position.len() != gradient.len() {
-            return Err(candle_core::Error::Msg(format!(
-                "Parameter and gradient dimension mismatch: {} vs {}",
-                position.len(),
-                gradient.len()
-            )));
-        }
+        self.validate_inputs(position, gradient)?;
 
         if !self.disable_checks {
             // Check gradient magnitude to avoid numerical issues
             let grad_norm = compute_magnitude(gradient)?;
-            if grad_norm < 1e-10 {
+            if grad_norm < self.epsilon {
                 debug!(
                     "L-BFGS: Very small gradient norm {:.6e}, using steepest descent",
                     grad_norm
@@ -256,19 +244,26 @@ impl LBFGSState {
                     .map(|g| g.neg())
                     .collect::<CandleResult<Vec<_>>>()?);
             }
+            // Check for extremely large gradients
+            if grad_norm > self.max_gradient_norm {
+                warn!(
+                    "L-BFGS: Extremely large gradient norm {:.6e}, scaling down",
+                    grad_norm
+                );
+                let scale = self.max_gradient_norm / grad_norm;
+                return Ok(gradient
+                    .iter()
+                    .map(|g| g.affine(-scale, 0.0))
+                    .collect::<CandleResult<Vec<_>>>()?);
+            }
+            
             // Check for NaN/Inf in gradient
-            for (i, grad) in gradient.iter().enumerate() {
-                let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
-                if grad_vec.iter().any(|&x| !x.is_finite()) {
-                    warn!(
-                        "L-BFGS: Non-finite gradient detected at index {}, using steepest descent",
-                        i
-                    );
-                    return Ok(gradient
-                        .iter()
-                        .map(|g| g.neg())
-                        .collect::<CandleResult<Vec<_>>>()?);
-                }
+            if !self.check_finite_tensors(gradient, "gradient")? {
+            warn!("L-BFGS: Non-finite gradient detected, using steepest descent");
+                return Ok(gradient
+                    .iter()
+                    .map(|g| g.neg())
+                    .collect::<CandleResult<Vec<_>>>()?);
             }
         }
 
@@ -313,17 +308,11 @@ impl LBFGSState {
 
             if !self.disable_checks {
                 // Check if q has become non-finite
-                for (_j, q_tensor) in q.iter().enumerate() {
-                    let q_vec = q_tensor.flatten_all()?.to_vec1::<f64>()?;
-                    if q_vec.iter().any(|&x| !x.is_finite()) {
-                        warn!(
-                            "L-BFGS: Non-finite q detected during first loop, using steepest descent"
-                        );
-                        return Ok(gradient
-                            .iter()
-                            .map(|g| g.neg())
-                            .collect::<CandleResult<Vec<_>>>()?);
-                    }
+                if !self.check_finite_tensors(&q, "q (first loop)")? {
+                    return Ok(gradient
+                        .iter()
+                        .map(|g| g.neg())
+                        .collect::<CandleResult<Vec<_>>>()?);
                 }
             }
         }
@@ -334,20 +323,14 @@ impl LBFGSState {
         // Apply initial Hessian approximation scaling
         debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
 
-        let safe_gamma = if !self.disable_checks {
-            // Additional safety check for gamma
-            if !self.gamma.is_finite() || self.gamma <= 0.0 {
-                warn!(
-                    "L-BFGS: Invalid gamma detected: {}, resetting to 1.0",
-                    self.gamma
-                );
-                self.gamma = 1.0;
-            }
-            // Clamp gamma to prevent numerical issues
-            self.gamma.max(1e-6).min(1e6)
-        } else {
-            self.gamma
-        };
+
+        // Ensure gamma is valid
+        if !self.gamma.is_finite() || self.gamma <= 0.0 {
+            warn!("L-BFGS: Invalid gamma detected: {}, resetting to 1.0", self.gamma);
+            self.gamma = 1.0;
+        }
+        let safe_gamma = self.gamma.max(1e-8).min(1e8);
+
         let mut r = vector_scale(&q, safe_gamma)?;
 
         // Second loop: compute final direction
@@ -374,17 +357,11 @@ impl LBFGSState {
 
             if !self.disable_checks {
                 // Check if r has become non-finite
-                for (_j, r_tensor) in r.iter().enumerate() {
-                    let r_vec = r_tensor.flatten_all()?.to_vec1::<f64>()?;
-                    if r_vec.iter().any(|&x| !x.is_finite()) {
-                        warn!(
-                            "L-BFGS: Non-finite r detected during second loop, using steepest descent"
-                        );
-                        return Ok(gradient
-                            .iter()
-                            .map(|g| g.neg())
-                            .collect::<CandleResult<Vec<_>>>()?);
-                    }
+                if !self.check_finite_tensors(&r, "r (second loop)")? {
+                    return Ok(gradient
+                        .iter()
+                        .map(|g| g.neg())
+                        .collect::<CandleResult<Vec<_>>>()?);
                 }
             }
         }
@@ -398,20 +375,108 @@ impl LBFGSState {
         if !self.disable_checks {
             // Final check on the direction
             // Verify the direction is finite
-            for (_i, dir) in direction.iter().enumerate() {
-                let dir_vec = dir.flatten_all()?.to_vec1::<f64>()?;
-                if dir_vec.iter().any(|&x| !x.is_finite()) {
-                    warn!("L-BFGS: Non-finite direction detected, using steepest descent");
-                    return Ok(gradient
-                        .iter()
-                        .map(|g| g.neg())
-                        .collect::<CandleResult<Vec<_>>>()?);
-                }
+            if !self.check_finite_tensors(&direction, "final direction")? {
+                return Ok(gradient
+                    .iter()
+                    .map(|g| g.neg())
+                    .collect::<CandleResult<Vec<_>>>()?);
             }
         }
 
         Ok(direction)
     }
+    /// Compute the L-BFGS search direction without negation
+    /// This is used by QQN which needs the actual direction, not the descent direction
+    pub fn compute_direction(
+        &mut self,
+        gradient: &[Tensor],
+    ) -> CandleResult<Vec<Tensor>> {
+        // Validate input
+        if gradient.is_empty() {
+            return Err(candle_core::Error::Msg("Empty gradient vector".into()));
+        }
+        if !self.disable_checks {
+            // Check gradient magnitude to avoid numerical issues
+            let grad_norm = compute_magnitude(gradient)?;
+            if grad_norm < self.epsilon {
+                debug!(
+                    "L-BFGS: Very small gradient norm {:.6e}, returning negative gradient",
+                    grad_norm
+                );
+                return Ok(gradient
+                    .iter()
+                    .map(|g| g.neg())
+                    .collect::<CandleResult<Vec<_>>>()?);
+            }
+        }
+        if self.s_history.is_empty() {
+            debug!("L-BFGS: No history, returning negative gradient");
+            return Ok(gradient
+                .iter()
+                .map(|g| g.neg())
+                .collect::<CandleResult<Vec<_>>>()?);
+        }
+        let mut q = gradient.to_vec();
+        let mut alpha = Vec::with_capacity(self.s_history.len());
+        // First loop: compute alpha values and update q
+        for i in (0..self.s_history.len()).rev() {
+            let s_i = &self.s_history[i];
+            let rho_i = self.rho_history[i];
+            if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
+                warn!(
+                    "L-BFGS: Skipping history pair {} due to numerical issues (rho={})",
+                    i, rho_i
+                );
+                alpha.push(0.0);
+                continue;
+            }
+            let alpha_i = rho_i * dot_product(s_i, &q)?;
+            if !alpha_i.is_finite() {
+                warn!("L-BFGS: Non-finite alpha detected at iteration {}", i);
+                alpha.push(0.0);
+                continue;
+            }
+            alpha.push(alpha_i);
+            // q = q - alpha_i * y_i
+            let y_i = &self.y_history[i];
+            let scaled_y = vector_scale(y_i, alpha_i)?;
+            q = vector_subtract(&q, &scaled_y)?;
+        }
+        // Reverse alpha to match forward iteration order
+        alpha.reverse();
+        // Apply initial Hessian approximation scaling
+        debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
+        let safe_gamma = if !self.disable_checks {
+            self.gamma.max(1e-6).min(1e6)
+        } else {
+            self.gamma
+        };
+        let mut r = vector_scale(&q, safe_gamma)?;
+        // Second loop: compute final direction
+        for i in 0..self.s_history.len() {
+            if i >= alpha.len() || alpha[i] == 0.0 {
+                continue;
+            }
+            let s_i = &self.s_history[i];
+            let y_i = &self.y_history[i];
+            let rho_i = self.rho_history[i];
+            let alpha_i = alpha[i];
+            let beta = rho_i * dot_product(y_i, &r)?;
+            let correction_factor = alpha_i - beta;
+            if !correction_factor.is_finite() {
+                warn!("L-BFGS: Non-finite correction factor at iteration {}", i);
+                continue;
+            }
+            // r = r + (alpha_i - beta) * s_i
+            let correction = vector_scale(s_i, correction_factor)?;
+            r = vector_add(&r, &correction)?;
+        }
+        // Return the negative of r as the direction (this gives us -H*g)
+        r.iter()
+            .map(|t| t.neg())
+            .collect::<CandleResult<Vec<_>>>()
+    }
+
 
     /// Update the L-BFGS state with new gradient and step information.
     pub fn update(
@@ -421,30 +486,21 @@ impl LBFGSState {
         new_gradient: &[Tensor],
     ) -> CandleResult<()> {
         // Early validation to avoid expensive computations
-        if old_params.is_empty() || new_params.is_empty() || new_gradient.is_empty() {
-            return Err(candle_core::Error::Msg(
-                "Empty parameter or gradient vectors".into(),
-            ));
-        }
-        if old_params.len() != new_params.len() || new_params.len() != new_gradient.len() {
-            return Err(candle_core::Error::Msg(format!(
-                "Parameter and gradient dimension mismatch: old={}, new={}, grad={}",
-                old_params.len(),
-                new_params.len(),
-                new_gradient.len()
-            )));
-        }
+        self.validate_update_inputs(old_params, new_params, new_gradient)?;
 
         // Compute parameter difference: s_k = new_params - old_params
         let s_k = vector_subtract(new_params, old_params)?;
 
         // Check if there was any actual movement
         let s_k_norm = compute_magnitude(&s_k)?;
-        if s_k_norm < self.epsilon() {
+        // Use epsilon-based threshold for consistency
+        if s_k_norm < self.epsilon {
             debug!(
-                "L-BFGS: Parameter change too small ({:.6e}), {:?}={:?}-{:?}, skipping update",
-                s_k_norm, s_k, new_params, old_params
+                "L-BFGS: Parameter change too small ({:.6e}), skipping update",
+                s_k_norm
             );
+            // Still update the previous gradient for next iteration
+            self.prev_gradient = Some(new_gradient.to_vec());
             return Ok(());
         }
 
@@ -463,7 +519,8 @@ impl LBFGSState {
 
             // Compute curvature condition: s_k^T y_k
             let s_dot_y = dot_product(&s_k, &y_k)?;
-            debug!("L-BFGS: s_dot_y = {:.6e}", s_dot_y);
+            debug!("L-BFGS: s_dot_y = {:.6e}, s_k_norm = {:.6e}, y_k_norm = {:.6e}",
+                   s_dot_y, s_k_norm, compute_magnitude(&y_k)?);
 
             // Implement Powell's damping for negative curvature
             let curvature_threshold = self.epsilon() * grad_norm.max(1.0);
@@ -521,12 +578,12 @@ impl LBFGSState {
                 // Update scaling factor for initial Hessian approximation
                 // gamma = (s_k^T y_k) / (y_k^T y_k)
                 let y_dot_y = dot_product(&y_k_final, &y_k_final)?;
-                if y_dot_y > self.epsilon() * grad_norm.max(1.0) {
+                if y_dot_y > self.epsilon {
                     let new_gamma = s_dot_y_final / y_dot_y;
                     // Ensure gamma is finite before updating
                     if new_gamma.is_finite() && new_gamma > 0.0 {
                         // Less conservative gamma clamping for better performance
-                        self.gamma = new_gamma.max(1e-6).min(1e6);
+                        self.gamma = new_gamma.max(1e-8).min(1e8);
                         if (new_gamma - self.gamma).abs() > 1e-10 {
                             debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
                         }
@@ -567,7 +624,63 @@ impl LBFGSState {
 
     /// Get the numerical stability epsilon.
     fn epsilon(&self) -> f64 {
-        1e-8 // Could be made configurable
+        self.epsilon
+    }
+    
+    /// Validate input tensors have matching dimensions
+    fn validate_inputs(&self, position: &[Tensor], gradient: &[Tensor]) -> CandleResult<()> {
+        if gradient.is_empty() {
+            return Err(candle_core::Error::Msg("Empty gradient vector".into()));
+        }
+        if position.is_empty() {
+            return Err(candle_core::Error::Msg("Empty parameter vector".into()));
+        }
+        if position.len() != gradient.len() {
+            return Err(candle_core::Error::Msg(format!(
+                "Parameter and gradient dimension mismatch: {} vs {}",
+                position.len(),
+                gradient.len()
+            )));
+        }
+        Ok(())
+    }
+    
+    /// Validate update inputs
+    fn validate_update_inputs(
+        &self,
+        old_params: &[Tensor],
+        new_params: &[Tensor],
+        new_gradient: &[Tensor],
+    ) -> CandleResult<()> {
+        if old_params.is_empty() || new_params.is_empty() || new_gradient.is_empty() {
+            return Err(candle_core::Error::Msg(
+                "Empty parameter or gradient vectors".into(),
+            ));
+        }
+        if old_params.len() != new_params.len() || new_params.len() != new_gradient.len() {
+            return Err(candle_core::Error::Msg(format!(
+                "Parameter and gradient dimension mismatch: old={}, new={}, grad={}",
+                old_params.len(),
+                new_params.len(),
+                new_gradient.len()
+            )));
+        }
+        Ok(())
+    }
+    
+    /// Check if all tensors contain finite values
+    fn check_finite_tensors(&self, tensors: &[Tensor], context: &str) -> CandleResult<bool> {
+        for (i, tensor) in tensors.iter().enumerate() {
+            let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+            if values.iter().any(|&x| !x.is_finite()) {
+                warn!(
+                    "L-BFGS: Non-finite {} detected at index {}",
+                    context, i
+                );
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 }
 
@@ -606,54 +719,14 @@ impl LBFGSOptimizer {
             line_search,
         }
     }
+    
     /// Log tensor data if verbose mode is enabled
     fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
         if !self.config.verbose {
             return;
         }
         debug!("=== L-BFGS: {} ===", name);
-        for (i, tensor) in tensors.iter().enumerate() {
-            match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
-                Ok(values) => {
-                    debug!(
-                        "  Tensor[{}]: shape={:?}, length={}",
-                        i,
-                        tensor.shape(),
-                        values.len()
-                    );
-                    if values.len() <= 10 {
-                        debug!("    Full data: {:?}", values);
-                    } else {
-                        debug!(
-                            "    First 5: {:?}, Last 5: {:?}",
-                            &values[..5],
-                            &values[values.len() - 5..]
-                        );
-                    }
-                    // Log statistics
-                    let mean = values.iter().sum::<f64>() / values.len() as f64;
-                    let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>()
-                        / values.len() as f64;
-                    let min_val = values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-                    let max_val = values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                    debug!(
-                        "    Stats: mean={:.6e}, std={:.6e}, min={:.6e}, max={:.6e}",
-                        mean,
-                        variance.sqrt(),
-                        min_val,
-                        max_val
-                    );
-                }
-                Err(e) => {
-                    debug!(
-                        "  Tensor[{}]: shape={:?}, error reading values: {}",
-                        i,
-                        tensor.shape(),
-                        e
-                    );
-                }
-            }
-        }
+        log_tensor(tensors);
     }
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
@@ -740,18 +813,7 @@ impl Optimizer for LBFGSOptimizer {
         self.log_tensor_data("Computed Gradients", &gradients);
 
         // Input validation
-        if params.is_empty() || gradients.is_empty() {
-            return Err(candle_core::Error::Msg(
-                "Empty parameters or gradients".into(),
-            ));
-        }
-        if params.len() != gradients.len() {
-            return Err(candle_core::Error::Msg(format!(
-                "Parameter and gradient dimension mismatch: {} vs {}",
-                params.len(),
-                gradients.len()
-            )));
-        }
+        self.state.validate_inputs(params, &gradients)?;
 
         // Compute L-BFGS search direction
         self.log_lbfgs_state("Before computing direction");
@@ -955,32 +1017,29 @@ impl Optimizer for LBFGSOptimizer {
             let step_size_tensor = Tensor::new(actual_step_size, param.device())?;
             let step = direction.broadcast_mul(&step_size_tensor)?;
             *param = param.add(&step)?;
+            
             // Check for NaN/Inf in updated parameters
-            let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
-            if param_vec.iter().any(|&x| !x.is_finite()) {
+            if !self.state.check_finite_tensors(&[param.clone()], "updated parameter")? {
                 // Recovery: restore previous parameters if available
-                match &self.state.prev_params {
-                    Some(prev_params) => {
-                        warn!("L-BFGS: Non-finite parameters detected, restoring previous state");
-                        for (param, prev) in params.iter_mut().zip(prev_params.iter()) {
-                            *param = prev.clone();
-                        }
-                        // Reset L-BFGS state
-                        self.state.reset();
-                        return Ok(StepResult {
-                            step_size: 0.0,
-                            convergence_info: ConvergenceInfo {
-                                converged: false,
-                                function_change: None,
-                            },
-                            metadata: OptimizationMetadata::default(),
-                        });
+                if let Some(prev_params) = &self.state.prev_params {
+                    warn!("L-BFGS: Non-finite parameters detected, restoring previous state");
+                    for (param, prev) in params.iter_mut().zip(prev_params.iter()) {
+                        *param = prev.clone();
                     }
-                    _ => {
-                        return Err(candle_core::Error::Msg(
-                            "Non-finite parameter detected after update".into(),
-                        ));
-                    }
+                    // Reset L-BFGS state
+                    self.state.reset();
+                    return Ok(StepResult {
+                        step_size: 0.0,
+                        convergence_info: ConvergenceInfo {
+                            converged: false,
+                            function_change: None,
+                        },
+                        metadata: OptimizationMetadata::default(),
+                    });
+                } else {
+                    return Err(candle_core::Error::Msg(
+                        "Non-finite parameter detected after update".into(),
+                    ));
                 }
             }
         }

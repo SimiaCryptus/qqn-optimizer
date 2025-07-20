@@ -46,6 +46,7 @@ impl StrongWolfeConfig {
             verbose: false,
         }
     }
+
     /// Lax configuration with relaxed tolerances for robust optimization
     /// - Larger c1 for more lenient sufficient decrease
     /// - Larger c2 for more lenient curvature condition
@@ -62,6 +63,11 @@ impl StrongWolfeConfig {
             verbose: false,
         }
     }
+    /// Create the default configuration
+    pub fn default_config() -> Self {
+        Self::default()
+    }
+
     /// Enable verbose logging for any configuration
     pub fn with_verbose(mut self) -> Self {
         self.verbose = true;
@@ -79,6 +85,18 @@ pub struct StrongWolfeLineSearch {
 impl StrongWolfeLineSearch {
     pub fn new(config: StrongWolfeConfig) -> Self {
         Self { config }
+    }
+    /// Create with default configuration
+    pub fn default_search() -> Self {
+        Self::new(StrongWolfeConfig::default())
+    }
+    /// Create with strict configuration
+    pub fn strict() -> Self {
+        Self::new(StrongWolfeConfig::strict())
+    }
+    /// Create with lax configuration
+    pub fn lax() -> Self {
+        Self::new(StrongWolfeConfig::lax())
     }
     /// Log line search details if verbose mode is enabled
     fn log_verbose(&self, message: &str) {
@@ -219,7 +237,7 @@ impl LineSearch for StrongWolfeLineSearch {
         self.log_verbose(&format!("Initial step size: {:.3e}", alpha));
 
         for i in 0..self.config.max_iterations {
-            self.log_verbose(&format!("Iteration {}: trying alpha={:.3e}", i, alpha));
+            self.log_verbose(&format!("Line Search Iteration {}: trying alpha={:.3e}", i, alpha));
 
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;

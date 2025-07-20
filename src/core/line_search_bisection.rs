@@ -45,6 +45,7 @@ impl BisectionConfig {
             line_bracket_method: 1,
         }
     }
+
     /// Create a lax configuration with loose tolerances and fewer iterations
     /// Suitable for fast optimization where speed is more important than precision
     pub fn lax() -> Self {
@@ -59,6 +60,11 @@ impl BisectionConfig {
             line_bracket_method: 1,
         }
     }
+    /// Create the default configuration
+    pub fn default_config() -> Self {
+        Self::default()
+    }
+
     /// Create a configuration with verbose logging enabled
     pub fn verbose() -> Self {
         Self {
@@ -140,10 +146,30 @@ impl LineSearch for BisectionLineSearch {
                 ));
                 far_point
             } else {
-                // Try minimum step as last resort
-                let f_min = (problem.objective)(self.config.min_step)?;
-                if f_min < f0 {
-                    self.config.min_step
+                // Use a small step that provides some improvement
+                let mut test_step = far_point * 0.1;
+                let mut best_step = 0.0;
+                let mut best_f = f0;
+                
+                // Try progressively smaller steps
+                for _ in 0..10 {
+                    if test_step < self.config.min_step {
+                        break;
+                    }
+                    let f_test = (problem.objective)(test_step)?;
+                    if f_test < best_f {
+                        best_f = f_test;
+                        best_step = test_step;
+                    }
+                    test_step *= 0.5;
+                }
+                
+                if best_step > 0.0 {
+                    self.log_verbose(&format!(
+                        "Found improvement with small step: {:.3e}",
+                        best_step
+                    ));
+                    best_step
                 } else {
                     return Err(anyhow!("Cannot find any improvement"));
                 }
@@ -194,6 +220,18 @@ impl BisectionLineSearch {
     pub fn new(config: BisectionConfig) -> Self {
         Self { config }
     }
+    /// Create with default configuration
+    pub fn default_search() -> Self {
+        Self::new(BisectionConfig::default())
+    }
+    /// Create with strict configuration
+    pub fn strict() -> Self {
+        Self::new(BisectionConfig::strict())
+    }
+    /// Create with lax configuration
+    pub fn lax() -> Self {
+        Self::new(BisectionConfig::lax())
+    }
     /// Log line search details if verbose mode is enabled
     pub(crate) fn log_verbose(&self, message: &str) {
         if self.config.verbose {
@@ -232,7 +270,7 @@ impl BisectionLineSearch {
             // Evaluate gradient at midpoint
             let grad_mid = (problem.gradient)(mid)?;
             self.log_verbose(&format!(
-                "  Iteration {}: mid={:.3e}, grad={:.3e}",
+                "  Line Search Iteration {}: mid={:.3e}, grad={:.3e}",
                 i, mid, grad_mid
             ));
             // Check if gradient is close enough to zero

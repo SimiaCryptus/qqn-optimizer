@@ -58,18 +58,21 @@ pub fn create_1d_problem<'a>(
     gradient_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>> + Send + Sync),
 ) -> Result<OneDimensionalProblem<'a>> {
     let initial_position = curve.position(0.0)?;
-    let initial_value = objective_fn(&initial_position)
-        .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
-    // Get initial directional derivative
     let initial_direction = curve.direction(0.0)?;
-    let initial_derivative = gradient_fn(&curve.position(0.0)?)?;
-    let initial_directional_derivative = dot_product_f64(&initial_derivative, &initial_direction)?;
+    let initial_value = objective_fn(&initial_position).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
+    let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
+    let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
     debug!("create_1d_problem: initial_derivative={:?}, initial_direction={:?}, initial_directional_derivative={:.3e}",
-          initial_derivative, initial_direction, initial_directional_derivative);
+          initial_gradient, initial_direction, initial_directional_derivative);
+        // Check for zero direction
+        let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if direction_norm < 1e-16 {
+            return Err(anyhow!("Direction vector is essentially zero (norm = {:.3e})", direction_norm));
+        }
+
+    // For descent: ∇f · d < 0
     if initial_directional_derivative >= 0.0 {
-        return Err(anyhow!(
-            "Initial directional derivative must be negative for descent direction"
-        ));
+            return Err(anyhow!("Initial directional derivative must be negative for descent direction: {:.3e}", initial_directional_derivative));
     }
 
     // Use Arc to share the curve between closures
@@ -184,6 +187,7 @@ pub enum TerminationReason {
     MaxIterationsReached,
     StepSizeTooSmall,
     FunctionEvaluationError,
+    InvalidDirection,
 }
 /// General line search configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -328,7 +332,7 @@ pub(crate) fn find_far_point_1(
         let f_t = (problem.objective)(t)?;
         let grad_t = (problem.gradient)(t)?;
         debug!(
-            "  Iteration {}: t={:.3e}, f={:.3e}, grad={:.3e}, f0={:.3e}",
+            "  Line Search Iteration {}: t={:.3e}, f={:.3e}, grad={:.3e}, f0={:.3e}",
             iteration, t, f_t, grad_t, f0
         );
         // Check if this point satisfies our far point criteria:
@@ -382,7 +386,7 @@ pub(crate) fn find_far_point_2(
     while iteration < max_iterations {
         let f_t = (problem.objective)(t)?;
         debug!(
-            "  Iteration {}: t={:.3e}, f={:.3e}, f0={:.3e}",
+            "  Line Search Iteration {}: t={:.3e}, f={:.3e}, f0={:.3e}",
             iteration, t, f_t, f0
         );
         // Check if this point satisfies our far point criteria:

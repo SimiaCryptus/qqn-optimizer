@@ -283,7 +283,7 @@ impl MichalewiczFunction {
         Self {
             dimension,
             m,
-            name: format!("Michalewicz_{}D", dimension),
+            name: format!("Michalewicz_{}D_m{}", dimension, m),
         }
     }
 }
@@ -714,7 +714,7 @@ impl AckleyFunction {
             a,
             b,
             c,
-            name: format!("Ackley_{}D", dimension),
+            name: format!("Ackley_{}D_a{}_b{}_c{}", dimension, a, b, c),
         }
     }
 }
@@ -787,7 +787,7 @@ impl Default for BoothFunction {
 /// Griewank function: f(x) = 1 + (1/4000)*Σx_i² - Π cos(x_i/√i)
 /// Global minimum: f(0, 0, ..., 0) = 0
 #[derive(Debug, Clone)]
-pub struct GriewankFunction {
+pub struct GriewankFunction {   
     dimension: usize,
     name: String,
 }
@@ -1586,7 +1586,7 @@ mod tests {
         assert_eq!(SphereFunction::new(3).name(), "Sphere_3D");
         assert_eq!(RosenbrockFunction::new(5).name(), "Rosenbrock_5D");
         assert_eq!(RastriginFunction::new(10).name(), "Rastrigin_10D");
-        assert_eq!(AckleyFunction::new(2).name(), "Ackley_2D");
+        assert_eq!(AckleyFunction::new(2).name(), "Ackley_2D_a20_b0.2_c6.283185307179586");
         assert_eq!(MatyasFunction::new().name(), "Matyas_2D");
         assert_eq!(LeviFunction::new().name(), "Levi_2D");
         assert_eq!(BealeFunction::new().name(), "Beale_2D");

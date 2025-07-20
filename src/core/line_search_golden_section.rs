@@ -41,6 +41,7 @@ impl GoldenSectionConfig {
             verbose: false,
         }
     }
+
     /// Create a lax configuration for fast, approximate optimization
     /// - Lower iteration limit for speed
     /// - Looser tolerance for quick convergence
@@ -55,6 +56,11 @@ impl GoldenSectionConfig {
             verbose: false,
         }
     }
+    /// Create the default configuration
+    pub fn default_config() -> Self {
+        Self::default()
+    }
+
     /// Create a configuration with verbose logging enabled
     pub fn with_verbose(mut self) -> Self {
         self.verbose = true;
@@ -119,6 +125,18 @@ impl GoldenSectionLineSearch {
     pub fn new(config: GoldenSectionConfig) -> Self {
         Self { config }
     }
+    /// Create with default configuration
+    pub fn default_search() -> Self {
+        Self::new(GoldenSectionConfig::default())
+    }
+    /// Create with strict configuration
+    pub fn strict() -> Self {
+        Self::new(GoldenSectionConfig::strict())
+    }
+    /// Create with lax configuration
+    pub fn lax() -> Self {
+        Self::new(GoldenSectionConfig::lax())
+    }
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
             debug!("GoldenSection: {}", message);
@@ -143,7 +161,7 @@ impl GoldenSectionLineSearch {
         let mut f2 = (problem.objective)(x2)?;
         for i in 0..self.config.max_iterations {
             self.log_verbose(&format!(
-                "Iteration {}: interval=[{:.3e}, {:.3e}], x1={:.3e}, x2={:.3e}, f1={:.3e}, f2={:.3e}",
+                "Line Search Iteration {}: interval=[{:.3e}, {:.3e}], x1={:.3e}, x2={:.3e}, f1={:.3e}, f2={:.3e}",
                 i, left, right, x1, x2, f1, f2
             ));
             if (right - left) < self.config.tolerance {
