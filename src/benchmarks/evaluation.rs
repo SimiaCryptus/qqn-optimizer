@@ -753,7 +753,7 @@ impl BenchmarkResults {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarks::functions::SphereFunction;
+    use crate::benchmarks::analytic_functions::SphereFunction;
     use crate::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 
     #[tokio::test]

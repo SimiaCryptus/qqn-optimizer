@@ -283,7 +283,10 @@ impl NeuralNetworkTraining {
                 // Apply ReLU derivative
                 if i < self.layer_sizes.len() - 1 {
                     let relu_mask = activations[i].gt(&Tensor::zeros_like(&activations[i])?)?;
-                    delta = delta.where_cond(&relu_mask, &Tensor::zeros_like(&delta)?)?;
+                    // Convert boolean mask to float (1.0 where true, 0.0 where false)
+                    let relu_mask_float = relu_mask.to_dtype(candle_core::DType::F64)?;
+                    // Apply ReLU derivative by element-wise multiplication
+                    delta = (&delta * &relu_mask_float)?;
                 }
             }
         }

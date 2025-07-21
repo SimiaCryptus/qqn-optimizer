@@ -1,5 +1,7 @@
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults};
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 /// Handles statistical analysis and significance testing
 pub struct StatisticalAnalysis;
@@ -13,6 +15,7 @@ impl StatisticalAnalysis {
         &self,
         all_results: &[(String, BenchmarkResults)],
         config: &BenchmarkConfig,
+        output_dir: &str,
     ) -> anyhow::Result<String> {
         let mut section = String::from(
             r#"
@@ -20,7 +23,7 @@ impl StatisticalAnalysis {
         <h2>Statistical Analysis</h2>
         <div class="subsection">
             <h3>Pairwise Comparisons: QQN vs Non-QQN Optimizers</h3>
-            <p>Statistical significance tests comparing QQN variants against non-QQN baseline optimizers on final objective values.</p>
+            <p>Statistical significance tests comparing QQN variants against non-QQN baseline optimizers on final objective values and computational cost.</p>
 "#,
         );
 
@@ -41,12 +44,22 @@ impl StatisticalAnalysis {
             return Ok(section);
         }
 
-        let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
+        let mut optimizer_results: HashMap<String, Vec<(f64, f64, String)>> = HashMap::new(); // (final_value, cost, problem)
         for result in &combined_results.results {
+            let cost = (result.function_evaluations.max(result.gradient_evaluations)) as f64;
+            let problem_name = all_results.iter()
+                .find(|(_, res)| res.results.iter().any(|r| 
+                    r.optimizer_name == result.optimizer_name && 
+                    r.run_id == result.run_id &&
+                    (r.final_value - result.final_value).abs() < 1e-12
+                ))
+                .map(|(name, _)| name.clone())
+                .unwrap_or_else(|| "Unknown".to_string());
+            
             optimizer_results
                 .entry(result.optimizer_name.clone())
                 .or_insert_with(Vec::new)
-                .push(result.final_value);
+                .push((result.final_value, cost, problem_name));
         }
 
         optimizer_results.retain(|_, values| values.len() >= 2);
@@ -83,6 +96,7 @@ impl StatisticalAnalysis {
         section.push_str(
             r#"            <table>
                 <tr>
+                    <th>Problem</th>
                     <th>QQN Optimizer</th>
                     <th>Non-QQN Optimizer</th>
                     <th>Metric</th>
@@ -95,20 +109,52 @@ impl StatisticalAnalysis {
         );
 
         let mut comparisons_made = 0;
+        let mut csv_data = Vec::new();
+        csv_data.push("Problem,QQN_Optimizer,NonQQN_Optimizer,Metric,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
+        // Group results by problem for per-problem analysis
+        let mut problem_optimizer_results: HashMap<String, HashMap<String, Vec<(f64, f64)>>> = HashMap::new();
+        for (optimizer, results) in &optimizer_results {
+            for (final_value, cost, problem) in results {
+                problem_optimizer_results
+                    .entry(problem.clone())
+                    .or_insert_with(HashMap::new)
+                    .entry(optimizer.clone())
+                    .or_insert_with(Vec::new)
+                    .push((*final_value, *cost));
+            }
+        }
+        for (problem_name, problem_results) in &problem_optimizer_results {
+            let mut problem_qqn_optimizers = Vec::new();
+            let mut problem_non_qqn_optimizers = Vec::new();
+            for optimizer_name in problem_results.keys() {
+                if optimizer_name.contains("QQN") {
+                    problem_qqn_optimizers.push(optimizer_name.clone());
+                } else {
+                    problem_non_qqn_optimizers.push(optimizer_name.clone());
+                }
+            }
+            if problem_qqn_optimizers.is_empty() || problem_non_qqn_optimizers.is_empty() {
+                continue;
+            }
 
-        for qqn_opt in &qqn_optimizers {
-            for non_qqn_opt in &non_qqn_optimizers {
-                let values_qqn = &optimizer_results[qqn_opt];
-                let values_non_qqn = &optimizer_results[non_qqn_opt];
+            for qqn_opt in &problem_qqn_optimizers {
+                for non_qqn_opt in &problem_non_qqn_optimizers {
+                    let qqn_results = &problem_results[qqn_opt];
+                    let non_qqn_results = &problem_results[non_qqn_opt];
+                    
+                    if qqn_results.len() < 2 || non_qqn_results.len() < 2 {
+                        continue;
+                    }
 
-                match self.welch_t_test(values_qqn, values_non_qqn) {
+                    match self.welch_t_test(&values_qqn, &values_non_qqn) {
                     Ok((t_stat, p_value)) => {
-                        let effect_size = self.cohens_d(values_qqn, values_non_qqn);
+                            let effect_size = self.cohens_d(&values_qqn, &values_non_qqn);
                         let significant = p_value < 0.05;
                         let significance_class = if significant { "best" } else { "" };
 
                         section.push_str(&format!(
                             r#"                <tr class="{}">
+                                <td>{}</td>
                                 <td>{}</td>
                                 <td>{}</td>
                                 <td>Final Objective Value</td>
@@ -119,6 +165,7 @@ impl StatisticalAnalysis {
                             </tr>
 "#,
                             significance_class,
+                                problem_name,
                             qqn_opt,
                             non_qqn_opt,
                             t_stat,
@@ -126,6 +173,8 @@ impl StatisticalAnalysis {
                             if significant { "✓" } else { "✗" },
                             effect_size
                         ));
+                            csv_data.push(format!("{},{},{},Final_Objective_Value,{:.6},{:.6},{},{:.6}",
+                                problem_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
                         comparisons_made += 1;
                     }
                     Err(e) => {
@@ -133,34 +182,97 @@ impl StatisticalAnalysis {
                             r#"                <tr>
                                 <td>{}</td>
                                 <td>{}</td>
-                                <td colspan="5"><em>Test failed: {}</em></td>
+                                <td>{}</td>
+                                <td colspan="6"><em>Test failed: {}</em></td>
                             </tr>
 "#,
-                            qqn_opt, non_qqn_opt, e
+                                problem_name, qqn_opt, non_qqn_opt, e
                         ));
                     }
                 }
+                    // Test on computational cost
+                    let costs_qqn: Vec<f64> = qqn_results.iter().map(|(_, c)| *c).collect();
+                    let costs_non_qqn: Vec<f64> = non_qqn_results.iter().map(|(_, c)| *c).collect();
+                    match self.welch_t_test(&costs_qqn, &costs_non_qqn) {
+                        Ok((t_stat, p_value)) => {
+                            let effect_size = self.cohens_d(&costs_qqn, &costs_non_qqn);
+                            let significant = p_value < 0.05;
+                            let significance_class = if significant { "best" } else { "" };
+                            section.push_str(&format!(
+                                r#"                <tr class="{}">
+                                    <td>{}</td>
+                                    <td>{}</td>
+                                    <td>{}</td>
+                                    <td>Computational Cost</td>
+                                    <td>{:.4}</td>
+                                    <td>{:.4}</td>
+                                    <td>{}</td>
+                                    <td>{:.3}</td>
+                                </tr>
+"#,
+                                significance_class,
+                                problem_name,
+                                qqn_opt,
+                                non_qqn_opt,
+                                t_stat,
+                                p_value,
+                                if significant { "✓" } else { "✗" },
+                                effect_size
+                            ));
+                            csv_data.push(format!("{},{},{},Computational_Cost,{:.6},{:.6},{},{:.6}",
+                                problem_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
+                            comparisons_made += 1;
+                        }
+                        Err(e) => {
+                            section.push_str(&format!(
+                                r#"                <tr>
+                                    <td>{}</td>
+                                    <td>{}</td>
+                                    <td>{}</td>
+                                    <td>Computational Cost</td>
+                                    <td colspan="4"><em>Test failed: {}</em></td>
+                                </tr>
+"#,
+                                problem_name, qqn_opt, non_qqn_opt, e
+                            ));
+                        }
+                    }
+                }
+            }
             }
         }
 
         if comparisons_made == 0 {
             section.push_str(r#"                <tr>
-                    <td colspan="7"><em>No valid QQN vs non-QQN comparisons could be performed.</em></td>
+                    <td colspan="8"><em>No valid QQN vs non-QQN comparisons could be performed.</em></td>
                 </tr>
 "#);
+        }
+        // Save CSV data
+        if let Err(e) = self.save_statistical_analysis_csv(&csv_data, output_dir) {
+            eprintln!("Warning: Failed to save statistical analysis CSV: {}", e);
         }
 
         section.push_str(r#"            </table>
 
             <div class="citation">
                 <strong>Citation Note:</strong> Statistical tests performed using Welch's t-test comparing final objective values
-                between QQN variants and non-QQN optimizers with α = 0.05. Effect sizes calculated using Cohen's d.
+                and computational cost (max of function/gradient evaluations) between QQN variants and non-QQN optimizers 
+                with α = 0.05. Effect sizes calculated using Cohen's d. Analysis performed per problem to account for 
+                problem-specific characteristics.
+                <br><strong>Data:</strong> <a href="statistical_analysis_raw_data.csv">Raw statistical analysis data (CSV)</a>
             </div>
         </div>
     </div>
 "#);
 
         Ok(section)
+    }
+    fn save_statistical_analysis_csv(&self, csv_data: &[String], output_dir: &str) -> anyhow::Result<()> {
+        let csv_content = csv_data.join("\n");
+        let csv_path = Path::new(output_dir).join("statistical_analysis_raw_data.csv");
+        fs::write(csv_path, csv_content)?;
+        Ok(())
     }
 
     fn welch_t_test(&self, sample_a: &[f64], sample_b: &[f64]) -> anyhow::Result<(f64, f64)> {

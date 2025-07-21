@@ -11,10 +11,7 @@ pub use core::{
     qqn::{QQNConfig, QQNOptimizer},
 };
 
-pub use benchmarks::functions::{
-    AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
-    SphereFunction,
-};
+pub use benchmarks::functions::OptimizationProblem;
 
 pub use analysis::{
     plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine},
@@ -33,6 +30,11 @@ pub use self::core::line_search_strong_wolfe::StrongWolfeConfig;
 pub use crate::core::adam::{AdamConfig, AdamOptimizer, AdamState};
 // Error types
 pub use anyhow::{Error, Result};
+pub use benchmarks::analytic_functions::AckleyFunction;
+pub use benchmarks::analytic_functions::BealeFunction;
+pub use benchmarks::analytic_functions::RastriginFunction;
+pub use benchmarks::analytic_functions::RosenbrockFunction;
+pub use benchmarks::analytic_functions::SphereFunction;
 // Re-export ML problems for easier access
 pub use benchmarks::mnist::MnistNeuralNetwork;
 

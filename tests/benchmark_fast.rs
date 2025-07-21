@@ -8,7 +8,8 @@ mod experiment_runner;
 use experiment_runner::ExperimentRunner;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::core::GDOptimizer;
-use qqn_optimizer::{AdamOptimizer, LBFGSConfig, LBFGSOptimizer, QQNConfig, QQNOptimizer, RosenbrockFunction};
+use qqn_optimizer::{AdamOptimizer, LBFGSConfig, LBFGSOptimizer, QQNConfig, QQNOptimizer};
+use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

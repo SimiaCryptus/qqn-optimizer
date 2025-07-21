@@ -1163,7 +1163,7 @@ impl Optimizer for LBFGSOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RosenbrockFunction;
+    use crate::benchmarks::analytic_functions::RosenbrockFunction;
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;

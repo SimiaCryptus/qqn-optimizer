@@ -1,4 +1,4 @@
-use qqn_optimizer::benchmarks::functions::{GoldsteinPriceFunction, LeviFunction, MatyasFunction, OptimizationProblem, StyblinskiTangFunction};
+use qqn_optimizer::benchmarks::functions::OptimizationProblem;
 use qqn_optimizer::core::optimizer::Optimizer;
 use rand::{Rng, SeedableRng};
 use std::fs;
@@ -8,8 +8,8 @@ mod experiment_runner;
 use crate::experiment_runner::standard_optimizers;
 use experiment_runner::ExperimentRunner;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
-use qqn_optimizer::benchmarks::MichalewiczFunction;
-use qqn_optimizer::{AckleyFunction, BealeFunction, RastriginFunction, RosenbrockFunction, SphereFunction};
+use qqn_optimizer::benchmarks::analytic_functions::{AckleyFunction, BealeFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SphereFunction};
+use qqn_optimizer::benchmarks::analytic_functions::{GoldsteinPriceFunction, LeviFunction, MatyasFunction, StyblinskiTangFunction};
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
