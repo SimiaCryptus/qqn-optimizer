@@ -10,6 +10,8 @@ pub struct LogisticRegression {
     device: Device,
     regularization: f64,
     name: String,
+    n_samples: usize,
+    n_features: usize,
 }
 
 impl LogisticRegression {
@@ -25,6 +27,8 @@ impl LogisticRegression {
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
 
         Ok(Self {
+            n_samples,
+            n_features,
             name,
             x_tensor,
             y_tensor,
@@ -37,13 +41,14 @@ impl LogisticRegression {
         use rand::Rng;
         let mut rng = rand::rng();
 
-        let mut x_data = Vec::new();
-        let mut y_data = Vec::new();
+        let mut x_data = Vec::with_capacity(n_samples);
+        let mut y_data = Vec::with_capacity(n_samples);
 
         for _ in 0..n_samples {
-            let x: Vec<f64> = (0..n_features)
-                .map(|_| rng.random_range(-1.0..1.0))
-                .collect();
+            let mut x = Vec::with_capacity(n_features);
+            for _ in 0..n_features {
+                x.push(rng.random_range(-1.0..1.0));
+            }
             let linear_combination: f64 = x
                 .iter()
                 .enumerate()
@@ -106,7 +111,7 @@ impl OptimizationProblem for LogisticRegression {
 
         // Compute gradient: X^T @ error / n_samples
         let grad = self.x_tensor.t()?.matmul(&error.unsqueeze(1)?)?.squeeze(1)?;
-        let n_samples = self.x_tensor.dim(0)? as f64;
+        let n_samples = self.n_samples as f64;
         let grad = (&grad / n_samples)?;
 
         // Add regularization gradient
@@ -201,32 +206,40 @@ impl NeuralNetworkTraining {
     }
     fn forward_pass(&self, params: &[f64]) -> Result<Tensor> {
         let mut param_idx = 0;
-        let mut x = self.x_tensor.clone();
+    let mut x = &self.x_tensor;
+    let mut owned_x: Option<Tensor> = None;
         for i in 0..self.layer_sizes.len() - 1 {
             let input_size = self.layer_sizes[i];
             let output_size = self.layer_sizes[i + 1];
             // Extract weights and biases
             let weight_size = input_size * output_size;
-            let weights = &params[param_idx..param_idx + weight_size];
+        let weight_slice = &params[param_idx..param_idx + weight_size];
             param_idx += weight_size;
-            let biases = &params[param_idx..param_idx + output_size];
+        let bias_slice = &params[param_idx..param_idx + output_size];
             param_idx += output_size;
             // Create weight tensor
-            let w = Tensor::from_vec(weights.to_vec(), (input_size, output_size), &self.device)?;
-            let b = Tensor::from_vec(biases.to_vec(), output_size, &self.device)?;
+        let w = Tensor::from_slice(weight_slice, (input_size, output_size), &self.device)?;
+        let b = Tensor::from_slice(bias_slice, output_size, &self.device)?;
             // Linear transformation: x @ w + b
-            x = x.matmul(&w)?;
-            x = x.broadcast_add(&b)?;
+        let z = x.matmul(&w)?;
+        let z = z.broadcast_add(&b)?;
             // Apply activation (ReLU for hidden layers, no activation for output)
             if i < self.layer_sizes.len() - 2 {
-                x = x.relu()?;
+            owned_x = Some(z.relu()?);
+        } else {
+            owned_x = Some(z);
             }
+        x = owned_x.as_ref().unwrap();
         }
-        Ok(x)
+    Ok(owned_x.unwrap())
     }
     fn backward_pass(&self, params: &[f64]) -> Result<Vec<f64>> {
         let batch_size = self.x_tensor.dim(0)? as f64;
-        let mut gradients = vec![0.0; params.len()];
+    let mut gradients = Vec::with_capacity(params.len());
+    gradients.resize(params.len(), 0.0);
+    // Pre-allocate reusable buffers
+    let mut weight_grad_buffer: Vec<f64> = Vec::with_capacity(self.layer_sizes.iter().map(|&s| s).max().unwrap_or(0) * self.layer_sizes.iter().map(|&s| s).max().unwrap_or(0));
+    
         // Forward pass with intermediate activations
         let mut activations = vec![self.x_tensor.clone()];
         let mut param_idx = 0;
@@ -439,6 +452,7 @@ pub struct SupportVectorMachine {
     device: Device,
     c: f64, // Regularization parameter
     name: String,
+    ones_tensor: Option<Tensor>, // Cache for ones tensor
 }
 
 impl SupportVectorMachine {
@@ -459,6 +473,7 @@ impl SupportVectorMachine {
             device,
             c,
             name,
+            ones_tensor: None,
         })
     }
 }
@@ -485,8 +500,12 @@ impl OptimizationProblem for SupportVectorMachine {
         let margins = (&self.y_tensor * &scores)?;
 
         // Hinge loss: max(0, 1 - margin)
-        let ones = Tensor::ones_like(&margins)?;
-        let hinge_terms = (&ones - &margins)?.relu()?;
+        let ones = if let Some(ref cached_ones) = self.ones_tensor {
+            cached_ones
+        } else {
+            &Tensor::ones_like(&margins)?
+        };
+        let hinge_terms = (ones - &margins)?.relu()?;
         let hinge_loss = hinge_terms.mean_all()?;
 
         // Regularization term

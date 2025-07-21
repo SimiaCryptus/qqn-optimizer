@@ -146,9 +146,13 @@ impl StatisticalAnalysis {
                         continue;
                     }
 
-                    match self.welch_t_test(&values_qqn, &values_non_qqn) {
+                    // Extract final values for statistical testing
+                    let qqn_final_values: Vec<f64> = qqn_results.iter().map(|(final_val, _)| *final_val).collect();
+                    let non_qqn_final_values: Vec<f64> = non_qqn_results.iter().map(|(final_val, _)| *final_val).collect();
+                    
+                    match self.welch_t_test(&qqn_final_values, &non_qqn_final_values) {
                     Ok((t_stat, p_value)) => {
-                            let effect_size = self.cohens_d(&values_qqn, &values_non_qqn);
+                            let effect_size = self.cohens_d(&qqn_final_values, &non_qqn_final_values);
                         let significant = p_value < 0.05;
                         let significance_class = if significant { "best" } else { "" };
 
@@ -238,7 +242,6 @@ impl StatisticalAnalysis {
                         }
                     }
                 }
-            }
             }
         }
 
