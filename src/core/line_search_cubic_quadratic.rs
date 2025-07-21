@@ -2,7 +2,6 @@ use crate::core::line_search::OneDimensionalProblem;
 use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
-use std::sync::Arc;
 
 /// Configuration for Cubic/Quadratic interpolation line search
 #[derive(Debug, Clone)]
@@ -379,6 +378,7 @@ mod tests {
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
     use approx::assert_relative_eq;
+    use std::sync::Arc;
 
     fn quadratic_function(x: &[f64]) -> anyhow::Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)

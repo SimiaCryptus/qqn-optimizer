@@ -57,8 +57,10 @@ pub fn create_1d_problem(
     objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
     gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
 ) -> Result<OneDimensionalProblem> {
-    let initial_position = curve.position(0.0)?;
-    let initial_direction = curve.direction(0.0)?;
+    let initial_position = curve.position(0.0)
+        .map_err(|e| anyhow!("Failed to evaluate curve at t=0: {}", e))?;
+    let initial_direction = curve.direction(0.0)
+        .map_err(|e| anyhow!("Failed to evaluate curve direction at t=0: {}", e))?;
     let initial_value = objective_fn(&initial_position).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
     let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
     let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
@@ -389,11 +391,11 @@ pub(crate) fn find_far_point_1(
 pub(crate) fn find_far_point_2(
     problem: &OneDimensionalProblem,
     f0: f64,
-    initial_steop: f64,
+    initial_step: f64,
     max_iterations: usize,
     max_step: f64,
 ) -> Result<f64, Error> {
-    let mut t = initial_steop;
+    let mut t = initial_step;
     let mut iteration = 0;
     debug!("Finding far point starting from t={:.3e}", t);
     while iteration < max_iterations {

@@ -3,7 +3,6 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -349,6 +348,7 @@ mod tests {
     use crate::core::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use approx::assert_relative_eq;
+    use std::sync::Arc;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)

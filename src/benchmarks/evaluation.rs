@@ -43,7 +43,6 @@ pub struct BenchmarkConfig {
     pub tolerance: f64,
     pub time_limit: DurationWrapper,
     pub num_runs: usize,
-    pub include_ml_problems: bool,
 }
 
 impl Default for BenchmarkConfig {
@@ -54,7 +53,6 @@ impl Default for BenchmarkConfig {
             tolerance: 1e-12,
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             num_runs: 10,
-            include_ml_problems: true,
         }
     }
 }

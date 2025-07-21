@@ -489,7 +489,6 @@ impl LineSearch for MoreThuenteLineSearch {
 mod tests {
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
-    use crate::init_logging;
     use anyhow::Result;
     use approx::assert_relative_eq;
     use std::sync::Arc;
