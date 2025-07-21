@@ -689,7 +689,9 @@ mod tests {
             Ok(vec![400.0 * t * (t * t - 1.0) + 2.0 * (t - 1.0)])
         }
         let current_point = vec![0.5];
-        let direction = vec![-0.1]; // Small descent direction
+        // Calculate the gradient at the current point and use negative gradient as descent direction
+        let gradient = rosenbrock_1d_gradient(&current_point).unwrap();
+        let direction = vec![-gradient[0]]; // Negative gradient is descent direction
         let problem_strict = create_1d_problem_linear(
             &current_point,
             &direction,

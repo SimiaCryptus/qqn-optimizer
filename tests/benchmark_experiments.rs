@@ -8,7 +8,7 @@ use qqn_optimizer::benchmarks::functions::{
     SphereFunction, StyblinskiTangFunction,
 };
 use qqn_optimizer::benchmarks::ml_problems::{
-    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
+    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine, MnistNeuralNetwork,
 };
 use qqn_optimizer::benchmarks::MichalewiczFunction;
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
@@ -209,6 +209,14 @@ impl ExperimentRunner {
                 Box::new(
                     NeuralNetworkTraining::mlp_classification(vec![10, 20, 5])
                         .expect("Failed to create MLP"),
+                ),
+                Box::new(
+                    MnistNeuralNetwork::create(Some(100), 20)
+                        .expect("Failed to create MNIST neural network"),
+                ),
+                Box::new(
+                    MnistNeuralNetwork::create(Some(200), 30)
+                        .expect("Failed to create MNIST neural network"),
                 ),
                 Box::new(SupportVectorMachine::new(
                     Self::generate_svm_data(100, 5).0,
@@ -1941,6 +1949,10 @@ async fn test_academic_citation_format() -> Result<(), Box<dyn std::error::Error
             ExperimentRunner::generate_linear_regression_data(50, 3).1,
             0.01,
         )),
+        Box::new(
+            MnistNeuralNetwork::create(Some(100), 20)
+                .expect("Failed to create MNIST neural network"),
+        ),
     ];
 
     let optimizers = vec![

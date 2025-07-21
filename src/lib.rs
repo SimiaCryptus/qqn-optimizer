@@ -11,18 +11,21 @@ pub use core::{
     qqn::{QQNConfig, QQNOptimizer},
 };
 
-pub use benchmarks::{
-    functions::{
-        AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
-        SphereFunction,
-    },
-    ml_problems::{LogisticRegression, NeuralNetworkTraining},
+pub use benchmarks::functions::{
+    AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
+    SphereFunction,
 };
 
 pub use analysis::{
     plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine},
     reporting::AcademicReport,
     statistics::{ConvergenceComparison, PerformanceProfiles, StatisticalAnalysis},
+};
+
+// Re-export ML problems for easier access
+pub use crate::benchmarks::ml_problems::{
+    LinearRegression, LogisticRegression, MnistNeuralNetwork,
+    NeuralNetworkTraining, SupportVectorMachine,
 };
 
 // Error types

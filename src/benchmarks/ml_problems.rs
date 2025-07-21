@@ -1,6 +1,11 @@
 //! Machine learning optimization problems for benchmarking.
 use crate::benchmarks::functions::OptimizationProblem;
 use anyhow::Result;
+use rand::Rng;
+use std::f64::consts::PI;
+use std::fs;
+use std::io::Read;
+use std::path::Path;
 
 /// Logistic regression optimization problem
 #[derive(Clone)]
@@ -267,6 +272,646 @@ impl OptimizationProblem for NeuralNetworkTraining {
         Some(0.96) // Set threshold slightly above typical best values
     }
 }
+#[derive(Debug)]
+struct MnistData {
+    images: Vec<Vec<u8>>,
+    labels: Vec<u8>,
+}
+
+/// MNIST-like neural network training problem
+#[derive(Clone)]
+pub struct MnistNeuralNetwork {
+    x_data: Vec<Vec<f64>>, // 28x28 = 784 features
+    y_data: Vec<Vec<f64>>, // 10 classes (one-hot encoded)
+    hidden_size: usize,
+    name: String,
+}
+impl MnistNeuralNetwork {
+    pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<Vec<f64>>, hidden_size: usize) -> Self {
+        let n_samples = x_data.len();
+        let name = format!("MNIST_NN_{}samples_hidden{}", n_samples, hidden_size);
+        Self {
+            x_data,
+            y_data,
+            hidden_size,
+            name,
+        }
+    }
+    /// Load real MNIST data
+    pub fn load_mnist(n_samples: Option<usize>, hidden_size: usize) -> Result<Self> {
+        if !Path::new("data/train-images-idx3-ubyte").exists() {
+            println!("MNIST files not found, downloading...");
+            let _mnist_data = Self::download_mnist_data()?;
+        }
+        let mnist_data = match Self::try_load_mnist_files() {
+            Ok(data) => data,
+            Err(_) => {
+                println!("MNIST files not found locally, falling back to synthetic data");
+                return Self::synthetic(n_samples.unwrap_or(1000), hidden_size);
+            }
+        };
+
+        let actual_samples = n_samples.unwrap_or(1000).min(mnist_data.images.len());
+        let mut x_data = Vec::new();
+        let mut y_data = Vec::new();
+
+        for i in 0..actual_samples {
+            // Convert image data to f64 and normalize to [0, 1]
+            let image: Vec<f64> = mnist_data.images[i]
+                .iter()
+                .map(|&pixel| pixel as f64 / 255.0)
+                .collect();
+
+            // Convert label to one-hot encoding
+            let mut label = vec![0.0; 10];
+            label[mnist_data.labels[i] as usize] = 1.0;
+
+            x_data.push(image);
+            y_data.push(label);
+        }
+
+        Ok(Self::new(x_data, y_data, hidden_size))
+    }
+
+    fn try_load_mnist_files() -> Result<MnistData> {
+        // Try to load from standard MNIST file locations
+        let train_images = Self::load_mnist_images("data/train-images-idx3-ubyte")?;
+        let train_labels = Self::load_mnist_labels("data/train-labels-idx1-ubyte")?;
+
+        Ok(MnistData {
+            images: train_images,
+            labels: train_labels,
+        })
+    }
+
+    fn download_mnist_data() -> Result<MnistData> {
+        // Create data directory if it doesn't exist
+        fs::create_dir_all("data")?;
+
+        // Download URLs
+        let urls = [
+            ("https://raw.githubusercontent.com/fgnt/mnist/master/train-images-idx3-ubyte.gz", "data/train-images-idx3-ubyte.gz"),
+            ("https://raw.githubusercontent.com/fgnt/mnist/master/train-labels-idx1-ubyte.gz", "data/train-labels-idx1-ubyte.gz"),
+            ("https://raw.githubusercontent.com/fgnt/mnist/master/t10k-images-idx3-ubyte.gz", "data/t10k-images-idx3-ubyte.gz"),
+            ("https://raw.githubusercontent.com/fgnt/mnist/master/t10k-labels-idx1-ubyte.gz", "data/t10k-labels-idx1-ubyte.gz"),
+        ];
+
+        // Download files if they don't exist
+        for (url, path) in &urls {
+            if !Path::new(path).exists() {
+                println!("Downloading {}...", url);
+                Self::download_file(url, path)?;
+            }
+        }
+
+        // Decompress files
+        Self::decompress_mnist_files()?;
+
+        // Load the decompressed data
+        let train_images = Self::load_mnist_images("data/train-images-idx3-ubyte")?;
+        let train_labels = Self::load_mnist_labels("data/train-labels-idx1-ubyte")?;
+
+        Ok(MnistData {
+            images: train_images,
+            labels: train_labels,
+        })
+    }
+
+    fn download_file(url: &str, path: &str) -> Result<()> {
+        // Use std::process::Command to download with curl or wget as fallback
+        // This avoids the async runtime conflict
+        let output = std::process::Command::new("curl")
+            .args(&["-L", "-o", path, url])
+            .output();
+
+        match output {
+            Ok(result) if result.status.success() => Ok(()),
+            _ => {
+                // Fallback to wget if curl fails
+                let output = std::process::Command::new("wget")
+                    .args(&["-O", path, url])
+                    .output();
+
+                match output {
+                    Ok(result) if result.status.success() => Ok(()),
+                    _ => Err(anyhow::anyhow!("Failed to download {} - neither curl nor wget available", url))
+                }
+            }
+        }
+    }
+
+    fn decompress_mnist_files() -> Result<()> {
+        use flate2::read::GzDecoder;
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let files = [
+            ("data/train-images-idx3-ubyte.gz", "data/train-images-idx3-ubyte"),
+            ("data/train-labels-idx1-ubyte.gz", "data/train-labels-idx1-ubyte"),
+            ("data/t10k-images-idx3-ubyte.gz", "data/t10k-images-idx3-ubyte"),
+            ("data/t10k-labels-idx1-ubyte.gz", "data/t10k-labels-idx1-ubyte"),
+        ];
+
+        for (gz_path, out_path) in &files {
+            if Path::new(gz_path).exists() && !Path::new(out_path).exists() {
+                println!("Decompressing {}...", gz_path);
+                let gz_file = File::open(gz_path)?;
+                let mut decoder = GzDecoder::new(BufReader::new(gz_file));
+                let mut out_file = File::create(out_path)?;
+                std::io::copy(&mut decoder, &mut out_file)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn load_mnist_images(path: &str) -> Result<Vec<Vec<u8>>> {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+
+        // Read magic number
+        let mut magic = [0u8; 4];
+        reader.read_exact(&mut magic)?;
+
+        // Read number of images
+        let mut num_images_bytes = [0u8; 4];
+        reader.read_exact(&mut num_images_bytes)?;
+        let num_images = u32::from_be_bytes(num_images_bytes) as usize;
+
+        // Read dimensions
+        let mut rows_bytes = [0u8; 4];
+        let mut cols_bytes = [0u8; 4];
+        reader.read_exact(&mut rows_bytes)?;
+        reader.read_exact(&mut cols_bytes)?;
+        let rows = u32::from_be_bytes(rows_bytes) as usize;
+        let cols = u32::from_be_bytes(cols_bytes) as usize;
+
+        // Read image data
+        let mut images = Vec::new();
+        for _ in 0..num_images {
+            let mut image = vec![0u8; rows * cols];
+            reader.read_exact(&mut image)?;
+            images.push(image);
+        }
+
+        Ok(images)
+    }
+
+    fn load_mnist_labels(path: &str) -> Result<Vec<u8>> {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let file = File::open(path)?;
+        let mut reader = BufReader::new(file);
+
+        // Read magic number
+        let mut magic = [0u8; 4];
+        reader.read_exact(&mut magic)?;
+
+        // Read number of labels
+        let mut num_labels_bytes = [0u8; 4];
+        reader.read_exact(&mut num_labels_bytes)?;
+        let num_labels = u32::from_be_bytes(num_labels_bytes) as usize;
+
+        // Read labels
+        let mut labels = vec![0u8; num_labels];
+        reader.read_exact(&mut labels)?;
+
+        Ok(labels)
+    }
+
+    /// Generate synthetic MNIST-like data (fallback if MNIST loading fails)
+    pub fn synthetic(n_samples: usize, hidden_size: usize) -> Result<Self> {
+        use rand::Rng;
+        let mut rng = rand::rng();
+        let mut x_data = Vec::new();
+        let mut y_data = Vec::new();
+        for _ in 0..n_samples {
+            // Generate a 28x28 image (784 pixels)
+            let mut image = vec![0.0; 784];
+            // Choose a random digit (0-9)
+            let digit = rng.random_range(0..10);
+            // Create a simple pattern for each digit
+            match digit {
+                0 => Self::generate_circle_pattern(&mut image, &mut rng),
+                1 => Self::generate_line_pattern(&mut image, &mut rng),
+                2 => Self::generate_s_pattern(&mut image, &mut rng),
+                3 => Self::generate_three_pattern(&mut image, &mut rng),
+                4 => Self::generate_four_pattern(&mut image, &mut rng),
+                5 => Self::generate_five_pattern(&mut image, &mut rng),
+                6 => Self::generate_six_pattern(&mut image, &mut rng),
+                7 => Self::generate_seven_pattern(&mut image, &mut rng),
+                8 => Self::generate_eight_pattern(&mut image, &mut rng),
+                9 => Self::generate_nine_pattern(&mut image, &mut rng),
+                _ => unreachable!(),
+            }
+            // Add some noise
+            for pixel in image.iter_mut() {
+                *pixel += rng.random_range(-0.1..0.1);
+                *pixel = pixel.clamp(0.0, 1.0);
+            }
+            // Create one-hot encoded label
+            let mut label = vec![0.0; 10];
+            label[digit] = 1.0;
+            x_data.push(image);
+            y_data.push(label);
+        }
+        Ok(Self::new(x_data, y_data, hidden_size))
+    }
+    /// Create MNIST problem with automatic fallback
+    pub fn create(n_samples: Option<usize>, hidden_size: usize) -> Result<Self> {
+        // Validate hidden size to prevent overflow
+        if hidden_size > 1000 {
+            return Err(anyhow::anyhow!("Hidden size too large: {} (max 1000)", hidden_size));
+        }
+        let samples = n_samples.unwrap_or(1000);
+        if samples > 10000 {
+            return Err(anyhow::anyhow!("Too many samples: {} (max 10000)", samples));
+        }
+
+        // Try to load real MNIST data first
+        match Self::load_mnist(Some(samples), hidden_size) {
+            Ok(mnist) => {
+                println!("Successfully loaded real MNIST data with {} samples", mnist.x_data.len());
+                Ok(mnist)
+            }
+            Err(e) => {
+                println!("Failed to load MNIST data ({}), falling back to synthetic data", e);
+                Self::synthetic(samples, hidden_size)
+            }
+        }
+    }
+    fn generate_circle_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        let center_x = 14.0 + rng.random_range(-2.0..2.0);
+        let center_y = 14.0 + rng.random_range(-2.0..2.0);
+        let radius = 8.0 + rng.random_range(-1.0..1.0);
+        for y in 0..28 {
+            for x in 0..28 {
+                let dx = x as f64 - center_x;
+                let dy = y as f64 - center_y;
+                let dist = (dx * dx + dy * dy).sqrt();
+                if (dist - radius).abs() < 2.0 {
+                    image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+                }
+            }
+        }
+    }
+    fn generate_line_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        let x_pos = 14 + rng.random_range(-2..3) as usize;
+        for y in 4..24 {
+            if x_pos < 28 {
+                image[y * 28 + x_pos] = 0.8 + rng.random_range(-0.2..0.2);
+                if x_pos > 0 {
+                    image[y * 28 + x_pos - 1] = 0.4 + rng.random_range(-0.2..0.2);
+                }
+                if x_pos < 27 {
+                    image[y * 28 + x_pos + 1] = 0.4 + rng.random_range(-0.2..0.2);
+                }
+            }
+        }
+    }
+    fn generate_s_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Simple S-like curve
+        for y in 4..24 {
+            let progress = (y - 4) as f64 / 20.0;
+            let x = 14.0 + 6.0 * (progress * PI).sin();
+            let x_idx = x as usize;
+            if x_idx < 28 {
+                image[y * 28 + x_idx] = 0.8 + rng.random_range(-0.2..0.2);
+            }
+        }
+    }
+    fn generate_three_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Two horizontal lines and a vertical line
+        for x in 8..20 {
+            image[8 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+            image[14 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+            image[20 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for y in 8..21 {
+            image[y * 28 + 18] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+    }
+    fn generate_four_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Vertical line and horizontal line forming a 4
+        for y in 4..24 {
+            image[y * 28 + 18] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for y in 4..14 {
+            image[y * 28 + 10] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for x in 10..19 {
+            image[14 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+    }
+    fn generate_five_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Top horizontal, middle horizontal, bottom curve
+        for x in 8..20 {
+            image[6 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+            image[14 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for y in 6..15 {
+            image[y * 28 + 8] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for y in 14..22 {
+            image[y * 28 + 18] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for x in 8..19 {
+            image[22 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+    }
+    fn generate_six_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Circle with opening at top
+        let center_x = 14.0;
+        let center_y = 16.0;
+        let radius = 6.0;
+        for y in 0..28 {
+            for x in 0..28 {
+                let dx = x as f64 - center_x;
+                let dy = y as f64 - center_y;
+                let dist = (dx * dx + dy * dy).sqrt();
+                if (dist - radius).abs() < 1.5 && y > 10 {
+                    image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+                }
+            }
+        }
+        // Add top curve
+        for y in 6..12 {
+            image[y * 28 + 8] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+    }
+    fn generate_seven_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Top horizontal line and diagonal
+        for x in 8..20 {
+            image[6 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+        for i in 0..16 {
+            let y = 6 + i;
+            let x = 20 - i;
+            if y < 28 && x < 28 {
+                image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+            }
+        }
+    }
+    fn generate_eight_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Two circles stacked
+        let centers = [(14.0, 10.0), (14.0, 18.0)];
+        let radius = 4.0;
+        for &(center_x, center_y) in &centers {
+            for y in 0..28 {
+                for x in 0..28 {
+                    let dx = x as f64 - center_x;
+                    let dy = y as f64 - center_y;
+                    let dist = (dx * dx + dy * dy).sqrt();
+                    if (dist - radius).abs() < 1.5 {
+                        image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+                    }
+                }
+            }
+        }
+    }
+    fn generate_nine_pattern(image: &mut [f64], rng: &mut impl Rng) {
+        // Circle with opening at bottom
+        let center_x = 14.0;
+        let center_y = 12.0;
+        let radius = 6.0;
+        for y in 0..28 {
+            for x in 0..28 {
+                let dx = x as f64 - center_x;
+                let dy = y as f64 - center_y;
+                let dist = (dx * dx + dy * dy).sqrt();
+                if (dist - radius).abs() < 1.5 && y < 18 {
+                    image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
+                }
+            }
+        }
+        // Add bottom line
+        for y in 16..22 {
+            image[y * 28 + 20] = 0.8 + rng.random_range(-0.2..0.2);
+        }
+    }
+    fn forward_pass(&self, params: &[f64], input: &[f64]) -> Result<Vec<f64>> {
+        let input_size = 784;
+        let hidden_size = self.hidden_size;
+        let output_size = 10;
+        // Extract weights and biases
+        let w1_end = input_size * hidden_size;
+        let b1_end = w1_end + hidden_size;
+        let w2_end = b1_end + hidden_size * output_size;
+        let b2_end = w2_end + output_size;
+        if params.len() < b2_end {
+            return Err(anyhow::anyhow!("Insufficient parameters"));
+        }
+        let w1 = &params[0..w1_end];
+        let b1 = &params[w1_end..b1_end];
+        let w2 = &params[b1_end..w2_end];
+        let b2 = &params[w2_end..b2_end];
+        // Hidden layer
+        let mut hidden = vec![0.0; hidden_size];
+        for i in 0..hidden_size {
+            for j in 0..input_size {
+                let idx = i * input_size + j;
+                if idx < w1.len() && j < input.len() {
+                    hidden[i] += input[j] * w1[idx];
+                }
+            }
+            if i < b1.len() {
+                hidden[i] += b1[i];
+            }
+            hidden[i] = hidden[i].tanh(); // Tanh activation
+        }
+        // Output layer
+        let mut output = vec![0.0; output_size];
+        for i in 0..output_size {
+            for j in 0..hidden_size {
+                let idx = i * hidden_size + j;
+                if idx < w2.len() && j < hidden.len() {
+                    output[i] += hidden[j] * w2[idx];
+                }
+            }
+            if i < b2.len() {
+                output[i] += b2[i];
+            }
+        }
+        // Softmax activation
+        let max_val = output.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+        for val in output.iter_mut() {
+            *val = (*val - max_val).exp();
+        }
+        let sum: f64 = output.iter().sum();
+        if sum == 0.0 {
+            return Err(anyhow::anyhow!("Softmax sum is zero"));
+        }
+        for val in output.iter_mut() {
+            *val /= sum;
+        }
+        Ok(output)
+    }
+    fn count_parameters(&self) -> usize {
+        let input_size = 784;
+        let hidden_size = self.hidden_size;
+        let output_size = 10;
+        // Weights: input->hidden + hidden->output
+        // Biases: hidden + output
+        input_size * hidden_size + hidden_size + hidden_size * output_size + output_size
+    }
+}
+impl OptimizationProblem for MnistNeuralNetwork {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.count_parameters()
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        use rand::Rng;
+        let mut rng = rand::rng();
+        // Xavier initialization
+        let input_size = 784;
+        let hidden_size = self.hidden_size;
+        let output_size = 10;
+        let mut params = Vec::new();
+        // Input to hidden weights
+        let xavier_1 = (6.0 / (input_size + hidden_size) as f64).sqrt();
+        for _ in 0..(input_size * hidden_size) {
+            params.push(rng.random_range(-xavier_1..xavier_1));
+        }
+        // Hidden biases
+        for _ in 0..hidden_size {
+            params.push(0.0);
+        }
+        // Hidden to output weights
+        let xavier_2 = (6.0 / (hidden_size + output_size) as f64).sqrt();
+        for _ in 0..(hidden_size * output_size) {
+            params.push(rng.random_range(-xavier_2..xavier_2));
+        }
+        // Output biases
+        for _ in 0..output_size {
+            params.push(0.0);
+        }
+        params
+    }
+    fn evaluate_f64(&self, params: &[f64]) -> Result<f64> {
+        let mut total_loss = 0.0;
+        for (x, y_true) in self.x_data.iter().zip(self.y_data.iter()) {
+            let y_pred = self.forward_pass(params, x)?;
+            // Cross-entropy loss
+            for (pred, &true_val) in y_pred.iter().zip(y_true.iter()) {
+                if true_val > 0.0 {
+                    total_loss -= true_val * pred.ln().max(-100.0); // Clip to prevent NaN
+                }
+            }
+        }
+        Ok(total_loss / self.x_data.len() as f64)
+    }
+    fn gradient_f64(&self, params: &[f64]) -> Result<Vec<f64>> {
+        let mut grad = vec![0.0; params.len()];
+        let input_size = 784;
+        let hidden_size = self.hidden_size;
+        let output_size = 10;
+        // Validate parameter dimensions to prevent overflow
+        let expected_params = input_size * hidden_size + hidden_size + hidden_size * output_size + output_size;
+        if params.len() != expected_params {
+            return Err(anyhow::anyhow!("Parameter size mismatch: expected {}, got {}", expected_params, params.len()));
+        }
+        for (x, y_true) in self.x_data.iter().zip(self.y_data.iter()) {
+            // Forward pass to get activations
+            let y_pred = self.forward_pass(params, x)?;
+            // Backward pass (simplified)
+            let mut output_grad = vec![0.0; output_size];
+            for i in 0..output_size {
+                output_grad[i] = y_pred[i] - y_true[i];
+            }
+            // Update gradients for output layer weights and biases
+            let w1_end = input_size * hidden_size;
+            let b1_end = w1_end + hidden_size;
+            let w2_start = b1_end;
+            let w2_end = w2_start + hidden_size * output_size;
+            let b2_start = w2_end;
+            // Additional bounds checking
+            if b2_start + output_size > params.len() || b2_start + output_size > grad.len() {
+                return Err(anyhow::anyhow!("Index out of bounds in gradient computation"));
+            }
+            // Get hidden activations (recompute for simplicity)
+            let w1 = &params[0..w1_end];
+            let b1 = &params[w1_end..b1_end];
+            let mut hidden = vec![0.0; hidden_size];
+            for i in 0..hidden_size {
+                for j in 0..input_size {
+                    let idx = i * input_size + j;
+                    if idx < w1.len() && j < x.len() {
+                        hidden[i] += x[j] * w1[idx];
+                    }
+                }
+                if i < b1.len() {
+                    hidden[i] += b1[i];
+                }
+                hidden[i] = hidden[i].tanh();
+            }
+            // Output layer gradients
+            for i in 0..output_size {
+                let bias_idx = b2_start + i;
+                if bias_idx < grad.len() {
+                    grad[bias_idx] += output_grad[i];
+                }
+                for j in 0..hidden_size {
+                    let weight_idx = w2_start + i * hidden_size + j;
+                    if weight_idx < grad.len() && j < hidden.len() {
+                        grad[weight_idx] += output_grad[i] * hidden[j];
+                    }
+                }
+            }
+            // Hidden layer gradients (simplified - just propagate through weights)
+            let mut hidden_grad = vec![0.0; hidden_size];
+            let w2 = &params[w2_start..w2_end];
+            for j in 0..hidden_size {
+                for i in 0..output_size {
+                    let weight_idx = i * hidden_size + j;
+                    if weight_idx < w2.len() && i < output_grad.len() {
+                        hidden_grad[j] += output_grad[i] * w2[weight_idx];
+                    }
+                }
+                if j < hidden.len() {
+                    hidden_grad[j] *= 1.0 - hidden[j] * hidden[j]; // tanh derivative
+                }
+            }
+            // Input layer gradients
+            for i in 0..hidden_size {
+                let bias_idx = w1_end + i;
+                if bias_idx < grad.len() && i < hidden_grad.len() {
+                    grad[bias_idx] += hidden_grad[i];
+                }
+                for j in 0..input_size {
+                    let weight_idx = i * input_size + j;
+                    if weight_idx < grad.len() && i < hidden_grad.len() && j < x.len() {
+                        grad[weight_idx] += hidden_grad[i] * x[j];
+                    }
+                }
+            }
+        }
+        // Normalize by number of samples
+        for g in grad.iter_mut() {
+            *g /= self.x_data.len() as f64;
+        }
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        // For real MNIST classification, good models achieve around 0.05-0.15 cross-entropy loss
+        // For synthetic data, we use a more lenient threshold
+        if self.name.contains("MNIST") && self.x_data.len() > 500 {
+            Some(0.2) // Real MNIST data threshold
+        } else {
+            Some(0.5) // Synthetic data threshold
+        }
+    }
+}
+
 
 /// Linear regression optimization problem
 #[derive(Clone)]

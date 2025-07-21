@@ -5,3 +5,4 @@ reproducibility/
 *.zip
 *.log
 paper/
+data/

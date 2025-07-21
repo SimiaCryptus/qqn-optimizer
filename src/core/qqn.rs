@@ -588,8 +588,7 @@ impl QQNOptimizer {
         } else {
             debug!("Step size too small ({:.3e}), skipping L-BFGS update", line_search_result.step_size);
         }
-
-
+        
         // Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: false,
