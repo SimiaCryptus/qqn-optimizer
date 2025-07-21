@@ -3,6 +3,7 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -211,9 +212,9 @@ impl StrongWolfeLineSearch {
 }
 
 impl LineSearch for StrongWolfeLineSearch {
-    fn optimize_1d<'a>(
+    fn optimize_1d(
         &mut self,
-        problem: &'a OneDimensionalProblem<'a>,
+        problem: &OneDimensionalProblem,
     ) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let directional_derivative = problem.initial_directional_derivative;
@@ -383,8 +384,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &rosenbrock,
-            &rosenbrock_gradient,
+            Arc::new(rosenbrock),
+            Arc::new(rosenbrock_gradient),
         )
             .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
@@ -412,8 +413,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         )
             .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();

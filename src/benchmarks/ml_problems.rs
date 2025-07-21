@@ -1,10 +1,8 @@
 //! Machine learning optimization problems for benchmarking.
 use crate::benchmarks::functions::OptimizationProblem;
 use anyhow::Result;
-use rand::Rng;
-use std::f64::consts::PI;
-use std::fs;
 use std::io::Read;
+use std::fs;
 use std::path::Path;
 
 /// Logistic regression optimization problem
@@ -303,14 +301,7 @@ impl MnistNeuralNetwork {
             println!("MNIST files not found, downloading...");
             let _mnist_data = Self::download_mnist_data()?;
         }
-        let mnist_data = match Self::try_load_mnist_files() {
-            Ok(data) => data,
-            Err(_) => {
-                println!("MNIST files not found locally, falling back to synthetic data");
-                return Self::synthetic(n_samples.unwrap_or(1000), hidden_size);
-            }
-        };
-
+        let mnist_data = Self::try_load_mnist_files()?;
         let actual_samples = n_samples.unwrap_or(1000).min(mnist_data.images.len());
         let mut x_data = Vec::new();
         let mut y_data = Vec::new();
@@ -483,44 +474,6 @@ impl MnistNeuralNetwork {
         Ok(labels)
     }
 
-    /// Generate synthetic MNIST-like data (fallback if MNIST loading fails)
-    pub fn synthetic(n_samples: usize, hidden_size: usize) -> Result<Self> {
-        use rand::Rng;
-        let mut rng = rand::rng();
-        let mut x_data = Vec::new();
-        let mut y_data = Vec::new();
-        for _ in 0..n_samples {
-            // Generate a 28x28 image (784 pixels)
-            let mut image = vec![0.0; 784];
-            // Choose a random digit (0-9)
-            let digit = rng.random_range(0..10);
-            // Create a simple pattern for each digit
-            match digit {
-                0 => Self::generate_circle_pattern(&mut image, &mut rng),
-                1 => Self::generate_line_pattern(&mut image, &mut rng),
-                2 => Self::generate_s_pattern(&mut image, &mut rng),
-                3 => Self::generate_three_pattern(&mut image, &mut rng),
-                4 => Self::generate_four_pattern(&mut image, &mut rng),
-                5 => Self::generate_five_pattern(&mut image, &mut rng),
-                6 => Self::generate_six_pattern(&mut image, &mut rng),
-                7 => Self::generate_seven_pattern(&mut image, &mut rng),
-                8 => Self::generate_eight_pattern(&mut image, &mut rng),
-                9 => Self::generate_nine_pattern(&mut image, &mut rng),
-                _ => unreachable!(),
-            }
-            // Add some noise
-            for pixel in image.iter_mut() {
-                *pixel += rng.random_range(-0.1..0.1);
-                *pixel = pixel.clamp(0.0, 1.0);
-            }
-            // Create one-hot encoded label
-            let mut label = vec![0.0; 10];
-            label[digit] = 1.0;
-            x_data.push(image);
-            y_data.push(label);
-        }
-        Ok(Self::new(x_data, y_data, hidden_size))
-    }
     /// Create MNIST problem with automatic fallback
     pub fn create(n_samples: Option<usize>, hidden_size: usize) -> Result<Self> {
         // Validate hidden size to prevent overflow
@@ -533,166 +486,9 @@ impl MnistNeuralNetwork {
         }
 
         // Try to load real MNIST data first
-        match Self::load_mnist(Some(samples), hidden_size) {
-            Ok(mnist) => {
-                println!("Successfully loaded real MNIST data with {} samples", mnist.x_data.len());
-                Ok(mnist)
-            }
-            Err(e) => {
-                println!("Failed to load MNIST data ({}), falling back to synthetic data", e);
-                Self::synthetic(samples, hidden_size)
-            }
-        }
+        Self::load_mnist(Some(samples), hidden_size)
     }
-    fn generate_circle_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        let center_x = 14.0 + rng.random_range(-2.0..2.0);
-        let center_y = 14.0 + rng.random_range(-2.0..2.0);
-        let radius = 8.0 + rng.random_range(-1.0..1.0);
-        for y in 0..28 {
-            for x in 0..28 {
-                let dx = x as f64 - center_x;
-                let dy = y as f64 - center_y;
-                let dist = (dx * dx + dy * dy).sqrt();
-                if (dist - radius).abs() < 2.0 {
-                    image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-                }
-            }
-        }
-    }
-    fn generate_line_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        let x_pos = 14 + rng.random_range(-2..3) as usize;
-        for y in 4..24 {
-            if x_pos < 28 {
-                image[y * 28 + x_pos] = 0.8 + rng.random_range(-0.2..0.2);
-                if x_pos > 0 {
-                    image[y * 28 + x_pos - 1] = 0.4 + rng.random_range(-0.2..0.2);
-                }
-                if x_pos < 27 {
-                    image[y * 28 + x_pos + 1] = 0.4 + rng.random_range(-0.2..0.2);
-                }
-            }
-        }
-    }
-    fn generate_s_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Simple S-like curve
-        for y in 4..24 {
-            let progress = (y - 4) as f64 / 20.0;
-            let x = 14.0 + 6.0 * (progress * PI).sin();
-            let x_idx = x as usize;
-            if x_idx < 28 {
-                image[y * 28 + x_idx] = 0.8 + rng.random_range(-0.2..0.2);
-            }
-        }
-    }
-    fn generate_three_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Two horizontal lines and a vertical line
-        for x in 8..20 {
-            image[8 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-            image[14 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-            image[20 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for y in 8..21 {
-            image[y * 28 + 18] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-    }
-    fn generate_four_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Vertical line and horizontal line forming a 4
-        for y in 4..24 {
-            image[y * 28 + 18] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for y in 4..14 {
-            image[y * 28 + 10] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for x in 10..19 {
-            image[14 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-    }
-    fn generate_five_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Top horizontal, middle horizontal, bottom curve
-        for x in 8..20 {
-            image[6 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-            image[14 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for y in 6..15 {
-            image[y * 28 + 8] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for y in 14..22 {
-            image[y * 28 + 18] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for x in 8..19 {
-            image[22 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-    }
-    fn generate_six_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Circle with opening at top
-        let center_x = 14.0;
-        let center_y = 16.0;
-        let radius = 6.0;
-        for y in 0..28 {
-            for x in 0..28 {
-                let dx = x as f64 - center_x;
-                let dy = y as f64 - center_y;
-                let dist = (dx * dx + dy * dy).sqrt();
-                if (dist - radius).abs() < 1.5 && y > 10 {
-                    image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-                }
-            }
-        }
-        // Add top curve
-        for y in 6..12 {
-            image[y * 28 + 8] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-    }
-    fn generate_seven_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Top horizontal line and diagonal
-        for x in 8..20 {
-            image[6 * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-        for i in 0..16 {
-            let y = 6 + i;
-            let x = 20 - i;
-            if y < 28 && x < 28 {
-                image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-            }
-        }
-    }
-    fn generate_eight_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Two circles stacked
-        let centers = [(14.0, 10.0), (14.0, 18.0)];
-        let radius = 4.0;
-        for &(center_x, center_y) in &centers {
-            for y in 0..28 {
-                for x in 0..28 {
-                    let dx = x as f64 - center_x;
-                    let dy = y as f64 - center_y;
-                    let dist = (dx * dx + dy * dy).sqrt();
-                    if (dist - radius).abs() < 1.5 {
-                        image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-                    }
-                }
-            }
-        }
-    }
-    fn generate_nine_pattern(image: &mut [f64], rng: &mut impl Rng) {
-        // Circle with opening at bottom
-        let center_x = 14.0;
-        let center_y = 12.0;
-        let radius = 6.0;
-        for y in 0..28 {
-            for x in 0..28 {
-                let dx = x as f64 - center_x;
-                let dy = y as f64 - center_y;
-                let dist = (dx * dx + dy * dy).sqrt();
-                if (dist - radius).abs() < 1.5 && y < 18 {
-                    image[y * 28 + x] = 0.8 + rng.random_range(-0.2..0.2);
-                }
-            }
-        }
-        // Add bottom line
-        for y in 16..22 {
-            image[y * 28 + 20] = 0.8 + rng.random_range(-0.2..0.2);
-        }
-    }
+
     fn forward_pass(&self, params: &[f64], input: &[f64]) -> Result<Vec<f64>> {
         let input_size = 784;
         let hidden_size = self.hidden_size;

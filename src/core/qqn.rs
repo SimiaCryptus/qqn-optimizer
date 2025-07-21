@@ -331,7 +331,7 @@ impl QQNOptimizer {
     /// Find optimal t parameter for the quadratic path using line search
     fn find_optimal_t_line_search(
         &mut self,
-        quadratic_path: &QuadraticPath,
+        quadratic_path: QuadraticPath,
     ) -> CandleResult<LineSearchResult> {
         debug!("Starting line search for optimal t along quadratic path");
         // Check if we have a valid descent direction at a small t > 0
@@ -362,16 +362,18 @@ impl QQNOptimizer {
             });
         }
 
-        let value_fn = |x: &[f64]| -> anyhow::Result<f64> {
+        let quadratic_path_clone = quadratic_path.clone();
+        let value_fn = move |x: &[f64]| -> anyhow::Result<f64> {
             let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-            quadratic_path
+            quadratic_path_clone
                 .function
                 .evaluate(&tensors)
                 .map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
         };
-        let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+        let quadratic_path_clone2 = quadratic_path.clone();
+        let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
             let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-            let grads = quadratic_path.function.gradient(&tensors)
+            let grads = quadratic_path_clone2.function.gradient(&tensors)
                 .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
             let mut result = Vec::new();
             for grad_tensor in grads {
@@ -383,7 +385,7 @@ impl QQNOptimizer {
             }
             Ok(result)
         };
-        let problem = create_1d_problem(Box::new(quadratic_path.clone()), &value_fn, &gradient_fn)
+        let problem = create_1d_problem(Box::new(quadratic_path), Arc::new(value_fn), Arc::new(gradient_fn))
             .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)));
         if problem.is_err() {
             warn!("Failed to create 1D problem for line search: {}", problem.as_ref().err().unwrap());
@@ -470,40 +472,48 @@ impl QQNOptimizer {
             .flatten()
             .collect();
 
+        // Collect the shapes and device info we need before the closures
+        let param_shapes: Vec<_> = nd_params.iter().map(|p| p.shape().clone()).collect();
+        let param_device = nd_params[0].device().clone();
+        
         // Perform line search in a separate scope to avoid borrow conflicts
         let line_search_result = {
             // Create objective and gradient functions
-            let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
-                // Reconstruct the full parameter tensors from the flattened vector
+            let function_clone = function.clone();
+            let param_shapes_clone = param_shapes.clone();
+            let param_device_clone = param_device.clone();
+            let objective_fn = move |x: &[f64]| -> anyhow::Result<f64> {
                 let mut tensors = Vec::new();
                 let mut idx = 0;
-                for param in nd_params.iter() {
-                    let shape = param.shape();
+                for shape in &param_shapes_clone {
                     let size = shape.elem_count();
                     let slice = &x[idx..idx + size];
-                    let tensor = Tensor::from_slice(slice, shape.dims(), param.device())
+                    let tensor = Tensor::from_slice(slice, shape.dims(), &param_device_clone)
                         .map_err(|e| anyhow!("Failed to create tensor: {}", e))?;
                     tensors.push(tensor);
                     idx += size;
                 }
-                function
+                function_clone
                     .evaluate(&tensors)
                     .map_err(|e| anyhow!("Function evaluation failed: {}", e))
             };
-            let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+            let function_clone = function.clone();
+            let param_shapes_clone = param_shapes.clone();
+            let param_device_clone = param_device.clone();
+            let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
                 // Reconstruct the full parameter tensors from the flattened vector
+                
                 let mut tensors = Vec::new();
                 let mut idx = 0;
-                for param in nd_params.iter() {
-                    let shape = param.shape();
+                for shape in &param_shapes_clone {
                     let size = shape.elem_count();
                     let slice = &x[idx..idx + size];
-                    let tensor = Tensor::from_slice(slice, shape.dims(), param.device())
+                    let tensor = Tensor::from_slice(slice, shape.dims(), &param_device_clone)
                         .map_err(|e| anyhow!("Failed to create tensor: {}", e))?;
                     tensors.push(tensor);
                     idx += size;
                 }
-                let grads = function
+                let grads = function_clone
                     .gradient(&tensors)
                     .map_err(|e| anyhow!("Gradient evaluation failed: {}", e))?;
                 Ok(grads
@@ -514,7 +524,7 @@ impl QQNOptimizer {
 
             // Create 1D problem
             let problem =
-                create_1d_problem_linear(&params_f64, &direction_f64, &objective_fn, &gradient_fn)
+               create_1d_problem_linear(&params_f64, &direction_f64, Arc::new(objective_fn), Arc::new(gradient_fn))
                     .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
 
             // Perform line search
@@ -630,24 +640,6 @@ impl QQNOptimizer {
                 .unwrap_or(false)
         })
     }
-    /// Validate that tensors have consistent shapes
-    fn validate_tensor_shapes(tensors: &[Tensor]) -> CandleResult<()> {
-        if tensors.is_empty() {
-            return Ok(());
-        }
-        let first_shape = tensors[0].shape();
-        for (i, tensor) in tensors.iter().enumerate().skip(1) {
-            if tensor.shape() != first_shape {
-                return Err(Error::Msg(format!(
-                    "Shape mismatch at index {}: expected {:?}, got {:?}",
-                    i,
-                    first_shape,
-                    tensor.shape()
-                )));
-            }
-        }
-        Ok(())
-    }
 }
 
 impl Optimizer for QQNOptimizer {
@@ -695,7 +687,6 @@ impl Optimizer for QQNOptimizer {
         let grad_norm = compute_magnitude(&gradients)?;
         debug!("Gradient norm: {:.3e}", grad_norm);
         self.log_scalar("Gradient Norm", grad_norm);
-/// Check for convergence - if gradient is very small, we're done
         if grad_norm < self.config.epsilon {
             info!(
                 "QQN converged: gradient norm {:.3e} < epsilon {:.3e}",
@@ -801,7 +792,7 @@ impl Optimizer for QQNOptimizer {
         
         let quadratic_path =
             self.create_quadratic_path(params, &gradients, &lbfgs_direction, function.clone())?;
-        let line_search_result = self.find_optimal_t_line_search(&quadratic_path);
+        let line_search_result = self.find_optimal_t_line_search(quadratic_path.clone());
         if line_search_result.is_err() {
             warn!("Line search failed: {}", line_search_result.as_ref().err().unwrap());
             let result = self.steepest_descent_step(
@@ -1260,7 +1251,6 @@ impl<'a> ParametricCurve for QuadraticPath {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;

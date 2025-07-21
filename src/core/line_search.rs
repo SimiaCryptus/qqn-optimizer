@@ -1,7 +1,7 @@
 use crate::core::line_search_bisection::BisectionLineSearch;
 use crate::utils::math::dot_product_f64;
 use anyhow::{anyhow, Error, Result};
-use log::debug;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -15,16 +15,16 @@ pub trait ParametricCurve: Send + Sync {
 }
 
 /// A 1D optimization problem along a parametric curve
-pub struct OneDimensionalProblem<'a> {
+pub struct OneDimensionalProblem {
     /// The 1D objective function f(t)
-    pub objective: Box<dyn Fn(f64) -> Result<f64> + Send + Sync + 'a>,
+    pub objective: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
     /// The 1D gradient function f'(t)
-    pub gradient: Box<dyn Fn(f64) -> Result<f64> + Send + Sync + 'a>,
+    pub gradient: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
     /// Initial directional derivative at t=0
     pub initial_directional_derivative: f64,
 
 }
-impl<'a> Debug for OneDimensionalProblem<'a> {
+impl Debug for OneDimensionalProblem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OneDimensionalProblem")
             .field("initial_directional_derivative", &self.initial_directional_derivative)
@@ -34,10 +34,10 @@ impl<'a> Debug for OneDimensionalProblem<'a> {
     }
 }
 
-impl<'a> OneDimensionalProblem<'a> {
+impl OneDimensionalProblem {
     pub fn new(
-        objective: Box<dyn Fn(f64) -> Result<f64> + Send + Sync + 'a>,
-        gradient: Box<dyn Fn(f64) -> Result<f64> + Send + Sync + 'a>,
+        objective: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
+        gradient: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
         initial_directional_derivative: f64,
     ) -> Self {
         assert!(
@@ -52,11 +52,11 @@ impl<'a> OneDimensionalProblem<'a> {
     }
 }
 
-pub fn create_1d_problem<'a>(
-    curve: Box<dyn ParametricCurve + 'a>,
-    objective_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<f64> + Send + Sync),
-    gradient_fn: &'a (dyn Fn(&[f64]) -> anyhow::Result<Vec<f64>> + Send + Sync),
-) -> Result<OneDimensionalProblem<'a>> {
+pub fn create_1d_problem(
+    curve: Box<dyn ParametricCurve>,
+    objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
+    gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
+) -> Result<OneDimensionalProblem> {
     let initial_position = curve.position(0.0)?;
     let initial_direction = curve.direction(0.0)?;
     let initial_value = objective_fn(&initial_position).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
@@ -71,34 +71,48 @@ pub fn create_1d_problem<'a>(
         }
 
     // For descent: ∇f · d < 0
-    if initial_directional_derivative >= 0.0 {
-            return Err(anyhow!("Initial directional derivative must be negative for descent direction: {:.3e}", initial_directional_derivative));
+    if initial_directional_derivative > 0.0 {
+        // Warn and flip the direction of the gradient fn
+        warn!("Initial directional derivative is positive ({:.3e}), flipping direction", initial_directional_derivative);
+        let negative_gradient_fn = {
+            let gradient_fn = gradient_fn.clone();
+            Arc::new(move |x: &[f64]| -> Result<Vec<f64>, Error> {
+                gradient_fn(x).map(|g| g.iter().map(|v| -v).collect())
+            })
+        };
+        return create_1d_problem(
+            curve,
+            objective_fn, // Keep the objective function
+            negative_gradient_fn, // Negate the gradient
+        );
+    } else if initial_directional_derivative == 0.0 {
+        return Err(anyhow!("Initial directional derivative must be negative for descent direction: {:.3e}", initial_directional_derivative));
     }
+
 
     // Use Arc to share the curve between closures
     let curve = Arc::new(curve);
     let curve_for_objective = curve.clone();
     let curve_for_gradient = curve.clone();
+    let objective_fn_for_closure = objective_fn.clone();
+    let gradient_fn_for_closure = gradient_fn.clone();
 
     // Create 1D objective function
-    let objective_1d = move |t: f64| -> Result<f64> {
+    let objective_1d = Arc::new(move |t: f64| -> Result<f64> {
         let result_vec = curve_for_objective.position(t)?;
-        let result_val =
-            objective_fn(&result_vec).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
-        let improvement = initial_value - result_val;
-        let result = objective_fn(&result_vec)?;
+        let result = objective_fn_for_closure(&result_vec)?;
         debug!(
             "1D objective at t={:.3e}: f={:.3e}, improvement: {:.3e}",
-            t, result, improvement
+            t, result, (initial_value - result)
         );
         Ok(result)
-    };
+    });
 
     // Create 1D gradient function
-    let gradient_1d = move |t: f64| -> Result<f64> {
+    let gradient_1d = Arc::new(move |t: f64| -> Result<f64> {
         let result_vec = curve_for_gradient.position(t)?;
         let curve_derivative = curve_for_gradient.direction(t)?;
-        let result = gradient_fn(&result_vec).and_then(|g| {
+        let result = gradient_fn_for_closure(&result_vec).and_then(|g| {
             if g.len() != curve_derivative.len() {
                 return Err(anyhow!(
                     "Gradient length mismatch: expected {}, got {}",
@@ -114,20 +128,20 @@ pub fn create_1d_problem<'a>(
             t, result_vec, result
         );
         Ok(result)
-    };
+    });
     Ok(OneDimensionalProblem::new(
-        Box::new(objective_1d),
-        Box::new(gradient_1d),
+        objective_1d,
+        gradient_1d,
         initial_directional_derivative,
     ))
 }
 /// Convert a linear search direction into a 1D problem
-pub fn create_1d_problem_linear<'a>(
-    current_point: &'a [f64],
-    direction: &'a [f64],
-    objective_fn: &'a (dyn Fn(&[f64]) -> Result<f64> + Send + Sync),
-    gradient_fn: &'a (dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync),
-) -> Result<OneDimensionalProblem<'a>> {
+pub fn create_1d_problem_linear(
+    current_point: &[f64],
+    direction: &[f64],
+    objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
+    gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
+) -> Result<OneDimensionalProblem> {
     let curve = LinearCurve::new(current_point.to_vec(), direction.to_vec());
 
     // Debug: let's verify the curve works correctly
@@ -295,7 +309,6 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
                 max_step: config.max_step,
                 initial_step: config.initial_step,
                 verbose: config.verbose,
-                line_bracket_method: config.line_bracket_method,
                 ..CubicQuadraticConfig::default()
             }))
         }
@@ -305,7 +318,7 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
 /// Trait for line search algorithms
 pub trait LineSearch: Send + Sync + Debug {
     /// Perform 1D line search optimization
-    fn optimize_1d<'a>(&mut self, problem: &'a OneDimensionalProblem) -> Result<LineSearchResult>;
+    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> Result<LineSearchResult>;
 
     /// Reset internal state
     fn reset(&mut self);
@@ -319,13 +332,13 @@ pub trait LineSearch: Send + Sync + Debug {
 pub(crate) fn find_far_point_1(
     problem: &OneDimensionalProblem,
     f0: f64,
-    initial_steop: f64,
+    initial_step: f64,
     max_iterations: usize,
     min_step: f64,
     gradient_tolerance: f64,
     max_step: f64,
 ) -> Result<f64, Error> {
-    let mut t = initial_steop;
+    let mut t = initial_step;
     let mut iteration = 0;
     debug!("Finding far point starting from t={:.3e}", t);
     while iteration < max_iterations {
@@ -435,16 +448,19 @@ mod tests {
     fn test_1d_problem_creation() {
         let current_point = vec![2.0, 3.0];
         let direction = vec![-2.0, -3.0];
+        let objective_fn = Arc::new(quadratic_function);
+        let gradient_fn = Arc::new(quadratic_gradient1);
+        // Calculate expected value before moving objective_fn
+        let expected_f0 = objective_fn(&current_point).unwrap();
+        
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
-        )
-            .unwrap();
+            objective_fn,
+            gradient_fn,
+        ).unwrap();
         // Test that f(0) gives the current function value
         let f0 = (problem.objective)(0.0).unwrap();
-        let expected_f0 = quadratic_function(&current_point).unwrap();
         assert_relative_eq!(f0, expected_f0, epsilon = 1e-10);
         // Test that f'(0) gives the directional derivative
         let expected_directional_derivative = -2.0 * 2.0 + -3.0 * 3.0; // direction · gradient

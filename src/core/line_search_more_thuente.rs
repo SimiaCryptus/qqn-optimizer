@@ -321,9 +321,9 @@ impl MoreThuenteLineSearch {
 }
 
 impl LineSearch for MoreThuenteLineSearch {
-    fn optimize_1d<'a>(
+    fn optimize_1d(
         &mut self,
-        problem: &'a OneDimensionalProblem<'a>,
+        problem: &OneDimensionalProblem,
     ) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
@@ -362,8 +362,7 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut best_stp = 0.0;
         let mut best_f = f0;
         let mut width = self.config.max_step - self.config.min_step;
-        let mut width_old = 2.0 * width;
-
+        
         self.log_verbose(&format!(
             "Starting More-Thuente with f(0)={:.3e}, g(0)={:.3e}",
             f0, g0
@@ -450,13 +449,7 @@ impl LineSearch for MoreThuenteLineSearch {
                 &mut sty, &mut fy, &mut gy,
                 stp, fp, gp, f0, g0, iter,
             );
-
-            // Force sufficient decrease in interval size
-            if brackt && width <= 0.66 * width_old {
-                stp = stx + 0.5 * (sty - stx);
-            }
-            width_old = width;
-
+            
             // Update step
             stp = new_stp;
             
@@ -494,6 +487,7 @@ impl LineSearch for MoreThuenteLineSearch {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
     use crate::init_logging;
@@ -547,8 +541,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         )
             .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
@@ -570,8 +564,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &rosenbrock_function,
-            &rosenbrock_gradient,
+            Arc::new(rosenbrock_function),
+            Arc::new(rosenbrock_gradient),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -734,8 +728,8 @@ mod tests {
         };
 
         let problem = OneDimensionalProblem {
-            objective: Box::new(objective),
-            gradient: Box::new(gradient),
+            objective: Arc::new(objective),
+            gradient: Arc::new(gradient),
             initial_directional_derivative: 1.0, // Positive (non-descent)
         };
 
@@ -757,8 +751,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &flat_function,
-            &flat_gradient,
+            Arc::new(flat_function),
+            Arc::new(flat_gradient),
         ).unwrap();
         let result = line_search.optimize_1d(&problem);
         // Should either succeed with tiny step or fail with ill-conditioned error
@@ -779,8 +773,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &steep_function,
-            &steep_gradient,
+            Arc::new(steep_function),
+            Arc::new(steep_gradient),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -803,8 +797,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -871,8 +865,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let mut strict = MoreThuenteLineSearch::strict();
         let mut lax = MoreThuenteLineSearch::lax();
@@ -893,7 +887,7 @@ mod tests {
         let tiny_gradient_fn = |x: &[f64]| -> Result<f64> {
             Ok(x[0] * 1e-15)
         };
-        let tiny_gradient_grad = |x: &[f64]| -> Result<Vec<f64>> {
+        let tiny_gradient_grad = |_: &[f64]| -> Result<Vec<f64>> {
             Ok(vec![1e-15])
         };
         let current_point = vec![1.0];
@@ -901,8 +895,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &tiny_gradient_fn,
-            &tiny_gradient_grad,
+            Arc::new(tiny_gradient_fn),
+            Arc::new(tiny_gradient_grad),
         ).unwrap();
         let result = line_search.optimize_1d(&problem);
         // Should handle tiny gradients gracefully
@@ -927,8 +921,8 @@ mod tests {
             }
         };
         let problem = OneDimensionalProblem {
-            objective: Box::new(nan_function),
-            gradient: Box::new(nan_gradient),
+            objective: Arc::new(nan_function),
+            gradient: Arc::new(nan_gradient),
             initial_directional_derivative: -1.0,
         };
         let result = line_search.optimize_1d(&problem);

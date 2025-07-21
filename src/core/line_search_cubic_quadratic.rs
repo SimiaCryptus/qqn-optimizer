@@ -2,6 +2,7 @@ use crate::core::line_search::OneDimensionalProblem;
 use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
+use std::sync::Arc;
 
 /// Configuration for Cubic/Quadratic interpolation line search
 #[derive(Debug, Clone)]
@@ -15,7 +16,6 @@ pub struct CubicQuadraticConfig {
     pub verbose: bool,
     pub interpolation_safeguard: f64, // Minimum fraction of interval to move
     pub extrapolation_factor: f64,    // Factor for extrapolation steps
-    pub line_bracket_method: u8, // 1: gradient-based bracketing, 2: function-value-based bracketing
 }
 
 impl Default for CubicQuadraticConfig {
@@ -30,7 +30,6 @@ impl Default for CubicQuadraticConfig {
             verbose: false,
             interpolation_safeguard: 0.1,
             extrapolation_factor: 2.0,
-            line_bracket_method: 1, // Default to method 1
         }
     }
 }
@@ -51,7 +50,6 @@ impl CubicQuadraticConfig {
             verbose: false,
             interpolation_safeguard: 0.05,
             extrapolation_factor: 1.5,
-            line_bracket_method: 1,
         }
     }
     /// Create a lax configuration for faster, less precise optimization
@@ -70,7 +68,6 @@ impl CubicQuadraticConfig {
             verbose: false,
             interpolation_safeguard: 0.2,
             extrapolation_factor: 3.0,
-            line_bracket_method: 1,
         }
     }
     /// Create the default configuration
@@ -218,9 +215,9 @@ impl CubicQuadraticLineSearch {
 }
 
 impl LineSearch for CubicQuadraticLineSearch {
-    fn optimize_1d<'a>(
+    fn optimize_1d(
         &mut self,
-        problem: &'a OneDimensionalProblem<'a>,
+        problem: &OneDimensionalProblem,
     ) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
@@ -264,8 +261,6 @@ impl LineSearch for CubicQuadraticLineSearch {
         let mut best_f = f0;
         let mut bracket_low = 0.0;
         let mut bracket_high = self.config.max_step;
-        let mut f_bracket_low = f0;
-        let mut f_bracket_high = f64::INFINITY;
 
         self.log_verbose(&format!(
             "Starting with f(0)={:.3e}, g(0)={:.3e}, initial_step={:.3e}",
@@ -290,10 +285,8 @@ impl LineSearch for CubicQuadraticLineSearch {
             // Update bracketing interval
             if f_alpha < f0 {
                 bracket_low = alpha;
-                f_bracket_low = f_alpha;
             } else {
                 bracket_high = alpha;
-                f_bracket_high = f_alpha;
             }
 
             if armijo && curvature {
@@ -385,7 +378,6 @@ impl LineSearch for CubicQuadraticLineSearch {
 mod tests {
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
-    use crate::init_logging;
     use approx::assert_relative_eq;
 
     fn quadratic_function(x: &[f64]) -> anyhow::Result<f64> {
@@ -555,8 +547,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -576,8 +568,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         )
             .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
@@ -611,8 +603,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         // Test strict configuration
         let mut strict_search = CubicQuadraticLineSearch::strict();
@@ -648,8 +640,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         // Convert to mutable reference to test
         let mut cloned_mut = cloned;
@@ -665,8 +657,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result1 = line_search.optimize_1d(&problem).unwrap();
         line_search.reset();
@@ -695,14 +687,14 @@ mod tests {
         let problem_strict = create_1d_problem_linear(
             &current_point,
             &direction,
-            &rosenbrock_1d,
-            &rosenbrock_1d_gradient,
+            Arc::new(rosenbrock_1d),
+            Arc::new(rosenbrock_1d_gradient),
         ).unwrap();
         let problem_lax = create_1d_problem_linear(
             &current_point,
             &direction,
-            &rosenbrock_1d,
-            &rosenbrock_1d_gradient,
+            Arc::new(rosenbrock_1d),
+            Arc::new(rosenbrock_1d_gradient),
         ).unwrap();
         let mut strict_search = CubicQuadraticLineSearch::strict();
         let mut lax_search = CubicQuadraticLineSearch::lax();

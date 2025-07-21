@@ -957,15 +957,17 @@ impl Optimizer for LBFGSOptimizer {
         // Perform line search in a separate scope to avoid borrow conflicts
         let line_search_result = {
             // Create objective and gradient functions that work with f64 vectors
-            let objective_fn = |x: &[f64]| -> anyhow::Result<f64> {
+            let function_clone = function.clone();
+            let objective_fn = move |x: &[f64]| -> anyhow::Result<f64> {
                 let x_tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-                function
+                function_clone
                     .evaluate(&x_tensors)
                     .map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
             };
-            let gradient_fn = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+            let function_clone2 = function.clone();
+            let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
                 let x_tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-                let grad_tensors = function
+                let grad_tensors = function_clone2
                     .gradient(&x_tensors)
                     .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
                 tensors_to_f64(&grad_tensors)
@@ -975,8 +977,8 @@ impl Optimizer for LBFGSOptimizer {
             let problem = create_1d_problem_linear(
                 &current_point,
                 &direction_f64,
-                &objective_fn,
-                &gradient_fn,
+               Arc::new(objective_fn),
+               Arc::new(gradient_fn),
             )
                 .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
             // Perform line search

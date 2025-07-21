@@ -11,7 +11,6 @@ pub struct BisectionConfig {
     pub min_step: f64,             // Minimum step size
     pub max_step: f64,             // Maximum step size
     pub initial_step: f64,         // Initial step size
-    pub window_shrink_factor: f64, // Factor to shrink window on failure
     pub verbose: bool,             // Enable verbose logging
     pub line_bracket_method: u8, // 1: gradient-based bracketing, 2: function-value-based bracketing
 }
@@ -24,7 +23,6 @@ impl Default for BisectionConfig {
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
-            window_shrink_factor: 0.5,
             verbose: false,
             line_bracket_method: 1, // 1 for far point method, 2 for simple far point
         }
@@ -40,7 +38,6 @@ impl BisectionConfig {
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
-            window_shrink_factor: 0.5,
             verbose: false,
             line_bracket_method: 1,
         }
@@ -55,7 +52,6 @@ impl BisectionConfig {
             min_step: 1e-8,
             max_step: 1e8,
             initial_step: 1.0,
-            window_shrink_factor: 0.5,
             verbose: false,
             line_bracket_method: 1,
         }
@@ -81,9 +77,9 @@ pub struct BisectionLineSearch {
 
 
 impl LineSearch for BisectionLineSearch {
-    fn optimize_1d<'a>(
+    fn optimize_1d(
         &mut self,
-        problem: &'a OneDimensionalProblem<'a>,
+        problem: &OneDimensionalProblem,
     ) -> anyhow::Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
         self.log_verbose(&format!("Starting bisection line search"));
@@ -305,6 +301,7 @@ impl BisectionLineSearch {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
     use crate::init_logging;
@@ -343,8 +340,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         )
             .unwrap();
 
@@ -355,26 +352,6 @@ mod tests {
         assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
     }
 
-    #[test]
-    fn test_bisection_non_descent() {
-        //init_logging().unwrap();
-        let current_point = vec![1.0, 1.0];
-        let direction = vec![1.0, 1.0]; // Positive gradient (ascent direction)
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
-        );
-
-        // The problem creation should fail because direction is not a descent direction
-        assert!(problem.is_err());
-        if let Err(err) = problem {
-            assert!(err
-                .to_string()
-                .contains("Initial directional derivative must be negative"));
-        }
-    }
     #[test]
     fn test_find_zero_gradient_proper_bracket() {
         let line_search = BisectionLineSearch::new(BisectionConfig {
@@ -397,8 +374,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &simple_quadratic,
-            &simple_quadratic_grad,
+            Arc::new(simple_quadratic),
+            Arc::new(simple_quadratic_grad),
         ).unwrap();
         // At t=0.3: x = -0.5 + 0.3 = -0.2, grad = 2*(-0.2) = -0.4 < 0
         // At t=0.7: x = -0.5 + 0.7 = 0.2, grad = 2*(0.2) = 0.4 > 0
@@ -423,8 +400,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &cubic_function,
-            &cubic_gradient,
+            Arc::new(cubic_function),
+            Arc::new(cubic_gradient),
         ).unwrap();
         // Test with no proper bracket: both gradients have same sign
         let result = line_search.find_zero_gradient(0.1, 0.2, &problem).unwrap();
@@ -457,8 +434,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &simple_quadratic,
-            &simple_quadratic_grad,
+            Arc::new(simple_quadratic),
+            Arc::new(simple_quadratic_grad),
         ).unwrap();
 
         // At t=0.05: x = -0.1 + 0.05 = -0.05, grad = 2*(-0.05) = -0.1 < 0
@@ -484,8 +461,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &cubic_function,
-            &cubic_gradient,
+            Arc::new(cubic_function),
+            Arc::new(cubic_gradient),
         ).unwrap();
         let result = line_search.find_zero_gradient(0.3, 0.4, &problem).unwrap();
         // Should terminate when interval becomes smaller than min_step
@@ -507,8 +484,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &cubic_function,
-            &cubic_gradient,
+            Arc::new(cubic_function),
+            Arc::new(cubic_gradient),
         ).unwrap();
         let result = line_search.find_zero_gradient(0.2, 0.5, &problem).unwrap();
         // Should return midpoint after max iterations
@@ -533,8 +510,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result1 = line_search1.optimize_1d(&problem).unwrap();
         let result2 = line_search2.optimize_1d(&problem).unwrap();
@@ -555,8 +532,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result = line_search.optimize_1d(&problem);
         assert!(result.is_err());
@@ -567,7 +544,6 @@ mod tests {
         let line_search = BisectionLineSearch::new(BisectionConfig::default());
         // Test cloning
         let mut cloned = line_search.clone();
-        let boxed_clone = line_search.clone_box();
         // Test reset (should not panic)
         cloned.reset();
         // Verify the clone works
@@ -602,7 +578,7 @@ mod tests {
     #[test]
     fn test_lax_config_performance() {
         // Verify that lax config can be used successfully
-        let mut line_search = BisectionLineSearch::new(BisectionConfig::lax());
+        let line_search = BisectionLineSearch::new(BisectionConfig::lax());
         // This test ensures the lax config doesn't break functionality
         assert_eq!(line_search.config.max_iterations, 20);
     }

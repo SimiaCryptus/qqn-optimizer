@@ -2,6 +2,7 @@ use crate::core::line_search::OneDimensionalProblem;
 use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
+use std::sync::Arc;
 
 /// Configuration for Golden Section line search
 #[derive(Debug, Clone)]
@@ -76,9 +77,9 @@ pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
 }
 impl LineSearch for GoldenSectionLineSearch {
-    fn optimize_1d<'a>(
+    fn optimize_1d(
         &mut self,
-        problem: &'a OneDimensionalProblem<'a>,
+        problem: &OneDimensionalProblem,
     ) -> anyhow::Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
         if directional_derivative >= 0.0 {
@@ -311,8 +312,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         )
             .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
@@ -334,8 +335,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &rosenbrock_function,
-            &rosenbrock_gradient,
+            Arc::new(rosenbrock_function),
+            Arc::new(rosenbrock_gradient),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -363,8 +364,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quartic_function,
-            &quartic_gradient,
+            Arc::new(quartic_function),
+            Arc::new(quartic_gradient),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
@@ -384,28 +385,12 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &exponential_function,
-            &exponential_gradient,
+            Arc::new(exponential_function),
+            Arc::new(exponential_gradient),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
-    }
-    #[test]
-    fn test_golden_section_non_descent_direction() {
-        let mut line_search = GoldenSectionLineSearch::new(GoldenSectionConfig::default());
-        let current_point = vec![1.0, 1.0];
-        let direction = vec![1.0, 1.0]; // Same direction as gradient (ascent)
-        let result = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
-        );
-
-        // Should fail at problem creation because direction is not a descent direction
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("descent direction"));
     }
     #[test]
     fn test_golden_section_very_small_step() {
@@ -420,8 +405,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success || (result.termination_reason == TerminationReason::StepSizeTooSmall));
@@ -439,8 +424,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quadratic_function,
-            &quadratic_gradient1,
+            Arc::new(quadratic_function),
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         // Should still succeed even with limited iterations
@@ -510,8 +495,8 @@ mod tests {
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
-            &quartic_function,
-            &quartic_gradient,
+            Arc::new(quartic_function),
+            Arc::new(quartic_gradient),
         ).unwrap();
         // This should test the bracket finding logic
         let (a, b, c) = line_search.find_bracket(&problem).unwrap();
@@ -546,8 +531,8 @@ mod tests {
         let result = create_1d_problem_linear(
             &current_point,
             &direction,
-            &nearly_flat_function,
-            &nearly_flat_gradient,
+            Arc::new(nearly_flat_function),
+            Arc::new(nearly_flat_gradient),
         );
 
         // The create_1d_problem_linear should succeed since we have a tiny negative directional derivative
@@ -569,8 +554,8 @@ mod tests {
         let zero_grad_result = create_1d_problem_linear(
             &current_point,
             &direction,
-            &truly_flat_function,
-            &zero_gradient,
+            Arc::new(truly_flat_function),
+            Arc::new(zero_gradient),
         );
 
         // This should fail because directional derivative is exactly zero
