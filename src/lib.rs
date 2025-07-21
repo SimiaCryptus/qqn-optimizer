@@ -24,16 +24,17 @@ pub use analysis::{
 
 // Re-export ML problems for easier access
 pub use crate::benchmarks::ml_problems::{
-    LinearRegression, LogisticRegression, MnistNeuralNetwork,
+    LinearRegression, LogisticRegression,
     NeuralNetworkTraining, SupportVectorMachine,
 };
-
-// Error types
-pub use anyhow::{Error, Result};
 
 // Re-export commonly used types
 pub use self::core::line_search_strong_wolfe::StrongWolfeConfig;
 pub use crate::core::adam::{AdamConfig, AdamOptimizer, AdamState};
+// Error types
+pub use anyhow::{Error, Result};
+// Re-export ML problems for easier access
+pub use benchmarks::mnist::MnistNeuralNetwork;
 
 /// Current version of the QQN optimizer framework
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

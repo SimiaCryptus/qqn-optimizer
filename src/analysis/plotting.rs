@@ -5,6 +5,8 @@ use plotters::coord::Shift;
 use plotters::prelude::*;
 use plotters::style::text_anchor::{HPos, Pos, VPos};
 use std::collections::HashMap;
+use std::fs;
+
 /// Check if font rendering is available
 fn has_font_support() -> bool {
     // Check if we're in a CI/test environment where fonts might not be available
@@ -63,7 +65,7 @@ impl Default for PlotConfig {
 pub struct ExtendedOptimizationTrace {
     pub optimizer_name: String,
     pub objective_values: Vec<f64>,
-    pub iterations: Vec<usize>,
+    pub evaluation_counts: Vec<usize>,
 }
 impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
     fn from(trace: &OptimizationTrace) -> Self {
@@ -74,7 +76,7 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
                 .iter()
                 .map(|iter| iter.function_value)
                 .collect(),
-            iterations: trace.iterations.iter().map(|iter| iter.iteration).collect(),
+            evaluation_counts: Vec::new(), // Will be populated by caller with proper evaluation counts
         }
     }
 }
@@ -125,18 +127,21 @@ impl PlottingEngine {
         if traces.is_empty() {
             return Ok(());
         }
+        // Export CSV data for this plot
+        self.export_convergence_csv(traces, filename)?;
+
 
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
 
         root.fill(&WHITE)?;
 
-        // Find the range of iterations and objective values
-        let max_iterations = traces
+        // Find the range of evaluation counts and objective values
+        let max_evaluations = traces
             .iter()
-            .map(|t| t.objective_values.len())
+            .map(|t| t.evaluation_counts.iter().max().unwrap_or(&0))
             .max()
-            .unwrap_or(0);
+            .unwrap_or(&0);
 
         let (min_obj, max_obj) = traces
             .iter()
@@ -155,14 +160,14 @@ impl PlottingEngine {
             .margin(20)
             .x_label_area_size(if self.has_fonts { 30 } else { 0 })
             .y_label_area_size(if self.has_fonts { 40 } else { 0 })
-            .build_cartesian_2d(0..max_iterations, padded_min..padded_max)
+            .build_cartesian_2d(0..*max_evaluations, padded_min..padded_max)
             .map_err(|e| anyhow::anyhow!("Chart building error: {}", e))?;
 
 
         // Configure mesh based on font availability
         if self.has_fonts {
             chart.configure_mesh()
-                .x_desc("Iterations")
+                .x_desc("Function/Gradient Evaluations")
                 .y_desc("Objective Value")
                 .draw()?;
         } else {
@@ -178,10 +183,10 @@ impl PlottingEngine {
         for (i, trace) in traces.iter().enumerate() {
             let color = colors[i % colors.len()];
             let series_data: Vec<(usize, f64)> = trace
-                .objective_values
+                .evaluation_counts
                 .iter()
-                .enumerate()
-                .map(|(iter, &val)| (iter, val))
+                .zip(trace.objective_values.iter())
+                .map(|(&eval_count, &obj_val)| (eval_count, obj_val))
                 .collect();
 
             // Draw series
@@ -219,16 +224,19 @@ impl PlottingEngine {
         if traces.is_empty() {
             return Ok(());
         }
+        // Export CSV data for this plot
+        self.export_log_convergence_csv(traces, filename)?;
+
 
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
-        let max_iterations = traces
+        let max_evaluations = traces
             .iter()
-            .map(|t| t.objective_values.len())
+            .map(|t| t.evaluation_counts.iter().max().unwrap_or(&0))
             .max()
-            .unwrap_or(0);
+            .unwrap_or(&0);
 
         // Find minimum positive objective value for log scale
         let min_positive_obj = traces
@@ -262,13 +270,13 @@ impl PlottingEngine {
             .margin(20)
             .x_label_area_size(if self.has_fonts { 30 } else { 0 })
             .y_label_area_size(if self.has_fonts { 50 } else { 0 })
-            .build_cartesian_2d(0..max_iterations, final_log_min..final_log_max)?;
+            .build_cartesian_2d(0..*max_evaluations, final_log_min..final_log_max)?;
 
 
         // Configure mesh based on font availability
         if self.has_fonts {
             chart.configure_mesh()
-                .x_desc("Iterations")
+                .x_desc("Function/Gradient Evaluations")
                 .y_desc("Log10(Objective Value)")
                 .draw()?;
         } else {
@@ -281,13 +289,13 @@ impl PlottingEngine {
         for (i, trace) in traces.iter().enumerate() {
             let color = colors[i % colors.len()];
             let series_data: Vec<(usize, f64)> = trace
-                .objective_values
+                .evaluation_counts
                 .iter()
-                .enumerate()
-                .map(|(iter, &val)| {
-                    let safe_val = val.max(1e-15).min(1e10);
+                .zip(trace.objective_values.iter())
+                .map(|(&eval_count, &obj_val)| {
+                    let safe_val = obj_val.max(1e-15).min(1e10);
                     let log_val = safe_val.log10().max(-15.0).min(15.0);
-                    (iter, log_val)
+                    (eval_count, log_val)
                 })
                 .collect();
 
@@ -321,6 +329,9 @@ impl PlottingEngine {
         if results.results.is_empty() {
             return Ok(());
         }
+        // Export CSV data for this plot
+        self.export_performance_comparison_csv(results, filename)?;
+
 
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
@@ -429,6 +440,9 @@ impl PlottingEngine {
         if results.results.is_empty() {
             return Ok(());
         }
+        // Export CSV data for this plot
+        self.export_performance_boxplot_csv(results, filename)?;
+
 
         let output_path = format!("{}/{}.png", self.output_dir, filename);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
@@ -571,6 +585,143 @@ impl PlottingEngine {
 
         root.present()?;
         println!("Performance boxplot saved to: {}", output_path);
+        Ok(())
+    }
+
+    /// Export convergence plot data to CSV
+    fn export_convergence_csv(
+        &self,
+        traces: &[ExtendedOptimizationTrace],
+        filename: &str,
+    ) -> Result<()> {
+        let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        let mut csv_content = String::from("Optimizer,Evaluation,ObjectiveValue\n");
+        for trace in traces {
+            for (eval_count, obj_value) in trace.evaluation_counts.iter().zip(trace.objective_values.iter()) {
+                csv_content.push_str(&format!(
+                    "{},{},{:.6e}\n",
+                    trace.optimizer_name, eval_count, obj_value
+                ));
+            }
+        }
+        fs::write(&csv_path, csv_content)
+            .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
+        println!("Convergence data exported to: {}", csv_path);
+        Ok(())
+    }
+    /// Export log convergence plot data to CSV
+    fn export_log_convergence_csv(
+        &self,
+        traces: &[ExtendedOptimizationTrace],
+        filename: &str,
+    ) -> Result<()> {
+        let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        let mut csv_content = String::from("Optimizer,Evaluation,ObjectiveValue,LogObjectiveValue\n");
+        for trace in traces {
+            for (eval_count, obj_value) in trace.evaluation_counts.iter().zip(trace.objective_values.iter()) {
+                let safe_val = obj_value.max(1e-15).min(1e10);
+                let log_val = safe_val.log10().max(-15.0).min(15.0);
+                csv_content.push_str(&format!(
+                    "{},{},{:.6e},{:.6e}\n",
+                    trace.optimizer_name, eval_count, obj_value, log_val
+                ));
+            }
+        }
+        fs::write(&csv_path, csv_content)
+            .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
+        println!("Log convergence data exported to: {}", csv_path);
+        Ok(())
+    }
+    /// Export performance comparison data to CSV
+    fn export_performance_comparison_csv(
+        &self,
+        results: &BenchmarkResults,
+        filename: &str,
+    ) -> Result<()> {
+        let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        let mut csv_content = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
+        // Group results by problem and optimizer
+        let mut problem_results: HashMap<String, HashMap<String, Vec<f64>>> = HashMap::new();
+        for result in &results.results {
+            problem_results
+                .entry(result.problem_name.clone())
+                .or_insert_with(HashMap::new)
+                .entry(result.optimizer_name.clone())
+                .or_insert_with(Vec::new)
+                .push(result.final_value);
+        }
+        for (problem, optimizers) in problem_results {
+            for (optimizer, values) in optimizers {
+                let optimizer_results: Vec<_> = results.results
+                    .iter()
+                    .filter(|r| r.problem_name == problem && r.optimizer_name == optimizer)
+                    .collect();
+                if !optimizer_results.is_empty() {
+                    let mean_final = values.iter().sum::<f64>() / values.len() as f64;
+                    let std_final = {
+                        let variance = values
+                            .iter()
+                            .map(|x| (x - mean_final).powi(2))
+                            .sum::<f64>()
+                            / values.len() as f64;
+                        variance.sqrt()
+                    };
+                    let mean_iterations = optimizer_results.iter().map(|r| r.iterations as f64).sum::<f64>() / optimizer_results.len() as f64;
+                    let mean_function_evals = optimizer_results.iter().map(|r| r.function_evaluations as f64).sum::<f64>() / optimizer_results.len() as f64;
+                    let mean_gradient_evals = optimizer_results.iter().map(|r| r.gradient_evaluations as f64).sum::<f64>() / optimizer_results.len() as f64;
+                    let success_count = optimizer_results.iter().filter(|r| r.convergence_achieved).count();
+                    let success_rate = success_count as f64 / optimizer_results.len() as f64;
+                    csv_content.push_str(&format!(
+                        "{},{},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3}\n",
+                        problem, optimizer, mean_final, std_final, mean_iterations, mean_function_evals, mean_gradient_evals, success_rate
+                    ));
+                }
+            }
+        }
+        fs::write(&csv_path, csv_content)
+            .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
+        println!("Performance comparison data exported to: {}", csv_path);
+        Ok(())
+    }
+    /// Export performance boxplot data to CSV
+    fn export_performance_boxplot_csv(
+        &self,
+        results: &BenchmarkResults,
+        filename: &str,
+    ) -> Result<()> {
+        let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        let mut csv_content = String::from("Optimizer,Min,Q1,Median,Q3,Max,AllValues\n");
+        // Group results by optimizer across all problems
+        let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
+        for result in &results.results {
+            optimizer_results
+                .entry(result.optimizer_name.clone())
+                .or_insert_with(Vec::new)
+                .push(result.final_value);
+        }
+        for (optimizer, mut values) in optimizer_results {
+            values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            let n = values.len();
+            if n > 0 {
+                let q1 = values[n / 4];
+                let median = values[n / 2];
+                let q3 = values[3 * n / 4];
+                let min = values[0];
+                let max = values[n - 1];
+                // Convert all values to a comma-separated string
+                let all_values_str = values.iter()
+                    .map(|v| format!("{:.6e}", v))
+                    .collect::<Vec<_>>()
+                    .join(";"); // Use semicolon to avoid CSV parsing issues
+                csv_content.push_str(&format!(
+                    "{},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},\"{}\"\n",
+                    optimizer, min, q1, median, q3, max, all_values_str
+                ));
+            }
+        }
+        fs::write(&csv_path, csv_content)
+            .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
+        println!("Performance boxplot data exported to: {}", csv_path);
         Ok(())
     }
     /// Helper function to add legend to plots

@@ -73,6 +73,8 @@ pub struct IterationData {
     pub step_size: f64,
     pub parameters: Vec<f64>,
     pub timestamp: DurationWrapper,
+    pub total_function_evaluations: usize,
+    pub total_gradient_evaluations: usize,
 }
 
 impl OptimizationTrace {
@@ -92,6 +94,8 @@ impl OptimizationTrace {
         gradient: &[f64],
         step_size: f64,
         timestamp: Duration,
+        total_function_evaluations: usize,
+        total_gradient_evaluations: usize,
     ) {
         let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
@@ -102,6 +106,8 @@ impl OptimizationTrace {
             step_size,
             parameters: parameters.to_vec(),
             timestamp: timestamp.into(),
+            total_function_evaluations,
+            total_gradient_evaluations,
         });
     }
 
@@ -501,6 +507,8 @@ impl BenchmarkRunner {
                 &gradient,
                 0.0, // Will be updated after step
                 start_time.elapsed(),
+                *function_evaluations,
+                *gradient_evaluations,
             );
 
             // Check convergence

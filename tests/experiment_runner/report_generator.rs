@@ -86,6 +86,10 @@ impl ReportGenerator {
         .matrix-table td {{ text-align: center; padding: 4px; }}
         .performance-matrix {{ margin: 20px 0; }}
         .performance-matrix h3 {{ color: #495057; margin-bottom: 10px; }}
+.footer {{ margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #6c757d; }}
+        .data-links {{ margin-top: 10px; font-size: 0.9em; }}
+        .data-links a {{ color: #007bff; text-decoration: none; margin: 0 5px; }}
+        .data-links a:hover {{ text-decoration: underline; }}
     </style>
 </head>
 <body>
@@ -320,8 +324,8 @@ impl ReportGenerator {
             if is_failed {
                 a.1.total_cmp(&b.1)
             } else {
-                let total_evals_a = a.3 + a.4;
-                let total_evals_b = b.3 + b.4;
+                let total_evals_a = if a.3 < a.4 { a.4 } else { a.3 };
+                let total_evals_b = if b.3 < b.4 { b.4 } else { b.3 };
                 total_evals_a.total_cmp(&total_evals_b)
             }
         });
@@ -385,10 +389,15 @@ impl ReportGenerator {
             r#"                <div class="caption">
                     <strong>Figure:</strong> Convergence plots for {} showing objective value vs iterations.
                     Left: Linear scale, Right: Log scale for better visualization of convergence behavior.
+                    <br><strong>Data:</strong> 
+                    <a href="convergence_{}_data.csv">Linear scale data (CSV)</a> | 
+                    <a href="convergence_{}_log_data.csv">Log scale data (CSV)</a>
                 </div>
             </div>
 "#,
-            problem_name
+            problem_name, 
+            problem_filename,
+            problem_filename
         ));
         Ok(section)
     }
@@ -446,6 +455,9 @@ impl ReportGenerator {
         section.push_str(r#"                <div class="caption">
                     <strong>Figure:</strong> Performance comparison across all test problems. 
                     Left: Bar chart showing mean performance by optimizer. Right: Box plots showing performance distribution.
+                    <br><strong>Data:</strong> 
+                    <a href="performance_comparison_data.csv">Performance comparison data (CSV)</a> | 
+                    <a href="performance_distribution_data.csv">Distribution data (CSV)</a>
                 </div>
             </div>
 

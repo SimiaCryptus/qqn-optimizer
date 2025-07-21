@@ -1,6 +1,7 @@
 use crate::experiment_runner::{standard_optimizers, ExperimentRunner};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
-use qqn_optimizer::{LinearRegression, LogisticRegression, MnistNeuralNetwork, NeuralNetworkTraining, OptimizationProblem, SupportVectorMachine};
+use qqn_optimizer::benchmarks::mnist::MnistNeuralNetwork;
+use qqn_optimizer::{LinearRegression, LogisticRegression, NeuralNetworkTraining, OptimizationProblem, SupportVectorMachine};
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::time::Duration;
@@ -21,12 +22,12 @@ fn create_ml_test_problems() -> Vec<Box<dyn OptimizationProblem>> {
             generate_linear_regression_data(100, 5).0,
             generate_linear_regression_data(100, 5).1,
             0.01,
-        )),
+        ).expect("Failed to create linear regression")),
         Box::new(LinearRegression::new(
             generate_linear_regression_data(200, 10).0,
             generate_linear_regression_data(200, 10).1,
             0.01,
-        )),
+        ).expect("Failed to create linear regression")),
         Box::new(
             NeuralNetworkTraining::mlp_classification(vec![5, 10, 3])
                 .expect("Failed to create MLP"),
@@ -47,12 +48,12 @@ fn create_ml_test_problems() -> Vec<Box<dyn OptimizationProblem>> {
             generate_svm_data(100, 5).0,
             generate_svm_data(100, 5).1,
             1.0,
-        )),
+        ).expect("Failed to create SVM")),
         Box::new(SupportVectorMachine::new(
             generate_svm_data(200, 10).0,
             generate_svm_data(200, 10).1,
             1.0,
-        )),
+        ).expect("Failed to create SVM")),
     ]
 }
 /// Generate synthetic linear regression data
@@ -119,7 +120,8 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     let runner = ExperimentRunner::new(output_dir1, BenchmarkConfig {
         max_iterations: 1000,
         maximum_function_calls: 1000,
-        tolerance: 1e-8,
+        tolerance: 1e-6,
+
         time_limit: DurationWrapper::from(Duration::from_secs(60)),
         num_runs: 1,
     });

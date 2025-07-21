@@ -9,7 +9,7 @@
 pub mod evaluation;
 pub mod functions;
 pub mod ml_problems;
-
+pub mod mnist;
 // Re-export commonly used types
 
 pub use functions::{

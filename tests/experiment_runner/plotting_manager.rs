@@ -55,7 +55,12 @@ impl PlottingManager {
                         .iter()
                         .map(|i| i.function_value)
                         .collect(),
-                    iterations: r.trace.iterations.iter().map(|i| i.iteration).collect(),
+                    evaluation_counts: r
+                        .trace
+                        .iterations
+                        .iter()
+                        .map(|i| i.total_function_evaluations.max(i.total_gradient_evaluations))
+                        .collect(),
                 })
                 .collect();
 
