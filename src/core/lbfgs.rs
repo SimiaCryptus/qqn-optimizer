@@ -72,7 +72,7 @@ impl Default for LBFGSConfig {
 }
 impl LBFGSConfig {
     /// Create a strict L-BFGS configuration with conservative settings.
-    /// 
+    ///
     /// This configuration prioritizes numerical stability and convergence guarantees
     /// over speed. Suitable for problems where robustness is more important than
     /// performance, or when dealing with ill-conditioned problems.
@@ -98,7 +98,7 @@ impl LBFGSConfig {
         }
     }
     /// Create a lax L-BFGS configuration with aggressive settings.
-    /// 
+    ///
     /// This configuration prioritizes speed and allows larger steps, potentially
     /// at the cost of numerical stability. Suitable for well-conditioned problems
     /// where fast convergence is desired.
@@ -124,7 +124,7 @@ impl LBFGSConfig {
         }
     }
     /// Create a configuration optimized for use within the QQN algorithm.
-    /// 
+    ///
     /// This configuration disables some safety checks and uses settings that
     /// work well when L-BFGS is used as a component of a larger optimization
     /// algorithm rather than as a standalone optimizer.
@@ -256,10 +256,10 @@ impl LBFGSState {
                     .map(|g| g.affine(-scale, 0.0))
                     .collect::<CandleResult<Vec<_>>>()?);
             }
-            
+
             // Check for NaN/Inf in gradient
             if !self.check_finite_tensors(gradient, "gradient")? {
-            warn!("L-BFGS: Non-finite gradient detected, using steepest descent");
+                warn!("L-BFGS: Non-finite gradient detected, using steepest descent");
                 return Ok(gradient
                     .iter()
                     .map(|g| g.neg())
@@ -626,7 +626,7 @@ impl LBFGSState {
     fn epsilon(&self) -> f64 {
         self.epsilon
     }
-    
+
     /// Validate input tensors have matching dimensions
     fn validate_inputs(&self, position: &[Tensor], gradient: &[Tensor]) -> CandleResult<()> {
         if gradient.is_empty() {
@@ -644,7 +644,7 @@ impl LBFGSState {
         }
         Ok(())
     }
-    
+
     /// Validate update inputs
     fn validate_update_inputs(
         &self,
@@ -667,7 +667,7 @@ impl LBFGSState {
         }
         Ok(())
     }
-    
+
     /// Check if all tensors contain finite values
     fn check_finite_tensors(&self, tensors: &[Tensor], context: &str) -> CandleResult<bool> {
         for (i, tensor) in tensors.iter().enumerate() {
@@ -719,7 +719,7 @@ impl LBFGSOptimizer {
             line_search,
         }
     }
-    
+
     /// Log tensor data if verbose mode is enabled
     fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
         if !self.config.verbose {
@@ -977,8 +977,8 @@ impl Optimizer for LBFGSOptimizer {
             let problem = create_1d_problem_linear(
                 &current_point,
                 &direction_f64,
-               Arc::new(objective_fn),
-               Arc::new(gradient_fn),
+                Arc::new(objective_fn),
+                Arc::new(gradient_fn),
             )
                 .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
             // Perform line search
@@ -1019,7 +1019,7 @@ impl Optimizer for LBFGSOptimizer {
             let step_size_tensor = Tensor::new(actual_step_size, param.device())?;
             let step = direction.broadcast_mul(&step_size_tensor)?;
             *param = param.add(&step)?;
-            
+
             // Check for NaN/Inf in updated parameters
             if !self.state.check_finite_tensors(&[param.clone()], "updated parameter")? {
                 // Recovery: restore previous parameters if available

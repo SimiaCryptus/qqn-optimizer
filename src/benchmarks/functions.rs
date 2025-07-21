@@ -787,7 +787,7 @@ impl Default for BoothFunction {
 /// Griewank function: f(x) = 1 + (1/4000)*Σx_i² - Π cos(x_i/√i)
 /// Global minimum: f(0, 0, ..., 0) = 0
 #[derive(Debug, Clone)]
-pub struct GriewankFunction {   
+pub struct GriewankFunction {
     dimension: usize,
     name: String,
 }

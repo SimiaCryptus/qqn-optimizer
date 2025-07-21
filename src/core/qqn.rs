@@ -7,6 +7,7 @@ use crate::core::optimizer::OptimizationMetadata;
 use crate::core::Optimizer;
 use crate::core::StepResult;
 use crate::core::{ConvergenceInfo, TerminationReason};
+use crate::utils::dot_product;
 use crate::utils::math::{
     combine_tensors, compute_magnitude, create_1d_tensor, log_tensor, scale_tensors,
     DifferentiableFunction,
@@ -19,10 +20,9 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use crate::utils::dot_product;
 
 /// QQN trace information for analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,7 +215,7 @@ impl QQNOptimizer {
     pub fn get_trace(&self) -> Option<&QQNTrace> {
         self.trace.as_ref()
     }
-    
+
     /// Log tensor data if verbose mode is enabled
     fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
         if !self.config.verbose {
@@ -339,7 +339,7 @@ impl QQNOptimizer {
         let test_t = 1e-8;
         let test_direction = quadratic_path.evaluate_direction(test_t)?;
         let test_gradient = quadratic_path.negative_gradient();
-        
+
         // The descent condition should check if moving along the path decreases the function
         // We need to check the directional derivative at the starting point
         let descent_check = test_gradient.iter()
@@ -352,7 +352,7 @@ impl QQNOptimizer {
             .collect::<CandleResult<Vec<_>>>()?
             .into_iter()
             .sum::<f64>();
-            
+
         if descent_check <= 0.0 {
             debug!("Quadratic path does not provide a descent direction (dot product = {:.6e})", descent_check);
             return Ok(LineSearchResult {
@@ -475,7 +475,7 @@ impl QQNOptimizer {
         // Collect the shapes and device info we need before the closures
         let param_shapes: Vec<_> = nd_params.iter().map(|p| p.shape().clone()).collect();
         let param_device = nd_params[0].device().clone();
-        
+
         // Perform line search in a separate scope to avoid borrow conflicts
         let line_search_result = {
             // Create objective and gradient functions
@@ -502,7 +502,7 @@ impl QQNOptimizer {
             let param_device_clone = param_device.clone();
             let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
                 // Reconstruct the full parameter tensors from the flattened vector
-                
+
                 let mut tensors = Vec::new();
                 let mut idx = 0;
                 for shape in &param_shapes_clone {
@@ -524,7 +524,7 @@ impl QQNOptimizer {
 
             // Create 1D problem
             let problem =
-               create_1d_problem_linear(&params_f64, &direction_f64, Arc::new(objective_fn), Arc::new(gradient_fn))
+                create_1d_problem_linear(&params_f64, &direction_f64, Arc::new(objective_fn), Arc::new(gradient_fn))
                     .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
 
             // Perform line search
@@ -589,7 +589,7 @@ impl QQNOptimizer {
             function_decrease
         );
         self.log_scalar("Function Decrease (Steepest Descent)", function_decrease);
-        
+
         // Update L-BFGS state with the new gradient at the updated position
         let new_gradient = function.gradient(nd_params)?;
         // Only update if we made meaningful progress
@@ -598,7 +598,7 @@ impl QQNOptimizer {
         } else {
             debug!("Step size too small ({:.3e}), skipping L-BFGS update", line_search_result.step_size);
         }
-        
+
         // Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: false,
@@ -708,33 +708,33 @@ impl Optimizer for QQNOptimizer {
                 metadata,
             });
         }
-    // Additional convergence check for very small function changes
-    if self.state.iteration > 10 {
-        // Check if we're making very small progress
-        if let Some(trace) = &self.trace {
-            if trace.function_values.len() > 5 {
-                let recent_values = &trace.function_values[trace.function_values.len() - 5..];
-                let max_change = recent_values.windows(2)
-                    .map(|w| (w[0] - w[1]).abs())
-                    .fold(0.0, f64::max);
-                if max_change < 1e-10 && grad_norm < 1e-3 {
-                    info!(
+        // Additional convergence check for very small function changes
+        if self.state.iteration > 10 {
+            // Check if we're making very small progress
+            if let Some(trace) = &self.trace {
+                if trace.function_values.len() > 5 {
+                    let recent_values = &trace.function_values[trace.function_values.len() - 5..];
+                    let max_change = recent_values.windows(2)
+                        .map(|w| (w[0] - w[1]).abs())
+                        .fold(0.0, f64::max);
+                    if max_change < 1e-10 && grad_norm < 1e-3 {
+                        info!(
                         "QQN converged: function change {:.3e} < 1e-10 and gradient norm {:.3e} < 1e-3",
                         max_change, grad_norm
                     );
-                    self.state.iteration += 1;
-                    return Ok(StepResult {
-                        step_size: 0.0,
-                        convergence_info: ConvergenceInfo {
-                            converged: true,
-                            function_change: Some(max_change),
-                        },
-                        metadata: OptimizationMetadata::default(),
-                    });
+                        self.state.iteration += 1;
+                        return Ok(StepResult {
+                            step_size: 0.0,
+                            convergence_info: ConvergenceInfo {
+                                converged: true,
+                                function_change: Some(max_change),
+                            },
+                            metadata: OptimizationMetadata::default(),
+                        });
+                    }
                 }
             }
         }
-    }
 
         // Check if we should use L-BFGS or fall back to steepest descent
         if self.state.iteration < self.config.min_lbfgs_iterations {
@@ -789,7 +789,7 @@ impl Optimizer for QQNOptimizer {
             self.state.iteration += 1;
             return Ok(result);
         }
-        
+
         let quadratic_path =
             self.create_quadratic_path(params, &gradients, &lbfgs_direction, function.clone())?;
         let line_search_result = self.find_optimal_t_line_search(quadratic_path.clone());
@@ -833,12 +833,12 @@ impl Optimizer for QQNOptimizer {
                 });
             }
         }
-        
+
         info!("Found optimal t = {:.3e}", line_search_result.step_size);
         self.log_scalar("Optimal t", line_search_result.step_size);
         self.log_line_search_details(line_search_result.step_size);
         let position = quadratic_path.evaluate(line_search_result.step_size)?;
-        
+
 
         self.log_tensor_data("Final position", &position);
         let old_params = params.to_vec();
@@ -849,7 +849,7 @@ impl Optimizer for QQNOptimizer {
         let final_function_value = function.evaluate(params)?;
         debug!("Final function value: {:.6e}", final_function_value);
         let function_decrease = initial_function_value - final_function_value;
-        
+
         debug!("Updating L-BFGS history");
         let old_params_before_update = old_params.clone();
         // Update L-BFGS state with the new position and gradient
@@ -1205,7 +1205,7 @@ impl<'a> ParametricCurve for QuadraticPath {
             }
         }
         self.cache_misses.fetch_add(1, Ordering::Relaxed);
-        
+
         // Evaluate function at this position to get gradient
         let position = self.position(t)?; // This will use cache if available
         // Convert position back to tensors for gradient evaluation
@@ -1377,7 +1377,6 @@ mod tests {
 
         Ok(())
     }
-
 
 
     #[test]

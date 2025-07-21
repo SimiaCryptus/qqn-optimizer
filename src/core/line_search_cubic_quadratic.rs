@@ -237,16 +237,16 @@ impl LineSearch for CubicQuadraticLineSearch {
                     termination_reason: TerminationReason::StepSizeTooSmall,
                 });
             }
-                // Try a slightly larger step
-                let small_step = 1e-8;
-                let f_small = (problem.objective)(small_step)?;
-                if f_small < f0 {
-                    return Ok(LineSearchResult {
-                        step_size: small_step,
-                        success: true,
-                        termination_reason: TerminationReason::StepSizeTooSmall,
-                    });
-                }
+            // Try a slightly larger step
+            let small_step = 1e-8;
+            let f_small = (problem.objective)(small_step)?;
+            if f_small < f0 {
+                return Ok(LineSearchResult {
+                    step_size: small_step,
+                    success: true,
+                    termination_reason: TerminationReason::StepSizeTooSmall,
+                });
+            }
             return Err(anyhow!(
                 "Function appears to be ill-conditioned: no improvement possible within machine precision. f0={:.6e}, f_test={:.6e}, f_eps={:.6e}",
                 f0, f_test, f_eps

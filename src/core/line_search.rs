@@ -64,11 +64,11 @@ pub fn create_1d_problem(
     let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
     debug!("create_1d_problem: initial_derivative={:?}, initial_direction={:?}, initial_directional_derivative={:.3e}",
           initial_gradient, initial_direction, initial_directional_derivative);
-        // Check for zero direction
-        let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
-        if direction_norm < 1e-16 {
-            return Err(anyhow!("Direction vector is essentially zero (norm = {:.3e})", direction_norm));
-        }
+    // Check for zero direction
+    let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if direction_norm < 1e-16 {
+        return Err(anyhow!("Direction vector is essentially zero (norm = {:.3e})", direction_norm));
+    }
 
     // For descent: ∇f · d < 0
     if initial_directional_derivative > 0.0 {
@@ -452,7 +452,7 @@ mod tests {
         let gradient_fn = Arc::new(quadratic_gradient1);
         // Calculate expected value before moving objective_fn
         let expected_f0 = objective_fn(&current_point).unwrap();
-        
+
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,

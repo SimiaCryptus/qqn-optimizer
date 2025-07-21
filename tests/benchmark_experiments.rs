@@ -8,7 +8,7 @@ use qqn_optimizer::benchmarks::functions::{
     SphereFunction, StyblinskiTangFunction,
 };
 use qqn_optimizer::benchmarks::ml_problems::{
-    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine, MnistNeuralNetwork,
+    LinearRegression, LogisticRegression, MnistNeuralNetwork, NeuralNetworkTraining, SupportVectorMachine,
 };
 use qqn_optimizer::benchmarks::MichalewiczFunction;
 use qqn_optimizer::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};

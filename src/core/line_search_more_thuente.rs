@@ -158,7 +158,7 @@ impl MoreThuenteLineSearch {
         } else {
             self.config.min_step..=self.config.max_step
         };
-        
+
         // Case 1: Higher function value
         if fp > *fx {
             let theta = 3.0 * (*fx - fp) / (stp - *stx) + *gx + gp;
@@ -334,7 +334,7 @@ impl LineSearch for MoreThuenteLineSearch {
         if !f0.is_finite() || !g0.is_finite() {
             return Err(anyhow!("Initial function value or gradient is not finite"));
         }
-        
+
         // Verify we can make progress
         let test_step = self.config.min_step;
         let f_test = (problem.objective)(test_step)?;
@@ -362,7 +362,7 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut best_stp = 0.0;
         let mut best_f = f0;
         let mut width = self.config.max_step - self.config.min_step;
-        
+
         self.log_verbose(&format!(
             "Starting More-Thuente with f(0)={:.3e}, g(0)={:.3e}",
             f0, g0
@@ -377,7 +377,7 @@ impl LineSearch for MoreThuenteLineSearch {
                 let step_max = stx.max(sty);
                 stp = stp.clamp(step_min, step_max);
             }
-            
+
             // Evaluate function and gradient at current step
             let fp = (problem.objective)(stp)?;
             let gp = (problem.gradient)(stp)?;
@@ -394,7 +394,7 @@ impl LineSearch for MoreThuenteLineSearch {
                 }
                 return Err(anyhow!("Non-finite function or gradient value encountered"));
             }
-            
+
             // Track best point
             if fp < best_f {
                 best_f = fp;
@@ -428,7 +428,7 @@ impl LineSearch for MoreThuenteLineSearch {
                     });
                 }
             }
-            
+
             // Update interval and get new trial step
             let new_stp = self.update_interval(
                 &mut stx,
@@ -449,10 +449,10 @@ impl LineSearch for MoreThuenteLineSearch {
                 &mut sty, &mut fy, &mut gy,
                 stp, fp, gp, f0, g0, iter,
             );
-            
+
             // Update step
             stp = new_stp;
-            
+
             // Check for convergence
             if (stp - stx).abs() < self.config.xtol * stp.max(1.0) {
                 self.log_verbose("Converged: step size change below tolerance");
@@ -487,12 +487,12 @@ impl LineSearch for MoreThuenteLineSearch {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
     use crate::init_logging;
     use anyhow::Result;
     use approx::assert_relative_eq;
+    use std::sync::Arc;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)

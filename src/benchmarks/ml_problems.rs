@@ -1,8 +1,8 @@
 //! Machine learning optimization problems for benchmarking.
 use crate::benchmarks::functions::OptimizationProblem;
 use anyhow::Result;
-use std::io::Read;
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 
 /// Logistic regression optimization problem

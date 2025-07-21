@@ -146,7 +146,7 @@ impl LineSearch for BisectionLineSearch {
                 let mut test_step = far_point * 0.1;
                 let mut best_step = 0.0;
                 let mut best_f = f0;
-                
+
                 // Try progressively smaller steps
                 for _ in 0..10 {
                     if test_step < self.config.min_step {
@@ -159,7 +159,7 @@ impl LineSearch for BisectionLineSearch {
                     }
                     test_step *= 0.5;
                 }
-                
+
                 if best_step > 0.0 {
                     self.log_verbose(&format!(
                         "Found improvement with small step: {:.3e}",
@@ -301,12 +301,12 @@ impl BisectionLineSearch {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use super::*;
     use crate::core::line_search::create_1d_problem_linear;
     use crate::init_logging;
     use anyhow::Result;
     use approx::assert_relative_eq;
+    use std::sync::Arc;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)

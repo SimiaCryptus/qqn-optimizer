@@ -11,11 +11,9 @@ pub use core::{
     qqn::{QQNConfig, QQNOptimizer},
 };
 
-pub use benchmarks::{
-    functions::{
-        AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
-        SphereFunction,
-    },
+pub use benchmarks::functions::{
+    AckleyFunction, BealeFunction, OptimizationProblem, RastriginFunction, RosenbrockFunction,
+    SphereFunction,
 };
 
 pub use analysis::{

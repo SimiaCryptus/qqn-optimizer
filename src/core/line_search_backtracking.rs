@@ -1,4 +1,4 @@
-use crate::core::line_search::{OneDimensionalProblem};
+use crate::core::line_search::OneDimensionalProblem;
 use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use std::sync::Arc;
@@ -308,7 +308,7 @@ mod tests {
                     TerminationReason::MaxIterationsReached | 
                     TerminationReason::ArmijoConditionSatisfied |
                     TerminationReason::StepSizeTooSmall));
-            },
+            }
             Err(_) => {
                 // Acceptable if no improvement was possible
             }
@@ -480,7 +480,7 @@ mod tests {
             &current_point,
             &direction,
             Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1)
+            Arc::new(quadratic_gradient1),
         ).unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);

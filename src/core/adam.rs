@@ -55,7 +55,7 @@ impl Default for AdamConfig {
 }
 impl AdamConfig {
     /// Create a strict configuration for high-precision optimization.
-    /// 
+    ///
     /// This configuration uses:
     /// - Lower learning rate for careful steps
     /// - Adaptive learning rate schedule for automatic adjustment
@@ -79,7 +79,7 @@ impl AdamConfig {
         }
     }
     /// Create a lax configuration for fast, approximate optimization.
-    /// 
+    ///
     /// This configuration uses:
     /// - Higher learning rate for faster convergence
     /// - Exponential decay to reduce learning rate over time
@@ -103,7 +103,7 @@ impl AdamConfig {
         }
     }
     /// Create a configuration optimized for deep learning tasks.
-    /// 
+    ///
     /// This configuration uses standard deep learning hyperparameters:
     /// - Standard Adam learning rate
     /// - Cosine annealing schedule
@@ -967,10 +967,10 @@ mod tests {
         }
         let lax_final = lax_params[0].flatten_all()?.to_vec1::<f64>()?;
         let lax_value = function.evaluate(&lax_params)?;
-        println!("Strict final: [{:.6}, {:.6}], value: {:.6e}", 
-                strict_final[0], strict_final[1], strict_value);
-        println!("Lax final: [{:.6}, {:.6}], value: {:.6e}", 
-                lax_final[0], lax_final[1], lax_value);
+        println!("Strict final: [{:.6}, {:.6}], value: {:.6e}",
+                 strict_final[0], strict_final[1], strict_value);
+        println!("Lax final: [{:.6}, {:.6}], value: {:.6e}",
+                 lax_final[0], lax_final[1], lax_value);
         // Both should make progress, but lax might make larger steps
         assert!(strict_value < 4.0); // Should improve from initial value of 4.0
         assert!(lax_value < 4.0);
@@ -1006,7 +1006,7 @@ mod tests {
                     result.metadata.optimizer_data.get("gradient_norm").unwrap_or(&0.0)
                 );
             }
-            
+
             if result.convergence_info.converged {
                 println!("Converged at step {}", i);
                 converged = true;
