@@ -1,5 +1,5 @@
 use super::{PlottingManager, ReportGenerator};
-use log::{info, warn};
+use log::{info, warn, error};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, SingleResult};
 use qqn_optimizer::{ OptimizationProblem, Optimizer};
 use rand::{Rng, SeedableRng};
@@ -68,7 +68,28 @@ impl ExperimentRunner {
                 .iter()
                 .map(|&x| x + rng.random_range(-1.0..1.0))
                 .collect();
-            let initial_value = problem.evaluate_f64(&initial_params)?;
+            
+            // Try to evaluate with error handling for non-finite values
+            let initial_value = match problem.evaluate_f64(&initial_params) {
+                Ok(val) if val.is_finite() => val,
+                Ok(val) => {
+                    warn!(
+                        "Problem {} returned non-finite initial value: {}",
+                        problem.name(),
+                        val
+                    );
+                    continue;
+                }
+                Err(e) => {
+                    warn!(
+                        "Problem {} failed initial evaluation: {}",
+                        problem.name(),
+                        e
+                    );
+                    continue;
+                }
+            };
+            
             info!(
                 "Problem {}: initial_value = {:.6e}, dimensions = {}",
                 problem.name(),
@@ -96,16 +117,48 @@ impl ExperimentRunner {
 
         for (opt_name, ref optimizer) in optimizers.iter() {
             for run_id in 0..self.config.num_runs {
-                let mut result = runner
+                let mut result = match runner
                     .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name)
-                    .await?;
+                    .await
+                {
+                    Ok(result) => result,
+                    Err(e) => {
+                        error!(
+                            "Benchmark failed for {} with {}: {}",
+                            problem.name(),
+                            opt_name,
+                            e
+                        );
+                        // Create a failed result instead of propagating the error
+                        let mut failed_result = SingleResult::new(opt_name.clone(), run_id);
+                        failed_result.convergence_achieved = false;
+                        failed_result.final_value = f64::INFINITY;
+                        failed_result.error_message = Some(format!("Evaluation error: {}", e));
+                        results.add_result(failed_result);
+                        continue;
+                    }
+                };
 
                 if let Some(optimal_value) = problem.optimal_value() {
                     let success_threshold = optimal_value;
-                    result.convergence_achieved &= result.final_value < success_threshold;
+                    result.convergence_achieved &= result.final_value.is_finite() && result.final_value < success_threshold;
                 } else {
                     result.convergence_achieved = false;
                 }
+                // Additional check for non-finite final values
+                if !result.final_value.is_finite() {
+                    warn!(
+                        "Non-finite final value for {} with {}: {}",
+                        problem.name(),
+                        opt_name,
+                        result.final_value
+                    );
+                    result.convergence_achieved = false;
+                    if result.error_message.is_none() {
+                        result.error_message = Some(format!("Non-finite final value: {}", result.final_value));
+                    }
+                }
+                
                 results.add_result(result);
             }
         }

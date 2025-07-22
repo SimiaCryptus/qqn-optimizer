@@ -90,7 +90,7 @@ impl OptimizationTrace {
         &mut self,
         iteration: usize,
         function_value: f64,
-        optimizer: &dyn Optimizer,
+        _optimizer: &dyn Optimizer,
         parameters: &[f64],
         gradient: &[f64],
         step_size: f64,
@@ -138,6 +138,33 @@ pub struct SingleResult {
     pub convergence_reason: ConvergenceReason,
     pub memory_usage: Option<MemoryUsage>,
     pub performance_metrics: PerformanceMetrics,
+    pub error_message: Option<String>,
+}
+impl SingleResult {
+    pub fn new(optimizer_name: String, run_id: usize) -> Self {
+        Self {
+            problem_name: String::new(),
+            optimizer_name,
+            run_id,
+            final_value: f64::INFINITY,
+            final_gradient_norm: f64::INFINITY,
+            iterations: 0,
+            function_evaluations: 0,
+            gradient_evaluations: 0,
+            convergence_achieved: false,
+            execution_time: Duration::from_secs(0),
+            trace: OptimizationTrace::new(),
+            convergence_reason: ConvergenceReason::NumericalError,
+            memory_usage: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 0.0,
+                function_evaluations_per_second: 0.0,
+                gradient_evaluations_per_second: 0.0,
+                convergence_rate: 0.0,
+            },
+            error_message: None,
+        }
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryUsage {
@@ -399,6 +426,7 @@ impl BenchmarkRunner {
             convergence_reason,
             memory_usage: None, // Memory tracking not implemented yet
             performance_metrics,
+            error_message: None,
         })
     }
 
@@ -849,6 +877,7 @@ mod tests {
                 gradient_evaluations_per_second: 500.0,
                 convergence_rate: -0.1,
             },
+            error_message: None,
         });
 
         let success_rates = results.success_rates();

@@ -6,16 +6,16 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         // QQN variants
         (
-            "QQN-Default".to_string(),
+            "QQN-Bisection".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig::default())),
         ),
-        (
-            "QQN-Linear".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                linear_mode: true,
-                ..Default::default()
-            })),
-        ),
+        // (
+        //     "QQN-Linear".to_string(),
+        //     Arc::new(QQNOptimizer::new(QQNConfig {
+        //         linear_mode: true,
+        //         ..Default::default()
+        //     })),
+        // ),
         (
             "QQN-Backtracking".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {

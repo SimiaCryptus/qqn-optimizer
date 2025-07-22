@@ -132,6 +132,7 @@ fn test_latex_table_generation() {
                 gradient_evaluations_per_second: 100.0,
                 convergence_rate: -0.1,
             },
+            error_message: None,
         });
         println!("Adding mock result {} for L-BFGS", i);
 
@@ -159,6 +160,7 @@ fn test_latex_table_generation() {
                 gradient_evaluations_per_second: 0.0,
                 convergence_rate: 0.0,
             },
+            error_message: None,
         });
     }
     println!("Generating LaTeX performance table...");
@@ -232,6 +234,7 @@ fn test_export_academic_formats() -> std::io::Result<()> {
                 gradient_evaluations_per_second: 0.0,
                 convergence_rate: 0.0,
             },
+            error_message: None,
         });
     }
 

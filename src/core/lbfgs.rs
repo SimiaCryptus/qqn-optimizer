@@ -329,7 +329,7 @@ impl LBFGSState {
             warn!("L-BFGS: Invalid gamma detected: {}, resetting to 1.0", self.gamma);
             self.gamma = 1.0;
         }
-        let safe_gamma = self.gamma.max(1e-8).min(1e8);
+        let safe_gamma = self.gamma.max(1e-12).min(1e12);
 
         let mut r = vector_scale(&q, safe_gamma)?;
 

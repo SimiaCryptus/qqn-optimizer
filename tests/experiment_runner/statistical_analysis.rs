@@ -17,7 +17,7 @@ impl StatisticalAnalysis {
     pub fn generate_statistical_analysis(
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
-        config: &BenchmarkConfig,
+        _config: &BenchmarkConfig,
         output_dir: &str,
     ) -> anyhow::Result<String> {
         let mut section = String::from(
@@ -30,14 +30,10 @@ impl StatisticalAnalysis {
 "#,
         );
 
-        let mut combined_results = BenchmarkResults::new(config.clone());
-        for (_, results) in all_results {
-            for result in &results.results {
-                combined_results.add_result(result.clone());
-            }
-        }
 
-        if combined_results.results.len() < 2 {
+        // Check if we have enough data
+        let total_results: usize = all_results.iter().map(|(_, r)| r.results.len()).sum();
+        if total_results < 2 {
             section.push_str(
                 r#"            <p><em>Insufficient data for statistical analysis.</em></p>
         </div>
@@ -48,21 +44,16 @@ impl StatisticalAnalysis {
         }
 
         let mut optimizer_results: HashMap<String, Vec<(f64, f64, String)>> = HashMap::new(); // (final_value, cost, problem)
-        for result in &combined_results.results {
+        for (problem, results) in all_results {
+            let problem_name = problem.name();
+            for result in &results.results {
             let cost = (result.function_evaluations.max(result.gradient_evaluations)) as f64;
-            let problem_name = all_results.iter()
-                .find(|(_, res)| res.results.iter().any(|r| 
-                    r.optimizer_name == result.optimizer_name && 
-                    r.run_id == result.run_id &&
-                    (r.final_value - result.final_value).abs() < 1e-12
-                ))
-                .map(|(name, _)| name.name())
-                .unwrap_or_else(|| "Unknown");
             
             optimizer_results
                 .entry(result.optimizer_name.clone())
                 .or_insert_with(Vec::new)
                 .push((result.final_value, cost, problem_name.to_string()));
+            }
         }
 
         optimizer_results.retain(|_, values| values.len() >= 2);
@@ -100,10 +91,11 @@ impl StatisticalAnalysis {
             r#"            <table>
 <table>
                 <tr>
-                    <th>Problem Family</th>
+                    <th>Problem</th>
                     <th>QQN Optimizer</th>
                     <th>Non-QQN Optimizer</th>
                     <th>Metric</th>
+                    <th>Winner</th>
                     <th>Test Statistic</th>
                     <th>p-value</th>
                     <th>Significant</th>
@@ -114,21 +106,25 @@ impl StatisticalAnalysis {
 
         let mut comparisons_made = 0;
         let mut csv_data = Vec::new();
-        csv_data.push("Problem_Family,QQN_Optimizer,NonQQN_Optimizer,Metric,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
-        // Group results by problem family for per-family analysis
-        let mut family_optimizer_results: HashMap<String, HashMap<String, Vec<(f64, f64)>>> = HashMap::new();
+        csv_data.push("Problem,QQN_Optimizer,NonQQN_Optimizer,Metric,Winner,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
+        
+        // Track wins for summary matrix
+        let mut win_matrix: HashMap<(String, String), (i32, i32)> = HashMap::new(); // (qqn_wins, non_qqn_wins)
+        
+        // Group results by problem name (can be changed to family if needed)
+        let mut grouped_optimizer_results: HashMap<String, HashMap<String, Vec<(f64, f64)>>> = HashMap::new();
         for (optimizer, results) in &optimizer_results {
             for (final_value, cost, problem) in results {
-                let family = get_family(problem);
-                family_optimizer_results
-                    .entry(family)
+                grouped_optimizer_results
+                    //.entry(get_family(problem))
+                    .entry(problem.to_string())
                     .or_insert_with(HashMap::new)
                     .entry(optimizer.clone())
                     .or_insert_with(Vec::new)
                     .push((*final_value, *cost));
             }
         }
-        for (family_name, family_results) in &family_optimizer_results {
+        for (family_name, family_results) in &grouped_optimizer_results {
             let mut family_qqn_optimizers = Vec::new();
             let mut family_non_qqn_optimizers = Vec::new();
             for optimizer_name in family_results.keys() {
@@ -159,7 +155,25 @@ impl StatisticalAnalysis {
                     Ok((t_stat, p_value)) => {
                             let effect_size = self.cohens_d(&qqn_final_values, &non_qqn_final_values);
                         let significant = p_value < 0.05;
-                        let significance_class = if significant { "best" } else { "" };
+                        
+                        // Determine winner (lower is better for minimization)
+                        let qqn_mean: f64 = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
+                        let non_qqn_mean: f64 = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
+                        let winner = if significant {
+                            if qqn_mean < non_qqn_mean {
+                                win_matrix.entry((qqn_opt.clone(), non_qqn_opt.clone()))
+                                    .or_insert((0, 0)).0 += 1;
+                                format!("<span style='color: #28a745; font-weight: bold;'>{}</span>", qqn_opt)
+                            } else {
+                                win_matrix.entry((qqn_opt.clone(), non_qqn_opt.clone()))
+                                    .or_insert((0, 0)).1 += 1;
+                                format!("<span style='color: #dc3545; font-weight: bold;'>{}</span>", non_qqn_opt)
+                            }
+                        } else {
+                            "—".to_string()
+                        };
+                        
+                        let significance_class = if significant { "significant-row" } else { "" };
 
                         section.push_str(&format!(
                             r#"                <tr class="{}">
@@ -167,6 +181,7 @@ impl StatisticalAnalysis {
                                 <td>{}</td>
                                 <td>{}</td>
                                 <td>Final Objective Value</td>
+                                <td>{}</td>
                                 <td>{:.4}</td>
                                 <td>{:.4}</td>
                                 <td>{}</td>
@@ -177,13 +192,17 @@ impl StatisticalAnalysis {
                                 family_name,
                             qqn_opt,
                             non_qqn_opt,
+                            winner,
                             t_stat,
                             p_value,
                             if significant { "✓" } else { "✗" },
                             effect_size
                         ));
-                            csv_data.push(format!("{},{},{},Final_Objective_Value,{:.6},{:.6},{},{:.6}",
-                                family_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
+                            let winner_name = if significant {
+                                if qqn_mean < non_qqn_mean { qqn_opt } else { non_qqn_opt }
+                            } else { "-" };
+                            csv_data.push(format!("{},{},{},Final_Objective_Value,{},{:.6},{:.6},{},{:.6}",
+                                family_name, qqn_opt, non_qqn_opt, winner_name, t_stat, p_value, significant, effect_size));
                         comparisons_made += 1;
                     }
                     Err(e) => {
@@ -192,7 +211,7 @@ impl StatisticalAnalysis {
                                 <td>{}</td>
                                 <td>{}</td>
                                 <td>{}</td>
-                                <td colspan="6"><em>Test failed: {}</em></td>
+                                <td colspan="7"><em>Test failed: {}</em></td>
                             </tr>
 "#,
                                 family_name, qqn_opt, non_qqn_opt, e
@@ -206,13 +225,29 @@ impl StatisticalAnalysis {
                         Ok((t_stat, p_value)) => {
                             let effect_size = self.cohens_d(&costs_qqn, &costs_non_qqn);
                             let significant = p_value < 0.05;
-                            let significance_class = if significant { "best" } else { "" };
+                            
+                            // Determine winner (lower is better for cost)
+                            let qqn_mean_cost: f64 = costs_qqn.iter().sum::<f64>() / costs_qqn.len() as f64;
+                            let non_qqn_mean_cost: f64 = costs_non_qqn.iter().sum::<f64>() / costs_non_qqn.len() as f64;
+                            let winner = if significant {
+                                if qqn_mean_cost < non_qqn_mean_cost {
+                                    format!("<span style='color: #28a745; font-weight: bold;'>{}</span>", qqn_opt)
+                                } else {
+                                    format!("<span style='color: #dc3545; font-weight: bold;'>{}</span>", non_qqn_opt)
+                                }
+                            } else {
+                                "—".to_string()
+                            };
+                            
+                            let significance_class = if significant { "significant-row" } else { "" };
+                            
                             section.push_str(&format!(
                                 r#"                <tr class="{}">
                                     <td>{}</td>
                                     <td>{}</td>
                                     <td>{}</td>
                                     <td>Computational Cost</td>
+                                    <td>{}</td>
                                     <td>{:.4}</td>
                                     <td>{:.4}</td>
                                     <td>{}</td>
@@ -223,13 +258,17 @@ impl StatisticalAnalysis {
                                 family_name,
                                 qqn_opt,
                                 non_qqn_opt,
+                                winner,
                                 t_stat,
                                 p_value,
                                 if significant { "✓" } else { "✗" },
                                 effect_size
                             ));
-                            csv_data.push(format!("{},{},{},Computational_Cost,{:.6},{:.6},{},{:.6}",
-                                family_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
+                            let winner_name = if significant {
+                                if qqn_mean_cost < non_qqn_mean_cost { qqn_opt } else { non_qqn_opt }
+                            } else { "-" };
+                            csv_data.push(format!("{},{},{},Computational_Cost,{},{:.6},{:.6},{},{:.6}",
+                                family_name, qqn_opt, non_qqn_opt, winner_name, t_stat, p_value, significant, effect_size));
                             comparisons_made += 1;
                         }
                         Err(e) => {
@@ -239,7 +278,7 @@ impl StatisticalAnalysis {
                                     <td>{}</td>
                                     <td>{}</td>
                                     <td>Computational Cost</td>
-                                    <td colspan="4"><em>Test failed: {}</em></td>
+                                    <td colspan="5"><em>Test failed: {}</em></td>
                                 </tr>
 "#,
                                 family_name, qqn_opt, non_qqn_opt, e
@@ -252,22 +291,33 @@ impl StatisticalAnalysis {
 
         if comparisons_made == 0 {
             section.push_str(r#"                <tr>
-                    <td colspan="8"><em>No valid QQN vs non-QQN comparisons could be performed.</em></td>
+                    <td colspan="9"><em>No valid QQN vs non-QQN comparisons could be performed.</em></td>
                 </tr>
 "#);
         }
+        section.push_str(r#"            </table>
+        </div>
+"#);
+
         // Save CSV data
         if let Err(e) = self.save_statistical_analysis_csv(&csv_data, output_dir) {
             eprintln!("Warning: Failed to save statistical analysis CSV: {}", e);
         }
 
-        section.push_str(r#"            </table>
+        section.push_str(r#"
+        <style>
+            .significant-row { background-color: #f0f8ff; }
+            .significant-row td { font-weight: 500; }
+        </style>
+        <div class="subsection">
 
             <div class="citation">
                 <strong>Citation Note:</strong> Statistical tests performed using Welch's t-test comparing final objective values
                 and computational cost (max of function/gradient evaluations) between QQN variants and non-QQN optimizers 
                 with α = 0.05. Effect sizes calculated using Cohen's d. Analysis performed per problem family to account for 
                 family-specific characteristics and increase statistical power by aggregating similar problems.
+                Winners are highlighted in <span style='color: #28a745; font-weight: bold;'>green</span> (QQN) or 
+                <span style='color: #dc3545; font-weight: bold;'>red</span> (non-QQN) for statistically significant comparisons.
                 <br><strong>Data:</strong> <a href="statistical_analysis_raw_data.csv">Raw statistical analysis data (CSV)</a>
             </div>
         </div>

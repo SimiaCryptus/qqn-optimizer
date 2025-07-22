@@ -9,11 +9,13 @@ struct MnistData {
     images: Vec<Vec<u8>>,
     labels: Vec<u8>,
 }
+
 #[derive(Debug, Clone)]
 struct MLP {
     ln1: Linear,
     ln2: Linear,
 }
+
 impl MLP {
     fn new(
         vs: VarBuilder,
@@ -26,6 +28,7 @@ impl MLP {
         Ok(Self { ln1, ln2 })
     }
 }
+
 impl Module for MLP {
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
@@ -308,11 +311,22 @@ impl MnistNeuralNetwork {
     }
 
     fn set_parameters(&self, params: &[f64]) -> anyhow::Result<()> {
+        // Check all parameters for non-finite values before setting
+        for (i, &param) in params.iter().enumerate() {
+            if !param.is_finite() {
+                return Err(anyhow::anyhow!(
+                    "Attempting to set non-finite parameter at index {}: {}",
+                    i,
+                    param
+                ));
+            }
+        }
+
         // Set model parameters from flat vector
         let mut param_idx = 0;
         let data = self.varmap.data().lock().unwrap();
 
-        for (name, var) in data.iter() {
+        for (_name, var) in data.iter() {
             let tensor = var.as_tensor();
             let elem_count = tensor.elem_count();
 
@@ -337,6 +351,16 @@ impl MnistNeuralNetwork {
         for (_, var) in data.iter() {
             let tensor = var.as_tensor();
             let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+            // Check retrieved parameters for non-finite values
+            for (i, &val) in values.iter().enumerate() {
+                if !val.is_finite() {
+                    return Err(anyhow::anyhow!(
+                        "Non-finite parameter retrieved at index {}: {}",
+                        params.len() + i,
+                        val
+                    ));
+                }
+            }
             params.extend(values);
         }
 
@@ -362,24 +386,88 @@ impl OptimizationProblem for MnistNeuralNetwork {
     }
 
     fn evaluate_f64(&self, params: &[f64]) -> anyhow::Result<f64> {
+        // Check input parameters for non-finite values
+        for (i, &param) in params.iter().enumerate() {
+            if !param.is_finite() {
+                return Err(anyhow::anyhow!(
+                    "Non-finite parameter at index {}: {}",
+                    i,
+                    param
+                ));
+            }
+        }
+
         // Set parameters in the model
         self.set_parameters(params)?;
 
         // Forward pass using candle's Module trait
         let y_pred = self.model.forward(&self.x_tensor)?;
+        // Check for non-finite values in predictions
+        let pred_values = y_pred.flatten_all()?.to_vec1::<f64>()?;
+        for (i, &val) in pred_values.iter().enumerate() {
+            if !val.is_finite() {
+                return Err(anyhow::anyhow!(
+                    "Non-finite prediction at index {}: {}",
+                    i,
+                    val
+                ));
+            }
+        }
+
         let y_pred = softmax(&y_pred, 1)?;
+        // Check softmax output for non-finite values
+        let softmax_values = y_pred.flatten_all()?.to_vec1::<f64>()?;
+        for (i, &val) in softmax_values.iter().enumerate() {
+            if !val.is_finite() {
+                return Err(anyhow::anyhow!(
+                    "Non-finite softmax output at index {}: {}",
+                    i,
+                    val
+                ));
+            }
+        }
 
         // Cross-entropy loss
         let log_probs = y_pred.log()?;
+        // Check log probabilities for non-finite values
+        let log_prob_values = log_probs.flatten_all()?.to_vec1::<f64>()?;
+        for (i, &val) in log_prob_values.iter().enumerate() {
+            if !val.is_finite() {
+                return Err(anyhow::anyhow!(
+                    "Non-finite log probability at index {}: {}",
+                    i,
+                    val
+                ));
+            }
+        }
+
         let loss = (&self.y_tensor * &log_probs)?
             .sum_keepdim(1)?
             .mean_all()?
             .neg()?;
 
-        Ok(loss.to_scalar::<f64>()?)
+        let loss_value = loss.to_scalar::<f64>()?;
+
+        // Check final loss for non-finite values
+        if !loss_value.is_finite() {
+            return Err(anyhow::anyhow!("Non-finite loss value: {}", loss_value));
+        }
+
+        Ok(loss_value)
     }
 
     fn gradient_f64(&self, params: &[f64]) -> anyhow::Result<Vec<f64>> {
+        // Check input parameters for non-finite values
+        for (i, &param) in params.iter().enumerate() {
+            if !param.is_finite() {
+                return Err(anyhow::anyhow!(
+                    "Non-finite parameter in gradient computation at index {}: {}",
+                    i,
+                    param
+                ));
+            }
+        }
+
         // Set parameters
         self.set_parameters(params)?;
 
@@ -399,6 +487,15 @@ impl OptimizationProblem for MnistNeuralNetwork {
             .sum_keepdim(1)?
             .mean_all()?
             .neg()?;
+        // Check loss before backward pass
+        let loss_value = loss.to_scalar::<f64>()?;
+        if !loss_value.is_finite() {
+            return Err(anyhow::anyhow!(
+                "Non-finite loss in gradient computation: {}",
+                loss_value
+            ));
+        }
+
         // Compute gradients using candle's autodiff
         let grads = loss.backward()?;
         // Extract gradients in the same order as parameters
@@ -406,6 +503,16 @@ impl OptimizationProblem for MnistNeuralNetwork {
         for var in &vars {
             if let Some(grad) = grads.get(var) {
                 let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
+                // Check each gradient value for non-finite values
+                for (i, &val) in grad_values.iter().enumerate() {
+                    if !val.is_finite() {
+                        return Err(anyhow::anyhow!(
+                            "Non-finite gradient value at index {}: {}",
+                            grad_vec.len() + i,
+                            val
+                        ));
+                    }
+                }
                 grad_vec.extend(grad_values);
             } else {
                 // If no gradient, assume zero
@@ -419,6 +526,6 @@ impl OptimizationProblem for MnistNeuralNetwork {
     fn optimal_value(&self) -> Option<f64> {
         // Based on benchmark results: best achievable ~0.473-0.500
         // Allow 10-15% margin above best observed values
-        Some(0.55) // 10-15% above best observed performance
+        Some(0.3) // 10-15% above best observed performance
     }
 }

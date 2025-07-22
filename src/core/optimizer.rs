@@ -273,7 +273,7 @@ impl ConvergenceChecker {
         function_value: f64,
         gradients: &[Tensor],
         parameters: &[Tensor],
-        optimizer: &dyn Optimizer,
+        _optimizer: &dyn Optimizer,
     ) -> CandleResult<ConvergenceInfo> {
         self.iteration_count += 1;
 

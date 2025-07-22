@@ -57,20 +57,18 @@ pub fn create_1d_problem(
     objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
     gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
 ) -> Result<OneDimensionalProblem> {
-    let initial_position = curve.position(0.0)
-        .map_err(|e| anyhow!("Failed to evaluate curve at t=0: {}", e))?;
-    let initial_direction = curve.direction(0.0)
-        .map_err(|e| anyhow!("Failed to evaluate curve direction at t=0: {}", e))?;
+    let initial_position = curve.position(0.0)?;
+    let initial_direction = curve.direction(0.0)?;
     let initial_value = objective_fn(&initial_position).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
     let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
     let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
     debug!("create_1d_problem: initial_derivative={:?}, initial_direction={:?}, initial_directional_derivative={:.3e}",
           initial_gradient, initial_direction, initial_directional_derivative);
-    // Check for zero direction
-    let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
-    if direction_norm < 1e-16 {
-        return Err(anyhow!("Direction vector is essentially zero (norm = {:.3e})", direction_norm));
-    }
+        // Check for zero direction
+        let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if direction_norm < 1e-16 {
+            return Err(anyhow!("Direction vector is essentially zero (norm = {:.3e})", direction_norm));
+        }
 
     // For descent: ∇f · d < 0
     if initial_directional_derivative > 0.0 {
@@ -391,11 +389,11 @@ pub(crate) fn find_far_point_1(
 pub(crate) fn find_far_point_2(
     problem: &OneDimensionalProblem,
     f0: f64,
-    initial_step: f64,
+    initial_steop: f64,
     max_iterations: usize,
     max_step: f64,
 ) -> Result<f64, Error> {
-    let mut t = initial_step;
+    let mut t = initial_steop;
     let mut iteration = 0;
     debug!("Finding far point starting from t={:.3e}", t);
     while iteration < max_iterations {
@@ -454,7 +452,7 @@ mod tests {
         let gradient_fn = Arc::new(quadratic_gradient1);
         // Calculate expected value before moving objective_fn
         let expected_f0 = objective_fn(&current_point).unwrap();
-
+        
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,

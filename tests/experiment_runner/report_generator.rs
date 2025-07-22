@@ -58,13 +58,13 @@ impl ReportGenerator {
     pub async fn generate_html_report(
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
-        problems: &Vec<Arc<dyn OptimizationProblem>>,
+        _problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)?;
         println!("Generating report in directory: {}", self.output_dir);
 
         let mut html_content = self.generate_html_header();
-        html_content.push_str(&self.generate_executive_summary(all_results));
+        // html_content.push_str(&self.generate_executive_summary(all_results));
 
         for (problem, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem, results)?);
@@ -72,7 +72,7 @@ impl ReportGenerator {
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(all_results, &self.config, &self.output_dir)?);
-            html_content.push_str(&self.generate_performance_profiles(all_results, problems)?);
+            // html_content.push_str(&self.generate_performance_profiles(all_results, problems)?);
             html_content.push_str(&self.generate_model_test_matrices(all_results)?);
         }
 
@@ -315,11 +315,12 @@ impl ReportGenerator {
             r#"
     <div class="section">
         <h2>Problem: {}</h2>
+        <p><strong>Family:</strong> {}</p>
         <p><strong>Success Threshold:</strong> {:0.3e}</p>
         <div class="subsection">
             <h3>Performance Summary</h3>
 "#,
-            problem_name, problem.optimal_value().unwrap_or(f64::NEG_INFINITY)
+            problem_name, get_family(problem_name), problem.optimal_value().unwrap_or(f64::NEG_INFINITY)
         );
 
         let mut optimizer_stats = HashMap::new();
@@ -505,7 +506,7 @@ impl ReportGenerator {
     fn generate_performance_profiles(
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
-        problems: &Vec<Arc<dyn OptimizationProblem>>,
+        _problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<String> {
         let mut section = String::from(
             r#"

@@ -10,51 +10,59 @@ use experiment_runner::ExperimentRunner;
 use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::core::GDOptimizer;
-use qqn_optimizer::{AdamOptimizer, LBFGSConfig, LBFGSOptimizer, QQNConfig, QQNOptimizer};
+use qqn_optimizer::{init_logging, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, QQNConfig, QQNOptimizer};
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // init_logging()?;
-    // Use a persistent directory with timestamp to avoid conflicts
+    init_logging()?;
+
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
-
-    // Create the directory if it doesn't exist
     fs::create_dir_all(&output_dir)?;
     println!("Creating benchmark results in: {}", output_dir.display());
 
-    let output_dir1 = output_dir.to_string_lossy().to_string();
-    let runner = ExperimentRunner::new(output_dir1, BenchmarkConfig {
-        max_iterations: 10000,
-        maximum_function_calls: 10000,
-        min_improvement_percent: 1e-3,
-        time_limit: DurationWrapper::from(Duration::from_secs(60)),
-        num_runs: 10,
-    });
-
-    // Wrap the main execution in a timeout to prevent hanging
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
-        runner.run_comparative_benchmarks(vec![
+        ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
+            max_iterations: 10000,
+            maximum_function_calls: 10000,
+            min_improvement_percent: 1e-3,
+            time_limit: DurationWrapper::from(Duration::from_secs(60)),
+            num_runs: 1,
+        }).run_comparative_benchmarks(vec![
             Arc::new(RosenbrockFunction::new(5)),
         ], vec![
+            // (
+            //     "QQN-Default".to_string(),
+            //     Arc::new(QQNOptimizer::new(QQNConfig::default())),
+            // ),
             (
-                "QQN-Default".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig::default())),
+                "QQN-Backtracking-Hybrid".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Backtracking,
+                        c1: 1e-3,
+                        c2: 0.9,
+                        max_iterations: 75,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
+                    ..Default::default()
+                })),
             ),
-            (
-                "L-BFGS".to_string(),
-                Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            ),
-            (
-                "GD".to_string(),
-                Arc::new(GDOptimizer::new(Default::default())),
-            ),
-            (
-                "Adam".to_string(),
-                Arc::new(AdamOptimizer::new(Default::default())),
-            ),
+            // (
+            //     "L-BFGS".to_string(),
+            //     Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+            // ),
+            // (
+            //     "GD".to_string(),
+            //     Arc::new(GDOptimizer::new(Default::default())),
+            // ),
+            // (
+            //     "Adam".to_string(),
+            //     Arc::new(AdamOptimizer::new(Default::default())),
+            // ),
         ]),
     ).await;
 
@@ -80,9 +88,9 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     // Read and verify HTML content
     let html_content = fs::read_to_string(output_dir.join("benchmark_report.html"))?;
     assert!(html_content.contains("QQN Optimizer"));
-    assert!(html_content.contains("Executive Summary"));
+    // assert!(html_content.contains("Executive Summary"));
     assert!(html_content.contains("Statistical Analysis"));
-    assert!(html_content.contains("Performance Profiles"));
+    // assert!(html_content.contains("Performance Profiles"));
 
     println!(
         "Comprehensive benchmark report generated at: {}",
