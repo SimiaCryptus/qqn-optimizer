@@ -914,7 +914,7 @@ impl ReportGenerator {
             <h3>Methodology</h3>
             <ul>
                 <li><strong>Runs per configuration:</strong> {} independent runs with different random seeds</li>
-                <li><strong>Success criteria:</strong> Final value below reasonable threshold OR gradient norm < {:.0e} within {} iterations</li>
+                <li><strong>Success criteria:</strong> Minimum {:.3}% improvement per iteration OR optimizer-specific convergence within {} iterations</li>
                 <li><strong>Time limit:</strong> {:?} per run</li>
                 <li><strong>Hardware:</strong> Standard CPU implementation</li>
                 <li><strong>Implementation:</strong> Rust-based optimization framework</li>
@@ -930,7 +930,7 @@ impl ReportGenerator {
 </html>
 "#,
             self.config.num_runs,
-            self.config.tolerance,
+            self.config.min_improvement_percent,
             self.config.max_iterations,
             self.config.time_limit.clone(),
             env!("CARGO_PKG_VERSION"),

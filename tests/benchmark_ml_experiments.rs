@@ -121,8 +121,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     let runner = ExperimentRunner::new(output_dir1, BenchmarkConfig {
         max_iterations: 1000,
         maximum_function_calls: 1000,
-        tolerance: 1e-6,
-
+        min_improvement_percent: 1e-3,
         time_limit: DurationWrapper::from(Duration::from_secs(60)),
         num_runs: 1,
     });

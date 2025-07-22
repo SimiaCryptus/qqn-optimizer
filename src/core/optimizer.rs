@@ -69,6 +69,20 @@ pub trait Optimizer: Send + Sync + std::fmt::Debug + 'static {
     }
     /// Get the current iteration number
     fn iteration(&self) -> usize;
+    /// Get the stagnation multiplier for relaxed convergence criteria
+    /// This multiplier is applied to tolerance values to make convergence less strict
+    fn stagnation_multiplier(&self) -> f64 {
+        1.0 // Default multiplier - no relaxation
+    }
+    /// Get the stagnation count threshold for applying relaxed convergence
+    /// When stagnation is detected for this many iterations, relaxed criteria are used
+    fn stagnation_count(&self) -> usize {
+        1 // Default count - apply relaxation after 1 iteration of stagnation
+    }
+    /// Set the stagnation multiplier (mutable)
+    fn set_stagnation_multiplier(&mut self, multiplier: f64);
+    /// Set the stagnation count threshold (mutable)
+    fn set_stagnation_count(&mut self, count: usize);
 }
 
 /// Result of a single optimization step
@@ -229,6 +243,8 @@ pub struct ConvergenceChecker {
     start_time: std::time::Instant,
     previous_function_value: Option<f64>,
     previous_parameters: Option<Vec<Tensor>>,
+    stagnation_count: usize,
+    consecutive_stagnation: usize,
 }
 
 impl ConvergenceChecker {
@@ -240,30 +256,58 @@ impl ConvergenceChecker {
             start_time: std::time::Instant::now(),
             previous_function_value: None,
             previous_parameters: None,
+            stagnation_count: 0,
+            consecutive_stagnation: 0,
         }
     }
 
     /// Check convergence for the current iteration
+    /// 
+    /// # Arguments
+    /// * `function_value` - Current function value
+    /// * `gradients` - Current gradient tensors
+    /// * `parameters` - Current parameter tensors
+    /// * `optimizer` - Reference to optimizer for stagnation settings
     pub fn check_convergence(
         &mut self,
         function_value: f64,
         gradients: &[Tensor],
         parameters: &[Tensor],
+        optimizer: &dyn Optimizer,
     ) -> CandleResult<ConvergenceInfo> {
         self.iteration_count += 1;
 
         // Compute gradient norm
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
 
-        // Check gradient norm convergence
-        let gradient_converged = gradient_norm < self.config.gradient_tolerance;
+        // Check gradient norm convergence with relaxed tolerance
+        let gradient_converged = gradient_norm < effective_gradient_tolerance;
 
         // Check function change convergence
         let function_change = self
             .previous_function_value
             .map(|prev| (function_value - prev).abs());
+        // Detect stagnation based on function change
+        let is_stagnating = function_change
+            .map(|change| change < self.config.function_tolerance * 10.0) // More lenient stagnation detection
+            .unwrap_or(false);
+        if is_stagnating {
+            self.consecutive_stagnation += 1;
+        } else {
+            self.consecutive_stagnation = 0;
+        }
+        // Apply stagnation multiplier if we've been stagnating
+        let stagnation_multiplier = if self.consecutive_stagnation >= optimizer.stagnation_count() {
+            optimizer.stagnation_multiplier()
+        } else {
+            1.0
+        };
+        // Apply relaxed tolerances
+        let effective_gradient_tolerance = self.config.gradient_tolerance * stagnation_multiplier;
+        let effective_function_tolerance = self.config.function_tolerance * stagnation_multiplier;
+        let effective_parameter_tolerance = self.config.parameter_tolerance * stagnation_multiplier;
         let function_converged = function_change
-            .map(|change| change < self.config.function_tolerance)
+            .map(|change| change < effective_function_tolerance)
             .unwrap_or(false);
 
         // Check parameter change convergence
@@ -275,7 +319,7 @@ impl ConvergenceChecker {
             _ => None,
         };
         let parameter_converged = parameter_change
-            .map(|change| change < self.config.parameter_tolerance)
+            .map(|change| change < effective_parameter_tolerance)
             .unwrap_or(false);
 
         // Check iteration limit
@@ -311,6 +355,12 @@ impl ConvergenceChecker {
         self.start_time = std::time::Instant::now();
         self.previous_function_value = None;
         self.previous_parameters = None;
+        self.stagnation_count = 0;
+        self.consecutive_stagnation = 0;
+    }
+    /// Get the current consecutive stagnation count
+    pub fn consecutive_stagnation(&self) -> usize {
+        self.consecutive_stagnation
     }
 }
 

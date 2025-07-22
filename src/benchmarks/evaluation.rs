@@ -40,7 +40,7 @@ impl From<DurationWrapper> for Duration {
 pub struct BenchmarkConfig {
     pub max_iterations: usize,
     pub maximum_function_calls: usize,
-    pub tolerance: f64,
+    pub min_improvement_percent: f64,
     pub time_limit: DurationWrapper,
     pub num_runs: usize,
 }
@@ -50,7 +50,7 @@ impl Default for BenchmarkConfig {
         Self {
             max_iterations: 10000,
             maximum_function_calls: 50000,
-            tolerance: 1e-12,
+            min_improvement_percent: 0.01, // 0.01% minimum improvement
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             num_runs: 10,
         }
@@ -86,10 +86,11 @@ impl OptimizationTrace {
         }
     }
 
-    pub fn record_iteration(
+    pub fn check_convergence_with_optimizer(
         &mut self,
         iteration: usize,
         function_value: f64,
+        optimizer: &dyn Optimizer,
         parameters: &[f64],
         gradient: &[f64],
         step_size: f64,
@@ -234,6 +235,9 @@ impl BenchmarkResults {
 pub struct BenchmarkRunner {
     pub(crate) config: BenchmarkConfig,
 }
+
+const MAX_NUMERICAL_ERRORS: usize = 3;
+const MAX_NO_IMPROVEMENT: usize = 2; // Reduced since we have percentage-based improvement
 
 impl BenchmarkRunner {
     pub fn new(config: BenchmarkConfig) -> Self {
@@ -410,15 +414,9 @@ impl BenchmarkRunner {
         start_time: Instant,
         problem_wrapper: Arc<ProblemWrapper>,
     ) -> Result<ConvergenceReason, BenchmarkError> {
-        let mut previous_f_val = None;
-        let mut stagnation_count = 0;
         let mut numerical_error_count = 0;
-        const MAX_NUMERICAL_ERRORS: usize = 3;
-        const MAX_STAGNATION_COUNT: usize = 100; // More lenient
-        const MIN_FUNCTION_CHANGE: f64 = 1e-16;
-        let mut best_f_val = f64::INFINITY;
-        let mut no_improvement_count = 0;
-        const MAX_NO_IMPROVEMENT: usize = 200; // More lenient
+    let mut best_f_val = f64::INFINITY;
+    let mut no_improvement_count = 0;
 
         while *iteration < self.config.max_iterations {
             // Check if we've exceeded maximum function calls
@@ -459,15 +457,23 @@ impl BenchmarkRunner {
                 continue;
             }
             // Track best value and improvement
-            if f_val < best_f_val - MIN_FUNCTION_CHANGE {
+            let improvement_percent = if best_f_val.is_finite() && best_f_val != 0.0 {
+                ((best_f_val - f_val) / best_f_val.abs()) * 100.0
+            } else if f_val < best_f_val {
+                100.0 // Large improvement if previous was infinite/invalid
+            } else {
+                0.0
+            };
+
+            if improvement_percent >= self.config.min_improvement_percent {
                 best_f_val = f_val;
                 no_improvement_count = 0;
             } else {
                 no_improvement_count += 1;
                 if no_improvement_count >= MAX_NO_IMPROVEMENT {
                     info!(
-                        "No improvement for {} iterations, terminating",
-                        MAX_NO_IMPROVEMENT
+                        "No improvement >= {:.3}% for {} iterations, terminating",
+                        self.config.min_improvement_percent, MAX_NO_IMPROVEMENT
                     );
                     return Ok(ConvergenceReason::FunctionTolerance);
                 }
@@ -500,9 +506,10 @@ impl BenchmarkRunner {
             }
 
             // Record iteration data
-            trace.record_iteration(
+            trace.check_convergence_with_optimizer(
                 *iteration,
                 f_val,
+                optimizer,
                 input_floats,
                 &gradient,
                 0.0, // Will be updated after step
@@ -526,24 +533,7 @@ impl BenchmarkRunner {
                 }
             }
             // Check for stagnation
-            if let Some(prev_f) = previous_f_val {
-                let f_change = ((f_val - prev_f) as f64).abs();
-                if f_change < 0.0 {
-                    stagnation_count += 1;
-                    debug!("Stagnation detected");
-                    if stagnation_count > MAX_STAGNATION_COUNT {
-                        // Consider it converged if function value hasn't changed much
-                        warn!(
-                            "Function value stagnated for {} iterations with grad_norm={:.6e}",
-                            stagnation_count, gradient_norm
-                        );
-                        return Ok(ConvergenceReason::FunctionTolerance);
-                    }
-                } else {
-                    stagnation_count = 0;
-                }
-            }
-            previous_f_val = Some(f_val);
+
 
             // Create wrapper that lives long enough for the step call
             let mut tensors = [create_1d_tensor(input_floats, &Device::Cpu)
@@ -762,7 +752,7 @@ mod tests {
         let config = BenchmarkConfig {
             max_iterations: 100,          // Reduced for testing
             maximum_function_calls: 1000, // Limit function calls for testing
-            tolerance: 1e-6,
+            min_improvement_percent: 0.1, // 0.1% for faster testing convergence
             num_runs: 2,
             ..Default::default()
         };
