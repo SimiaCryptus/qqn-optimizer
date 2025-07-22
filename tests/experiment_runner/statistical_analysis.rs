@@ -2,6 +2,8 @@ use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
+use qqn_optimizer::OptimizationProblem;
 use super::report_generator::get_family;
 
 /// Handles statistical analysis and significance testing
@@ -14,7 +16,7 @@ impl StatisticalAnalysis {
 
     pub fn generate_statistical_analysis(
         &self,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         config: &BenchmarkConfig,
         output_dir: &str,
     ) -> anyhow::Result<String> {
@@ -54,13 +56,13 @@ impl StatisticalAnalysis {
                     r.run_id == result.run_id &&
                     (r.final_value - result.final_value).abs() < 1e-12
                 ))
-                .map(|(name, _)| name.clone())
-                .unwrap_or_else(|| "Unknown".to_string());
+                .map(|(name, _)| name.name())
+                .unwrap_or_else(|| "Unknown");
             
             optimizer_results
                 .entry(result.optimizer_name.clone())
                 .or_insert_with(Vec::new)
-                .push((result.final_value, cost, problem_name));
+                .push((result.final_value, cost, problem_name.to_string()));
         }
 
         optimizer_results.retain(|_, values| values.len() >= 2);

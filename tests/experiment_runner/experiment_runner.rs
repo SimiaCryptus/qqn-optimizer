@@ -1,15 +1,10 @@
-use super::{standard_optimizers, PlottingManager, ReportGenerator, StatisticalAnalysis};
+use super::{PlottingManager, ReportGenerator};
 use log::{info, warn};
-use qqn_optimizer::analysis::plotting::{ExtendedOptimizationTrace, PlottingEngine};
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult};
-use qqn_optimizer::core::gd::{GDConfig, GDOptimizer};
-use qqn_optimizer::{AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig, QQNOptimizer};
+use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, SingleResult};
+use qqn_optimizer::{ OptimizationProblem, Optimizer};
 use rand::{Rng, SeedableRng};
-use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Core experiment runner focused on benchmark execution
 pub struct ExperimentRunner {
@@ -40,14 +35,14 @@ impl ExperimentRunner {
         self.validate_problems(&problems).await?;
 
         // Run benchmarks for each problem
-        let mut all_results = Vec::new();
+        let mut all_results: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
 
         for problem in &problems {
             info!("Running benchmarks for problem: {}", problem.name());
             let results = self
                 .run_problem_benchmarks(problem.as_ref(), &optimizers)
                 .await?;
-            all_results.push((problem.name().to_string(), results));
+            all_results.push((problem, results));
             tokio::task::yield_now().await;
         }
 

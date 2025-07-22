@@ -180,6 +180,10 @@ pub struct AdamOptimizer {
     prev_function_value: Option<f64>,
     /// Count of bad steps for adaptive learning rate
     bad_step_count: usize,
+    /// Stagnation multiplier for relaxed convergence criteria
+    stagnation_multiplier: f64,
+    /// Stagnation count threshold
+    stagnation_count: usize,
 }
 
 impl Clone for AdamOptimizer {
@@ -190,6 +194,8 @@ impl Clone for AdamOptimizer {
             current_lr: self.current_lr,
             prev_function_value: self.prev_function_value,
             bad_step_count: self.bad_step_count,
+            stagnation_multiplier: self.stagnation_multiplier,
+            stagnation_count: self.stagnation_count,
         }
     }
 }
@@ -216,6 +222,8 @@ impl AdamOptimizer {
             current_lr,
             prev_function_value: None,
             bad_step_count: 0,
+            stagnation_multiplier: 10.0,
+            stagnation_count: 5,
         }
     }
 
@@ -633,6 +641,12 @@ impl Optimizer for AdamOptimizer {
     }
     fn iteration(&self) -> usize {
         self.state.iteration()
+    }
+    fn set_stagnation_multiplier(&mut self, multiplier: f64) {
+        self.stagnation_multiplier = multiplier;
+    }
+    fn set_stagnation_count(&mut self, count: usize) {
+        self.stagnation_count = count;
     }
 }
 

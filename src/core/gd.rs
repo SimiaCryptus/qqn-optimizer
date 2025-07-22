@@ -137,6 +137,10 @@ impl GDState {
 pub struct GDOptimizer {
     config: GDConfig,
     state: GDState,
+    /// Stagnation multiplier for relaxed convergence criteria
+    stagnation_multiplier: f64,
+    /// Stagnation count threshold
+    stagnation_count: usize,
 }
 
 impl Clone for GDOptimizer {
@@ -144,6 +148,8 @@ impl Clone for GDOptimizer {
         Self {
             config: self.config.clone(),
             state: self.state.clone(),
+            stagnation_multiplier: self.stagnation_multiplier,
+            stagnation_count: self.stagnation_count,
         }
     }
 }
@@ -161,6 +167,8 @@ impl GDOptimizer {
         Self {
             config,
             state: GDState::new(),
+            stagnation_multiplier: 10.0,
+            stagnation_count: 5,
         }
     }
 
@@ -512,6 +520,12 @@ impl Optimizer for GDOptimizer {
     }
     fn iteration(&self) -> usize {
         self.state.iteration()
+    }
+    fn set_stagnation_multiplier(&mut self, multiplier: f64) {
+        self.stagnation_multiplier = multiplier;
+    }
+    fn set_stagnation_count(&mut self, count: usize) {
+        self.stagnation_count = count;
     }
 }
 

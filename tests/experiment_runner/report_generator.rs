@@ -57,7 +57,7 @@ impl ReportGenerator {
 
     pub async fn generate_html_report(
         &self,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)?;
@@ -66,8 +66,8 @@ impl ReportGenerator {
         let mut html_content = self.generate_html_header();
         html_content.push_str(&self.generate_executive_summary(all_results));
 
-        for (problem_name, results) in all_results {
-            html_content.push_str(&self.generate_problem_section(problem_name, results)?);
+        for (problem, results) in all_results {
+            html_content.push_str(&self.generate_problem_section(problem, results)?);
         }
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
@@ -137,7 +137,7 @@ impl ReportGenerator {
         )
     }
 
-    fn generate_executive_summary(&self, all_results: &[(String, BenchmarkResults)]) -> String {
+    fn generate_executive_summary(&self, all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)]) -> String {
         let total_problems = all_results.len();
         let total_runs = all_results
             .iter()
@@ -148,9 +148,9 @@ impl ReportGenerator {
         let mut family_optimizer_stats: HashMap<String, HashMap<String, (usize, usize)>> = HashMap::new();
         let mut overall_optimizer_stats = HashMap::new();
 
-        for (problem_name, results) in all_results {
+        for (problem, results) in all_results {
             // Determine problem family from name
-            let family = get_family(problem_name);
+            let family = get_family(problem.name());
 
             for result in &results.results {
                 // Overall stats
@@ -178,7 +178,8 @@ impl ReportGenerator {
 
         let ml_problems = all_results
             .iter()
-            .filter(|(name, _)| {
+            .filter(|(problem, _)| {
+                let name = problem.name();
                 name.contains("Regression") || name.contains("Neural") || name.contains("SVM")
             })
             .count();
@@ -306,17 +307,19 @@ impl ReportGenerator {
 
     fn generate_problem_section(
         &self,
-        problem_name: &str,
+        problem: &Arc<dyn OptimizationProblem>,
         results: &BenchmarkResults,
     ) -> anyhow::Result<String> {
+        let problem_name = problem.name();
         let mut section = format!(
             r#"
     <div class="section">
         <h2>Problem: {}</h2>
+        <p><strong>Success Threshold:</strong> {:0.3e}</p>
         <div class="subsection">
             <h3>Performance Summary</h3>
 "#,
-            problem_name
+            problem_name, problem.optimal_value().unwrap_or(f64::NEG_INFINITY)
         );
 
         let mut optimizer_stats = HashMap::new();
@@ -346,7 +349,7 @@ impl ReportGenerator {
                     optimizer, evaluations, final_value
                 ));
             }
-            section.push_str(r#"                This may indicate problems with initialization or convergence criteria.
+            section.push_str(r#"                When repeating, this may indicate problems with initialization or convergence criteria. It might just be randomly lucky initialization.
             </div>
 "#);
         }
@@ -501,7 +504,7 @@ impl ReportGenerator {
 
     fn generate_performance_profiles(
         &self,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<String> {
         let mut section = String::from(
@@ -572,7 +575,7 @@ impl ReportGenerator {
 
     fn generate_model_test_matrices(
         &self,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         let mut section = String::from(
             r#"
@@ -584,9 +587,9 @@ impl ReportGenerator {
         );
 
         let mut optimizers = std::collections::HashSet::new();
-        let mut problems = Vec::new();
+        let mut problems: Vec<&Arc<dyn OptimizationProblem>> = Vec::new();
         for (problem_name, results) in all_results {
-            problems.push(problem_name.clone());
+            problems.push(problem_name);
             for result in &results.results {
                 optimizers.insert(result.optimizer_name.clone());
             }
@@ -658,16 +661,16 @@ impl ReportGenerator {
 
     fn compute_main_performance_rankings(
         &self,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         optimizers: &[String],
-        problems: &[String],
+        problems: &Vec<&Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<HashMap<String, Vec<(String, usize)>>> {
         let mut problem_rankings: HashMap<String, Vec<(String, usize)>> = HashMap::new();
 
         for problem in problems {
             let results = all_results
                 .iter()
-                .find(|(name, _)| name == problem)
+                .find(|(p, _)| p.name() == problem.name())
                 .map(|(_, results)| results);
 
             if let Some(results) = results {
@@ -713,7 +716,7 @@ impl ReportGenerator {
                         .enumerate()
                         .map(|(rank, (name, _))| (name, rank))
                         .collect();
-                    problem_rankings.insert(problem.clone(), ranked_optimizers);
+                    problem_rankings.insert(problem.name().to_string().clone(), ranked_optimizers);
                 }
             }
         }
@@ -724,9 +727,9 @@ impl ReportGenerator {
     fn generate_matrix_table<F>(
         &self,
         title: &str,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         optimizers: &[String],
-        problems: &[String],
+        problems: &[&Arc<dyn OptimizationProblem>],
         main_rankings: &HashMap<String, Vec<(String, usize)>>,
         metric_fn: F,
     ) -> anyhow::Result<String>
@@ -745,7 +748,7 @@ impl ReportGenerator {
 
         for problem in problems {
             highlighted_table.push_str(&format!(r#"                    <th style="min-width: 100px; writing-mode: vertical-lr; text-orientation: mixed;">{}</th>
-"#, problem));
+"#, problem.name()));
         }
         highlighted_table.push_str("                </tr>\n");
 
@@ -760,7 +763,7 @@ impl ReportGenerator {
             for problem in problems {
                 let results = all_results
                     .iter()
-                    .find(|(name, _)| name == problem)
+                    .find(|(name, _)| name.name() == problem.name())
                     .map(|(_, results)| results);
 
                 if let Some(results) = results {
@@ -777,7 +780,7 @@ impl ReportGenerator {
                     } else {
                         let value_str = metric_fn(&optimizer_results);
 
-                        let class = if let Some(rankings) = main_rankings.get(problem) {
+                        let class = if let Some(rankings) = main_rankings.get(problem.name()) {
                             let rank = rankings
                                 .iter()
                                 .find(|(opt, _)| opt == optimizer)
@@ -810,7 +813,7 @@ impl ReportGenerator {
         Ok(highlighted_table)
     }
 
-    fn generate_conclusions(&self, all_results: &[(String, BenchmarkResults)]) -> String {
+    fn generate_conclusions(&self, all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)]) -> String {
         let mut optimizer_scores = HashMap::new();
         let mut ml_optimizer_scores = HashMap::new();
         let mut math_optimizer_scores = HashMap::new();
@@ -829,7 +832,8 @@ impl ReportGenerator {
             }
         }
 
-        for (problem_name, results) in all_results {
+        for (problem, results) in all_results {
+            let problem_name = problem.name();
             let is_ml_problem = problem_name.contains("Regression")
                 || problem_name.contains("Neural")
                 || problem_name.contains("SVM");
@@ -940,14 +944,15 @@ impl ReportGenerator {
 
     fn generate_csv_exports(
         &self,
-        all_results: &[(String, BenchmarkResults)],
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)?;
         println!("Exporting CSV files to: {}", self.output_dir);
 
         let mut csv_content = String::from("Problem,Optimizer,Run,FinalValue,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
 
-        for (problem_name, results) in all_results {
+        for (problem, results) in all_results {
+            let problem_name = problem.name();
             for result in &results.results {
                 csv_content.push_str(&format!(
                     "{},{},{},{:.6e},{},{},{},{:.3},{}\n",
@@ -970,7 +975,7 @@ impl ReportGenerator {
 
         let mut summary_csv = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
 
-        for (problem_name, results) in all_results {
+        for (problem, results) in all_results {
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -1003,6 +1008,7 @@ impl ReportGenerator {
                 let mean_gradient_evals =
                     gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
                 let success_rate = success_count as f64 / runs.len() as f64;
+                let problem_name = problem.name();
 
                 summary_csv.push_str(&format!(
                     "{},{},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3}\n",

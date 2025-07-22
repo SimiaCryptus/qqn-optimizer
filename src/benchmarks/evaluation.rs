@@ -465,12 +465,15 @@ impl BenchmarkRunner {
                 0.0
             };
 
-            if improvement_percent >= self.config.min_improvement_percent {
+            let stagnation_multiplier = optimizer.stagnation_multiplier();
+            let stagnation_tolerance = optimizer.stagnation_count();
+            
+            if (improvement_percent / stagnation_multiplier) >= self.config.min_improvement_percent {
                 best_f_val = f_val;
                 no_improvement_count = 0;
             } else {
                 no_improvement_count += 1;
-                if no_improvement_count >= MAX_NO_IMPROVEMENT {
+                if no_improvement_count >= (MAX_NO_IMPROVEMENT + stagnation_tolerance) {
                     info!(
                         "No improvement >= {:.3}% for {} iterations, terminating",
                         self.config.min_improvement_percent, MAX_NO_IMPROVEMENT

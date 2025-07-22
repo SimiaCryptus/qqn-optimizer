@@ -280,14 +280,11 @@ impl ConvergenceChecker {
         // Compute gradient norm
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
 
-        // Check gradient norm convergence with relaxed tolerance
-        let gradient_converged = gradient_norm < effective_gradient_tolerance;
 
-        // Check function change convergence
+        // Detect stagnation based on function change
         let function_change = self
             .previous_function_value
             .map(|prev| (function_value - prev).abs());
-        // Detect stagnation based on function change
         let is_stagnating = function_change
             .map(|change| change < self.config.function_tolerance * 10.0) // More lenient stagnation detection
             .unwrap_or(false);
@@ -296,18 +293,11 @@ impl ConvergenceChecker {
         } else {
             self.consecutive_stagnation = 0;
         }
-        // Apply stagnation multiplier if we've been stagnating
-        let stagnation_multiplier = if self.consecutive_stagnation >= optimizer.stagnation_count() {
-            optimizer.stagnation_multiplier()
-        } else {
-            1.0
-        };
-        // Apply relaxed tolerances
-        let effective_gradient_tolerance = self.config.gradient_tolerance * stagnation_multiplier;
-        let effective_function_tolerance = self.config.function_tolerance * stagnation_multiplier;
-        let effective_parameter_tolerance = self.config.parameter_tolerance * stagnation_multiplier;
+        // Check gradient norm convergence with relaxed tolerance
+        let gradient_converged = gradient_norm < self.config.gradient_tolerance;
+        // Check function change convergence
         let function_converged = function_change
-            .map(|change| change < effective_function_tolerance)
+            .map(|change| change < self.config.function_tolerance)
             .unwrap_or(false);
 
         // Check parameter change convergence
@@ -319,7 +309,7 @@ impl ConvergenceChecker {
             _ => None,
         };
         let parameter_converged = parameter_change
-            .map(|change| change < effective_parameter_tolerance)
+            .map(|change| change < self.config.parameter_tolerance)
             .unwrap_or(false);
 
         // Check iteration limit
@@ -396,8 +386,25 @@ mod tests {
         let device = Device::Cpu;
         let gradients = vec![Tensor::from_slice(&[1e-4, 1e-4], (2,), &device)?];
         let parameters = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
+        // Create a mock optimizer for testing
+        struct MockOptimizer;
+       impl std::fmt::Debug for MockOptimizer {
+           fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+               write!(f, "MockOptimizer")
+           }
+       }
+        impl Optimizer for MockOptimizer {
+            fn clone_box(&self) -> Box<dyn Optimizer> { Box::new(MockOptimizer) }
+            fn step(&mut self, _params: &mut [Tensor], _function: Arc<dyn DifferentiableFunction + Send + Sync>) -> CandleResult<StepResult> { unimplemented!() }
+            fn reset(&mut self) {}
+            fn name(&self) -> &str { "MockOptimizer" }
+            fn iteration(&self) -> usize { 0 }
+            fn set_stagnation_multiplier(&mut self, _multiplier: f64) {}
+            fn set_stagnation_count(&mut self, _count: usize) {}
+        }
+        let optimizer = MockOptimizer;
+       let info = checker.check_convergence(1.0, &gradients, &parameters, &optimizer)?;
 
-        let info = checker.check_convergence(1.0, &gradients, &parameters)?;
 
         // Should converge due to small gradient norm
         assert!(info.converged);

@@ -2,7 +2,6 @@ use crate::experiment_runner::{standard_optimizers, ExperimentRunner};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::benchmarks::mnist::MnistNeuralNetwork;
 use qqn_optimizer::{init_logging, LinearRegression, LogisticRegression, NeuralNetworkTraining, OptimizationProblem, SupportVectorMachine};
-use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
@@ -107,14 +106,14 @@ fn generate_svm_data(n_samples: usize, n_features: usize) -> (Vec<Vec<f64>>, Vec
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    init_logging().unwrap();
+    //init_logging().unwrap();
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
 
     // Create the directory if it doesn't exist
-    fs::create_dir_all(&output_dir);
+    fs::create_dir_all(&output_dir).unwrap();
     println!("Creating benchmark results in: {}", output_dir.display());
 
     let output_dir1 = output_dir.to_string_lossy().to_string();

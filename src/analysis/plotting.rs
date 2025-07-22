@@ -412,7 +412,7 @@ impl PlottingEngine {
                     .draw()?;
             }
 
-            chart.draw_series(optimizer_data.iter().enumerate().map(|(x, (name, value))| {
+            chart.draw_series(optimizer_data.iter().enumerate().map(|(x, (_name, value))| {
                 let color = colors[x % colors.len()];
                 Rectangle::new(
                     [(x as f64, padded_min), (x as f64 + 0.8, *value)],

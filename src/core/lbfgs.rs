@@ -1158,6 +1158,14 @@ impl Optimizer for LBFGSOptimizer {
     fn iteration(&self) -> usize {
         self.state.iteration()
     }
+    fn set_stagnation_multiplier(&mut self, _multiplier: f64) {
+        // L-BFGS doesn't use stagnation multiplier in its current implementation
+        // This is a no-op to satisfy the trait requirement
+    }
+    fn set_stagnation_count(&mut self, _count: usize) {
+        // L-BFGS doesn't use stagnation count in its current implementation
+        // This is a no-op to satisfy the trait requirement
+    }
 }
 
 #[cfg(test)]
