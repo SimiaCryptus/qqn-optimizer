@@ -13,6 +13,38 @@ pub struct ReportGenerator {
     statistical_analysis: StatisticalAnalysis,
 }
 
+pub fn get_family(problem_name: &str) -> String {
+    match problem_name
+        .split([' ', '_'])
+        .next()
+        .unwrap_or(problem_name) {
+        // Convex/Unimodal functions - smooth, single global minimum
+        "Sphere" => "Convex Unimodal".to_string(),
+        "Matyas" => "Convex Unimodal".to_string(),
+
+        // Non-convex but unimodal - single global minimum, challenging valleys/ridges
+        "Rosenbrock" => "Non-Convex Unimodal".to_string(),
+        "Beale" => "Non-Convex Unimodal".to_string(),
+        "GoldsteinPrice" => "Non-Convex Unimodal".to_string(),
+        "Levi" => "Non-Convex Unimodal".to_string(),
+
+        // Highly multimodal - many local minima, very challenging
+        "Rastrigin" => "Highly Multimodal".to_string(),
+        "Ackley" => "Highly Multimodal".to_string(),
+        "Michalewicz" => "Highly Multimodal".to_string(),
+        "StyblinskiTang" => "Highly Multimodal".to_string(),
+
+        // Machine Learning problems
+        name if name.contains("Regression") => "ML Regression".to_string(),
+        name if name.contains("Neural") => "ML Neural Networks".to_string(),
+        name if name.contains("SVM") => "ML Classification".to_string(),
+        name if name.contains("Logistic") => "ML Classification".to_string(),
+
+        // Default fallback
+        x => x.to_string()
+    }
+}
+
 impl ReportGenerator {
     pub fn new(output_dir: String, config: BenchmarkConfig) -> Self {
         Self {
@@ -22,37 +54,6 @@ impl ReportGenerator {
         }
     }
 
-    pub fn get_family(problem_name: &str) -> String {
-        match problem_name
-            .split([' ', '_'])
-            .next()
-            .unwrap_or(problem_name) {
-            // Convex/Unimodal functions - smooth, single global minimum
-            "Sphere" => "Convex Unimodal".to_string(),
-            "Matyas" => "Convex Unimodal".to_string(),
-
-            // Non-convex but unimodal - single global minimum, challenging valleys/ridges
-            "Rosenbrock" => "Non-Convex Unimodal".to_string(),
-            "Beale" => "Non-Convex Unimodal".to_string(),
-            "GoldsteinPrice" => "Non-Convex Unimodal".to_string(),
-            "Levi" => "Non-Convex Unimodal".to_string(),
-
-            // Highly multimodal - many local minima, very challenging
-            "Rastrigin" => "Highly Multimodal".to_string(),
-            "Ackley" => "Highly Multimodal".to_string(),
-            "Michalewicz" => "Highly Multimodal".to_string(),
-            "StyblinskiTang" => "Highly Multimodal".to_string(),
-
-            // Machine Learning problems
-            name if name.contains("Regression") => "ML Regression".to_string(),
-            name if name.contains("Neural") => "ML Neural Networks".to_string(),
-            name if name.contains("SVM") => "ML Classification".to_string(),
-            name if name.contains("Logistic") => "ML Classification".to_string(),
-
-            // Default fallback
-            x => x.to_string()
-        }
-    }
 
     pub async fn generate_html_report(
         &self,
@@ -149,7 +150,7 @@ impl ReportGenerator {
 
         for (problem_name, results) in all_results {
             // Determine problem family from name
-            let family = Self::get_family(problem_name);
+            let family = get_family(problem_name);
 
             for result in &results.results {
                 // Overall stats

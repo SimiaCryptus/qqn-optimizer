@@ -2,6 +2,7 @@ use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use super::report_generator::get_family;
 
 /// Handles statistical analysis and significance testing
 pub struct StatisticalAnalysis;
@@ -22,8 +23,8 @@ impl StatisticalAnalysis {
     <div class="section">
         <h2>Statistical Analysis</h2>
         <div class="subsection">
-            <h3>Pairwise Comparisons: QQN vs Non-QQN Optimizers</h3>
-            <p>Statistical significance tests comparing QQN variants against non-QQN baseline optimizers on final objective values and computational cost.</p>
+            <h3>Pairwise Comparisons: QQN vs Non-QQN Optimizers by Problem Family</h3>
+            <p>Statistical significance tests comparing QQN variants against non-QQN baseline optimizers on final objective values and computational cost, aggregated by problem family for increased statistical power.</p>
 "#,
         );
 
@@ -95,8 +96,9 @@ impl StatisticalAnalysis {
 
         section.push_str(
             r#"            <table>
+<table>
                 <tr>
-                    <th>Problem</th>
+                    <th>Problem Family</th>
                     <th>QQN Optimizer</th>
                     <th>Non-QQN Optimizer</th>
                     <th>Metric</th>
@@ -110,37 +112,38 @@ impl StatisticalAnalysis {
 
         let mut comparisons_made = 0;
         let mut csv_data = Vec::new();
-        csv_data.push("Problem,QQN_Optimizer,NonQQN_Optimizer,Metric,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
-        // Group results by problem for per-problem analysis
-        let mut problem_optimizer_results: HashMap<String, HashMap<String, Vec<(f64, f64)>>> = HashMap::new();
+        csv_data.push("Problem_Family,QQN_Optimizer,NonQQN_Optimizer,Metric,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
+        // Group results by problem family for per-family analysis
+        let mut family_optimizer_results: HashMap<String, HashMap<String, Vec<(f64, f64)>>> = HashMap::new();
         for (optimizer, results) in &optimizer_results {
             for (final_value, cost, problem) in results {
-                problem_optimizer_results
-                    .entry(problem.clone())
+                let family = get_family(problem);
+                family_optimizer_results
+                    .entry(family)
                     .or_insert_with(HashMap::new)
                     .entry(optimizer.clone())
                     .or_insert_with(Vec::new)
                     .push((*final_value, *cost));
             }
         }
-        for (problem_name, problem_results) in &problem_optimizer_results {
-            let mut problem_qqn_optimizers = Vec::new();
-            let mut problem_non_qqn_optimizers = Vec::new();
-            for optimizer_name in problem_results.keys() {
+        for (family_name, family_results) in &family_optimizer_results {
+            let mut family_qqn_optimizers = Vec::new();
+            let mut family_non_qqn_optimizers = Vec::new();
+            for optimizer_name in family_results.keys() {
                 if optimizer_name.contains("QQN") {
-                    problem_qqn_optimizers.push(optimizer_name.clone());
+                    family_qqn_optimizers.push(optimizer_name.clone());
                 } else {
-                    problem_non_qqn_optimizers.push(optimizer_name.clone());
+                    family_non_qqn_optimizers.push(optimizer_name.clone());
                 }
             }
-            if problem_qqn_optimizers.is_empty() || problem_non_qqn_optimizers.is_empty() {
+            if family_qqn_optimizers.is_empty() || family_non_qqn_optimizers.is_empty() {
                 continue;
             }
 
-            for qqn_opt in &problem_qqn_optimizers {
-                for non_qqn_opt in &problem_non_qqn_optimizers {
-                    let qqn_results = &problem_results[qqn_opt];
-                    let non_qqn_results = &problem_results[non_qqn_opt];
+            for qqn_opt in &family_qqn_optimizers {
+                for non_qqn_opt in &family_non_qqn_optimizers {
+                    let qqn_results = &family_results[qqn_opt];
+                    let non_qqn_results = &family_results[non_qqn_opt];
                     
                     if qqn_results.len() < 2 || non_qqn_results.len() < 2 {
                         continue;
@@ -169,7 +172,7 @@ impl StatisticalAnalysis {
                             </tr>
 "#,
                             significance_class,
-                                problem_name,
+                                family_name,
                             qqn_opt,
                             non_qqn_opt,
                             t_stat,
@@ -178,7 +181,7 @@ impl StatisticalAnalysis {
                             effect_size
                         ));
                             csv_data.push(format!("{},{},{},Final_Objective_Value,{:.6},{:.6},{},{:.6}",
-                                problem_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
+                                family_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
                         comparisons_made += 1;
                     }
                     Err(e) => {
@@ -190,7 +193,7 @@ impl StatisticalAnalysis {
                                 <td colspan="6"><em>Test failed: {}</em></td>
                             </tr>
 "#,
-                                problem_name, qqn_opt, non_qqn_opt, e
+                                family_name, qqn_opt, non_qqn_opt, e
                         ));
                     }
                 }
@@ -215,7 +218,7 @@ impl StatisticalAnalysis {
                                 </tr>
 "#,
                                 significance_class,
-                                problem_name,
+                                family_name,
                                 qqn_opt,
                                 non_qqn_opt,
                                 t_stat,
@@ -224,7 +227,7 @@ impl StatisticalAnalysis {
                                 effect_size
                             ));
                             csv_data.push(format!("{},{},{},Computational_Cost,{:.6},{:.6},{},{:.6}",
-                                problem_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
+                                family_name, qqn_opt, non_qqn_opt, t_stat, p_value, significant, effect_size));
                             comparisons_made += 1;
                         }
                         Err(e) => {
@@ -237,7 +240,7 @@ impl StatisticalAnalysis {
                                     <td colspan="4"><em>Test failed: {}</em></td>
                                 </tr>
 "#,
-                                problem_name, qqn_opt, non_qqn_opt, e
+                                family_name, qqn_opt, non_qqn_opt, e
                             ));
                         }
                     }
@@ -261,8 +264,8 @@ impl StatisticalAnalysis {
             <div class="citation">
                 <strong>Citation Note:</strong> Statistical tests performed using Welch's t-test comparing final objective values
                 and computational cost (max of function/gradient evaluations) between QQN variants and non-QQN optimizers 
-                with α = 0.05. Effect sizes calculated using Cohen's d. Analysis performed per problem to account for 
-                problem-specific characteristics.
+                with α = 0.05. Effect sizes calculated using Cohen's d. Analysis performed per problem family to account for 
+                family-specific characteristics and increase statistical power by aggregating similar problems.
                 <br><strong>Data:</strong> <a href="statistical_analysis_raw_data.csv">Raw statistical analysis data (CSV)</a>
             </div>
         </div>
