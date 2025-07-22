@@ -4,52 +4,53 @@ use qqn_optimizer::benchmarks::mnist::MnistNeuralNetwork;
 use qqn_optimizer::{init_logging, LinearRegression, LogisticRegression, NeuralNetworkTraining, OptimizationProblem, SupportVectorMachine};
 use rand::{Rng, SeedableRng};
 use std::fs;
+use std::sync::Arc;
 use std::time::Duration;
 
 mod experiment_runner;
 /// Create ML-specific test problems for benchmarking
-fn create_ml_test_problems() -> Vec<Box<dyn OptimizationProblem>> {
+fn create_ml_test_problems() -> Vec<Arc<dyn OptimizationProblem>> {
     vec![
-        Box::new(
+        Arc::new(
             LogisticRegression::synthetic(100, 5)
                 .expect("Failed to create synthetic logistic regression"),
         ),
-        Box::new(
+        Arc::new(
             LogisticRegression::synthetic(200, 10)
                 .expect("Failed to create synthetic logistic regression"),
         ),
-        Box::new(LinearRegression::new(
+        Arc::new(LinearRegression::new(
             generate_linear_regression_data(100, 5).0,
             generate_linear_regression_data(100, 5).1,
             0.01,
         ).expect("Failed to create linear regression")),
-        Box::new(LinearRegression::new(
+        Arc::new(LinearRegression::new(
             generate_linear_regression_data(200, 10).0,
             generate_linear_regression_data(200, 10).1,
             0.01,
         ).expect("Failed to create linear regression")),
-        Box::new(
+        Arc::new(
             NeuralNetworkTraining::mlp_classification(vec![5, 10, 3])
                 .expect("Failed to create MLP"),
         ),
-        Box::new(
+        Arc::new(
             NeuralNetworkTraining::mlp_classification(vec![10, 20, 5])
                 .expect("Failed to create MLP"),
         ),
-        Box::new(
+        Arc::new(
             MnistNeuralNetwork::create(Some(100), 20)
                 .expect("Failed to create MNIST neural network"),
         ),
-        Box::new(
+        Arc::new(
             MnistNeuralNetwork::create(Some(200), 30)
                 .expect("Failed to create MNIST neural network"),
         ),
-        Box::new(SupportVectorMachine::new(
+        Arc::new(SupportVectorMachine::new(
             generate_svm_data(100, 5).0,
             generate_svm_data(100, 5).1,
             1.0,
         ).expect("Failed to create SVM")),
-        Box::new(SupportVectorMachine::new(
+        Arc::new(SupportVectorMachine::new(
             generate_svm_data(200, 10).0,
             generate_svm_data(200, 10).1,
             1.0,
@@ -106,14 +107,14 @@ fn generate_svm_data(n_samples: usize, n_features: usize) -> (Vec<Vec<f64>>, Vec
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    init_logging()?;
+    init_logging().unwrap();
     // Use a persistent directory with timestamp to avoid conflicts
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
 
     // Create the directory if it doesn't exist
-    fs::create_dir_all(&output_dir)?;
+    fs::create_dir_all(&output_dir);
     println!("Creating benchmark results in: {}", output_dir.display());
 
     let output_dir1 = output_dir.to_string_lossy().to_string();

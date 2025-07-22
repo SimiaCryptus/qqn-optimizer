@@ -4,6 +4,7 @@ use qqn_optimizer::OptimizationProblem;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 /// Handles HTML report generation and CSV exports
 pub struct ReportGenerator {
@@ -21,10 +22,42 @@ impl ReportGenerator {
         }
     }
 
+    pub fn get_family(problem_name: &str) -> String {
+        match problem_name
+            .split([' ', '_'])
+            .next()
+            .unwrap_or(problem_name) {
+            // Convex/Unimodal functions - smooth, single global minimum
+            "Sphere" => "Convex Unimodal".to_string(),
+            "Matyas" => "Convex Unimodal".to_string(),
+
+            // Non-convex but unimodal - single global minimum, challenging valleys/ridges
+            "Rosenbrock" => "Non-Convex Unimodal".to_string(),
+            "Beale" => "Non-Convex Unimodal".to_string(),
+            "GoldsteinPrice" => "Non-Convex Unimodal".to_string(),
+            "Levi" => "Non-Convex Unimodal".to_string(),
+
+            // Highly multimodal - many local minima, very challenging
+            "Rastrigin" => "Highly Multimodal".to_string(),
+            "Ackley" => "Highly Multimodal".to_string(),
+            "Michalewicz" => "Highly Multimodal".to_string(),
+            "StyblinskiTang" => "Highly Multimodal".to_string(),
+
+            // Machine Learning problems
+            name if name.contains("Regression") => "ML Regression".to_string(),
+            name if name.contains("Neural") => "ML Neural Networks".to_string(),
+            name if name.contains("SVM") => "ML Classification".to_string(),
+            name if name.contains("Logistic") => "ML Classification".to_string(),
+
+            // Default fallback
+            x => x.to_string()
+        }
+    }
+
     pub async fn generate_html_report(
         &self,
         all_results: &[(String, BenchmarkResults)],
-        problems: &Vec<Box<dyn OptimizationProblem>>,
+        problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)?;
         println!("Generating report in directory: {}", self.output_dir);
@@ -110,15 +143,34 @@ impl ReportGenerator {
             .map(|(_, r)| r.results.len())
             .sum::<usize>();
 
-        let mut optimizer_stats = HashMap::new();
-        for (_, results) in all_results {
+        // Aggregate by problem family and optimizer
+        let mut family_optimizer_stats: HashMap<String, HashMap<String, (usize, usize)>> = HashMap::new();
+        let mut overall_optimizer_stats = HashMap::new();
+
+        for (problem_name, results) in all_results {
+            // Determine problem family from name
+            let family = Self::get_family(problem_name);
+
             for result in &results.results {
-                let stats = optimizer_stats
+                // Overall stats
+                let overall_stats = overall_optimizer_stats
                     .entry(result.optimizer_name.clone())
                     .or_insert((0, 0));
-                stats.1 += 1;
+                overall_stats.1 += 1;
                 if result.convergence_achieved {
-                    stats.0 += 1;
+                    overall_stats.0 += 1;
+                }
+
+                // Family-specific stats
+                let family_stats = family_optimizer_stats
+                    .entry(family.clone())
+                    .or_insert_with(HashMap::new);
+                let optimizer_stats = family_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert((0, 0));
+                optimizer_stats.1 += 1;
+                if result.convergence_achieved {
+                    optimizer_stats.0 += 1;
                 }
             }
         }
@@ -159,7 +211,7 @@ impl ReportGenerator {
             </div>
         </div>
 
-        <h3>Success Rates by Optimizer</h3>
+        <h3>Overall Success Rates by Optimizer</h3>
         <table>
             <tr><th>Optimizer</th><th>Successful Runs</th><th>Total Runs</th><th>Success Rate</th></tr>
 
@@ -168,10 +220,10 @@ impl ReportGenerator {
             math_problems,
             ml_problems,
             total_runs,
-            optimizer_stats.len()
+            overall_optimizer_stats.len()
         );
 
-        let mut sorted_optimizers: Vec<_> = optimizer_stats.iter().collect();
+        let mut sorted_optimizers: Vec<_> = overall_optimizer_stats.iter().collect();
         sorted_optimizers.sort_by(|a, b| {
             let rate_a = a.1.0 as f64 / a.1.1 as f64;
             let rate_b = b.1.0 as f64 / b.1.1 as f64;
@@ -200,6 +252,50 @@ impl ReportGenerator {
 
         summary.push_str(
             r#"        </table>
+"#,
+        );
+        // Add family-specific success rate tables
+        for (family, optimizer_stats) in &family_optimizer_stats {
+            summary.push_str(&format!(
+                r#"
+        <h3>Success Rates by Optimizer - {}</h3>
+        <table>
+            <tr><th>Optimizer</th><th>Successful Runs</th><th>Total Runs</th><th>Success Rate</th></tr>
+"#,
+                family
+            ));
+            let mut sorted_family_optimizers: Vec<_> = optimizer_stats.iter().collect();
+            sorted_family_optimizers.sort_by(|a, b| {
+                let rate_a = a.1.0 as f64 / a.1.1 as f64;
+                let rate_b = b.1.0 as f64 / b.1.1 as f64;
+                rate_b.partial_cmp(&rate_a).unwrap()
+            });
+            for (i, (optimizer, (successful, total))) in sorted_family_optimizers.iter().enumerate() {
+                let rate = *successful as f64 / *total as f64;
+                let class = if i == 0 {
+                    "best"
+                } else if i == 1 {
+                    "second"
+                } else {
+                    ""
+                };
+                summary.push_str(&format!(
+                    r#"            <tr class="{}"><td>{}</td><td>{}</td><td>{}</td><td>{:.1}%</td></tr>
+"#,
+                    class,
+                    optimizer,
+                    successful,
+                    total,
+                    rate * 100.0
+                ));
+            }
+            summary.push_str(
+                r#"        </table>
+"#,
+            );
+        }
+        summary.push_str(
+            r#"
     </div>
 "#,
         );
@@ -405,7 +501,7 @@ impl ReportGenerator {
     fn generate_performance_profiles(
         &self,
         all_results: &[(String, BenchmarkResults)],
-        problems: &Vec<Box<dyn OptimizationProblem>>,
+        problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<String> {
         let mut section = String::from(
             r#"
@@ -454,7 +550,7 @@ impl ReportGenerator {
 
         section.push_str(r#"                <div class="caption">
                     <strong>Figure:</strong> Performance comparison across all test problems. 
-                    Left: Bar chart showing mean performance by optimizer. Right: Box plots showing performance distribution.
+                    Left: Bar chart showing mean performance by optimizer. Right: Arc plots showing performance distribution.
                     <br><strong>Data:</strong> 
                     <a href="performance_comparison_data.csv">Performance comparison data (CSV)</a> | 
                     <a href="performance_distribution_data.csv">Distribution data (CSV)</a>
@@ -463,7 +559,7 @@ impl ReportGenerator {
 
             <div class="citation">
                 <strong>Interpretation:</strong> The bar chart shows average performance across all problems, while
-                the box plots reveal the distribution and variability of results. Box plots show median (red line),
+                the box plots reveal the distribution and variability of results. Arc plots show median (red line),
                 quartiles (box), and range (whiskers) for each optimizer.
             </div>
         </div>

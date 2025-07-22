@@ -2,14 +2,15 @@ use qqn_optimizer::benchmarks::functions::OptimizationProblem;
 use qqn_optimizer::core::optimizer::Optimizer;
 use rand::{Rng, SeedableRng};
 use std::fs;
+use std::sync::Arc;
 use std::time::Duration;
 
 mod experiment_runner;
 use experiment_runner::ExperimentRunner;
+use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::core::GDOptimizer;
 use qqn_optimizer::{AdamOptimizer, LBFGSConfig, LBFGSOptimizer, QQNConfig, QQNOptimizer};
-use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -36,23 +37,23 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         runner.run_comparative_benchmarks(vec![
-            Box::new(RosenbrockFunction::new(5)),
+            Arc::new(RosenbrockFunction::new(5)),
         ], vec![
             (
                 "QQN-Default".to_string(),
-                Box::new(QQNOptimizer::new(QQNConfig::default())),
+                Arc::new(QQNOptimizer::new(QQNConfig::default())),
             ),
             (
                 "L-BFGS".to_string(),
-                Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
+                Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
             ),
             (
                 "GD".to_string(),
-                Box::new(GDOptimizer::new(Default::default())),
+                Arc::new(GDOptimizer::new(Default::default())),
             ),
             (
                 "Adam".to_string(),
-                Box::new(AdamOptimizer::new(Default::default())),
+                Arc::new(AdamOptimizer::new(Default::default())),
             ),
         ]),
     ).await;

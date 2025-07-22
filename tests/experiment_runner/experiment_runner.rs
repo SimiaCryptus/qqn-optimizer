@@ -8,6 +8,7 @@ use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// Core experiment runner focused on benchmark execution
@@ -27,16 +28,14 @@ impl ExperimentRunner {
             plotting_manager: PlottingManager::new(output_dir),
         }
     }
-
-
+    
     /// Run comprehensive comparative benchmarks
-    pub async fn run_comparative_benchmarks(&self, problems: Vec<Box<dyn OptimizationProblem>>, optimizers: Vec<(String, Box<dyn Optimizer>)>) -> anyhow::Result<()> {
+    pub async fn run_comparative_benchmarks(&self, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> anyhow::Result<()> {
         info!("Starting comprehensive comparative benchmarks");
 
         // Ensure output directory exists
         fs::create_dir_all(&self.output_dir)?;
-
-
+        
         // Validate problems
         self.validate_problems(&problems).await?;
 
@@ -65,7 +64,7 @@ impl ExperimentRunner {
         Ok(())
     }
 
-    pub async fn validate_problems(&self, problems: &[Box<dyn OptimizationProblem>]) -> anyhow::Result<()> {
+    pub async fn validate_problems(&self, problems: &[Arc<dyn OptimizationProblem>]) -> anyhow::Result<()> {
         for problem in problems {
             let initial_params = problem.initial_point();
             let mut rng = rand::rngs::StdRng::try_from_os_rng()
@@ -95,7 +94,7 @@ impl ExperimentRunner {
     async fn run_problem_benchmarks(
         &self,
         problem: &dyn OptimizationProblem,
-        optimizers: &[(String, Box<dyn Optimizer>)],
+        optimizers: &[(String, Arc<dyn Optimizer>)],
     ) -> anyhow::Result<BenchmarkResults> {
         let runner = BenchmarkRunner::new(self.config.clone());
         let mut results = BenchmarkResults::new(self.config.clone());
