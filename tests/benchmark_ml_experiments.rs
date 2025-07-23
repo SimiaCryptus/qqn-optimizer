@@ -1,7 +1,7 @@
 use crate::experiment_runner::{standard_optimizers, ExperimentRunner};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::benchmarks::mnist::MnistNeuralNetwork;
-use qqn_optimizer::{LinearRegression, LogisticRegression, NeuralNetworkTraining, OptimizationProblem, SupportVectorMachine};
+use qqn_optimizer::{init_logging, LinearRegression, LogisticRegression, NeuralNetworkTraining, OptimizationProblem, SupportVectorMachine};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,7 +14,7 @@ mod experiment_runner;
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    //init_logging().unwrap();
+    init_logging().unwrap();
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/benchmark/results{}", timestamp);
@@ -22,7 +22,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     fs::create_dir_all(&output_dir).unwrap();
     println!("Creating benchmark results in: {}", output_dir.display());
 
-    let mut rng: StdRng = rand::rngs::StdRng::seed_from_u64(42);
+    let mut rng: StdRng = StdRng::seed_from_u64(42);
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
@@ -94,7 +94,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             ).expect("Failed to create SVM")),
             Arc::new(
                 {
-                    let mut network = MnistNeuralNetwork::create(Some(100), 20)
+                    let mut network = MnistNeuralNetwork::create(Some(1000), 20, &mut rng)
                         .expect("Failed to create MNIST neural network");
                     network.set_optimal_value(Option::from(0.05));
                     network
@@ -102,7 +102,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             ),
             Arc::new(
                 {
-                    let mut network = MnistNeuralNetwork::create(Some(200), 30)
+                    let mut network = MnistNeuralNetwork::create(Some(10000), 30, &mut rng)
                         .expect("Failed to create MNIST neural network");
                     network.set_optimal_value(Option::from(0.05));
                     network

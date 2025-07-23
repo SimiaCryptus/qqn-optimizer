@@ -415,25 +415,31 @@ impl BenchmarkRunner {
             } else {
                 0.0
             },
-        };
-
-        Ok(SingleResult {
-            problem_name: problem.name().to_string(),
-            optimizer_name: opt_name.clone(),
-            run_id,
-            final_value,
-            final_gradient_norm,
-            iterations: iteration,
-            function_evaluations: trace.total_function_evaluations,
-            gradient_evaluations: trace.total_gradient_evaluations,
-            convergence_achieved,
-            execution_time,
-            trace,
-            convergence_reason,
-            memory_usage: None, // Memory tracking not implemented yet
-            performance_metrics,
-            error_message: None,
-        })
+        }; 
+        if iteration == 0 {
+            warn!("No iterations performed, convergence reason: {:?}",convergence_reason);
+            Err(BenchmarkError::ProblemError(
+                "No iterations performed, likely due to initial evaluation failure".to_string(),
+            ))
+        } else {
+            Ok(SingleResult {
+                problem_name: problem.name().to_string(),
+                optimizer_name: opt_name.clone(),
+                run_id,
+                final_value,
+                final_gradient_norm,
+                iterations: iteration,
+                function_evaluations: trace.total_function_evaluations,
+                gradient_evaluations: trace.total_gradient_evaluations,
+                convergence_achieved,
+                execution_time,
+                trace,
+                convergence_reason,
+                memory_usage: None, // Memory tracking not implemented yet
+                performance_metrics,
+                error_message: None,
+            })
+        }
     }
 
     async fn optimization_loop(
@@ -872,7 +878,6 @@ mod tests {
         // Add mock results
         results.add_result(SingleResult {
             problem_name: "sphere".to_string(),
-            optimizer_name: "lbfgs".to_string(),
             run_id: 0,
             final_value: 1e-8,
             final_gradient_norm: 1e-6,
@@ -880,6 +885,7 @@ mod tests {
             function_evaluations: 100,
             gradient_evaluations: 50,
             convergence_achieved: true,
+            optimizer_name: "lbfgs".to_string(),
             execution_time: Duration::from_millis(100),
             trace: OptimizationTrace::new(),
             convergence_reason: ConvergenceReason::GradientTolerance,

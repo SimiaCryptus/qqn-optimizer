@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use anyhow::Context;
 use log::warn;
 
 /// Handles HTML report generation and CSV exports
@@ -61,11 +62,12 @@ impl ReportGenerator {
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         _problems: &Vec<Arc<dyn OptimizationProblem>>,
     ) -> anyhow::Result<()> {
-        fs::create_dir_all(&self.output_dir)?;
+        fs::create_dir_all(&self.output_dir)
+            .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
         println!("Generating report in directory: {}", self.output_dir);
 
         let mut html_content = self.generate_html_header();
-        // html_content.push_str(&self.generate_executive_summary(all_results));
+        html_content.push_str(&self.generate_executive_summary(all_results));
 
         for (problem, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem, results)?);
@@ -73,8 +75,8 @@ impl ReportGenerator {
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(all_results, &self.config, &self.output_dir)?);
-            // html_content.push_str(&self.generate_performance_profiles(all_results, problems)?);
-            // html_content.push_str(&self.generate_model_test_matrices(all_results)?);
+            html_content.push_str(&self.generate_performance_profiles(all_results, _problems)?);
+            html_content.push_str(&self.generate_model_test_matrices(all_results)?);
         }
 
         html_content.push_str(&self.generate_conclusions(all_results));
@@ -82,7 +84,8 @@ impl ReportGenerator {
 
         let html_path = Path::new(&self.output_dir).join("benchmark_report.html");
         println!("Saving HTML report to: {}", html_path.display());
-        fs::write(html_path, html_content)?;
+        fs::write(&html_path, html_content)
+            .with_context(|| format!("Failed to write HTML report to: {}", html_path.display()))?;
 
         self.generate_csv_exports(all_results)?;
 
@@ -121,10 +124,16 @@ impl ReportGenerator {
         .matrix-table td {{ text-align: center; padding: 4px; }}
         .performance-matrix {{ margin: 20px 0; }}
         .performance-matrix h3 {{ color: #495057; margin-bottom: 10px; }}
-.footer {{ margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #6c757d; }}
+        .footer {{ margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #6c757d; }}
         .data-links {{ margin-top: 10px; font-size: 0.9em; }}
         .data-links a {{ color: #007bff; text-decoration: none; margin: 0 5px; }}
         .data-links a:hover {{ text-decoration: underline; }}
+        .warning-box {{ background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .error-box {{ background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .success-box {{ background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .tooltip {{ position: relative; display: inline-block; cursor: help; }}
+        .tooltip .tooltiptext {{ visibility: hidden; width: 200px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -100px; opacity: 0; transition: opacity 0.3s; }}
+        .tooltip:hover .tooltiptext {{ visibility: visible; opacity: 1; }}
     </style>
 </head>
 <body>
@@ -312,16 +321,27 @@ impl ReportGenerator {
         results: &BenchmarkResults,
     ) -> anyhow::Result<String> {
         let problem_name = problem.name();
+        let optimal_value = problem.optimal_value().unwrap_or(f64::NEG_INFINITY);
+        let dimension = problem.dimension();
+        
         let mut section = format!(
             r#"
     <div class="section">
         <h2>Problem: {}</h2>
-        <p><strong>Family:</strong> {}</p>
-        <p><strong>Success Threshold:</strong> {:0.3e}</p>
+        <div class="problem-info">
+            <p><strong>Family:</strong> {}</p>
+            <p><strong>Dimension:</strong> {}</p>
+            <p><strong>Success Threshold:</strong> {:0.3e}</p>
+            <p><strong>Total Runs:</strong> {}</p>
+        </div>
         <div class="subsection">
             <h3>Performance Summary</h3>
 "#,
-            problem_name, get_family(problem_name), problem.optimal_value().unwrap_or(f64::NEG_INFINITY)
+            problem_name, 
+            get_family(problem_name), 
+            dimension,
+            optimal_value,
+            results.results.len()
         );
 
         let mut optimizer_stats = HashMap::new();
@@ -332,6 +352,7 @@ impl ReportGenerator {
                 .entry(result.optimizer_name.clone())
                 .or_insert(Vec::new());
             stats.push(result);
+            // More sophisticated suspicious result detection
             if result.function_evaluations <= 2 && result.convergence_achieved {
                 suspicious_results.push((
                     result.optimizer_name.clone(),
@@ -342,8 +363,8 @@ impl ReportGenerator {
         }
 
         if !suspicious_results.is_empty() {
-            section.push_str(r#"            <div style="background-color: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 5px;">
-               <strong>⚠️ Suspicious/False Convergence Results Detected:</strong><br>
+            section.push_str(r#"            <div class="warning-box">
+                <strong>⚠️ Suspicious/False Convergence Results Detected:</strong><br>
 "#);
             for (optimizer, evaluations, final_value) in suspicious_results {
                 section.push_str(&format!(
@@ -351,7 +372,7 @@ impl ReportGenerator {
                     optimizer, evaluations, final_value
                 ));
             }
-            section.push_str(r#"                When repeating, this may indicate problems with initialization or convergence criteria. It might just be randomly lucky initialization.
+            section.push_str(r#"                <br><em>Note: This may indicate problems with initialization or convergence criteria, or could be due to lucky initialization.</em>
             </div>
 "#);
         }
@@ -362,25 +383,39 @@ impl ReportGenerator {
                     <th>Optimizer</th>
                     <th>Mean Final Value</th>
                     <th>Std Dev</th>
+                    <th>Best Value</th>
+                    <th>Worst Value</th>
                     <th>Mean Function Evals</th>
                     <th>Mean Gradient Evals</th>
                     <th>Success Rate</th>
+                    <th>Mean Time (s)</th>
                 </tr>
 "#,
         );
 
         let mut perf_data = Vec::new();
         for (optimizer, runs) in &optimizer_stats {
-            let final_values: Vec<f64> = runs.iter().map(|r| r.final_value).collect();
+            let final_values: Vec<f64> = runs.iter()
+                .map(|r| r.final_value)
+                .filter(|&v| v.is_finite())
+                .collect();
+            if final_values.is_empty() {
+                continue; // Skip optimizers with no valid results
+            }
+            
             let function_evals: Vec<f64> =
                 runs.iter().map(|r| r.function_evaluations as f64).collect();
             let gradient_evals: Vec<f64> =
                 runs.iter().map(|r| r.gradient_evaluations as f64).collect();
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+            let execution_times: Vec<f64> = runs.iter()
+                .map(|r| r.execution_time.as_secs_f64())
+                .collect();
 
             let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
             if !mean_final.is_finite() {
                 warn!("Mean final value for optimizer '{}' is not finite (mean: {})", optimizer, mean_final);
+                continue;
             }
             let std_final = {
                 let variance = final_values
@@ -390,25 +425,32 @@ impl ReportGenerator {
                     / final_values.len() as f64;
                 variance.sqrt()
             };
+            let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+            let worst_final = final_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
             let mean_function_evals =
                 function_evals.iter().sum::<f64>() / function_evals.len() as f64;
             let mean_gradient_evals =
                 gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
             let success_rate = success_count as f64 / runs.len() as f64;
+            let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
 
             perf_data.push((
                 optimizer.clone(),
                 mean_final,
                 std_final,
+                best_final,
+                worst_final,
                 mean_function_evals,
                 mean_gradient_evals,
                 success_rate,
+                mean_time,
             ));
         }
+        // Sort by success rate first, then by mean final value
 
         perf_data.sort_by(|a, b| {
             use std::cmp::Ordering;
-            match a.5.partial_cmp(&b.5) {
+            match a.7.partial_cmp(&b.7) {
                 Some(ord) => {
                     let result = ord.reverse();
                     if result != Ordering::Equal {
@@ -416,7 +458,7 @@ impl ReportGenerator {
                     }
                 }
                 None => {
-                    match (a.5.is_nan(), b.5.is_nan()) {
+                    match (a.7.is_nan(), b.7.is_nan()) {
                         (true, true) => {}
                         (true, false) => return Ordering::Greater,
                         (false, true) => return Ordering::Less,
@@ -425,17 +467,15 @@ impl ReportGenerator {
                 }
             }
 
-            let is_failed = a.5.is_nan() || a.5 == 0.0;
+            let is_failed = a.7.is_nan() || a.7 == 0.0;
             if is_failed {
                 a.1.total_cmp(&b.1)
             } else {
-                let total_evals_a = if a.3 < a.4 { a.4 } else { a.3 };
-                let total_evals_b = if b.3 < b.4 { b.4 } else { b.3 };
-                total_evals_a.total_cmp(&total_evals_b)
+                a.1.total_cmp(&b.1)
             }
         });
 
-        for (i, (optimizer, mean_final, std_final, mean_func_evals, mean_grad_evals, success_rate)) in perf_data.iter().enumerate() {
+        for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, mean_grad_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
             let class = if i == 0 {
                 "best"
             } else if i == 1 {
@@ -448,23 +488,30 @@ impl ReportGenerator {
                     <td>{}</td>
                     <td>{:.2e}</td>
                     <td>{:.2e}</td>
+                    <td>{:.2e}</td>
+                    <td>{:.2e}</td>
                     <td>{:.1}</td>
                     <td>{:.1}</td>
                     <td>{:.1}%</td>
+                    <td>{:.3}</td>
                 </tr>
 "#,
                 class,
                 optimizer,
                 mean_final,
                 std_final,
+                best_final,
+                worst_final,
                 mean_func_evals,
                 mean_grad_evals,
                 success_rate * 100.0,
+                mean_time,
             ));
         }
 
         section.push_str(
             r#"            </table>
+            <div class="subsection">
             <h3>Convergence Plots</h3>
             <div class="figure">
 "#);
@@ -822,6 +869,7 @@ impl ReportGenerator {
         let mut optimizer_scores = HashMap::new();
         let mut ml_optimizer_scores = HashMap::new();
         let mut math_optimizer_scores = HashMap::new();
+        let mut optimizer_efficiency = HashMap::new();
 
         for (_, results) in all_results {
             for result in &results.results {
@@ -834,6 +882,12 @@ impl ReportGenerator {
                 if result.final_value < 1e-6 {
                     *score += 0.5;
                 }
+                // Track efficiency (success rate / mean time)
+                let efficiency = optimizer_efficiency
+                    .entry(result.optimizer_name.clone())
+                    .or_insert((0, 0.0));
+                efficiency.0 += if result.convergence_achieved { 1 } else { 0 };
+                efficiency.1 += result.execution_time.as_secs_f64();
             }
         }
 
@@ -865,6 +919,25 @@ impl ReportGenerator {
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(name, _)| name.clone())
             .unwrap_or_else(|| "Unknown".to_string());
+        let most_efficient = optimizer_efficiency
+            .iter()
+            .map(|(name, (successes, total_time))| {
+                let efficiency = *successes as f64 / total_time;
+                (name.clone(), efficiency)
+            })
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .map(|(name, _)| name)
+            .unwrap_or_else(|| "Unknown".to_string());
+        let best_ml_optimizer = ml_optimizer_scores
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .map(|(name, _)| name.clone())
+            .unwrap_or_else(|| "Unknown".to_string());
+        let best_math_optimizer = math_optimizer_scores
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .map(|(name, _)| name.clone())
+            .unwrap_or_else(|| "Unknown".to_string());
 
         format!(
             r#"
@@ -874,11 +947,21 @@ impl ReportGenerator {
             <h3>Key Findings</h3>
             <ul>
                 <li>The <span class="algorithm-highlight">{}</span> optimizer demonstrated the best overall performance across the test suite.</li>
+                <li>The <span class="algorithm-highlight">{}</span> optimizer showed the best efficiency (success rate per unit time).</li>
+            </ul>
+            <h3>Recommendations</h3>
+            <ul>
+                <li>For general-purpose optimization where reliability is key, use <strong>{}</strong>.</li>
+                <li>For time-critical applications, consider <strong>{}</strong> for its efficiency.</li>
+                <li>Problem-specific selection can yield better results than a one-size-fits-all approach.</li>
             </ul>
         </div>
     </div>
 "#,
             best_optimizer,
+            most_efficient,
+            best_math_optimizer,
+            best_ml_optimizer,
         )
     }
 
@@ -919,34 +1002,45 @@ impl ReportGenerator {
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
     ) -> anyhow::Result<()> {
-        fs::create_dir_all(&self.output_dir)?;
+        fs::create_dir_all(&self.output_dir)
+            .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
         println!("Exporting CSV files to: {}", self.output_dir);
 
-        let mut csv_content = String::from("Problem,Optimizer,Run,FinalValue,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
+        // Enhanced CSV with more fields
+        let mut csv_content = String::from("Problem,ProblemFamily,Dimension,Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged,ConvergenceReason\n");
 
         for (problem, results) in all_results {
             let problem_name = problem.name();
+            let problem_family = get_family(problem_name);
+            let dimension = problem.dimension();
+            
             for result in &results.results {
                 csv_content.push_str(&format!(
-                    "{},{},{},{:.6e},{},{},{},{:.3},{}\n",
+                    "{},{},{},{},{},{:.6e},{:.6e},{},{},{},{:.3},{},{:?}\n",
                     problem_name,
+                    problem_family,
+                    dimension,
                     result.optimizer_name,
                     result.run_id,
                     result.final_value,
+                    result.final_gradient_norm,
                     result.iterations,
                     result.function_evaluations,
                     result.gradient_evaluations,
                     result.execution_time.as_secs_f64(),
-                    result.convergence_achieved
+                    result.convergence_achieved,
+                    result.convergence_reason,
                 ));
             }
         }
 
         let csv_path = Path::new(&self.output_dir).join("detailed_results.csv");
         println!("Writing detailed results to: {}", csv_path.display());
-        fs::write(csv_path, csv_content)?;
+        fs::write(&csv_path, csv_content)
+            .with_context(|| format!("Failed to write CSV to: {}", csv_path.display()))?;
 
-        let mut summary_csv = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
+        // Enhanced summary CSV
+        let mut summary_csv = String::from("Problem,ProblemFamily,Dimension,Optimizer,MeanFinalValue,StdFinalValue,BestValue,WorstValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,MeanTime,SuccessRate,NumRuns\n");
 
         for (problem, results) in all_results {
             let mut optimizer_stats = HashMap::new();
@@ -958,12 +1052,23 @@ impl ReportGenerator {
             }
 
             for (optimizer, runs) in optimizer_stats {
-                let final_values: Vec<f64> = runs.iter().map(|r| r.final_value).collect();
+                let final_values: Vec<f64> = runs.iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
+                
+                if final_values.is_empty() {
+                    continue; // Skip if no valid results
+                }
+                
                 let iterations: Vec<f64> = runs.iter().map(|r| r.iterations as f64).collect();
                 let function_evals: Vec<f64> =
                     runs.iter().map(|r| r.function_evaluations as f64).collect();
                 let gradient_evals: Vec<f64> =
                     runs.iter().map(|r| r.gradient_evaluations as f64).collect();
+                let execution_times: Vec<f64> = runs.iter()
+                    .map(|r| r.execution_time.as_secs_f64())
+                    .collect();
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
 
                 let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
@@ -975,32 +1080,78 @@ impl ReportGenerator {
                         / final_values.len() as f64;
                     variance.sqrt()
                 };
+                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+                let worst_final = final_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
                 let mean_iterations = iterations.iter().sum::<f64>() / iterations.len() as f64;
                 let mean_function_evals =
                     function_evals.iter().sum::<f64>() / function_evals.len() as f64;
                 let mean_gradient_evals =
                     gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
+                let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
                 let success_rate = success_count as f64 / runs.len() as f64;
+                
                 let problem_name = problem.name();
+                let problem_family = get_family(problem_name);
+                let dimension = problem.dimension();
 
                 summary_csv.push_str(&format!(
-                    "{},{},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3}\n",
+                    "{},{},{},{},{:.6e},{:.6e},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3},{:.3},{}\n",
                     problem_name,
+                    problem_family,
+                    dimension,
                     optimizer,
                     mean_final,
                     std_final,
+                    best_final,
+                    worst_final,
                     mean_iterations,
                     mean_function_evals,
                     mean_gradient_evals,
-                    success_rate
+                    mean_time,
+                    success_rate,
+                    runs.len()
                 ));
             }
         }
 
         let summary_path = Path::new(&self.output_dir).join("summary_statistics.csv");
         println!("Writing summary statistics to: {}", summary_path.display());
-        fs::write(summary_path, summary_csv)?;
+        fs::write(&summary_path, summary_csv)
+            .with_context(|| format!("Failed to write summary CSV to: {}", summary_path.display()))?;
+        
+        // Generate problem-specific CSV files for easier analysis
+        self.generate_problem_specific_csvs(all_results)?;
 
+        Ok(())
+    }
+    fn generate_problem_specific_csvs(
+        &self,
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+    ) -> anyhow::Result<()> {
+        let problems_dir = Path::new(&self.output_dir).join("problems");
+        fs::create_dir_all(&problems_dir)
+            .with_context(|| format!("Failed to create problems directory: {}", problems_dir.display()))?;
+        for (problem, results) in all_results {
+            let problem_name = problem.name().replace(" ", "_");
+            let csv_path = problems_dir.join(format!("{}_results.csv", problem_name));
+            let mut csv_content = String::from("Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
+            for result in &results.results {
+                csv_content.push_str(&format!(
+                    "{},{},{:.6e},{:.6e},{},{},{},{:.3},{}\n",
+                    result.optimizer_name,
+                    result.run_id,
+                    result.final_value,
+                    result.final_gradient_norm,
+                    result.iterations,
+                    result.function_evaluations,
+                    result.gradient_evaluations,
+                    result.execution_time.as_secs_f64(),
+                    result.convergence_achieved,
+                ));
+            }
+            fs::write(&csv_path, csv_content)
+                .with_context(|| format!("Failed to write problem-specific CSV to: {}", csv_path.display()))?;
+        }
         Ok(())
     }
 }

@@ -1,8 +1,11 @@
 use crate::OptimizationProblem;
 use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 use std::fs;
 use std::path::Path;
+use rand::prelude::StdRng;
 
 #[derive(Debug)]
 struct MnistData {
@@ -54,6 +57,7 @@ impl MnistNeuralNetwork {
         x_data: Vec<Vec<f64>>,
         y_data: Vec<Vec<f64>>,
         hidden_size: usize,
+        rng: &mut StdRng,
     ) -> anyhow::Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
@@ -72,8 +76,8 @@ impl MnistNeuralNetwork {
         let varmap = VarMap::new();
         let vs = VarBuilder::from_varmap(&varmap, candle_core::DType::F64, &device);
         let model = MLP::new(vs, input_dim, hidden_size, output_dim)?;
-
-        Ok(Self {
+        // Initialize with He initialization for ReLU activation
+        let mut instance = Self {
             x_tensor,
             y_tensor,
             device,
@@ -81,14 +85,17 @@ impl MnistNeuralNetwork {
             varmap,
             model,
             optimal_value: Option::from(0.5_f64),
-        })
+        };
+        instance.he_initialize(rng)?; // Use seed 42 for reproducibility
+
+        Ok(instance)
     }
 
     pub fn set_optimal_value(&mut self, value: Option<f64>) {
         self.optimal_value = value;
     }
 
-    pub fn load_mnist(n_samples: Option<usize>, hidden_size: usize) -> anyhow::Result<Self> {
+    pub fn load_mnist(n_samples: Option<usize>, hidden_size: usize, rng: &mut StdRng) -> anyhow::Result<Self> {
         if !Path::new("data/train-images-idx3-ubyte").exists() {
             println!("MNIST files not found, downloading...");
             let _mnist_data = Self::download_mnist_data()?;
@@ -113,7 +120,7 @@ impl MnistNeuralNetwork {
             y_data.push(label);
         }
 
-        Self::new(x_data, y_data, hidden_size)
+        Self::new(x_data, y_data, hidden_size, rng)
     }
 
     fn try_load_mnist_files() -> anyhow::Result<MnistData> {
@@ -294,7 +301,7 @@ impl MnistNeuralNetwork {
     }
 
     /// Create MNIST problem with automatic fallback
-    pub fn create(n_samples: Option<usize>, hidden_size: usize) -> anyhow::Result<Self> {
+    pub fn create(n_samples: Option<usize>, hidden_size: usize, rng: &mut StdRng) -> anyhow::Result<Self> {
         // Validate hidden size to prevent overflow
         if hidden_size > 1000 {
             return Err(anyhow::anyhow!(
@@ -308,7 +315,7 @@ impl MnistNeuralNetwork {
         }
 
         // Try to load real MNIST data first
-        Self::load_mnist(Some(samples), hidden_size)
+        Self::load_mnist(Some(samples), hidden_size, rng)
     }
 
     fn count_parameters(&self) -> usize {
@@ -371,6 +378,107 @@ impl MnistNeuralNetwork {
         }
 
         Ok(params)
+    }
+    /// Initialize weights using He initialization (optimal for ReLU activation)
+    fn he_initialize(&self, rng: &mut StdRng) -> anyhow::Result<()> {
+        let data = self.varmap.data().lock().unwrap();
+        for (name, var) in data.iter() {
+            let tensor = var.as_tensor();
+            let shape = tensor.shape();
+            let dims = shape.dims();
+            if dims.len() == 2 {
+                // This is a weight matrix
+                let fan_in = dims[1]; // Number of input units
+                let std_dev = (2.0 / fan_in as f64).sqrt();
+                // Generate He-initialized weights
+                let mut weights = Vec::new();
+                for _ in 0..tensor.elem_count() {
+                    // Sample from normal distribution with He scaling
+                    let normal: f64 = rng.sample(rand_distr::StandardNormal);
+                    weights.push(normal * std_dev);
+                }
+                let new_tensor = Tensor::from_vec(weights, shape, &self.device)?;
+                var.set(&new_tensor)?;
+            } else if dims.len() == 1 {
+                // This is a bias vector - initialize to small positive values for ReLU
+                let mut biases = Vec::new();
+                for _ in 0..tensor.elem_count() {
+                    biases.push(0.01); // Small positive bias for ReLU units
+                }
+                let new_tensor = Tensor::from_vec(biases, shape, &self.device)?;
+                var.set(&new_tensor)?;
+            }
+        }
+        Ok(())
+    }
+    /// Verify the quality of weight initialization
+    pub fn verify_initialization(&self) -> anyhow::Result<()> {
+        println!("\n=== Weight Initialization Quality Check ===");
+        let data = self.varmap.data().lock().unwrap();
+        for (name, var) in data.iter() {
+            let tensor = var.as_tensor();
+            let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+            if values.is_empty() {
+                continue;
+            }
+            // Calculate statistics
+            let mean: f64 = values.iter().sum::<f64>() / values.len() as f64;
+            let variance: f64 = values.iter()
+                .map(|x| (x - mean).powi(2))
+                .sum::<f64>() / values.len() as f64;
+            let std_dev = variance.sqrt();
+            let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            // Check for dead neurons (all zeros)
+            let zero_count = values.iter().filter(|&&x| x.abs() < 1e-10).count();
+            let zero_percentage = (zero_count as f64 / values.len() as f64) * 100.0;
+            // Check for extreme values
+            let extreme_count = values.iter()
+                .filter(|&&x| x.abs() > 3.0 * std_dev)
+                .count();
+            let extreme_percentage = (extreme_count as f64 / values.len() as f64) * 100.0;
+            println!("\nParameter: {}", name);
+            println!("  Shape: {:?}", tensor.shape());
+            println!("  Mean: {:.6}", mean);
+            println!("  Std Dev: {:.6}", std_dev);
+            println!("  Min/Max: {:.6} / {:.6}", min, max);
+            println!("  Zero values: {} ({:.2}%)", zero_count, zero_percentage);
+            println!("  Extreme values (>3σ): {} ({:.2}%)", extreme_count, extreme_percentage);
+            // Determine if this is a weight or bias based on shape
+            let dims = tensor.shape().dims();
+            if dims.len() == 2 {
+                // Weight matrix - check He initialization criteria
+                let fan_in = dims[1];
+                let expected_std = (2.0 / fan_in as f64).sqrt();
+                let std_ratio = std_dev / expected_std;
+                println!("  Expected std (He): {:.6}", expected_std);
+                println!("  Actual/Expected ratio: {:.3}", std_ratio);
+                if std_ratio < 0.8 || std_ratio > 1.2 {
+                    println!("  ⚠️  Warning: Standard deviation deviates significantly from He initialization");
+                } else {
+                    println!("  ✓ Standard deviation is within expected range");
+                }
+            } else if dims.len() == 1 {
+                // Bias vector
+                if mean.abs() < 0.005 {
+                    println!("  ⚠️  Warning: Bias initialization might be too small for ReLU");
+                } else {
+                    println!("  ✓ Bias initialization appropriate for ReLU");
+                }
+            }
+            // General health checks
+            if zero_percentage > 10.0 {
+                println!("  ⚠️  Warning: High percentage of zero values");
+            }
+            if extreme_percentage > 5.0 {
+                println!("  ⚠️  Warning: High percentage of extreme values");
+            }
+            if !mean.is_finite() || !std_dev.is_finite() {
+                println!("  ❌ Error: Non-finite values detected!");
+            }
+        }
+        println!("\n=== End of Initialization Check ===\n");
+        Ok(())
     }
 }
 

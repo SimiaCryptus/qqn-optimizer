@@ -31,14 +31,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 1,
         }).run_comparative_benchmarks(vec![
-            Arc::new(
-                {
-                    let mut network = MnistNeuralNetwork::create(Some(100), 20)
-                        .expect("Failed to create MNIST neural network");
-                    network.set_optimal_value(Option::from(0.05));
-                    network
-                },
-            ),  
+            Arc::new(RosenbrockFunction::new(5)),
         ], vec![
             (
                 "QQN-Backtracking-Hybrid".to_string(),

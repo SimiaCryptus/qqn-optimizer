@@ -16,29 +16,29 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
         //         ..Default::default()
         //     })),
         // ),
-        (
-            "QQN-Backtracking".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::Backtracking,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
-            "QQN-Backtracking-Adaptive".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::Backtracking,
-                    c1: 1e-4,
-                    max_iterations: 100,
-                    ..LineSearchConfig::default()
-                },
-                lbfgs_history: 10,
-                ..Default::default()
-            })),
-        ),
+        // (
+        //     "QQN-Backtracking".to_string(),
+        //     Arc::new(QQNOptimizer::new(QQNConfig {
+        //         line_search: LineSearchConfig {
+        //             method: LineSearchMethod::Backtracking,
+        //             ..LineSearchConfig::default()
+        //         },
+        //         ..Default::default()
+        //     })),
+        // ),
+        // (
+        //     "QQN-Backtracking-Adaptive".to_string(),
+        //     Arc::new(QQNOptimizer::new(QQNConfig {
+        //         line_search: LineSearchConfig {
+        //             method: LineSearchMethod::Backtracking,
+        //             c1: 1e-4,
+        //             max_iterations: 100,
+        //             ..LineSearchConfig::default()
+        //         },
+        //         lbfgs_history: 10,
+        //         ..Default::default()
+        //     })),
+        // ),
         (
             "QQN-Backtracking-Hybrid".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
