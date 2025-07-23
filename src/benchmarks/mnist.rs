@@ -46,6 +46,7 @@ pub struct MnistNeuralNetwork {
     name: String,
     varmap: VarMap,
     model: MLP,
+    optimal_value: Option<f64>,
 }
 
 impl MnistNeuralNetwork {
@@ -79,7 +80,12 @@ impl MnistNeuralNetwork {
             name,
             varmap,
             model,
+            optimal_value: Option::from(0.5_f64),
         })
+    }
+
+    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+        self.optimal_value = value;
     }
 
     pub fn load_mnist(n_samples: Option<usize>, hidden_size: usize) -> anyhow::Result<Self> {
@@ -426,9 +432,9 @@ impl OptimizationProblem for MnistNeuralNetwork {
                 ));
             }
         }
-
+        
         // Cross-entropy loss
-        let log_probs = y_pred.log()?;
+        let log_probs = y_pred.clamp(1e-15, 1.0)?.log()?;
         // Check log probabilities for non-finite values
         let log_prob_values = log_probs.flatten_all()?.to_vec1::<f64>()?;
         for (i, &val) in log_prob_values.iter().enumerate() {
@@ -524,8 +530,6 @@ impl OptimizationProblem for MnistNeuralNetwork {
         Ok(grad_vec)
     }
     fn optimal_value(&self) -> Option<f64> {
-        // Based on benchmark results: best achievable ~0.473-0.500
-        // Allow 10-15% margin above best observed values
-        Some(0.3) // 10-15% above best observed performance
+        self.optimal_value
     }
 }

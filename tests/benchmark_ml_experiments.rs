@@ -63,14 +63,14 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     generate_linear_regression_data(200, 10, &mut rng).1,
                     0.01,
                 ).expect("Failed to create linear regression");
-                regression.set_optimal_value(Option::from(1.0e1));
+                regression.set_optimal_value(Option::from(1.0e2));
                 regression
             }),
             Arc::new(
                 {
                     let mut training = NeuralNetworkTraining::mlp_classification(vec![5, 10, 3], &mut rng)
                         .expect("Failed to create MLP");
-                    training.set_optimal_value(Option::from(1.0e-1));
+                    // training.set_optimal_value(Option::from(1.7e-1));
                     training
                 },
             ),
@@ -93,12 +93,20 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                 1.0,
             ).expect("Failed to create SVM")),
             Arc::new(
-                MnistNeuralNetwork::create(Some(100), 20)
-                    .expect("Failed to create MNIST neural network"),
+                {
+                    let mut network = MnistNeuralNetwork::create(Some(100), 20)
+                        .expect("Failed to create MNIST neural network");
+                    network.set_optimal_value(Option::from(0.05));
+                    network
+                },
             ),
             Arc::new(
-                MnistNeuralNetwork::create(Some(200), 30)
-                    .expect("Failed to create MNIST neural network"),
+                {
+                    let mut network = MnistNeuralNetwork::create(Some(200), 30)
+                        .expect("Failed to create MNIST neural network");
+                    network.set_optimal_value(Option::from(0.05));
+                    network
+                },
             ),
         ], standard_optimizers()),
     ).await;

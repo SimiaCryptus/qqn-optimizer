@@ -358,7 +358,7 @@ impl BenchmarkRunner {
                 problem_wrapper,
             ),
         )
-            .await;
+        .await;
 
         let (convergence_achieved, convergence_reason) = match optimization_result {
             Ok(Ok(reason)) => (
@@ -376,6 +376,12 @@ impl BenchmarkRunner {
         let final_value = problem
             .evaluate_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
+        if !final_value.is_finite() {
+            return Err(BenchmarkError::ProblemError(format!(
+                "Final function value is not finite: {}",
+                final_value
+            )));
+        }
         let final_gradient = problem
             .gradient_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
@@ -443,8 +449,8 @@ impl BenchmarkRunner {
         problem_wrapper: Arc<ProblemWrapper>,
     ) -> Result<ConvergenceReason, BenchmarkError> {
         let mut numerical_error_count = 0;
-    let mut best_f_val = f64::INFINITY;
-    let mut no_improvement_count = 0;
+        let mut best_f_val = f64::INFINITY;
+        let mut no_improvement_count = 0;
 
         while *iteration < self.config.max_iterations {
             // Check if we've exceeded maximum function calls
@@ -495,8 +501,9 @@ impl BenchmarkRunner {
 
             let stagnation_multiplier = optimizer.stagnation_multiplier();
             let stagnation_tolerance = optimizer.stagnation_count();
-            
-            if (improvement_percent / stagnation_multiplier) >= self.config.min_improvement_percent {
+
+            if (improvement_percent / stagnation_multiplier) >= self.config.min_improvement_percent
+            {
                 best_f_val = f_val;
                 no_improvement_count = 0;
             } else {
@@ -565,7 +572,6 @@ impl BenchmarkRunner {
             }
             // Check for stagnation
 
-
             // Create wrapper that lives long enough for the step call
             let mut tensors = [create_1d_tensor(input_floats, &Device::Cpu)
                 .map_err(|e| BenchmarkError::ConfigError(e.to_string()))?];
@@ -607,6 +613,13 @@ impl BenchmarkRunner {
                         ));
                     }
                     for (i, &value) in values.iter().enumerate() {
+                        if !value.is_finite() {
+                            warn!("Non-finite parameter detected at iteration {}", iteration);
+                            numerical_error_count += 1;
+                            if numerical_error_count >= MAX_NUMERICAL_ERRORS {
+                                return Ok(ConvergenceReason::NumericalError);
+                            }
+                        }
                         input_floats[i] = value;
                     }
                 } else {

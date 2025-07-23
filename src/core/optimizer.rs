@@ -35,7 +35,7 @@ impl Default for OptimizationMetadata {
 ///
 /// This trait provides a unified interface for different optimization methods,
 /// enabling easy benchmarking and comparison between algorithms.
-pub trait Optimizer: Send + Sync + std::fmt::Debug + 'static {
+pub trait Optimizer: Send + Sync + Debug + 'static {
     /// Clone the optimizer (required for trait object safety)
     fn clone_box(&self) -> Box<dyn Optimizer>;
     /// Get optimizer configuration as a string for serialization
@@ -262,7 +262,7 @@ impl ConvergenceChecker {
     }
 
     /// Check convergence for the current iteration
-    /// 
+    ///
     /// # Arguments
     /// * `function_value` - Current function value
     /// * `gradients` - Current gradient tensors
@@ -279,7 +279,6 @@ impl ConvergenceChecker {
 
         // Compute gradient norm
         let gradient_norm = crate::utils::math::compute_magnitude(gradients)?;
-
 
         // Detect stagnation based on function change
         let function_change = self
@@ -388,23 +387,34 @@ mod tests {
         let parameters = vec![Tensor::from_slice(&[1.0, 2.0], (2,), &device)?];
         // Create a mock optimizer for testing
         struct MockOptimizer;
-       impl std::fmt::Debug for MockOptimizer {
-           fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-               write!(f, "MockOptimizer")
-           }
-       }
+        impl Debug for MockOptimizer {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "MockOptimizer")
+            }
+        }
         impl Optimizer for MockOptimizer {
-            fn clone_box(&self) -> Box<dyn Optimizer> { Box::new(MockOptimizer) }
-            fn step(&mut self, _params: &mut [Tensor], _function: Arc<dyn DifferentiableFunction + Send + Sync>) -> CandleResult<StepResult> { unimplemented!() }
+            fn clone_box(&self) -> Box<dyn Optimizer> {
+                Box::new(MockOptimizer)
+            }
+            fn step(
+                &mut self,
+                _params: &mut [Tensor],
+                _function: Arc<dyn DifferentiableFunction + Send + Sync>,
+            ) -> CandleResult<StepResult> {
+                unimplemented!()
+            }
             fn reset(&mut self) {}
-            fn name(&self) -> &str { "MockOptimizer" }
-            fn iteration(&self) -> usize { 0 }
+            fn name(&self) -> &str {
+                "MockOptimizer"
+            }
+            fn iteration(&self) -> usize {
+                0
+            }
             fn set_stagnation_multiplier(&mut self, _multiplier: f64) {}
             fn set_stagnation_count(&mut self, _count: usize) {}
         }
         let optimizer = MockOptimizer;
-       let info = checker.check_convergence(1.0, &gradients, &parameters, &optimizer)?;
-
+        let info = checker.check_convergence(1.0, &gradients, &parameters, &optimizer)?;
 
         // Should converge due to small gradient norm
         assert!(info.converged);
