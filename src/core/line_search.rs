@@ -319,10 +319,8 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
 pub trait LineSearch: Send + Sync + Debug {
     /// Perform 1D line search optimization
     fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> Result<LineSearchResult>;
-
     /// Reset internal state
     fn reset(&mut self);
-
     /// Clone the line search algorithm
     fn clone_box(&self) -> Box<dyn LineSearch>;
     /// Get as Any for downcasting

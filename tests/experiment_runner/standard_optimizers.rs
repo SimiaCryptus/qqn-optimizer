@@ -6,8 +6,26 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         // QQN variants
         (
-            "QQN-Bisection".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig::default())),
+            "QQN-Bisection-1".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::Bisection,
+                    line_bracket_method: 1,
+                    ..LineSearchConfig::default()
+                },
+                ..Default::default()
+            })),
+        ),
+        (
+            "QQN-Bisection-2".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::Bisection,
+                    line_bracket_method: 2,
+                    ..LineSearchConfig::default()
+                },
+                ..Default::default()
+            })),
         ),
         // (
         //     "QQN-Linear".to_string(),
@@ -70,6 +88,28 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
                     method: LineSearchMethod::StrongWolfe,
                     ..LineSearchConfig::default()
                 },
+                ..Default::default()
+            })),
+        ),
+        (
+            "QQN-StrongWolfe-NoMemory".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::StrongWolfe,
+                    ..LineSearchConfig::default()
+                },
+                min_step_persist: 1e1,
+                ..Default::default()
+            })),
+        ),
+        (
+            "QQN-StrongWolfe-NoForget".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::StrongWolfe,
+                    ..LineSearchConfig::default()
+                },
+                min_step_persist: 1e-5,
                 ..Default::default()
             })),
         ),
