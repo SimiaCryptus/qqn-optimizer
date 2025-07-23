@@ -84,24 +84,7 @@ impl StatisticalAnalysis {
             );
             return Ok(section);
         }
-
-        section.push_str(
-            r#"            <table>
-<table>
-                <tr>
-                    <th>Problem</th>
-                    <th>QQN Optimizer</th>
-                    <th>Non-QQN Optimizer</th>
-                    <th>Metric</th>
-                    <th>Winner</th>
-                    <th>Test Statistic</th>
-                    <th>p-value</th>
-                    <th>Significant</th>
-                    <th>Effect Size</th>
-                </tr>
-"#,
-        );
-
+        
         let mut comparisons_made = 0;
         let mut csv_data = Vec::new();
         csv_data.push("Problem,QQN_Optimizer,NonQQN_Optimizer,Metric,Winner,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
@@ -167,7 +150,7 @@ impl StatisticalAnalysis {
                                 / qqn_final_values.len() as f64;
                             let non_qqn_mean: f64 = non_qqn_final_values.iter().sum::<f64>()
                                 / non_qqn_final_values.len() as f64;
-                            let winner = if significant {
+                            let _winner = if significant {
                                 if qqn_mean < non_qqn_mean {
                                     win_matrix
                                         .entry((qqn_opt.clone(), non_qqn_opt.clone()))
@@ -185,32 +168,6 @@ impl StatisticalAnalysis {
                                 "—".to_string()
                             };
 
-                            let significance_class =
-                                if significant { "significant-row" } else { "" };
-
-                            section.push_str(&format!(
-                                r#"                <tr class="{}">
-                                <td>{}</td>
-                                <td>{}</td>
-                                <td>{}</td>
-                                <td>Final Objective Value</td>
-                                <td>{}</td>
-                                <td>{:.4}</td>
-                                <td>{:.4}</td>
-                                <td>{}</td>
-                                <td>{:.3}</td>
-                            </tr>
-"#,
-                                significance_class,
-                                family_name,
-                                qqn_opt,
-                                non_qqn_opt,
-                                winner,
-                                t_stat,
-                                p_value,
-                                if significant { "✓" } else { "✗" },
-                                effect_size
-                            ));
                             let winner_name = if significant {
                                 if qqn_mean < non_qqn_mean {
                                     qqn_opt
@@ -259,42 +216,6 @@ impl StatisticalAnalysis {
                                 costs_qqn.iter().sum::<f64>() / costs_qqn.len() as f64;
                             let non_qqn_mean_cost: f64 =
                                 costs_non_qqn.iter().sum::<f64>() / costs_non_qqn.len() as f64;
-                            let winner = if significant {
-                                if qqn_mean_cost < non_qqn_mean_cost {
-                                    format!("<span style='color: #28a745; font-weight: bold;'>{}</span>", qqn_opt)
-                                } else {
-                                    format!("<span style='color: #dc3545; font-weight: bold;'>{}</span>", non_qqn_opt)
-                                }
-                            } else {
-                                "—".to_string()
-                            };
-
-                            let significance_class =
-                                if significant { "significant-row" } else { "" };
-
-                            section.push_str(&format!(
-                                r#"                <tr class="{}">
-                                    <td>{}</td>
-                                    <td>{}</td>
-                                    <td>{}</td>
-                                    <td>Computational Cost</td>
-                                    <td>{}</td>
-                                    <td>{:.4}</td>
-                                    <td>{:.4}</td>
-                                    <td>{}</td>
-                                    <td>{:.3}</td>
-                                </tr>
-"#,
-                                significance_class,
-                                family_name,
-                                qqn_opt,
-                                non_qqn_opt,
-                                winner,
-                                t_stat,
-                                p_value,
-                                if significant { "✓" } else { "✗" },
-                                effect_size
-                            ));
                             let winner_name = if significant {
                                 if qqn_mean_cost < non_qqn_mean_cost {
                                     qqn_opt
@@ -317,36 +238,13 @@ impl StatisticalAnalysis {
                             ));
                             comparisons_made += 1;
                         }
-                        Err(e) => {
-                            section.push_str(&format!(
-                                r#"                <tr>
-                                    <td>{}</td>
-                                    <td>{}</td>
-                                    <td>{}</td>
-                                    <td>Computational Cost</td>
-                                    <td colspan="5"><em>Test failed: {}</em></td>
-                                </tr>
-"#,
-                                family_name, qqn_opt, non_qqn_opt, e
-                            ));
+                        Err(_e) => {
                         }
                     }
                 }
             }
         }
 
-        if comparisons_made == 0 {
-            section.push_str(r#"                <tr>
-                    <td colspan="9"><em>No valid QQN vs non-QQN comparisons could be performed.</em></td>
-                </tr>
-"#);
-        }
-        section.push_str(
-            r#"            </table>
-        </div>
-"#,
-        );
-        // Add comparison matrix
         if !win_matrix.is_empty() {
             section.push_str(&self.generate_comparison_matrix(&grouped_optimizer_results)?);
         }

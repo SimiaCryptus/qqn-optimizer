@@ -73,36 +73,36 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
                 ..Default::default()
             })),
         ),
-        (
-            "QQN-CubicQuadraticInterpolation".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::CubicQuadraticInterpolation,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
-            "QQN-GoldenSection".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::GoldenSection,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
-            "QQN-MoreThuente".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::MoreThuente,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
+        // (
+        //     "QQN-CubicQuadraticInterpolation".to_string(),
+        //     Arc::new(QQNOptimizer::new(QQNConfig {
+        //         line_search: LineSearchConfig {
+        //             method: LineSearchMethod::CubicQuadraticInterpolation,
+        //             ..LineSearchConfig::default()
+        //         },
+        //         ..Default::default()
+        //     })),
+        // ),
+        // (
+        //     "QQN-GoldenSection".to_string(),
+        //     Arc::new(QQNOptimizer::new(QQNConfig {
+        //         line_search: LineSearchConfig {
+        //             method: LineSearchMethod::GoldenSection,
+        //             ..LineSearchConfig::default()
+        //         },
+        //         ..Default::default()
+        //     })),
+        // ),
+        // (
+        //     "QQN-MoreThuente".to_string(),
+        //     Arc::new(QQNOptimizer::new(QQNConfig {
+        //         line_search: LineSearchConfig {
+        //             method: LineSearchMethod::MoreThuente,
+        //             ..LineSearchConfig::default()
+        //         },
+        //         ..Default::default()
+        //     })),
+        // ),
 
         // L-BFGS variants
         (
@@ -129,16 +129,16 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
                 ..Default::default()
             })),
         ),
-        (
-            "L-BFGS-Adaptive-Memory".to_string(),
-            Arc::new(LBFGSOptimizer::new(LBFGSConfig {
-                history_size: 15,
-                max_step_size: 2.0,
-                max_param_change: 1.0,
-                gradient_clip: 25.0,
-                ..Default::default()
-            })),
-        ),
+        // (
+        //     "L-BFGS-Adaptive-Memory".to_string(),
+        //     Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+        //         history_size: 15,
+        //         max_step_size: 2.0,
+        //         max_param_change: 1.0,
+        //         gradient_clip: 25.0,
+        //         ..Default::default()
+        //     })),
+        // ),
 
         // Gradient Descent variants
         (
@@ -166,10 +166,10 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
         ),
 
         // Adam variants
-        (
-            "Adam".to_string(),
-            Arc::new(AdamOptimizer::new(Default::default())),
-        ),
+        // (
+        //     "Adam".to_string(),
+        //     Arc::new(AdamOptimizer::new(Default::default())),
+        // ),
         (
             "Adam-Fast".to_string(),
             Arc::new(AdamOptimizer::new(AdamConfig {
@@ -225,17 +225,17 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
                 ..Default::default()
             })),
         ),
-        (
-            "Adam-DeepLearning".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig::deep_learning())),
-        ),
-        (
-            "Adam-StrictGradientClip".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
-                gradient_clip: Some(0.1),
-                learning_rate: 0.001,
-                ..Default::default()
-            })),
-        ),
+        // (
+        //     "Adam-DeepLearning".to_string(),
+        //     Arc::new(AdamOptimizer::new(AdamConfig::deep_learning())),
+        // ),
+        // (
+        //     "Adam-StrictGradientClip".to_string(),
+        //     Arc::new(AdamOptimizer::new(AdamConfig {
+        //         gradient_clip: Some(0.1),
+        //         learning_rate: 0.001,
+        //         ..Default::default()
+        //     })),
+        // ),
     ]
 }

@@ -10,7 +10,7 @@ use experiment_runner::ExperimentRunner;
 use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::core::GDOptimizer;
-use qqn_optimizer::{init_logging, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, QQNConfig, QQNOptimizer};
+use qqn_optimizer::{init_logging, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, MnistNeuralNetwork, QQNConfig, QQNOptimizer};
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -31,12 +31,15 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 1,
         }).run_comparative_benchmarks(vec![
-            Arc::new(RosenbrockFunction::new(5)),
+            Arc::new(
+                {
+                    let mut network = MnistNeuralNetwork::create(Some(100), 20)
+                        .expect("Failed to create MNIST neural network");
+                    network.set_optimal_value(Option::from(0.05));
+                    network
+                },
+            ),  
         ], vec![
-            // (
-            //     "QQN-Default".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig::default())),
-            // ),
             (
                 "QQN-Backtracking-Hybrid".to_string(),
                 Arc::new(QQNOptimizer::new(QQNConfig {
@@ -51,18 +54,6 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     ..Default::default()
                 })),
             ),
-            // (
-            //     "L-BFGS".to_string(),
-            //     Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            // ),
-            // (
-            //     "GD".to_string(),
-            //     Arc::new(GDOptimizer::new(Default::default())),
-            // ),
-            // (
-            //     "Adam".to_string(),
-            //     Arc::new(AdamOptimizer::new(Default::default())),
-            // ),
         ]),
     ).await;
 

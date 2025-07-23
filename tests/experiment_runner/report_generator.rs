@@ -73,7 +73,7 @@ impl ReportGenerator {
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(all_results, &self.config, &self.output_dir)?);
             // html_content.push_str(&self.generate_performance_profiles(all_results, problems)?);
-            html_content.push_str(&self.generate_model_test_matrices(all_results)?);
+            // html_content.push_str(&self.generate_model_test_matrices(all_results)?);
         }
 
         html_content.push_str(&self.generate_conclusions(all_results));
