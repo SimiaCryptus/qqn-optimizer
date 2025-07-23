@@ -85,7 +85,6 @@ impl StatisticalAnalysis {
             return Ok(section);
         }
         
-        let mut comparisons_made = 0;
         let mut csv_data = Vec::new();
         csv_data.push("Problem,QQN_Optimizer,NonQQN_Optimizer,Metric,Winner,Test_Statistic,P_Value,Significant,Effect_Size".to_string());
 
@@ -188,7 +187,6 @@ impl StatisticalAnalysis {
                                 significant,
                                 effect_size
                             ));
-                            comparisons_made += 1;
                         }
                         Err(e) => {
                             section.push_str(&format!(
@@ -236,7 +234,6 @@ impl StatisticalAnalysis {
                                 significant,
                                 effect_size
                             ));
-                            comparisons_made += 1;
                         }
                         Err(_e) => {
                         }
@@ -422,8 +419,6 @@ impl StatisticalAnalysis {
             return Ok(matrix_section + "</div>\n");
         }
         // Build comparison data structure
-        let mut comparisons: HashMap<(String, String), Vec<(String, String, bool)>> =
-            HashMap::new(); // (qqn, non_qqn) -> [(problem, metric, qqn_won)]
         let mut comparisons: HashMap<(String, String), Vec<(String, String, bool, f64)>> =
             HashMap::new(); // (qqn, non_qqn) -> [(problem, metric, qqn_won, delta)]
         for (problem_name, family_results) in grouped_results {

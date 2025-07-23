@@ -1,6 +1,3 @@
-use qqn_optimizer::benchmarks::functions::OptimizationProblem;
-use qqn_optimizer::core::optimizer::Optimizer;
-use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
@@ -35,18 +32,23 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             Arc::new(SphereFunction::new(10)),
             Arc::new(RosenbrockFunction::new(2)),
             Arc::new(RosenbrockFunction::new(5)),
-            Arc::new(BealeFunction::new()),
-            Arc::new(MatyasFunction::new()),
-            Arc::new(LeviFunction::new()),
-            Arc::new(GoldsteinPriceFunction::new()),
+            Arc::new(RosenbrockFunction::new(10)),
             Arc::new(MichalewiczFunction::new(2)),
             Arc::new(MichalewiczFunction::new(5)),
+            Arc::new(MichalewiczFunction::new(10)),
             Arc::new(RastriginFunction::new(2)),
             Arc::new(RastriginFunction::new(5)),
+            Arc::new(RastriginFunction::new(10)),
             Arc::new(AckleyFunction::new(2)),
             Arc::new(AckleyFunction::new(5)),
+            Arc::new(AckleyFunction::new(10)),
             Arc::new(StyblinskiTangFunction::new(2)),
             Arc::new(StyblinskiTangFunction::new(5)),
+            Arc::new(StyblinskiTangFunction::new(10)),
+            Arc::new(BealeFunction::new()),
+            Arc::new(LeviFunction::new()),
+            Arc::new(GoldsteinPriceFunction::new()),
+            Arc::new(MatyasFunction::new()),
         ], standard_optimizers::standard_optimizers()),
     ).await;
 

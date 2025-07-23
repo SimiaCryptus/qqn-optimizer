@@ -1,7 +1,7 @@
 pub mod math;
 
 pub use math::{
-    clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, lerp, norm_inf,
+    clamp_vector, compute_magnitude, dot_product, dot_product_f64, is_finite, norm_inf,
     norm_l1, norm_l2, vector_add, vector_scale, vector_subtract,
 };
 

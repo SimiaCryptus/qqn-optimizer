@@ -10,11 +10,6 @@ use anyhow::{anyhow, Result};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, warn};
 
-/// Create a 1D tensor from a Vec<f64>
-pub fn create_1d_tensor(values: &[f64], device: &Device) -> CandleResult<Tensor> {
-    Tensor::new(values, device)
-}
-
 pub(crate) fn tensors_to_f64(tensors: &[Tensor]) -> CandleResult<Vec<f64>> {
     let mut result = Vec::new();
     for tensor in tensors {
@@ -284,16 +279,6 @@ pub fn log_tensor(tensors: &[Tensor]) {
     }
 }
 
-/// Scale tensors by a scalar (alias for vector_scale for consistency)
-pub fn scale_tensors(tensors: &[Tensor], scale: f64) -> CandleResult<Vec<Tensor>> {
-    vector_scale(tensors, scale)
-}
-
-/// Combine two tensor vectors (alias for vector_add for consistency)
-pub fn combine_tensors(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-    vector_add(a, b)
-}
-
 /// Compute the relative difference between two magnitudes
 pub fn magnitude_relative_difference(mag1: f64, mag2: f64) -> f64 {
     let max_mag = mag1.max(mag2);
@@ -329,14 +314,23 @@ pub fn clamp_vector(values: &[f64], min_val: f64, max_val: f64) -> Vec<f64> {
     values.iter().map(|&x| x.clamp(min_val, max_val)).collect()
 }
 
-/// Linear interpolation between two values
-pub fn lerp(a: f64, b: f64, t: f64) -> f64 {
-    a + t * (b - a)
-}
+pub fn compute_parameter_change(p0: &[Tensor], p1: &[Tensor]) -> CandleResult<f64> {
+    if p0.len() != p1.len() {
+        return Err(candle_core::Error::Msg(
+            "Parameter vectors must have the same length".to_string(),
+        ));
+    }
 
-/// Check if a value is within a tolerance of zero
-pub fn is_zero(value: f64, tolerance: f64) -> bool {
-    value.abs() < tolerance
+    let mut sum_of_squares = 0.0;
+    for (tensor0, tensor1) in p0.iter().zip(p1.iter()) {
+        let diff = tensor1.sub(tensor0)?;
+        let values = diff.flatten_all()?.to_vec1::<f64>()?;
+        for &val in &values {
+            sum_of_squares += val * val;
+        }
+    }
+
+    Ok(sum_of_squares.sqrt())
 }
 
 #[cfg(test)]
@@ -347,7 +341,8 @@ mod tests {
     #[test]
     fn test_f64_to_tensors() -> CandleResult<()> {
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
-        let tensors = [create_1d_tensor(&values, &Device::Cpu)?].to_vec();
+        let device = &Device::Cpu;
+        let tensors = [Tensor::new(values, device)?].to_vec();
         assert_eq!(tensors.len(), 1);
         Ok(())
     }
@@ -419,7 +414,7 @@ mod tests {
     fn test_scale_tensors_alias() -> CandleResult<()> {
         let device = Device::Cpu;
         let tensors = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
-        let scaled = scale_tensors(&tensors, 3.0)?;
+        let scaled = vector_scale(&tensors, 3.0)?;
         let values = scaled[0].to_vec1::<f64>()?;
         assert_relative_eq!(values[0], 3.0, epsilon = 1e-10);
         assert_relative_eq!(values[1], 6.0, epsilon = 1e-10);
@@ -430,7 +425,7 @@ mod tests {
         let device = Device::Cpu;
         let a = vec![Tensor::from_slice(&[1.0, 2.0], &[2], &device)?];
         let b = vec![Tensor::from_slice(&[3.0, 4.0], &[2], &device)?];
-        let combined = combine_tensors(&a, &b)?;
+        let combined = vector_add(&a, &b)?;
         let values = combined[0].to_vec1::<f64>()?;
         assert_relative_eq!(values[0], 4.0, epsilon = 1e-10);
         assert_relative_eq!(values[1], 6.0, epsilon = 1e-10);
@@ -562,34 +557,4 @@ mod tests {
         assert_eq!(clamped, vec![0.0, 0.5, 3.0, 5.0]);
     }
 
-    #[test]
-    fn test_lerp() {
-        assert_relative_eq!(lerp(0.0, 10.0, 0.5), 5.0, epsilon = 1e-10);
-        assert_relative_eq!(lerp(2.0, 8.0, 0.25), 3.5, epsilon = 1e-10);
-    }
-
-    #[test]
-    fn test_is_zero() {
-        assert!(is_zero(1e-10, 1e-8));
-        assert!(!is_zero(1e-6, 1e-8));
-    }
-}
-
-pub fn compute_parameter_change(p0: &[Tensor], p1: &[Tensor]) -> CandleResult<f64> {
-    if p0.len() != p1.len() {
-        return Err(candle_core::Error::Msg(
-            "Parameter vectors must have the same length".to_string(),
-        ));
-    }
-
-    let mut sum_of_squares = 0.0;
-    for (tensor0, tensor1) in p0.iter().zip(p1.iter()) {
-        let diff = tensor1.sub(tensor0)?;
-        let values = diff.flatten_all()?.to_vec1::<f64>()?;
-        for &val in &values {
-            sum_of_squares += val * val;
-        }
-    }
-
-    Ok(sum_of_squares.sqrt())
 }

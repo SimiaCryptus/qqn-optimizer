@@ -17,6 +17,18 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
             })),
         ),
         (
+            "QQN-Bisection-2-NoMemory".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::Bisection,
+                    line_bracket_method: 2,
+                    ..LineSearchConfig::default()
+                },
+                min_step_persist: 1e1,
+                ..Default::default()
+            })),
+        ),
+        (
             "QQN-Bisection-2".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
@@ -27,38 +39,19 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
                 ..Default::default()
             })),
         ),
-        // (
-        //     "QQN-Linear".to_string(),
-        //     Arc::new(QQNOptimizer::new(QQNConfig {
-        //         linear_mode: true,
-        //         ..Default::default()
-        //     })),
-        // ),
-        // (
-        //     "QQN-Backtracking".to_string(),
-        //     Arc::new(QQNOptimizer::new(QQNConfig {
-        //         line_search: LineSearchConfig {
-        //             method: LineSearchMethod::Backtracking,
-        //             ..LineSearchConfig::default()
-        //         },
-        //         ..Default::default()
-        //     })),
-        // ),
-        // (
-        //     "QQN-Backtracking-Adaptive".to_string(),
-        //     Arc::new(QQNOptimizer::new(QQNConfig {
-        //         line_search: LineSearchConfig {
-        //             method: LineSearchMethod::Backtracking,
-        //             c1: 1e-4,
-        //             max_iterations: 100,
-        //             ..LineSearchConfig::default()
-        //         },
-        //         lbfgs_history: 10,
-        //         ..Default::default()
-        //     })),
-        // ),
         (
-            "QQN-Backtracking-Hybrid".to_string(),
+            "QQN-Bisection-2-NoForget".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::Bisection,
+                    line_bracket_method: 2,
+                    ..LineSearchConfig::default()
+                },
+                min_step_persist: 1e-5,
+                ..Default::default()
+            })),
+        ),        (
+            "QQN-Backtracking".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::Backtracking,
@@ -82,16 +75,6 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
             })),
         ),
         (
-            "QQN-StrongWolfe".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::StrongWolfe,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
             "QQN-StrongWolfe-NoMemory".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
@@ -99,6 +82,16 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
                     ..LineSearchConfig::default()
                 },
                 min_step_persist: 1e1,
+                ..Default::default()
+            })),
+        ),
+        (
+            "QQN-StrongWolfe".to_string(),
+            Arc::new(QQNOptimizer::new(QQNConfig {
+                line_search: LineSearchConfig {
+                    method: LineSearchMethod::StrongWolfe,
+                    ..LineSearchConfig::default()
+                },
                 ..Default::default()
             })),
         ),

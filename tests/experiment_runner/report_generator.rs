@@ -381,12 +381,12 @@ impl ReportGenerator {
             r#"            <table>
                 <tr>
                     <th>Optimizer</th>
-                    <th>Mean Final Value</th>
+                    <th>Mean Final Value<br>(All/Success/Fail)</th>
                     <th>Std Dev</th>
                     <th>Best Value</th>
                     <th>Worst Value</th>
-                    <th>Mean Function Evals</th>
-                    <th>Mean Gradient Evals</th>
+                    <th>Mean Function Evals<br>(All/Success/Fail)</th>
+                    <th>Mean Gradient Evals<br>(All/Success/Fail)</th>
                     <th>Success Rate</th>
                     <th>Mean Time (s)</th>
                 </tr>
@@ -417,6 +417,50 @@ impl ReportGenerator {
                 warn!("Mean final value for optimizer '{}' is not finite (mean: {})", optimizer, mean_final);
                 continue;
             }
+            // Separate statistics for successful and unsuccessful runs
+            let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
+            let unsuccessful_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
+            // Calculate separate statistics for successful runs
+            let (mean_final_success, mean_func_evals_success, mean_grad_evals_success) = if !successful_runs.is_empty() {
+                let final_vals: Vec<f64> = successful_runs.iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
+                let func_evals: Vec<f64> = successful_runs.iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .collect();
+                let grad_evals: Vec<f64> = successful_runs.iter()
+                    .map(|r| r.gradient_evaluations as f64)
+                    .collect();
+                (
+                    if !final_vals.is_empty() { final_vals.iter().sum::<f64>() / final_vals.len() as f64 } else { f64::NAN },
+                    func_evals.iter().sum::<f64>() / func_evals.len() as f64,
+                    grad_evals.iter().sum::<f64>() / grad_evals.len() as f64
+                )
+            } else {
+                (f64::NAN, f64::NAN, f64::NAN)
+            };
+            // Calculate separate statistics for unsuccessful runs
+            let (mean_final_fail, mean_func_evals_fail, mean_grad_evals_fail) = if !unsuccessful_runs.is_empty() {
+                let final_vals: Vec<f64> = unsuccessful_runs.iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
+                let func_evals: Vec<f64> = unsuccessful_runs.iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .collect();
+                let grad_evals: Vec<f64> = unsuccessful_runs.iter()
+                    .map(|r| r.gradient_evaluations as f64)
+                    .collect();
+                (
+                    if !final_vals.is_empty() { final_vals.iter().sum::<f64>() / final_vals.len() as f64 } else { f64::NAN },
+                    func_evals.iter().sum::<f64>() / func_evals.len() as f64,
+                    grad_evals.iter().sum::<f64>() / grad_evals.len() as f64
+                )
+            } else {
+                (f64::NAN, f64::NAN, f64::NAN)
+            };
+            
             let std_final = {
                 let variance = final_values
                     .iter()
@@ -444,6 +488,12 @@ impl ReportGenerator {
                 mean_gradient_evals,
                 success_rate,
                 mean_time,
+                mean_final_success,
+                mean_final_fail,
+                mean_func_evals_success,
+                mean_func_evals_fail,
+                mean_grad_evals_success,
+                mean_grad_evals_fail,
             ));
         }
         // Sort by success rate first, then by mean final value
@@ -475,7 +525,8 @@ impl ReportGenerator {
             }
         });
 
-        for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, mean_grad_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
+        for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, mean_grad_evals, success_rate, mean_time, 
+                  mean_final_success, mean_final_fail, mean_func_evals_success, mean_func_evals_fail, mean_grad_evals_success, mean_grad_evals_fail)) in perf_data.iter().enumerate() {
             let class = if i == 0 {
                 "best"
             } else if i == 1 {
@@ -483,27 +534,44 @@ impl ReportGenerator {
             } else {
                 ""
             };
+            // Format the separated statistics
+            let final_value_str = format!("{:.2e} / {:.2e} / {:.2e}", 
+                mean_final, 
+                if mean_final_success.is_finite() { *mean_final_success } else { *mean_final },
+                if mean_final_fail.is_finite() { *mean_final_fail } else { *mean_final }
+            );
+            let func_evals_str = format!("{:.1} / {:.1} / {:.1}", 
+                mean_func_evals,
+                if mean_func_evals_success.is_finite() { *mean_func_evals_success } else { *mean_func_evals },
+                if mean_func_evals_fail.is_finite() { *mean_func_evals_fail } else { *mean_func_evals }
+            );
+            let grad_evals_str = format!("{:.1} / {:.1} / {:.1}", 
+                mean_grad_evals,
+                if mean_grad_evals_success.is_finite() { *mean_grad_evals_success } else { *mean_grad_evals },
+                if mean_grad_evals_fail.is_finite() { *mean_grad_evals_fail } else { *mean_grad_evals }
+            );
+            
             section.push_str(&format!(
                 r#"                <tr class="{}">
+                    <td>{}</td>
                     <td>{}</td>
                     <td>{:.2e}</td>
                     <td>{:.2e}</td>
                     <td>{:.2e}</td>
-                    <td>{:.2e}</td>
-                    <td>{:.1}</td>
-                    <td>{:.1}</td>
+                    <td>{}</td>
+                    <td>{}</td>
                     <td>{:.1}%</td>
                     <td>{:.3}</td>
                 </tr>
 "#,
                 class,
                 optimizer,
-                mean_final,
+                final_value_str,
                 std_final,
                 best_final,
                 worst_final,
-                mean_func_evals,
-                mean_grad_evals,
+                func_evals_str,
+                grad_evals_str,
                 success_rate * 100.0,
                 mean_time,
             ));
@@ -949,19 +1017,11 @@ impl ReportGenerator {
                 <li>The <span class="algorithm-highlight">{}</span> optimizer demonstrated the best overall performance across the test suite.</li>
                 <li>The <span class="algorithm-highlight">{}</span> optimizer showed the best efficiency (success rate per unit time).</li>
             </ul>
-            <h3>Recommendations</h3>
-            <ul>
-                <li>For general-purpose optimization where reliability is key, use <strong>{}</strong>.</li>
-                <li>For time-critical applications, consider <strong>{}</strong> for its efficiency.</li>
-                <li>Problem-specific selection can yield better results than a one-size-fits-all approach.</li>
-            </ul>
         </div>
     </div>
 "#,
             best_optimizer,
             most_efficient,
-            best_math_optimizer,
-            best_ml_optimizer,
         )
     }
 
@@ -974,7 +1034,7 @@ impl ReportGenerator {
             <h3>Methodology</h3>
             <ul>
                 <li><strong>Runs per configuration:</strong> {} independent runs with different random seeds</li>
-                <li><strong>Success criteria:</strong> Minimum {:.3}% improvement per iteration OR optimizer-specific convergence within {} iterations</li>
+                <li><strong>Success criteria:</strong> Minimum {:e}% improvement per iteration OR optimizer-specific convergence within {} iterations or {} objective evaluations</li>
                 <li><strong>Time limit:</strong> {:?} per run</li>
                 <li><strong>Hardware:</strong> Standard CPU implementation</li>
                 <li><strong>Implementation:</strong> Rust-based optimization framework</li>
@@ -992,6 +1052,7 @@ impl ReportGenerator {
             self.config.num_runs,
             self.config.min_improvement_percent,
             self.config.max_iterations,
+            self.config.maximum_function_calls,
             self.config.time_limit.clone(),
             env!("CARGO_PKG_VERSION"),
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
@@ -1040,7 +1101,7 @@ impl ReportGenerator {
             .with_context(|| format!("Failed to write CSV to: {}", csv_path.display()))?;
 
         // Enhanced summary CSV
-        let mut summary_csv = String::from("Problem,ProblemFamily,Dimension,Optimizer,MeanFinalValue,StdFinalValue,BestValue,WorstValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,MeanTime,SuccessRate,NumRuns\n");
+        let mut summary_csv = String::from("Problem,ProblemFamily,Dimension,Optimizer,MeanFinalValue,MeanFinalValueSuccess,MeanFinalValueFail,StdFinalValue,BestValue,WorstValue,MeanIterations,MeanFunctionEvals,MeanFunctionEvalsSuccess,MeanFunctionEvalsFail,MeanGradientEvals,MeanGradientEvalsSuccess,MeanGradientEvalsFail,MeanTime,SuccessRate,NumRuns\n");
 
         for (problem, results) in all_results {
             let mut optimizer_stats = HashMap::new();
@@ -1060,6 +1121,50 @@ impl ReportGenerator {
                 if final_values.is_empty() {
                     continue; // Skip if no valid results
                 }
+                // Separate successful and unsuccessful runs
+                let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
+                let unsuccessful_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
+                // Calculate statistics for successful runs
+                let (mean_final_success, mean_func_evals_success, mean_grad_evals_success) = if !successful_runs.is_empty() {
+                    let final_vals: Vec<f64> = successful_runs.iter()
+                        .map(|r| r.final_value)
+                        .filter(|&v| v.is_finite())
+                        .collect();
+                    let func_evals: Vec<f64> = successful_runs.iter()
+                        .map(|r| r.function_evaluations as f64)
+                        .collect();
+                    let grad_evals: Vec<f64> = successful_runs.iter()
+                        .map(|r| r.gradient_evaluations as f64)
+                        .collect();
+                    (
+                        if !final_vals.is_empty() { final_vals.iter().sum::<f64>() / final_vals.len() as f64 } else { f64::NAN },
+                        func_evals.iter().sum::<f64>() / func_evals.len() as f64,
+                        grad_evals.iter().sum::<f64>() / grad_evals.len() as f64
+                    )
+                } else {
+                    (f64::NAN, f64::NAN, f64::NAN)
+                };
+                // Calculate statistics for unsuccessful runs
+                let (mean_final_fail, mean_func_evals_fail, mean_grad_evals_fail) = if !unsuccessful_runs.is_empty() {
+                    let final_vals: Vec<f64> = unsuccessful_runs.iter()
+                        .map(|r| r.final_value)
+                        .filter(|&v| v.is_finite())
+                        .collect();
+                    let func_evals: Vec<f64> = unsuccessful_runs.iter()
+                        .map(|r| r.function_evaluations as f64)
+                        .collect();
+                    let grad_evals: Vec<f64> = unsuccessful_runs.iter()
+                        .map(|r| r.gradient_evaluations as f64)
+                        .collect();
+                    (
+                        if !final_vals.is_empty() { final_vals.iter().sum::<f64>() / final_vals.len() as f64 } else { f64::NAN },
+                        func_evals.iter().sum::<f64>() / func_evals.len() as f64,
+                        grad_evals.iter().sum::<f64>() / grad_evals.len() as f64
+                    )
+                } else {
+                    (f64::NAN, f64::NAN, f64::NAN)
+                };
+                
                 
                 let iterations: Vec<f64> = runs.iter().map(|r| r.iterations as f64).collect();
                 let function_evals: Vec<f64> =
@@ -1095,18 +1200,24 @@ impl ReportGenerator {
                 let dimension = problem.dimension();
 
                 summary_csv.push_str(&format!(
-                    "{},{},{},{},{:.6e},{:.6e},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3},{:.3},{}\n",
+                    "{},{},{},{},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.3},{:.3},{}\n",
                     problem_name,
                     problem_family,
                     dimension,
                     optimizer,
                     mean_final,
+                    if mean_final_success.is_finite() { mean_final_success } else { mean_final },
+                    if mean_final_fail.is_finite() { mean_final_fail } else { mean_final },
                     std_final,
                     best_final,
                     worst_final,
                     mean_iterations,
                     mean_function_evals,
+                    if mean_func_evals_success.is_finite() { mean_func_evals_success } else { mean_function_evals },
+                    if mean_func_evals_fail.is_finite() { mean_func_evals_fail } else { mean_function_evals },
                     mean_gradient_evals,
+                    if mean_grad_evals_success.is_finite() { mean_grad_evals_success } else { mean_gradient_evals },
+                    if mean_grad_evals_fail.is_finite() { mean_grad_evals_fail } else { mean_gradient_evals },
                     mean_time,
                     success_rate,
                     runs.len()

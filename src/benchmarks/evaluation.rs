@@ -1,6 +1,6 @@
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::core::optimizer::Optimizer;
-use crate::utils::math::{create_1d_tensor, DifferentiableFunction};
+use crate::utils::math::DifferentiableFunction;
 use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
 use rand::Rng;
@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
+use candle_core::{Result as CandleResult};
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -415,7 +416,7 @@ impl BenchmarkRunner {
             } else {
                 0.0
             },
-        }; 
+        };
         if iteration == 0 {
             warn!("No iterations performed, convergence reason: {:?}",convergence_reason);
             Err(BenchmarkError::ProblemError(
@@ -579,7 +580,8 @@ impl BenchmarkRunner {
             // Check for stagnation
 
             // Create wrapper that lives long enough for the step call
-            let mut tensors = [create_1d_tensor(input_floats, &Device::Cpu)
+            let device = &Device::Cpu;
+            let mut tensors = [create_1d_tensor(input_floats, device)
                 .map_err(|e| BenchmarkError::ConfigError(e.to_string()))?];
             // Get current evaluation counts before the step
             let func_evals_before = problem_wrapper.get_function_evaluations();
@@ -650,6 +652,11 @@ impl BenchmarkRunner {
 
         Ok(ConvergenceReason::MaxIterations)
     }
+
+}
+
+fn create_1d_tensor(values: &[f64], device: &Device) -> CandleResult<Tensor> {
+    Tensor::new(values, device)
 }
 
 /// Wrapper to convert OptimizationProblem to DifferentiableFunction
@@ -695,7 +702,8 @@ impl<'a> DifferentiableFunction for ProblemWrapper {
             .problem
             .gradient_f64(&x_vec)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        Ok([create_1d_tensor(&grad_vec, &Device::Cpu)?].to_vec())
+        let device = &Device::Cpu;
+        Ok([Tensor::new(grad_vec, device)?].to_vec())
     }
 }
 

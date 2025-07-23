@@ -28,6 +28,7 @@ impl PlottingManager {
             enable_enhanced_plots: true,
         }
     }
+    
     pub fn with_enhanced_plots(mut self, enable: bool) -> Self {
         self.enable_enhanced_plots = enable;
         self

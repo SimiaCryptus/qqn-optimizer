@@ -9,7 +9,7 @@ use crate::core::line_search::create_line_search;
 use crate::core::line_search::{LineSearch, LineSearchConfig};
 use crate::core::optimizer::OptimizationMetadata;
 use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
-use crate::utils::math::{compute_magnitude, create_1d_tensor, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
+use crate::utils::math::{compute_magnitude, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
@@ -959,14 +959,16 @@ impl Optimizer for LBFGSOptimizer {
             // Create objective and gradient functions that work with f64 vectors
             let function_clone = function.clone();
             let objective_fn = move |x: &[f64]| -> anyhow::Result<f64> {
-                let x_tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
+                let device = &Device::Cpu;
+                let x_tensors = [Tensor::new(x, device)?].to_vec();
                 function_clone
                     .evaluate(&x_tensors)
                     .map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
             };
             let function_clone2 = function.clone();
             let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-                let x_tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
+                let device = &Device::Cpu;
+                let x_tensors = [Tensor::new(x, device)?].to_vec();
                 let grad_tensors = function_clone2
                     .gradient(&x_tensors)
                     .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;

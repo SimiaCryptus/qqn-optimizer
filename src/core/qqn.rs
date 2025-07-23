@@ -8,22 +8,19 @@ use crate::core::optimizer::OptimizationMetadata;
 use crate::core::Optimizer;
 use crate::core::StepResult;
 use crate::core::{ConvergenceInfo, TerminationReason};
-use crate::utils::dot_product;
-use crate::utils::math::{
-    combine_tensors, compute_magnitude, create_1d_tensor, log_tensor, scale_tensors,
-    DifferentiableFunction,
+use crate::utils::math::{compute_magnitude, log_tensor,
+                         DifferentiableFunction,
 };
 use crate::LineSearchConfig;
 use anyhow::{anyhow, Result as AnyhowResult};
 use candle_core::{Device, Error, Result as CandleResult, Tensor};
 use log::{debug, error, info, trace, warn};
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use crate::utils::{vector_add, vector_scale};
 
 /// Configuration for the QQN optimizer
 #[derive(Debug, Clone)]
@@ -53,7 +50,7 @@ impl Default for QQNConfig {
             },
             epsilon: 1e-6,
             verbose: false,
-            min_step_persist: 1e-2,
+            min_step_persist: 1e-1,
             min_step_size: 1e-10,
         }
     }
@@ -284,7 +281,8 @@ impl QQNOptimizer {
         let value_fn = {
             let quadratic_path = quadratic_path.clone();
             move |x: &[f64]| -> anyhow::Result<f64> {
-                let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
+                let device = &Device::Cpu;
+                let tensors = [Tensor::new(x, device)?].to_vec();
                 quadratic_path
                     .function
                     .evaluate(&tensors)
@@ -294,7 +292,8 @@ impl QQNOptimizer {
         let gradient_fn = {
             let quadratic_path = quadratic_path.clone();
             move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-                let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
+                let device = &Device::Cpu;
+                let tensors = [Tensor::new(x, device)?].to_vec();
                 let grads = quadratic_path
                     .function
                     .gradient(&tensors)
@@ -362,7 +361,7 @@ impl QQNOptimizer {
         );
 
         // Create steepest descent direction (negative gradient)
-        let direction = scale_tensors(gradients, -1.0)?;
+        let direction = vector_scale(gradients, -1.0)?;
         self.log_tensor_data("Steepest Descent Direction", &direction);
         // Scale direction if gradient is too large to avoid numerical issues
         let grad_norm = compute_magnitude(gradients)?;
@@ -373,7 +372,7 @@ impl QQNOptimizer {
                 "Large gradient norm {:.3e}, scaling direction by {:.3e}",
                 grad_norm, scale_factor
             );
-            scale_tensors(&direction, scale_factor)?
+            vector_scale(&direction, scale_factor)?
         } else if grad_norm < 1e-6 {
             warn!(
                 "Very small gradient norm {:.3e}, convergence likely achieved",
@@ -612,7 +611,6 @@ impl Optimizer for QQNOptimizer {
         params: &mut [Tensor],
         function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult> {
-        let step_start = Instant::now();
         info!("QQN step {}: starting optimization step",self.state.iteration);
         self.log_optimization_state(self.state.iteration, "Starting step");
         if params.is_empty() {
@@ -776,7 +774,7 @@ impl Optimizer for QQNOptimizer {
                 .lbfgs_state
                 .update(&old_params_before_update, params, &new_gradient)?;
         } else {
-            debug!("Insufficient progress for L-BFGS update: step_size={:.3e}, function_decrease={:.3e}", 
+            debug!("Insufficient progress for L-BFGS update: step_size={:.3e}, function_decrease={:.3e}",
                    line_search_result.step_size, function_decrease);
         }
 
@@ -924,20 +922,14 @@ impl QuadraticPath {
             cache_misses: Arc::new(AtomicUsize::new(0)),
         }
     }
-    /// Get cache statistics
-    pub fn cache_stats(&self) -> (usize, usize) {
-        (
-            self.cache_hits.load(Ordering::Relaxed),
-            self.cache_misses.load(Ordering::Relaxed),
-        )
-    }
 
     /// Evaluate the quadratic path at parameter t ∈ [0, 1], returning the actual point
     ///
     /// x(t) = x₀ + d(t) where d(t) = t(1-t) * (-g) + t² * d_lbfgs
     pub fn evaluate(&self, t: f64) -> CandleResult<Vec<Tensor>> {
         let direction = self.evaluate_direction(t)?;
-        combine_tensors(&self.start_point, &direction)
+        let a = &self.start_point;
+        vector_add(a, &direction)
     }
 
     /// Evaluate just the direction component at parameter t ∈ [0, 1]
@@ -965,18 +957,10 @@ impl QuadraticPath {
             lbfgs_coeff
         );
 
-        // Handle special case where both coefficients are zero (t=0)
-        if gradient_coeff.abs() < 1e-15 && lbfgs_coeff.abs() < 1e-15 {
-            // Return zero direction
-            return Ok(self
-                .negative_gradient
-                .iter()
-                .map(|t| t.zeros_like())
-                .collect::<Result<Vec<_>, _>>()?);
-        }
-
-        let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
-        let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
+        let tensors = &self.negative_gradient;
+        let gradient_term = vector_scale(tensors, gradient_coeff)?;
+        let tensors = &self.lbfgs_direction;
+        let lbfgs_term = vector_scale(tensors, lbfgs_coeff)?;
         // Log intermediate terms for debugging
         trace!(
             "QuadraticPath::evaluate_direction: gradient_term magnitude={:.3e}, lbfgs_term magnitude={:.3e}",
@@ -984,8 +968,9 @@ impl QuadraticPath {
             compute_magnitude(&lbfgs_term).unwrap_or(0.0)
         );
 
-        combine_tensors(&gradient_term, &lbfgs_term)
+        vector_add(&gradient_term, &lbfgs_term)
     }
+
     /// Get the starting point
     pub fn start_point(&self) -> &[Tensor] {
         &self.start_point
@@ -1005,10 +990,12 @@ impl QuadraticPath {
             lbfgs_coeff
         );
 
-        let gradient_term = scale_tensors(&self.negative_gradient, gradient_coeff)?;
-        let lbfgs_term = scale_tensors(&self.lbfgs_direction, lbfgs_coeff)?;
+        let tensors = &self.negative_gradient;
+        let gradient_term = vector_scale(tensors, gradient_coeff)?;
+        let tensors = &self.lbfgs_direction;
+        let lbfgs_term = vector_scale(tensors, lbfgs_coeff)?;
 
-        combine_tensors(&gradient_term, &lbfgs_term)
+        vector_add(&gradient_term, &lbfgs_term)
     }
 
     /// Get the negative gradient component

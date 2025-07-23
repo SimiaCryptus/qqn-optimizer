@@ -76,7 +76,7 @@ impl MnistNeuralNetwork {
         let vs = VarBuilder::from_varmap(&varmap, candle_core::DType::F64, &device);
         let model = MLP::new(vs, input_dim, hidden_size, output_dim)?;
         // Initialize with He initialization for ReLU activation
-        let mut instance = Self {
+        let instance = Self {
             x_tensor,
             y_tensor,
             device,
