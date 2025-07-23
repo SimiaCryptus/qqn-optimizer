@@ -83,6 +83,10 @@ pub struct MoreThuenteLineSearch {
 }
 
 impl MoreThuenteLineSearch {
+    /// Set the initial step size for the next line search
+    pub fn set_initial_step(&mut self, step: f64) {
+        self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
+    }
     pub fn new(config: MoreThuenteConfig) -> Self {
         Self { config }
     }
@@ -361,8 +365,7 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut brackt = false;
         let mut best_stp = 0.0;
         let mut best_f = f0;
-        let mut width = self.config.max_step - self.config.min_step;
-
+        
         self.log_verbose(&format!(
             "Starting More-Thuente with f(0)={:.3e}, g(0)={:.3e}",
             f0, g0
@@ -418,7 +421,7 @@ impl LineSearch for MoreThuenteLineSearch {
             }
             // Check for convergence based on interval width
             if brackt {
-                width = (sty - stx).abs();
+                let width = (sty - stx).abs();
                 if width <= self.config.xtol * stx.abs().max(1.0) {
                     self.log_verbose("Converged: interval width below tolerance");
                     return Ok(LineSearchResult {
@@ -482,6 +485,10 @@ impl LineSearch for MoreThuenteLineSearch {
 
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 

@@ -11,6 +11,7 @@ pub struct BacktrackingConfig {
     pub max_iterations: usize, // Maximum backtracking iterations
     pub min_step: f64,         // Minimum step size
     pub initial_step: f64,     // Initial step size
+    pub max_step: f64,         // Maximum step size (optional, can be used to limit step size)
 }
 
 impl Default for BacktrackingConfig {
@@ -21,6 +22,7 @@ impl Default for BacktrackingConfig {
             max_iterations: 100,    // More generous iteration limit
             min_step: 1e-12,       // More practical minimum step
             initial_step: 1.0,
+            max_step: f64::MAX,    // No upper limit by default
         }
     }
 }
@@ -36,6 +38,7 @@ impl BacktrackingConfig {
             max_iterations: 200,    // More iterations for thorough search
             min_step: 1e-15,       // Smaller minimum step
             initial_step: 1.0,
+            max_step: f64::MAX,    // No upper limit by default
         }
     }
     /// Create a lax configuration with permissive parameters
@@ -49,6 +52,7 @@ impl BacktrackingConfig {
             max_iterations: 50,     // Fewer iterations for speed
             min_step: 1e-10,       // Larger minimum step
             initial_step: 1.0,
+            max_step: f64::MAX,    // No upper limit by default
         }
     }
     /// Create the default configuration
@@ -65,6 +69,10 @@ pub struct BacktrackingLineSearch {
 }
 
 impl BacktrackingLineSearch {
+    /// Set the initial step size for the next line search
+    pub fn set_initial_step(&mut self, step: f64) {
+        self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
+    }
     pub fn new(config: BacktrackingConfig) -> Self {
         Self { config }
     }
@@ -98,6 +106,7 @@ impl BacktrackingLineSearch {
             max_iterations: 500,    // High iteration limit
             min_step: 1e-16,       // Very small minimum step
             initial_step: 1.0,
+            max_step: f64::MAX,    // No upper limit by default
         })
     }
 }
@@ -183,6 +192,10 @@ impl LineSearch for BacktrackingLineSearch {
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -234,6 +247,7 @@ mod tests {
             c1: 1e-1,  // Stricter Armijo condition to force backtracking
             max_iterations: 10,
             min_step: 1e-12,
+            max_step: f64::MAX,    // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config);
         let current_point = vec![0.1];  // Start closer to optimum to make large steps violate Armijo
@@ -259,6 +273,7 @@ mod tests {
             c1: 1e-3,
             max_iterations: 20,
             min_step: 1e-15,
+            max_step: f64::MAX,    // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config.clone());
         let current_point = vec![2.0, 1.0];
@@ -289,6 +304,7 @@ mod tests {
             c1: 1e-1, // Strict Armijo condition
             max_iterations: 3, // Very few iterations
             min_step: 1e-20,
+            max_step: f64::MAX,    // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config);
         let current_point = vec![1.0];
@@ -329,6 +345,7 @@ mod tests {
                 c1: 1e-4,
                 max_iterations: 50,
                 min_step: 1e-16,
+                max_step: f64::MAX,    // No upper limit by default
             };
             let mut line_search = BacktrackingLineSearch::new(config);
             let current_point = vec![1.0];
@@ -355,6 +372,7 @@ mod tests {
             rho: 0.5,
             max_iterations: 50,
             min_step: 1e-16,
+            max_step: f64::MAX,    // No upper limit by default
         };
         let lenient_config = BacktrackingConfig {
             c1: 1e-6, // Very lenient
@@ -397,6 +415,7 @@ mod tests {
             rho: 0.9,          // Less aggressive backtracking
             c1: 1e-8,          // Very strict Armijo condition
             max_iterations: 5, // Few iterations
+            max_step: f64::MAX,    // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config);
         // Use a function that requires very small steps to satisfy Armijo

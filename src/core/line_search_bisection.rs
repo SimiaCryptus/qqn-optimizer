@@ -1,6 +1,6 @@
 use crate::core::line_search::OneDimensionalProblem;
-use crate::core::{line_search, LineSearch, LineSearchResult, TerminationReason};
-use anyhow::anyhow;
+use crate::core::{LineSearch, LineSearchResult, TerminationReason};
+use anyhow::{anyhow, Error};
 use log::debug;
 
 /// Configuration for bisection line search
@@ -95,7 +95,7 @@ impl LineSearch for BisectionLineSearch {
         // Step 1: Find the far point
         let config = self.config.clone();
         let far_point = match config.line_bracket_method {
-            1 => line_search::find_far_point_1(
+            1 => find_far_point_1(
                 problem,
                 (problem.objective)(0.0)?,
                 config.initial_step,
@@ -104,7 +104,7 @@ impl LineSearch for BisectionLineSearch {
                 config.gradient_tolerance,
                 config.max_step,
             )?,
-            2 => line_search::find_far_point_2(
+            2 => find_far_point_2(
                 problem,
                 (problem.objective)(0.0)?,
                 config.initial_step,
@@ -210,11 +210,18 @@ impl LineSearch for BisectionLineSearch {
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 
 impl BisectionLineSearch {
     pub fn new(config: BisectionConfig) -> Self {
         Self { config }
+    }
+    /// Set the initial step size for the next line search
+    pub fn set_initial_step(&mut self, step: f64) {
+        self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
     /// Create with default configuration
     pub fn default_search() -> Self {
@@ -298,6 +305,110 @@ impl BisectionLineSearch {
         Ok(final_alpha)
     }
 }
+
+
+/// Find far point using gradient-based method
+/// Looks for a point where f(t) < f(0) and gradient is positive (function starts increasing)
+pub(crate) fn find_far_point_1(
+    problem: &OneDimensionalProblem,
+    f0: f64,
+    initial_step: f64,
+    max_iterations: usize,
+    min_step: f64,
+    gradient_tolerance: f64,
+    max_step: f64,
+) -> anyhow::Result<f64, Error> {
+    let mut t = initial_step;
+    let mut iteration = 0;
+    debug!("Finding far point starting from t={:.3e}", t);
+    while iteration < max_iterations {
+        let f_t = (problem.objective)(t)?;
+        let grad_t = (problem.gradient)(t)?;
+        debug!(
+            "  Line Search Iteration {}: t={:.3e}, f={:.3e}, grad={:.3e}, f0={:.3e}",
+            iteration, t, f_t, grad_t, f0
+        );
+        // Check if this point satisfies our far point criteria:
+        // 1. Function value is still better than f(0)
+        // 2. Gradient is positive (function is increasing)
+        if f_t < f0 && grad_t > 0.0 {
+            debug!("Found far point at t={:.3e}", t);
+            return Ok(t);
+        }
+        if f_t >= f0 {
+            debug!("Function value too high at t={:.3e}, reducing step", t);
+            t *= 0.5;
+            if t < min_step {
+                debug!("Step size too small, using minimum step");
+                return Ok(min_step);
+            }
+        }
+        // If gradient is still negative, step is too small
+        else if grad_t < 0.0 {
+            debug!("Gradient still negative at t={:.3e}, increasing step", t);
+            t *= 2.0;
+            if t > max_step {
+                debug!("Step size too large, using maximum step");
+                return Ok(max_step);
+            }
+        }
+        // If gradient is approximately zero, we found our point
+        else if grad_t.abs() <= gradient_tolerance {
+            debug!("Found zero gradient at t={:.3e}", t);
+            return Ok(t);
+        }
+        iteration += 1;
+    }
+    // If we can't find a proper far point, return the last valid step
+    debug!("Max iterations reached, returning t={:.3e}", t);
+    Ok(t)
+}
+
+/// Find far point using simple function-value-based method
+/// Looks for a point where f(t) > f(0) (function value is worse than starting point)
+pub(crate) fn find_far_point_2(
+    problem: &OneDimensionalProblem,
+    f0: f64,
+    initial_steop: f64,
+    max_iterations: usize,
+    max_step: f64,
+) -> anyhow::Result<f64, Error> {
+    let mut t = initial_steop;
+    let mut iteration = 0;
+    debug!("Finding far point starting from t={:.3e}", t);
+    while iteration < max_iterations {
+        let f_t = (problem.objective)(t)?;
+        debug!(
+            "  Line Search Iteration {}: t={:.3e}, f={:.3e}, f0={:.3e}",
+            iteration, t, f_t, f0
+        );
+        // Check if this point satisfies our far point criteria:
+        // 1. Function value is worse than f(0)
+        if f_t > f0 {
+            debug!("Found far point at t={:.3e}", t);
+            return Ok(t);
+        }
+
+        // If function value is still better than f(0), increase step size
+        if f_t <= f0 {
+            debug!(
+                "Function value still better at t={:.3e}, increasing step",
+                t
+            );
+            t *= 2.0;
+            if t > max_step {
+                debug!("Step size too large, using maximum step");
+                return Ok(max_step);
+            }
+        }
+
+        iteration += 1;
+    }
+    // If we can't find a proper far point, return the last valid step
+    debug!("Max iterations reached, returning t={:.3e}", t);
+    Ok(t)
+}
+
 
 #[cfg(test)]
 mod tests {

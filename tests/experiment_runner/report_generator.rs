@@ -67,7 +67,7 @@ impl ReportGenerator {
         println!("Generating report in directory: {}", self.output_dir);
 
         let mut html_content = self.generate_html_header();
-        html_content.push_str(&self.generate_executive_summary(all_results));
+        // html_content.push_str(&self.generate_executive_summary(all_results));
 
         for (problem, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem, results)?);
@@ -75,8 +75,8 @@ impl ReportGenerator {
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(all_results, &self.config, &self.output_dir)?);
-            html_content.push_str(&self.generate_performance_profiles(all_results, _problems)?);
-            html_content.push_str(&self.generate_model_test_matrices(all_results)?);
+            //html_content.push_str(&self.generate_performance_profiles(all_results, _problems)?);
+            //html_content.push_str(&self.generate_model_test_matrices(all_results)?);
         }
 
         html_content.push_str(&self.generate_conclusions(all_results));

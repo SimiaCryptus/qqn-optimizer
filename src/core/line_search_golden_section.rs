@@ -120,8 +120,16 @@ impl LineSearch for GoldenSectionLineSearch {
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
 }
 impl GoldenSectionLineSearch {
+    /// Set the initial step size for the next line search
+    pub fn set_initial_step(&mut self, step: f64) {
+        self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
+    }
     pub fn new(config: GoldenSectionConfig) -> Self {
         Self { config }
     }

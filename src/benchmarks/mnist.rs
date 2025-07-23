@@ -1,8 +1,7 @@
 use crate::OptimizationProblem;
 use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
+use rand::{Rng};
 use std::fs;
 use std::path::Path;
 use rand::prelude::StdRng;
@@ -382,7 +381,7 @@ impl MnistNeuralNetwork {
     /// Initialize weights using He initialization (optimal for ReLU activation)
     fn he_initialize(&self, rng: &mut StdRng) -> anyhow::Result<()> {
         let data = self.varmap.data().lock().unwrap();
-        for (name, var) in data.iter() {
+        for (_name, var) in data.iter() {
             let tensor = var.as_tensor();
             let shape = tensor.shape();
             let dims = shape.dims();

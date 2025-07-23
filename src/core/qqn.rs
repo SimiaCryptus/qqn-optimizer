@@ -3,10 +3,12 @@ use crate::core::line_search::{
     create_1d_problem, create_1d_problem_linear, create_line_search, LineSearch, LineSearchResult,
     ParametricCurve,
 };
+use crate::core::line_search_bisection::BisectionLineSearch;
 use crate::core::optimizer::OptimizationMetadata;
 use crate::core::Optimizer;
 use crate::core::StepResult;
 use crate::core::{ConvergenceInfo, TerminationReason};
+use crate::utils::dot_product;
 use crate::utils::math::{
     combine_tensors, compute_magnitude, create_1d_tensor, log_tensor, scale_tensors,
     DifferentiableFunction,
@@ -19,10 +21,9 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use crate::utils::dot_product;
 
 /// QQN trace information for analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,7 +117,7 @@ impl QQNConfig {
     pub fn strict() -> Self {
         Self {
             lbfgs_history: 20,
-            min_lbfgs_iterations: 5,  // More steepest descent iterations
+            min_lbfgs_iterations: 5, // More steepest descent iterations
             line_search: LineSearchConfig {
                 method: crate::core::line_search::LineSearchMethod::Bisection,
                 max_iterations: 50,
@@ -155,7 +156,6 @@ impl QQNConfig {
     }
 }
 
-
 /// State information for the QQN optimizer
 #[derive(Debug, Clone)]
 pub struct QQNState {
@@ -163,6 +163,8 @@ pub struct QQNState {
     pub iteration: usize,
     /// L-BFGS internal state
     pub lbfgs_state: LBFGSState,
+    /// Previous ideal step size for line search initialization
+    pub previous_step_size: Option<f64>,
 }
 
 impl QQNState {
@@ -170,6 +172,7 @@ impl QQNState {
         Self {
             iteration: 0,
             lbfgs_state: LBFGSState::new_with_options(lbfgs_history, 1e-8, true), // Disable checks for QQN
+            previous_step_size: None,
         }
     }
 }
@@ -215,7 +218,7 @@ impl QQNOptimizer {
     pub fn get_trace(&self) -> Option<&QQNTrace> {
         self.trace.as_ref()
     }
-    
+
     /// Log tensor data if verbose mode is enabled
     fn log_tensor_data(&self, name: &str, tensors: &[Tensor]) {
         if !self.config.verbose {
@@ -301,7 +304,8 @@ impl QQNOptimizer {
         }
 
         // Create negative gradient
-        let negative_gradient = gradient.iter()
+        let negative_gradient = gradient
+            .iter()
             .map(|g| g.neg())
             .collect::<CandleResult<Vec<_>>>()?;
 
@@ -339,10 +343,11 @@ impl QQNOptimizer {
         let test_t = 1e-8;
         let test_direction = quadratic_path.evaluate_direction(test_t)?;
         let test_gradient = quadratic_path.negative_gradient();
-        
+
         // The descent condition should check if moving along the path decreases the function
         // We need to check the directional derivative at the starting point
-        let descent_check = test_gradient.iter()
+        let descent_check = test_gradient
+            .iter()
             .zip(test_direction.iter())
             .map(|(g, d)| {
                 // g is already the negative gradient, so positive dot product means descent
@@ -352,9 +357,12 @@ impl QQNOptimizer {
             .collect::<CandleResult<Vec<_>>>()?
             .into_iter()
             .sum::<f64>();
-            
+
         if descent_check <= 0.0 {
-            debug!("Quadratic path does not provide a descent direction (dot product = {:.6e})", descent_check);
+            debug!(
+                "Quadratic path does not provide a descent direction (dot product = {:.6e})",
+                descent_check
+            );
             return Ok(LineSearchResult {
                 step_size: 0.0, // Signal to use steepest descent
                 success: false,
@@ -362,40 +370,57 @@ impl QQNOptimizer {
             });
         }
 
-        let quadratic_path_clone = quadratic_path.clone();
-        let value_fn = move |x: &[f64]| -> anyhow::Result<f64> {
-            let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-            quadratic_path_clone
-                .function
-                .evaluate(&tensors)
-                .map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
-        };
-        let quadratic_path_clone2 = quadratic_path.clone();
-        let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-            let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
-            let grads = quadratic_path_clone2.function.gradient(&tensors)
-                .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
-            let mut result = Vec::new();
-            for grad_tensor in grads {
-                let flattened = grad_tensor.flatten_all()
-                    .map_err(|e| anyhow::anyhow!("Failed to flatten gradient: {}", e))?;
-                let values: Vec<f64> = flattened.to_vec1::<f64>()
-                    .map_err(|e| anyhow::anyhow!("Failed to convert gradient to vec: {}", e))?;
-                result.extend(values);
+        let value_fn = {
+            let quadratic_path = quadratic_path.clone();
+            move |x: &[f64]| -> anyhow::Result<f64> {
+                let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
+                quadratic_path
+                    .function
+                    .evaluate(&tensors)
+                    .map_err(|e| anyhow::anyhow!("Function evaluation failed: {}", e))
             }
-            Ok(result)
         };
-        let problem = create_1d_problem(Box::new(quadratic_path), Arc::new(value_fn), Arc::new(gradient_fn))
-            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)));
+        let gradient_fn = {
+            let quadratic_path = quadratic_path.clone();
+            move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
+                let tensors = [create_1d_tensor(x, &Device::Cpu)?].to_vec();
+                let grads = quadratic_path
+                    .function
+                    .gradient(&tensors)
+                    .map_err(|e| anyhow::anyhow!("Gradient evaluation failed: {}", e))?;
+                let mut result = Vec::new();
+                for grad_tensor in grads {
+                    let flattened = grad_tensor
+                        .flatten_all()
+                        .map_err(|e| anyhow::anyhow!("Failed to flatten gradient: {}", e))?;
+                    let values: Vec<f64> = flattened
+                        .to_vec1::<f64>()
+                        .map_err(|e| anyhow::anyhow!("Failed to convert gradient to vec: {}", e))?;
+                    result.extend(values);
+                }
+                Ok(result)
+            }
+        };
+        let problem = create_1d_problem(
+            Box::new(quadratic_path),
+            Arc::new(value_fn),
+            Arc::new(gradient_fn),
+        )
+        .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)));
         if problem.is_err() {
-            warn!("Failed to create 1D problem for line search: {}", problem.as_ref().err().unwrap());
+            warn!(
+                "Failed to create 1D problem for line search: {}",
+                problem.as_ref().err().unwrap()
+            );
             return Err(Error::Msg(format!(
                 "Failed to create 1D problem for line search: {}",
                 problem.as_ref().err().unwrap()
             )));
         }
         // Perform line search
-        let result = self.line_search.optimize_1d(&problem?).unwrap_or_else(|e| {
+        let mut line_search: Box<dyn LineSearch> = self.line_search.clone_box();
+        // TODO: Use line search with initial_step based on prior ideal step size
+        let result = line_search.optimize_1d(&problem?).unwrap_or_else(|e| {
             warn!("Line search failed: {}", e);
             LineSearchResult {
                 step_size: 1.0, // Default to 1.0 if search fails
@@ -475,7 +500,7 @@ impl QQNOptimizer {
         // Collect the shapes and device info we need before the closures
         let param_shapes: Vec<_> = nd_params.iter().map(|p| p.shape().clone()).collect();
         let param_device = nd_params[0].device().clone();
-        
+
         // Perform line search in a separate scope to avoid borrow conflicts
         let line_search_result = {
             // Create objective and gradient functions
@@ -502,7 +527,7 @@ impl QQNOptimizer {
             let param_device_clone = param_device.clone();
             let gradient_fn = move |x: &[f64]| -> anyhow::Result<Vec<f64>> {
                 // Reconstruct the full parameter tensors from the flattened vector
-                
+
                 let mut tensors = Vec::new();
                 let mut idx = 0;
                 for shape in &param_shapes_clone {
@@ -523,9 +548,13 @@ impl QQNOptimizer {
             };
 
             // Create 1D problem
-            let problem =
-               create_1d_problem_linear(&params_f64, &direction_f64, Arc::new(objective_fn), Arc::new(gradient_fn))
-                    .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            let problem = create_1d_problem_linear(
+                &params_f64,
+                &direction_f64,
+                Arc::new(objective_fn),
+                Arc::new(gradient_fn),
+            )
+            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
 
             // Perform line search
             self.line_search.optimize_1d(&problem).map_err(|e| {
@@ -560,7 +589,6 @@ impl QQNOptimizer {
         // Save old parameters before updating
         let old_params = nd_params.to_vec();
 
-
         // Apply the step
         for (param, dir) in nd_params.iter_mut().zip(direction.iter()) {
             *param = (param.clone() + (dir * line_search_result.step_size)?)?;
@@ -589,16 +617,21 @@ impl QQNOptimizer {
             function_decrease
         );
         self.log_scalar("Function Decrease (Steepest Descent)", function_decrease);
-        
+
         // Update L-BFGS state with the new gradient at the updated position
         let new_gradient = function.gradient(nd_params)?;
         // Only update if we made meaningful progress
         if line_search_result.step_size > 1e-10 {
-            self.state.lbfgs_state.update(&old_params, nd_params, &new_gradient)?;
+            self.state
+                .lbfgs_state
+                .update(&old_params, nd_params, &new_gradient)?;
         } else {
-            debug!("Step size too small ({:.3e}), skipping L-BFGS update", line_search_result.step_size);
+            debug!(
+                "Step size too small ({:.3e}), skipping L-BFGS update",
+                line_search_result.step_size
+            );
         }
-        
+
         // Create convergence info
         let convergence_info = ConvergenceInfo {
             converged: false,
@@ -658,6 +691,25 @@ impl QQNOptimizer {
         }
         Ok(())
     }
+
+    pub fn set_initial_step(&mut self, prev_step: f64) {
+        // Update the line search configuration with the previous step size
+        let line_search_any = self.line_search.as_any_mut();
+        // Try to downcast to each line search type and set initial step
+        if let Some(bisection) = line_search_any.downcast_mut::<BisectionLineSearch>() {
+            bisection.set_initial_step(prev_step);
+        } else if let Some(strong_wolfe) = line_search_any.downcast_mut::<crate::core::line_search_strong_wolfe::StrongWolfeLineSearch>() {
+            strong_wolfe.set_initial_step(prev_step);
+        } else if let Some(backtracking) = line_search_any.downcast_mut::<crate::core::line_search_backtracking::BacktrackingLineSearch>() {
+            backtracking.set_initial_step(prev_step);
+        } else if let Some(golden) = line_search_any.downcast_mut::<crate::core::line_search_golden_section::GoldenSectionLineSearch>() {
+            golden.set_initial_step(prev_step);
+        } else if let Some(more_thuente) = line_search_any.downcast_mut::<crate::core::line_search_more_thuente::MoreThuenteLineSearch>() {
+            more_thuente.set_initial_step(prev_step);
+        } else if let Some(cubic_quad) = line_search_any.downcast_mut::<crate::core::line_search_cubic_quadratic::CubicQuadraticLineSearch>() {
+            cubic_quad.set_initial_step(prev_step);
+        }
+    }
 }
 
 impl Optimizer for QQNOptimizer {
@@ -705,7 +757,7 @@ impl Optimizer for QQNOptimizer {
         let grad_norm = compute_magnitude(&gradients)?;
         debug!("Gradient norm: {:.3e}", grad_norm);
         self.log_scalar("Gradient Norm", grad_norm);
-/// Check for convergence - if gradient is very small, we're done
+
         if grad_norm < self.config.epsilon {
             info!(
                 "QQN converged: gradient norm {:.3e} < epsilon {:.3e}",
@@ -727,33 +779,35 @@ impl Optimizer for QQNOptimizer {
                 metadata,
             });
         }
-    // Additional convergence check for very small function changes
-    if self.state.iteration > 10 {
-        // Check if we're making very small progress
-        if let Some(trace) = &self.trace {
-            if trace.function_values.len() > 5 {
-                let recent_values = &trace.function_values[trace.function_values.len() - 5..];
-                let max_change = recent_values.windows(2)
-                    .map(|w| (w[0] - w[1]).abs())
-                    .fold(0.0, f64::max);
-                if max_change < 1e-10 && grad_norm < 1e-3 {
-                    info!(
+
+        // Additional convergence check for very small function changes
+        if self.state.iteration > 10 {
+            // Check if we're making very small progress
+            if let Some(trace) = &self.trace {
+                if trace.function_values.len() > 5 {
+                    let recent_values = &trace.function_values[trace.function_values.len() - 5..];
+                    let max_change = recent_values
+                        .windows(2)
+                        .map(|w| (w[0] - w[1]).abs())
+                        .fold(0.0, f64::max);
+                    if max_change < 1e-10 && grad_norm < 1e-3 {
+                        info!(
                         "QQN converged: function change {:.3e} < 1e-10 and gradient norm {:.3e} < 1e-3",
                         max_change, grad_norm
                     );
-                    self.state.iteration += 1;
-                    return Ok(StepResult {
-                        step_size: 0.0,
-                        convergence_info: ConvergenceInfo {
-                            converged: true,
-                            function_change: Some(max_change),
-                        },
-                        metadata: OptimizationMetadata::default(),
-                    });
+                        self.state.iteration += 1;
+                        return Ok(StepResult {
+                            step_size: 0.0,
+                            convergence_info: ConvergenceInfo {
+                                converged: true,
+                                function_change: Some(max_change),
+                            },
+                            metadata: OptimizationMetadata::default(),
+                        });
+                    }
                 }
             }
         }
-    }
 
         // Check if we should use L-BFGS or fall back to steepest descent
         if self.state.iteration < self.config.min_lbfgs_iterations {
@@ -770,15 +824,14 @@ impl Optimizer for QQNOptimizer {
             self.state.iteration += 1;
             // Update L-BFGS state even during steepest descent to build history
             let new_gradient = function.gradient(params)?;
-            self.state.lbfgs_state.update(&params, params, &new_gradient)?;
+            self.state
+                .lbfgs_state
+                .update(&params, params, &new_gradient)?;
             return Ok(result);
         }
 
         debug!("Computing L-BFGS direction");
-        let lbfgs_direction = self
-            .state
-            .lbfgs_state
-            .compute_direction(&gradients)?;
+        let lbfgs_direction = self.state.lbfgs_state.compute_direction(&gradients)?;
         self.log_tensor_data("L-BFGS Direction", &lbfgs_direction);
 
         // Check if L-BFGS direction is valid (i.e., all finite)
@@ -794,7 +847,10 @@ impl Optimizer for QQNOptimizer {
             return Ok(result);
         }
 
-        debug!("L-BFGS direction computed successfully: {:?}->{:?}", params, lbfgs_direction);
+        debug!(
+            "L-BFGS direction computed successfully: {:?}->{:?}",
+            params, lbfgs_direction
+        );
         // Verify that L-BFGS direction is a descent direction
         let direction_dot_gradient = dot_product(&gradients, &lbfgs_direction)?;
         if direction_dot_gradient >= 0.0 {
@@ -808,12 +864,26 @@ impl Optimizer for QQNOptimizer {
             self.state.iteration += 1;
             return Ok(result);
         }
-        
+
         let quadratic_path =
             self.create_quadratic_path(params, &gradients, &lbfgs_direction, function.clone())?;
+        // Configure line search with previous step size if available
+        if let Some(prev_step) = self.state.previous_step_size {
+            if prev_step < 1e-2 {
+                debug!("Previous step size {:.3e} is too small, using default initial step", prev_step);
+                self.set_initial_step(1.0); // Use a default initial step
+            } else {
+                debug!("Using previous step size {:.3e} as initial step for line search", prev_step);
+                self.set_initial_step(prev_step);
+            }
+        }
+
         let line_search_result = self.find_optimal_t_line_search(quadratic_path.clone());
         if line_search_result.is_err() {
-            warn!("Line search failed: {}", line_search_result.as_ref().err().unwrap());
+            warn!(
+                "Line search failed: {}",
+                line_search_result.as_ref().err().unwrap()
+            );
             let result = self.steepest_descent_step(
                 params,
                 &gradients,
@@ -838,7 +908,10 @@ impl Optimizer for QQNOptimizer {
         }
         // If line search returned very small step size, check if we're at a local minimum
         if line_search_result.step_size < 1e-10 {
-            debug!("Line search returned very small step size {:.3e}, checking convergence", line_search_result.step_size);
+            debug!(
+                "Line search returned very small step size {:.3e}, checking convergence",
+                line_search_result.step_size
+            );
             if grad_norm < 1e-3 {
                 info!("Converged with small gradient norm {:.3e}", grad_norm);
                 self.state.iteration += 1;
@@ -852,12 +925,20 @@ impl Optimizer for QQNOptimizer {
                 });
             }
         }
-        
+
         info!("Found optimal t = {:.3e}", line_search_result.step_size);
+        // Persist the ideal t value for future use as initial_step
+        if line_search_result.success && line_search_result.step_size > 1e-10 {
+            self.state.previous_step_size = Some(line_search_result.step_size);
+            debug!(
+                "Persisted step size {:.3e} for next iteration",
+                line_search_result.step_size
+            );
+        }
+
         self.log_scalar("Optimal t", line_search_result.step_size);
         self.log_line_search_details(line_search_result.step_size);
         let position = quadratic_path.evaluate(line_search_result.step_size)?;
-        
 
         self.log_tensor_data("Final position", &position);
         let old_params = params.to_vec();
@@ -868,14 +949,16 @@ impl Optimizer for QQNOptimizer {
         let final_function_value = function.evaluate(params)?;
         debug!("Final function value: {:.6e}", final_function_value);
         let function_decrease = initial_function_value - final_function_value;
-        
+
         debug!("Updating L-BFGS history");
         let old_params_before_update = old_params.clone();
         // Update L-BFGS state with the new position and gradient
         let new_gradient = function.gradient(params)?;
         // Only update if we made meaningful progress
         if line_search_result.step_size > 1e-10 && function_decrease > 1e-12 {
-            self.state.lbfgs_state.update(&old_params_before_update, params, &new_gradient)?;
+            self.state
+                .lbfgs_state
+                .update(&old_params_before_update, params, &new_gradient)?;
         } else {
             debug!("Insufficient progress for L-BFGS update: step_size={:.3e}, function_decrease={:.3e}", 
                    line_search_result.step_size, function_decrease);
@@ -926,7 +1009,7 @@ impl Optimizer for QQNOptimizer {
         if let Some(trace) = &mut self.trace {
             let step_time = step_start.elapsed().as_secs_f64();
             trace.add_entry(
-                1.0, // magnitude ratio (not computed in this implementation)
+                1.0,  // magnitude ratio (not computed in this implementation)
                 true, // used quadratic path
                 line_search_result.step_size,
                 grad_norm,
@@ -972,6 +1055,7 @@ impl Optimizer for QQNOptimizer {
         info!("Resetting QQN optimizer state");
         self.state = QQNState::new(self.config.lbfgs_history);
         self.state.lbfgs_state.reset();
+        self.state.previous_step_size = None;
     }
 
     fn name(&self) -> &str {
@@ -981,11 +1065,9 @@ impl Optimizer for QQNOptimizer {
         self.state.iteration
     }
 
-    fn set_stagnation_multiplier(&mut self, _multiplier: f64) {
-    }
+    fn set_stagnation_multiplier(&mut self, _multiplier: f64) {}
 
-    fn set_stagnation_count(&mut self, _count: usize) {
-    }
+    fn set_stagnation_count(&mut self, _count: usize) {}
 }
 /// Wrapper to make DifferentiableFunction compatible with Arc<dyn ... + Send + Sync>
 // Remove the FunctionWrapper struct entirely since we'll change the approach
@@ -1145,7 +1227,8 @@ impl QuadraticPath {
         let key = OrderedFloat(t);
         let position_cache = self.position_cache.lock().unwrap();
         let gradient_cache = self.gradient_cache.lock().unwrap();
-        if let (Some(position_f64), Some(gradient_f64)) = (position_cache.get(&key), gradient_cache.get(&key))
+        if let (Some(position_f64), Some(gradient_f64)) =
+            (position_cache.get(&key), gradient_cache.get(&key))
         {
             // We have both position and gradient for this t, update L-BFGS
             trace!("Updating L-BFGS state for t={}", t);
@@ -1230,10 +1313,10 @@ impl<'a> ParametricCurve for QuadraticPath {
             }
         }
         self.cache_misses.fetch_add(1, Ordering::Relaxed);
-        
+
         // Evaluate function at this position to get gradient
         let position = self.position(t)?; // This will use cache if available
-        // Convert position back to tensors for gradient evaluation
+                                          // Convert position back to tensors for gradient evaluation
         let device = self.start_point[0].device();
         let mut position_tensors = Vec::new();
         let mut idx = 0;
@@ -1403,8 +1486,6 @@ mod tests {
 
         Ok(())
     }
-
-
 
     #[test]
     fn test_qqn_min_iterations_steepest_descent() -> CandleResult<()> {

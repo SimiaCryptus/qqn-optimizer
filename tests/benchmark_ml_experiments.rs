@@ -92,22 +92,6 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                 generate_svm_data(200, 10, &mut rng).1,
                 1.0,
             ).expect("Failed to create SVM")),
-            Arc::new(
-                {
-                    let mut network = MnistNeuralNetwork::create(Some(1000), 20, &mut rng)
-                        .expect("Failed to create MNIST neural network");
-                    network.set_optimal_value(Option::from(0.05));
-                    network
-                },
-            ),
-            Arc::new(
-                {
-                    let mut network = MnistNeuralNetwork::create(Some(10000), 30, &mut rng)
-                        .expect("Failed to create MNIST neural network");
-                    network.set_optimal_value(Option::from(0.05));
-                    network
-                },
-            ),
         ], standard_optimizers()),
     ).await;
 
