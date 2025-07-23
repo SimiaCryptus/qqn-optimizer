@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use log::warn;
 
 /// Handles HTML report generation and CSV exports
 pub struct ReportGenerator {
@@ -378,6 +379,9 @@ impl ReportGenerator {
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
 
             let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+            if !mean_final.is_finite() {
+                warn!("Mean final value for optimizer '{}' is not finite (mean: {})", optimizer, mean_final);
+            }
             let std_final = {
                 let variance = final_values
                     .iter()
@@ -496,7 +500,7 @@ impl ReportGenerator {
                 </div>
             </div>
 "#,
-            problem_name, 
+            problem_name,
             problem_filename,
             problem_filename
         ));
@@ -861,52 +865,20 @@ impl ReportGenerator {
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(name, _)| name.clone())
             .unwrap_or_else(|| "Unknown".to_string());
-        let best_ml_optimizer = ml_optimizer_scores
-            .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(name, _)| name.clone())
-            .unwrap_or_else(|| "Unknown".to_string());
-        let best_math_optimizer = math_optimizer_scores
-            .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(name, _)| name.clone())
-            .unwrap_or_else(|| "Unknown".to_string());
 
         format!(
             r#"
     <div class="section">
-        <h2>Conclusions and Recommendations</h2>
+        <h2>Conclusions</h2>
         <div class="subsection">
             <h3>Key Findings</h3>
             <ul>
                 <li>The <span class="algorithm-highlight">{}</span> optimizer demonstrated the best overall performance across the test suite.</li>
-                <li>For <strong>Machine Learning problems</strong>, <span class="algorithm-highlight">{}</span> performed best.</li>
-                <li>For <strong>Mathematical functions</strong>, <span class="algorithm-highlight">{}</span> performed best.</li>
-                <li><strong>Optimizer Suite Optimization:</strong> Reduced from 80+ variants to 20 focused, high-performing optimizers.</li>
-                <li><strong>Adam-Fast variants</strong> show significant promise and warrant further investigation.</li>
-                <li><strong>L-BFGS-Hybrid</strong> combines the best aspects of aggressive and conservative approaches.</li>
-                <li><strong>QQN-Backtracking variants</strong> demonstrate adaptive capabilities for different problem types.</li>
             </ul>
-
-            <h3>Recommendations for Practitioners</h3>
-            <ul>
-                <li><strong>Start with Adam-Fast</strong> for general-purpose optimization.</li>
-                <li><strong>Use L-BFGS-Hybrid</strong> for well-conditioned mathematical problems.</li>
-                <li><strong>Try QQN-Backtracking-Adaptive</strong> for problems requiring robust line search.</li>
-                <li>Always run multiple random seeds and report statistical significance.</li>
-                <li>Problem-specific tuning of hyperparameters can significantly impact performance.</li>
-            </ul>
-
-            <div class="citation">
-                <strong>Academic Citation:</strong><br>
-                These results support the theoretical analysis presented in the main paper and demonstrate
-                the practical effectiveness of the QQN approach for both mathematical optimization and
-                machine learning problems, showing competitive performance across diverse problem types.
-            </div>
         </div>
     </div>
 "#,
-            best_optimizer, best_ml_optimizer, best_math_optimizer
+            best_optimizer,
         )
     }
 

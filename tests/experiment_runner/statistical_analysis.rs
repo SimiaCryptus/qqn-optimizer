@@ -424,6 +424,8 @@ impl StatisticalAnalysis {
         // Build comparison data structure
         let mut comparisons: HashMap<(String, String), Vec<(String, String, bool)>> =
             HashMap::new(); // (qqn, non_qqn) -> [(problem, metric, qqn_won)]
+        let mut comparisons: HashMap<(String, String), Vec<(String, String, bool, f64)>> =
+            HashMap::new(); // (qqn, non_qqn) -> [(problem, metric, qqn_won, delta)]
         for (problem_name, family_results) in grouped_results {
             for qqn_opt in &qqn_optimizers {
                 for non_qqn_opt in &non_qqn_optimizers {
@@ -445,10 +447,11 @@ impl StatisticalAnalysis {
                                     let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
                                         / non_qqn_final_values.len() as f64;
                                     let qqn_won = qqn_mean < non_qqn_mean;
+                                    let delta = qqn_mean - non_qqn_mean; // Signed difference
                                     comparisons
                                         .entry((qqn_opt.clone(), non_qqn_opt.clone()))
                                         .or_insert_with(Vec::new)
-                                        .push((problem_name.clone(), "obj".to_string(), qqn_won));
+                                        .push((problem_name.clone(), "obj".to_string(), qqn_won, delta));
                                 }
                             }
                             // Test computational cost
@@ -463,10 +466,11 @@ impl StatisticalAnalysis {
                                     let non_qqn_mean = non_qqn_costs.iter().sum::<f64>()
                                         / non_qqn_costs.len() as f64;
                                     let qqn_won = qqn_mean < non_qqn_mean;
+                                    let delta = qqn_mean - non_qqn_mean; // Signed difference
                                     comparisons
                                         .entry((qqn_opt.clone(), non_qqn_opt.clone()))
                                         .or_insert_with(Vec::new)
-                                        .push((problem_name.clone(), "cost".to_string(), qqn_won));
+                                        .push((problem_name.clone(), "cost".to_string(), qqn_won, delta));
                                 }
                             }
                         }
@@ -496,12 +500,19 @@ impl StatisticalAnalysis {
                 matrix_section.push_str("                    <td>");
                 if let Some(results) = comparisons.get(&(qqn_opt.clone(), non_qqn_opt.clone())) {
                     let mut cell_content = Vec::new();
-                    for (problem, metric, qqn_won) in results {
+                    for (problem, metric, qqn_won, delta) in results {
                         let color = if *qqn_won { "#28a745" } else { "#dc3545" };
                         let metric_label = if metric == "obj" { "obj" } else { "cost" };
+                        let delta_str = if delta.abs() >= 1000.0 {
+                            format!("{:.1e}", delta)
+                        } else if delta.abs() >= 1.0 {
+                            format!("{:.2}", delta)
+                        } else {
+                            format!("{:.3}", delta)
+                        };
                         cell_content.push(format!(
-                            "<span style='color: {}; font-size: 0.85em;'>{} ({})</span>",
-                            color, problem, metric_label
+                            "<span style='color: {}; font-size: 0.85em;'>{} ({}: Δ{})</span>",
+                            color, problem, metric_label, delta_str
                         ));
                     }
                     if !cell_content.is_empty() {
@@ -545,6 +556,7 @@ impl StatisticalAnalysis {
                 <span style='color: #28a745;'>Green</span> = QQN variant won, 
                 <span style='color: #dc3545;'>Red</span> = Non-QQN optimizer won. 
                 (obj) = objective value comparison, (cost) = computational cost comparison.
+                Δ shows the signed difference (QQN mean - Non-QQN mean): negative values favor QQN for minimization problems.
             </p>
         </div>
 "#);
