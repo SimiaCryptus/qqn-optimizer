@@ -10,7 +10,7 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0.12"
 rand = { version = "0.9.1", features = ["small_rng", "std"] }
 approx = "0.5.1"
-anyhow = "1.0.98"tuw
+anyhow = "1.0.98"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tokio = { version = "1.46.1", features = ["full"] }
@@ -22,7 +22,6 @@ plotters = { version = "0.3", default-features = false, features = ["bitmap_back
 tempfile = "3.8"
 log = "0.4.27"
 statrs = "0.18.0"
-rand_chacha = "0.9.0"
 rand_distr = "0.5.1"
 
 [features]

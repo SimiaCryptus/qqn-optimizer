@@ -4,7 +4,6 @@ results/
 reproducibility/
 *.zip
 *.log
-paper/
 data/
 *.log
 *.aux
