@@ -1,33 +1,89 @@
+# Enable error handling and detailed logging
+set +e
+set +x
+
+# Function to log messages with timestamp
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Function to log errors
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >&2
+}
 
 # Process all markdown files in benchmark results
-echo "Processing benchmark result files..."
-for md_file in results/benchmark/**/*.md; do
+log "Starting processing of benchmark result files..."
+
+# Initialize counters
+processed_count=0
+error_count=0
+
+# Use find for recursive search of markdown files
+while IFS= read -r -d '' md_file; do
   if [ -f "$md_file" ]; then
-    # Get the directory of the markdown file
+    log "Processing file: $md_file"
     md_dir=$(dirname "$md_file")
-
-    # Get the base filename without extension
     base_name=$(basename "$md_file" .md)
-    # Get the directory structure for unique naming
-    rel_path=$(dirname "${md_file#results/benchmark/}")
-
-    # Create output filename
-    if [ "$rel_path" = "." ]; then
-      output_name="${md_dir}/${base_name}_tables.tex"
+    output_file="${md_dir}/${base_name}.html"
+    
+    log "Converting $md_file to $output_file"
+    
+   # Create a temporary file with updated links
+   temp_file=$(mktemp)
+   # Replace .md links with .html links in the markdown content
+   # Handle both markdown links [text](link.md) and HTML links <a href="link.md">
+   sed -e 's/\(\[[^]]*\]([^)]*\)\.md\()\)/\1.html\2/g' \
+       -e 's/\(href="[^"]*\)\.md"/\1.html"/g' \
+       -e "s/\(href='[^']*\)\.md'/\1.html'/g" "$md_file" > "$temp_file"
+   
+   if pandoc "$temp_file" -o "$output_file"; then
+      log "Successfully converted: $md_file -> $output_file"
+      rm "$temp_file"
+      ((processed_count++))
     else
-      # Replace slashes with underscores for valid filename
-      clean_path=$(echo "$rel_path" | tr '/' '_')
-      output_name="${md_dir}/${clean_path}_${base_name}_tables.tex"
+      log_error "Failed to convert: $md_file"
+      rm "$temp_file"
+      ((error_count++))
     fi
-
-    echo "Processing $md_file -> $output_name"
-
-    # Convert markdown to HTML
-    pandoc "$md_file" -o "${md_dir}/${base_name}.html"
-
-    # Extract tables from HTML
-    python html2tex.py "${md_dir}/${base_name}.html" -o "$output_name" \
-      --caption-prefix "Results from ${base_name}" \
-      --label-prefix "tab:${base_name}"
+  else
+    log "Skipping non-file or non-existent: $md_file"
   fi
-done
+done < <(find results -name "*.md" -type f -print0 2>/dev/null)
+# Process all TeX files (table exports) in benchmark results
+log "Starting processing of TeX table export files..."
+# Use find for recursive search of TeX files
+while IFS= read -r -d '' tex_file; do
+  if [ -f "$tex_file" ]; then
+    log "Processing TeX file: $tex_file"
+    tex_dir=$(dirname "$tex_file")
+    base_name=$(basename "$tex_file" .tex)
+    output_file="${tex_dir}/${base_name}.pdf"
+    log "Converting $tex_file to $output_file"
+    # Use pdflatex to compile TeX to PDF
+    # Run in the directory containing the TeX file to handle relative paths
+    if (cd "$tex_dir" && pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1); then
+      log "Successfully converted: $tex_file -> $output_file"
+      # Clean up auxiliary files created by pdflatex
+      rm -f "${tex_dir}/${base_name}.aux" "${tex_dir}/${base_name}.log"
+      ((processed_count++))
+    else
+      log_error "Failed to convert: $tex_file"
+      ((error_count++))
+    fi
+  else
+    log "Skipping non-file or non-existent: $tex_file"
+  fi
+done < <(find results -name "*.tex" -type f -print0 2>/dev/null)
+
+
+# Final summary
+log "Processing complete!"
+log "Files processed successfully: $processed_count"
+log "Files with errors: $error_count"
+if [ $error_count -gt 0 ]; then
+    log_error "Some files failed to process. Check the logs above for details."
+    exit 1
+else
+    log "All files processed successfully!"
+fi

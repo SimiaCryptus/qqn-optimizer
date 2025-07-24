@@ -10,15 +10,15 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0.12"
 rand = { version = "0.9.1", features = ["small_rng", "std"] }
 approx = "0.5.1"
-anyhow = "1.0.98"
+anyhow = "1.0.98"tuw
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tokio = { version = "1.46.1", features = ["full"] }
 chrono = { version = "0.4.41", features = ["serde", "clock"] }
 serde_json = "1.0"
-ordered-float = "4.6.0"
+ordered-float = "5.0.0"
 flate2 = "1.0"
-plotters = { version = "0.3", default-features = false, features = ["bitmap_backend", "svg_backend", "line_series", "point_series", "bitmap_encoder"], optional = true }
+plotters = { version = "0.3", default-features = false, features = ["bitmap_backend", "svg_backend", "line_series", "point_series", "bitmap_encoder", "ttf"], optional = true }
 tempfile = "3.8"
 log = "0.4.27"
 statrs = "0.18.0"

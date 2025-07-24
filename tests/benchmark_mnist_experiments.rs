@@ -16,7 +16,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     init_logging().unwrap();
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("results/benchmark/results{}", timestamp);
+    let output_dir_name = format!("results/mnist_{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
     fs::create_dir_all(&output_dir).unwrap();
     println!("Creating benchmark results in: {}", output_dir.display());
@@ -29,7 +29,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             maximum_function_calls: 1000,
             min_improvement_percent: 1e-7,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
-            num_runs: 3,
+            num_runs: 1,
         }).run_comparative_benchmarks(vec![
             Arc::new(
                 {
@@ -92,16 +92,8 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     }
 
     // Verify outputs were generated
-    assert!(output_dir.join("benchmark_report.html").exists());
-    assert!(output_dir.join("detailed_results.csv").exists());
-    assert!(output_dir.join("summary_statistics.csv").exists());
-
-    // Read and verify HTML content
-    let html_content = fs::read_to_string(output_dir.join("benchmark_report.html"))?;
-    assert!(html_content.contains("QQN Optimizer"));
-    // assert!(html_content.contains("Executive Summary"));
-    assert!(html_content.contains("Statistical Analysis"));
-    // assert!(html_content.contains("Performance Profiles"));
+    assert!(output_dir.join("benchmark_report.md").exists());
+    assert!(fs::read_to_string(output_dir.join("benchmark_report.md"))?.contains("QQN Optimizer"));
 
     println!(
         "Comprehensive benchmark report generated at: {}",

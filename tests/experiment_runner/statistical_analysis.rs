@@ -234,6 +234,11 @@ impl StatisticalAnalysis {
 
         Ok(section)
     }
+    /// Expose welch_t_test for use in LaTeX table generation
+    pub fn welch_t_test_public(&self, sample_a: &[f64], sample_b: &[f64]) -> anyhow::Result<(f64, f64)> {
+        self.welch_t_test(sample_a, sample_b)
+    }
+
     fn save_statistical_analysis_csv(
         &self,
         csv_data: &[String],

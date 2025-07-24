@@ -14,7 +14,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     // init_logging()?;
     
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("results/benchmark/results{}", timestamp);
+    let output_dir_name = format!("results/functions_{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
     fs::create_dir_all(&output_dir)?;
     println!("Creating benchmark results in: {}", output_dir.display());

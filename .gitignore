@@ -6,3 +6,6 @@ reproducibility/
 *.log
 paper/
 data/
+*.log
+*.aux
+*.out
