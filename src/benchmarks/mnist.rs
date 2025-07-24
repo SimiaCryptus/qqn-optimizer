@@ -299,7 +299,6 @@ impl MnistNeuralNetwork {
         Ok(labels)
     }
 
-    /// Create MNIST problem with automatic fallback
     pub fn create(n_samples: Option<usize>, hidden_size: usize, rng: &mut StdRng) -> anyhow::Result<Self> {
         // Validate hidden size to prevent overflow
         if hidden_size > 1000 {

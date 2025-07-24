@@ -1,7 +1,7 @@
-use crate::experiment_runner::{standard_optimizers, ExperimentRunner};
+use crate::experiment_runner::{ExperimentRunner};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::benchmarks::mnist::MnistNeuralNetwork;
-use qqn_optimizer::{init_logging, AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, LinearRegression, LogisticRegression, NeuralNetworkTraining, OptimizationProblem, QQNConfig, QQNOptimizer, SupportVectorMachine};
+use qqn_optimizer::{init_logging, AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, QQNConfig, QQNOptimizer};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
@@ -21,7 +21,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     fs::create_dir_all(&output_dir).unwrap();
     println!("Creating benchmark results in: {}", output_dir.display());
 
-    let mut rng: StdRng = rand::rngs::StdRng::seed_from_u64(42);
+    let mut rng: StdRng = StdRng::seed_from_u64(42);
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
@@ -29,26 +29,17 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             maximum_function_calls: 1000,
             min_improvement_percent: 1e-7,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
-            num_runs: 1,
+            num_runs: 3,
         }).run_comparative_benchmarks(vec![
             Arc::new(
                 {
-                    let mut network = MnistNeuralNetwork::create(Some(1000), 20, &mut rng)
+                    let mut network = MnistNeuralNetwork::create(Some(5000), 20, &mut rng)
                         .expect("Failed to create MNIST neural network");
                     network.set_optimal_value(Option::from(0.05));
                     network
                 },
             ),
-            // Arc::new(
-            //     {
-            //         let mut network = MnistNeuralNetwork::create(Some(10000), 30, &mut rng)
-            //             .expect("Failed to create MNIST neural network");
-            //         network.set_optimal_value(Option::from(0.05));
-            //         network
-            //     },
-            // ),
         ], vec![
-            // QQN variants
             (
                 "QQN-Bisection".to_string(),
                 Arc::new(QQNOptimizer::new(QQNConfig::default())),
@@ -68,125 +59,18 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                 })),
             ),
             (
-                "QQN-SimpleBracket".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig {
-                    line_search: LineSearchConfig {
-                        line_bracket_method: 2,
-                        ..LineSearchConfig::default()
-                    },
-                    ..Default::default()
-                })),
-            ),
-            (
-                "QQN-StrongWolfe".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig {
-                    line_search: LineSearchConfig {
-                        method: LineSearchMethod::StrongWolfe,
-                        ..LineSearchConfig::default()
-                    },
-                    ..Default::default()
-                })),
-            ),
-            (
                 "L-BFGS".to_string(),
                 Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            ),
-            (
-                "L-BFGS-Aggressive".to_string(),
-                Arc::new(LBFGSOptimizer::new(LBFGSConfig {
-                    history_size: 5,
-                    max_step_size: 10.0,
-                    max_param_change: 10.0,
-                    gradient_clip: 0.0,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "L-BFGS-Hybrid".to_string(),
-                Arc::new(LBFGSOptimizer::new(LBFGSConfig {
-                    history_size: 12,
-                    max_step_size: 5.0,
-                    max_param_change: 2.0,
-                    gradient_clip: 50.0,
-                    ..Default::default()
-                })),
             ),
             (
                 "GD".to_string(),
                 Arc::new(GDOptimizer::new(Default::default())),
             ),
             (
-                "GD-Conservative".to_string(),
-                Arc::new(GDOptimizer::new(GDConfig {
-                    learning_rate: 0.001,
-                    momentum: 0.95,
-                    max_grad_norm: 100.0,
-                    adaptive_lr: false,
-                    nesterov: true,
-                    verbose: false,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "GD-Momentum".to_string(),
-                Arc::new(GDOptimizer::new(GDConfig {
-                    momentum: 0.9,
-                    ..Default::default()
-                })),
-            ),
-
-            (
                 "Adam-Fast".to_string(),
                 Arc::new(AdamOptimizer::new(AdamConfig {
                     learning_rate: 0.1,
                     lr_schedule: "constant".to_string(),
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam-Fast-Conservative".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.05,
-                    lr_schedule: "constant".to_string(),
-                    gradient_clip: Some(1.0),
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam-Fast-Aggressive".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.125,
-                    lr_schedule: "constant".to_string(),
-                    beta1: 0.85,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam-Fast-Adaptive".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1,
-                    lr_schedule: "adaptive".to_string(),
-                    gradient_clip: Some(2.0),
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam-Fast-Momentum".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1,
-                    lr_schedule: "constant".to_string(),
-                    beta1: 0.95,
-                    beta2: 0.999,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "Adam-Fast-Regularized".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1,
-                    lr_schedule: "constant".to_string(),
-                    weight_decay: 0.01,
-                    gradient_clip: Some(1.0),
                     ..Default::default()
                 })),
             ),
