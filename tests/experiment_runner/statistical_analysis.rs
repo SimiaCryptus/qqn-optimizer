@@ -19,25 +19,11 @@ impl StatisticalAnalysis {
         _config: &BenchmarkConfig,
         output_dir: &str,
     ) -> anyhow::Result<String> {
-        let mut section = String::from(
-            r#"
-    <div class="section">
-        <h2>Statistical Analysis</h2>
-        <div class="subsection">
-            <h3>Pairwise Comparisons: QQN vs Non-QQN Optimizers by Problem Family</h3>
-            <p>Statistical significance tests comparing QQN variants against non-QQN baseline optimizers on final objective values and computational cost, aggregated by problem family for increased statistical power.</p>
-"#,
-        );
+        let mut section = String::from(r#""#, );
 
         // Check if we have enough data
         let total_results: usize = all_results.iter().map(|(_, r)| r.results.len()).sum();
         if total_results < 2 {
-            section.push_str(
-                r#"            <p><em>Insufficient data for statistical analysis.</em></p>
-        </div>
-    </div>
-"#,
-            );
             return Ok(section);
         }
 
@@ -56,12 +42,6 @@ impl StatisticalAnalysis {
 
         optimizer_results.retain(|_, values| values.len() >= 2);
         if optimizer_results.len() < 2 {
-            section.push_str(
-                r#"            <p><em>Insufficient data for pairwise comparisons (need at least 2 optimizers with 2+ runs each).</em></p>
-        </div>
-    </div>
-"#,
-            );
             return Ok(section);
         }
 
@@ -76,12 +56,6 @@ impl StatisticalAnalysis {
         }
 
         if qqn_optimizers.is_empty() || non_qqn_optimizers.is_empty() {
-            section.push_str(
-                r#"            <p><em>Need both QQN and non-QQN optimizers for comparison.</em></p>
-        </div>
-    </div>
-"#,
-            );
             return Ok(section);
         }
         
@@ -252,24 +226,11 @@ impl StatisticalAnalysis {
         }
 
         section.push_str(r#"
-        <style>
-            .significant-row { background-color: #f0f8ff; }
-            .significant-row td { font-weight: 500; }
-        </style>
-        <div class="subsection">
-
-            <div class="citation">
-                <strong>Citation Note:</strong> Statistical tests performed using Welch's t-test comparing final objective values
-                and computational cost (max of function/gradient evaluations) between QQN variants and non-QQN optimizers 
-                with α = 0.05. Effect sizes calculated using Cohen's d. Analysis performed per problem family to account for 
-                family-specific characteristics and increase statistical power by aggregating similar problems.
-                Winners are highlighted in <span style='color: #28a745; font-weight: bold;'>green</span> (QQN) or 
-                <span style='color: #dc3545; font-weight: bold;'>red</span> (non-QQN) for statistically significant comparisons.
-                <br><strong>Data:</strong> <a href="statistical_analysis_raw_data.csv">Raw statistical analysis data (CSV)</a>
-            </div>
-        </div>
-    </div>
-"#);
+<style>
+    .significant-row { background-color: #f0f8ff; }
+    .significant-row td { font-weight: 500; }
+</style>
+        "#);
 
         Ok(section)
     }
@@ -394,9 +355,11 @@ impl StatisticalAnalysis {
     ) -> anyhow::Result<String> {
         let mut matrix_section = String::from(
             r#"
-        <div class="subsection">
-            <h3>QQN vs Non-QQN Comparison Matrix</h3>
-            <p>Matrix showing statistically significant comparisons. Green indicates QQN variant won, red indicates non-QQN optimizer won.</p>
+
+# QQN vs Non-QQN Comparison Matrix
+
+Matrix showing all comparisons. Green indicates QQN variant won (statistically significant), red indicates non-QQN optimizer won (statistically significant), gray indicates no significant difference.
+
 "#,
         );
         // Collect all QQN and non-QQN optimizers
@@ -416,105 +379,126 @@ impl StatisticalAnalysis {
         qqn_optimizers.sort();
         non_qqn_optimizers.sort();
         if qqn_optimizers.is_empty() || non_qqn_optimizers.is_empty() {
-            return Ok(matrix_section + "</div>\n");
+            return Ok("".to_string());
         }
-        // Build comparison data structure
-        let mut comparisons: HashMap<(String, String), Vec<(String, String, bool, f64)>> =
-            HashMap::new(); // (qqn, non_qqn) -> [(problem, metric, qqn_won, delta)]
-        for (problem_name, family_results) in grouped_results {
-            for qqn_opt in &qqn_optimizers {
-                for non_qqn_opt in &non_qqn_optimizers {
-                    if let (Some(qqn_results), Some(non_qqn_results)) =
-                        (family_results.get(qqn_opt), family_results.get(non_qqn_opt))
-                    {
-                        if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                            // Test final values
-                            let qqn_final_values: Vec<f64> =
-                                qqn_results.iter().map(|(v, _)| *v).collect();
-                            let non_qqn_final_values: Vec<f64> =
-                                non_qqn_results.iter().map(|(v, _)| *v).collect();
-                            if let Ok((_, p_value)) =
-                                self.welch_t_test(&qqn_final_values, &non_qqn_final_values)
-                            {
-                                if p_value < 0.05 {
-                                    let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                        / qqn_final_values.len() as f64;
-                                    let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                        / non_qqn_final_values.len() as f64;
-                                    let qqn_won = qqn_mean < non_qqn_mean;
-                                    let delta = qqn_mean - non_qqn_mean; // Signed difference
-                                    comparisons
-                                        .entry((qqn_opt.clone(), non_qqn_opt.clone()))
-                                        .or_insert_with(Vec::new)
-                                        .push((problem_name.clone(), "obj".to_string(), qqn_won, delta));
-                                }
-                            }
-                            // Test computational cost
-                            let qqn_costs: Vec<f64> = qqn_results.iter().map(|(_, c)| *c).collect();
-                            let non_qqn_costs: Vec<f64> =
-                                non_qqn_results.iter().map(|(_, c)| *c).collect();
-                            if let Ok((_, p_value)) = self.welch_t_test(&qqn_costs, &non_qqn_costs)
-                            {
-                                if p_value < 0.05 {
-                                    let qqn_mean =
-                                        qqn_costs.iter().sum::<f64>() / qqn_costs.len() as f64;
-                                    let non_qqn_mean = non_qqn_costs.iter().sum::<f64>()
-                                        / non_qqn_costs.len() as f64;
-                                    let qqn_won = qqn_mean < non_qqn_mean;
-                                    let delta = qqn_mean - non_qqn_mean; // Signed difference
-                                    comparisons
-                                        .entry((qqn_opt.clone(), non_qqn_opt.clone()))
-                                        .or_insert_with(Vec::new)
-                                        .push((problem_name.clone(), "cost".to_string(), qqn_won, delta));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        
         // Generate matrix table
         matrix_section.push_str(
-            r#"            <table class="comparison-matrix">
-                <tr>
-                    <th></th>
+            r#"
+<table class="comparison-matrix">
+  <tr>
 "#,
         );
         // Header row with non-QQN optimizers
         for non_qqn in &non_qqn_optimizers {
-            matrix_section.push_str(&format!("                    <th>{}</th>\n", non_qqn));
+            matrix_section.push_str(&format!("    <th>{}</th>\n", non_qqn));
         }
-        matrix_section.push_str("                </tr>\n");
+        matrix_section.push_str("  </tr>\n");
+        
         // Data rows
         for qqn_opt in &qqn_optimizers {
             matrix_section.push_str(&format!(
-                "                <tr>\n                    <th>{}</th>\n",
+                "  <tr>\n    <th>{}</th>\n",
                 qqn_opt
             ));
             for non_qqn_opt in &non_qqn_optimizers {
-                matrix_section.push_str("                    <td>");
-                if let Some(results) = comparisons.get(&(qqn_opt.clone(), non_qqn_opt.clone())) {
-                    let mut cell_content = Vec::new();
-                    for (problem, metric, qqn_won, delta) in results {
-                        let color = if *qqn_won { "#28a745" } else { "#dc3545" };
-                        let metric_label = if metric == "obj" { "obj" } else { "cost" };
-                        let delta_str = if delta.abs() >= 1000.0 {
-                            format!("{:.1e}", delta)
-                        } else if delta.abs() >= 1.0 {
-                            format!("{:.2}", delta)
-                        } else {
-                            format!("{:.3}", delta)
-                        };
-                        cell_content.push(format!(
-                            "<span style='color: {}; font-size: 0.85em;'>{} ({}: Δ{})</span>",
-                            color, problem, metric_label, delta_str
-                        ));
+                matrix_section.push_str("    <td>");
+                
+                let mut cell_content = Vec::new();
+                let mut problem_names: Vec<_> = grouped_results.keys().cloned().collect();
+                problem_names.sort();
+                
+                for problem_name in &problem_names {
+                    if let Some(family_results) = grouped_results.get(problem_name) {
+                        if let (Some(qqn_results), Some(non_qqn_results)) =
+                            (family_results.get(qqn_opt), family_results.get(non_qqn_opt))
+                        {
+                            if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
+                                let mut problem_section = format!("<div class='problem-comparison'><strong>{}</strong>", problem_name);
+                                
+                                // Test final values
+                                let qqn_final_values: Vec<f64> =
+                                    qqn_results.iter().map(|(v, _)| *v).collect();
+                                let non_qqn_final_values: Vec<f64> =
+                                    non_qqn_results.iter().map(|(v, _)| *v).collect();
+                                
+                                let qqn_mean_obj = qqn_final_values.iter().sum::<f64>()
+                                    / qqn_final_values.len() as f64;
+                                let non_qqn_mean_obj = non_qqn_final_values.iter().sum::<f64>()
+                                    / non_qqn_final_values.len() as f64;
+                                let delta_obj = qqn_mean_obj - non_qqn_mean_obj;
+                                
+                                let (obj_color, _obj_significant) = if let Ok((_, p_value)) =
+                                    self.welch_t_test(&qqn_final_values, &non_qqn_final_values)
+                                {
+                                    if p_value < 0.05 {
+                                        let qqn_won = qqn_mean_obj < non_qqn_mean_obj;
+                                        (if qqn_won { "#28a745" } else { "#dc3545" }, true)
+                                    } else {
+                                        ("#6c757d", false)
+                                    }
+                                } else {
+                                    ("#6c757d", false)
+                                };
+                                
+                                let delta_obj_str = if delta_obj.abs() >= 1000.0 {
+                                    format!("{:.1e}", delta_obj)
+                                } else if delta_obj.abs() >= 1.0 {
+                                    format!("{:.2}", delta_obj)
+                                } else {
+                                    format!("{:.3}", delta_obj)
+                                };
+                                
+                                problem_section.push_str(&format!(
+                                    "<br><span style='color: {}; font-size: 0.85em;'>obj: Δ{}</span>",
+                                    obj_color, delta_obj_str
+                                ));
+                                
+                                // Test computational cost
+                                let qqn_costs: Vec<f64> = qqn_results.iter().map(|(_, c)| *c).collect();
+                                let non_qqn_costs: Vec<f64> =
+                                    non_qqn_results.iter().map(|(_, c)| *c).collect();
+                                
+                                let qqn_mean_cost =
+                                    qqn_costs.iter().sum::<f64>() / qqn_costs.len() as f64;
+                                let non_qqn_mean_cost = non_qqn_costs.iter().sum::<f64>()
+                                    / non_qqn_costs.len() as f64;
+                                let delta_cost = qqn_mean_cost - non_qqn_mean_cost;
+                                
+                                let (cost_color, _cost_significant) = if let Ok((_, p_value)) = 
+                                    self.welch_t_test(&qqn_costs, &non_qqn_costs)
+                                {
+                                    if p_value < 0.05 {
+                                        let qqn_won = qqn_mean_cost < non_qqn_mean_cost;
+                                        (if qqn_won { "#28a745" } else { "#dc3545" }, true)
+                                    } else {
+                                        ("#6c757d", false)
+                                    }
+                                } else {
+                                    ("#6c757d", false)
+                                };
+                                
+                                let delta_cost_str = if delta_cost.abs() >= 1000.0 {
+                                    format!("{:.1e}", delta_cost)
+                                } else if delta_cost.abs() >= 1.0 {
+                                    format!("{:.2}", delta_cost)
+                                } else {
+                                    format!("{:.3}", delta_cost)
+                                };
+                                
+                                problem_section.push_str(&format!(
+                                    "<br><span style='color: {}; font-size: 0.85em;'>cost: Δ{}</span>",
+                                    cost_color, delta_cost_str
+                                ));
+                                
+                                problem_section.push_str("</div>");
+                                cell_content.push(problem_section);
+                            }
+                        }
                     }
-                    if !cell_content.is_empty() {
-                        matrix_section.push_str(&cell_content.join("<br>"));
-                    } else {
-                        matrix_section.push_str("—");
-                    }
+                }
+                if !cell_content.is_empty() {
+                    matrix_section.push_str(&cell_content.join(""));
                 } else {
                     matrix_section.push_str("—");
                 }
@@ -523,37 +507,18 @@ impl StatisticalAnalysis {
             matrix_section.push_str("                </tr>\n");
         }
         matrix_section.push_str(r#"            </table>
-            <style>
-                .comparison-matrix {
-                    margin-top: 20px;
-                    border-collapse: collapse;
-                    font-size: 0.9em;
-                }
-                .comparison-matrix th {
-                    background-color: #f8f9fa;
-                    padding: 8px;
-                    text-align: left;
-                    border: 1px solid #dee2e6;
-                    font-weight: 600;
-                }
-                .comparison-matrix td {
-                    padding: 8px;
-                    border: 1px solid #dee2e6;
-                    vertical-align: top;
-                    line-height: 1.4;
-                }
-                .comparison-matrix tr:nth-child(even) {
-                    background-color: #f8f9fa;
-                }
-            </style>
-            <p style="margin-top: 10px; font-size: 0.9em;">
-                <strong>Legend:</strong> Each cell shows problems where statistically significant differences were found. 
-                <span style='color: #28a745;'>Green</span> = QQN variant won, 
-                <span style='color: #dc3545;'>Red</span> = Non-QQN optimizer won. 
-                (obj) = objective value comparison, (cost) = computational cost comparison.
-                Δ shows the signed difference (QQN mean - Non-QQN mean): negative values favor QQN for minimization problems.
-            </p>
-        </div>
+"#);
+        matrix_section.push_str(r#"
+        
+<p style="margin-top: 10px; font-size: 0.9em;">
+    <strong>Legend:</strong> Each cell shows all problem comparisons.
+    <span style='color: #28a745;'>Green</span> = QQN variant won,
+    <span style='color: #dc3545;'>Red</span> = Non-QQN optimizer won.
+    <span style='color: #6c757d;'>Gray</span> = No statistically significant difference.
+    (obj) = objective value comparison, (cost) = computational cost comparison.
+    Δ shows the signed difference (QQN mean - Non-QQN mean): negative values favor QQN for minimization problems.
+</p>
+            
 "#);
         Ok(matrix_section)
     }

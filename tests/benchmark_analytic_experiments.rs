@@ -67,7 +67,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     }
 
     // Verify outputs were generated
-    assert!(output_dir.join("benchmark_report.html").exists());
+    assert!(output_dir.join("benchmark_report.md").exists());
     assert!(output_dir.join("detailed_results.csv").exists());
     assert!(output_dir.join("summary_statistics.csv").exists());
 

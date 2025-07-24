@@ -1,199 +1,251 @@
-# QQN Algorithm: Mathematical Specification
+# QQN (Quasi-Quadratic-Newton) Algorithm Technical Documentation
 
-## Abstract
+## Overview
 
-The Quadratic Quasi-Newton (QQN) algorithm is a hybrid optimization method that combines gradient descent and L-BFGS
-through parametric quadratic interpolation. This document provides a complete mathematical specification of the
-algorithm, including theoretical properties, convergence analysis, and implementation details.
+The QQN (Quasi-Quadratic-Newton) algorithm is a novel optimization method that combines the robustness of steepest descent with the efficiency of L-BFGS through a unique quadratic interpolation scheme. This implementation provides a sophisticated approach to unconstrained optimization that adaptively blends gradient descent and quasi-Newton directions.
 
-## 1. Problem Formulation
+## Algorithm Description
 
-Consider the unconstrained optimization problem:
-$$\min_{x \in \mathbb{R}^n} f(x)$$
-where $f: \mathbb{R}^n \to \mathbb{R}$ is continuously differentiable. We assume:
-**Assumption 1** (Smoothness): $f$ is continuously differentiable with Lipschitz continuous gradient:
-$$\|\nabla f(x) - \nabla f(y)\| \leq L \|x - y\|, \quad \forall x, y \in \mathbb{R}^n$$
-**Assumption 2** (Lower boundedness): $f$ is bounded below: $f(x) \geq f_* > -\infty$ for all $x$.
+### Core Concept
 
-## 2. L-BFGS Background
+QQN operates by constructing a quadratic path between two search directions:
+1. **Steepest descent direction**: `-∇f(x)` (negative gradient)
+2. **L-BFGS direction**: `-H∇f(x)` (quasi-Newton direction with approximate inverse Hessian H)
 
-### 2.1 L-BFGS Direction Computation
-
-L-BFGS maintains a history of $m$ correction pairs $\{(s_i, y_i)\}_{i=k-m}^{k-1}$ where:
-
-- $s_i = x_{i+1} - x_i$ (position difference)
-- $y_i = \nabla f(x_{i+1}) - \nabla f(x_i)$ (gradient difference)
-  The L-BFGS direction $d_k^{LBFGS}$ is computed via the two-loop recursion:
-  **Algorithm 1** (L-BFGS Two-Loop Recursion)
-
+The algorithm searches along a parametric curve defined by:
 ```
-Input: gradient g_k, history {(s_i, y_i)}
-1. q ← g_k
-2. For i = k-1, k-2, ..., k-m:
-   a. ρ_i ← 1/(y_i^T s_i)
-   b. α_i ← ρ_i s_i^T q
-   c. q ← q - α_i y_i
-3. r ← γ_k q  where γ_k = (s_{k-1}^T y_{k-1})/(y_{k-1}^T y_{k-1})
-4. For i = k-m, k-m+1, ..., k-1:
-   a. β ← ρ_i y_i^T r
-   b. r ← r + s_i(α_i - β)
-5. Return d_k^{LBFGS} = -r
+d(t) = t(1-t)(-∇f) + t²(-H∇f)
 ```
+where `t ∈ [0, 1]` is the interpolation parameter.
 
-### 2.2 Curvature Condition
+### Key Properties
 
-The update $(s_i, y_i)$ is accepted only if the curvature condition holds:
-$$s_i^T y_i > \epsilon$$
-where $\epsilon > 0$ is a small tolerance (typically $\epsilon = 10^{-6}$).
+- **t = 0**: Pure steepest descent direction
+- **t = 1**: Pure L-BFGS direction
+- **0 < t < 1**: Smooth blend between the two directions
 
-## 3. QQN Algorithm Specification
+This formulation ensures:
+- The direction is always a descent direction (for small enough steps)
+- Smooth transition between conservative (gradient) and aggressive (quasi-Newton) steps
+- Adaptive behavior based on problem characteristics
 
-### 3.1 Parametric Quadratic Interpolation
+## Implementation Architecture
 
-Given the current gradient $g_k = \nabla f(x_k)$ and L-BFGS direction $d_k^{LBFGS}$, QQN defines the parametric
-direction:
-$$d_k(t) = t(1-t)(-g_k) + t^2 d_k^{LBFGS}, \quad t \in [0,1]$$
-**Proposition 1** (Boundary Behavior): The parametric direction satisfies:
+### Main Components
 
-- $d_k(0) = 0$ (null step)
-- $d_k(1) = d_k^{LBFGS}$ (pure L-BFGS direction)
-- $\lim_{t \to 0^+} \frac{d_k(t)}{t} = -g_k$ (gradient descent tangent)
-  **Proof**: Direct computation:
-- $d_k(0) = 0 \cdot 1 \cdot (-g_k) + 0^2 d_k^{LBFGS} = 0$
-- $d_k(1) = 1 \cdot 0 \cdot (-g_k) + 1^2 d_k^{LBFGS} = d_k^{LBFGS}$
-- $\frac{d_k(t)}{t} = (1-t)(-g_k) + t d_k^{LBFGS} \to -g_k$ as $t \to 0^+$ □
+#### 1. **QQNOptimizer**
+The main optimizer class that orchestrates the optimization process.
 
-### 3.2 Descent Property
-
-**Theorem 1** (Descent Direction): If $\|g_k\| > 0$, then there exists $\bar{t} > 0$ such that $g_k^T d_k(t) < 0$ for
-all $t \in (0, \bar{t}]$.
-**Proof**: The directional derivative at $t = 0$ is:
-$$\frac{d}{dt}[g_k^T d_k(t)]_{t=0} = g_k^T \frac{d}{dt}[t(1-t)(-g_k) + t^2 d_k^{LBFGS}]_{t=0} = g_k^T(-g_k) = -\|g_k\|^2 < 0$$
-By continuity, there exists $\bar{t} > 0$ such that $g_k^T d_k(t) < 0$ for $t \in (0, \bar{t}]$. □
-
-### 3.3 Line Search on Parametric Curve
-
-QQN performs line search to find $t_k^* \in [0,1]$ satisfying the Strong Wolfe conditions:
-**Armijo Condition**:
-$$f(x_k + d_k(t)) \leq f(x_k) + c_1 t \nabla f(x_k)^T d_k'(0)$$
-**Curvature Condition**:
-$$|\nabla f(x_k + d_k(t))^T d_k'(t)| \leq c_2 |\nabla f(x_k)^T d_k'(0)|$$
-where $d_k'(t) = \frac{d}{dt}d_k(t) = (1-2t)(-g_k) + 2t d_k^{LBFGS}$ and $0 < c_1 < c_2 < 1$.
-**Note**: The initial directional derivative is:
-$$d_k'(0) = -g_k$$
-
-### 3.4 Complete QQN Algorithm
-
-**Algorithm 2** (QQN Optimization)
-
-```
-Input: Initial point x_0, tolerance τ > 0, max iterations N
-Initialize: L-BFGS history H_0 = ∅, k = 0
-While k < N and ||∇f(x_k)|| > τ:
-  1. Compute gradient: g_k ← ∇f(x_k)
-  2. Compute L-BFGS direction: d_k^{LBFGS} ← LBFGS_Direction(g_k, H_k)
-  3. Define parametric direction: d_k(t) = t(1-t)(-g_k) + t²d_k^{LBFGS}
-  4. Line search: Find t_k^* ∈ [0,1] satisfying Strong Wolfe conditions
-     If no such t exists, set t_k^* = argmin_{t∈[0,1]} f(x_k + d_k(t))
-  5. Descent verification: If g_k^T d_k(t_k^*) ≥ 0, set t_k^* = min(0.01, ||g_k||)
-  6. Update position: x_{k+1} ← x_k + d_k(t_k^*)
-  7. Update L-BFGS history: H_{k+1} ← Update_LBFGS_History(H_k, d_k(t_k^*), g_{k+1} - g_k)
-  8. k ← k + 1
-Return x_k
+```rust
+pub struct QQNOptimizer {
+    config: QQNConfig,
+    state: QQNState,
+    line_search: Box<dyn LineSearch>,
+}
 ```
 
-## 4. Theoretical Analysis
+#### 2. **QQNConfig**
+Configuration parameters controlling optimizer behavior:
 
-### 4.1 Global Convergence
+- `lbfgs_history`: Number of gradient/parameter pairs to store (default: 10)
+- `min_lbfgs_iterations`: Iterations before enabling L-BFGS (default: 1)
+- `line_search`: Line search configuration
+- `epsilon`: Numerical stability constant (default: 1e-6)
+- `verbose`: Enable detailed logging
+- `min_step_persist`: Minimum step size to persist for next iteration (default: 1e-1)
+- `min_step_size`: Minimum allowed step size (default: 1e-10)
 
-**Theorem 2** (Global Convergence): Under Assumptions 1-2, if the line search satisfies the Strong Wolfe conditions,
-then:
-$$\liminf_{k \to \infty} \|\nabla f(x_k)\| = 0$$
-**Proof Sketch**: The proof follows the standard quasi-Newton convergence analysis:
+#### 3. **QQNState**
+Internal state tracking:
 
-1. **Descent Property**: By Theorem 1, each iteration produces descent when $\|\nabla f(x_k)\| > 0$.
-2. **Sufficient Decrease**: The Armijo condition ensures:
-   $$f(x_{k+1}) \leq f(x_k) - c_1 t_k^* \|g_k\|^2$$
-3. **Bounded Sequence**: Since $f$ is bounded below and decreasing, $\{f(x_k)\}$ converges.
-4. **Gradient Convergence**: Summing the sufficient decrease inequalities:
-   $$\sum_{k=0}^{\infty} c_1 t_k^* \|g_k\|^2 \leq f(x_0) - f_* < \infty$$
-   If $\liminf_{k \to \infty} \|\nabla f(x_k)\| > 0$, then $\|g_k\| \geq \delta > 0$ infinitely often.
-   The curvature condition ensures $t_k^* \geq t_{min} > 0$, leading to contradiction. □
+- `iteration`: Current iteration count
+- `lbfgs_state`: L-BFGS history and parameters
+- `previous_step_size`: Cached step size for warm-starting line search
 
-### 4.2 Local Convergence Rate
+#### 4. **QuadraticPath**
+Represents the quadratic interpolation path with caching:
 
-**Theorem 3** (Superlinear Convergence): If $f$ is twice continuously differentiable near a solution $x^*$
-with $\nabla^2 f(x^*)$ positive definite, and the L-BFGS approximation converges to $[\nabla^2 f(x^*)]^{-1}$, then QQN
-converges superlinearly.
-**Proof Sketch**: Near the solution, the L-BFGS direction becomes increasingly accurate. The line search will
-find $t_k^* \to 1$, reducing QQN to L-BFGS with its known superlinear convergence properties.
+```rust
+pub struct QuadraticPath {
+    start_point: Vec<Tensor>,
+    negative_gradient: Vec<Tensor>,
+    lbfgs_direction: Vec<Tensor>,
+    lbfgs_state: Arc<Mutex<LBFGSState>>,
+    function: Arc<dyn DifferentiableFunction + Send + Sync>,
+}
+```
 
-### 4.3 Robustness Properties
+## Algorithm Flow
 
-**Proposition 2** (Robustness to L-BFGS Failure): If the L-BFGS direction $d_k^{LBFGS}$ is not a descent direction (
-i.e., $g_k^T d_k^{LBFGS} \geq 0$), then QQN automatically reduces to gradient descent behavior for small $t$.
-**Proof**: For small $t$, $d_k(t) \approx t(-g_k)$, which is always a descent direction when $\|g_k\| > 0$. □
+### Step-by-Step Process
 
-## 5. Implementation Considerations
+1. **Initialization Phase**
+    - Compute gradients at current position
+    - Validate inputs for NaN/Inf values
+    - Check iteration count against `min_lbfgs_iterations`
 
-### 5.1 Numerical Stability
+2. **Direction Selection**
+    - If `iteration < min_lbfgs_iterations`: Use steepest descent
+    - Otherwise: Compute L-BFGS direction using stored history
 
-**Gradient Magnitude Check**: If $\|g_k\| < \epsilon_{grad}$, terminate (approximate critical point).
-**L-BFGS Reliability**: Skip L-BFGS updates if curvature condition $s_k^T y_k \leq \epsilon$ fails.
-**Step Size Bounds**: Constrain $t_k^* \in [\epsilon_{min}, 1]$ where $\epsilon_{min} > 0$ prevents null steps.
+3. **Quadratic Path Construction**
+    - Create `QuadraticPath` object with:
+        - Current position as start point
+        - Negative gradient as first direction
+        - L-BFGS direction as second direction
 
-### 5.2 Line Search Implementation
+4. **Line Search Along Quadratic Path**
+    - Convert to 1D optimization problem
+    - Find optimal `t*` using configured line search method
+    - Warm-start with previous step size if available
 
-The line search operates on the function $\phi(t) = f(x_k + d_k(t))$ with derivative:
-$$\phi'(t) = \nabla f(x_k + d_k(t))^T d_k'(t)$$
-Standard line search algorithms (backtracking, zoom) can be applied directly.
+5. **Parameter Update**
+    - Compute new position: `x_new = x_old + d(t*)`
+    - Verify function decrease (fatal error if increase)
+    - Update L-BFGS history with new gradient information
 
-### 5.3 Computational Complexity
+6. **State Management**
+    - Increment iteration counter
+    - Cache successful step size for next iteration
+    - Update convergence metrics
 
-**Per Iteration Cost**:
+### Fallback Mechanisms
 
-- L-BFGS direction: $O(mn)$ where $m$ is history size, $n$ is dimension
-- Parametric evaluation: $O(n)$
-- Line search: $O(L \cdot n)$ where $L$ is number of line search steps
-- Total: $O((m + L)n)$
-  **Memory Requirements**: $O(mn)$ for L-BFGS history storage.
+The algorithm includes multiple robustness features:
 
-## 6. Algorithmic Variants
+1. **Steepest Descent Fallback**
+    - Triggered when L-BFGS direction is invalid
+    - Used for initial iterations
+    - Applied when line search fails
 
-### 6.1 Limited Memory Variant
+2. **Step Size Adaptation**
+    - Conservative steps for large gradients
+    - Adaptive initial step based on problem scale
 
-For very large problems, limit L-BFGS history to $m \leq 20$ correction pairs.
+## Mathematical Details
 
-### 6.2 Adaptive Parametrization
+### Quadratic Path Formula
 
-Alternative parametrizations can be explored:
+The direction at parameter t is:
+```
+d(t) = t(1-t)(-∇f) + t²(d_lbfgs)
+```
 
-- **Linear**: $d_k(t) = (1-t)(-g_k) + t d_k^{LBFGS}$
-- **Cubic**: $d_k(t) = t(1-t)^2(-g_k) + t^3 d_k^{LBFGS}$
+The derivative with respect to t:
+```
+d'(t) = (1-2t)(-∇f) + 2t(d_lbfgs)
+```
 
-### 6.3 Trust Region Integration
+### Properties
 
-QQN can be combined with trust regions by constraining $\|d_k(t)\| \leq \Delta_k$.
+1. **Boundary Conditions**:
+    - d(0) = 0 (start at current point)
+    - d'(0) = -∇f (initial direction is steepest descent)
+    - d(1) = d_lbfgs (end at L-BFGS direction)
 
-## 7. Convergence Criteria
+2. **Curvature**:
+    - The path curves from steepest descent toward L-BFGS
+    - Provides smooth interpolation between conservative and aggressive steps
 
-**Gradient Norm**: $\|\nabla f(x_k)\| \leq \tau_g$
-**Function Change**: $|f(x_{k+1}) - f(x_k)| \leq \tau_f (1 + |f(x_k)|)$
-**Parameter Change**: $\|x_{k+1} - x_k\| \leq \tau_x (1 + \|x_k\|)$
+## Performance Optimizations
 
-## 8. Conclusion
+### 1. **L-BFGS State Updates**
+- Updates are performed opportunistically when both position and gradient are available
+- Skipped for very small steps to maintain numerical stability
 
-The QQN algorithm provides a mathematically principled approach to combining gradient descent and quasi-Newton methods
-through parametric interpolation. The theoretical analysis demonstrates global convergence under standard assumptions,
-while the parametric formulation provides automatic adaptation between first and second-order methods based on local
-problem geometry.
-The key mathematical insight is that the quadratic parametrization $d_k(t) = t(1-t)(-g_k) + t^2 d_k^{LBFGS}$ naturally
-transitions from gradient descent behavior (small $t$) to quasi-Newton behavior ($t \approx 1$), with the line search
-automatically discovering the optimal balance.
+### 2. **Warm-Starting**
+- Previous successful step sizes are used to initialize line search
+- Significantly reduces line search iterations
+
+## Configuration Profiles
+
+### Default Configuration
+Balanced settings for general use:
+```rust
+QQNConfig::default()
+```
+
+### Strict Configuration
+Conservative settings for difficult problems:
+```rust
+QQNConfig::strict()
+```
+- Larger L-BFGS history (20)
+- More steepest descent iterations (5)
+- Tighter tolerances
+
+### Lax Configuration
+Aggressive settings for well-conditioned problems:
+```rust
+QQNConfig::lax()
+```
+- Smaller L-BFGS history (5)
+- Immediate L-BFGS usage
+- Looser tolerances
+
+## Error Handling
+
+### Fatal Errors
+- Function value increase after step (violates descent property)
+- NaN/Inf in gradients or parameters
+- Empty parameter vectors
+
+### Recoverable Errors
+- Line search failure → fallback to steepest descent
+- Invalid L-BFGS direction → use gradient descent
+- Non-finite values in L-BFGS computation → reset history
+
+## Usage Example
+
+```rust
+use candle_lbfgs::{QQNOptimizer, QQNConfig};
+
+// Create optimizer with custom configuration
+let config = QQNConfig {
+    lbfgs_history: 15,
+    min_lbfgs_iterations: 3,
+    verbose: true,
+    ..QQNConfig::default()
+};
+let mut optimizer = QQNOptimizer::new(config);
+
+// Optimize
+let mut params = initial_params();
+let function = Arc::new(MyFunction::new());
+
+for _ in 0..max_iterations {
+    let result = optimizer.step(&mut params, function.clone())?;
+
+    if result.convergence_info.converged {
+        break;
+    }
+}
+```
+
+## Advantages
+
+1. **Adaptive Behavior**: Automatically balances between conservative and aggressive steps
+2. **Robustness**: Multiple fallback mechanisms ensure progress
+3. **Efficiency**: L-BFGS acceleration when appropriate
+4. **Smooth Transitions**: Quadratic interpolation avoids abrupt direction changes
+
+## Limitations
+
+1. **Memory Requirements**: Stores L-BFGS history (O(m×n) where m is history size, n is parameter dimension)
+2. **Computational Overhead**: Quadratic path evaluation adds complexity
+3. **Parameter Tuning**: Performance sensitive to configuration settings
+
+## Theoretical Guarantees
+
+Under standard assumptions (smooth, bounded gradients):
+- **Global Convergence**: Guaranteed due to steepest descent fallback
+- **Superlinear Convergence**: Near optimum when L-BFGS direction dominates
+- **Descent Property**: Every step decreases function value (enforced)
 
 ## References
 
-- Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. Mathematical
-  Programming, 45(1-3), 503-528.
-- Nocedal, J., & Wright, S. J. (2006). Numerical Optimization (2nd ed.). Springer.
-- Wolfe, P. (1969). Convergence conditions for ascent methods. SIAM Review, 11(2), 226-235.
+The QQN algorithm combines ideas from:
+- L-BFGS (Limited-memory Broyden-Fletcher-Goldfarb-Shanno)
+- Trust region methods (quadratic models)
+- Adaptive step size selection
+- Gradient descent with momentum

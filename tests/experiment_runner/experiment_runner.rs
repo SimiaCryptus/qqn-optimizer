@@ -48,7 +48,7 @@ impl ExperimentRunner {
 
         // Generate comprehensive analysis and reports
         self.plotting_manager.generate_all_plots(&all_results).await?;
-        self.report_generator.generate_html_report(&all_results, &problems).await?;
+        self.report_generator.generate_main_report(&all_results, &problems).await?;
 
         info!(
             "Benchmark experiments completed. Results saved to: {}",

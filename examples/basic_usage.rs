@@ -34,6 +34,8 @@ fn main() -> Result<()> {
         },
         epsilon: 1e-8,             // Numerical stability constant
         verbose: false,          // Enable verbose output
+        min_step_persist: 0.0,
+        min_step_size: 0.0,
     };
 
     let mut optimizer = QQNOptimizer::new(config);

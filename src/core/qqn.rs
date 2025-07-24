@@ -363,32 +363,6 @@ impl QQNOptimizer {
         // Create steepest descent direction (negative gradient)
         let direction = vector_scale(gradients, -1.0)?;
         self.log_tensor_data("Steepest Descent Direction", &direction);
-        // Scale direction if gradient is too large to avoid numerical issues
-        let grad_norm = compute_magnitude(gradients)?;
-        let direction = if grad_norm > 100.0 {
-            // Use a more aggressive scaling for very large gradients
-            let scale_factor = 10.0 / grad_norm;
-            warn!(
-                "Large gradient norm {:.3e}, scaling direction by {:.3e}",
-                grad_norm, scale_factor
-            );
-            vector_scale(&direction, scale_factor)?
-        } else if grad_norm < 1e-6 {
-            warn!(
-                "Very small gradient norm {:.3e}, convergence likely achieved",
-                grad_norm
-            );
-            return Ok(StepResult {
-                step_size: 0.0,
-                convergence_info: ConvergenceInfo {
-                    converged: true,
-                    function_change: Some(0.0),
-                },
-                metadata: OptimizationMetadata::default(),
-            });
-        } else {
-            direction
-        };
 
         // Convert to f64 for line search
         let params_f64: Vec<f64> = nd_params

@@ -1,157 +1,238 @@
-# QQN Optimizer Testing and Reporting Documentation
+# QQN Optimizer Testing and Benchmarking System
 
-## Table of Contents
+## Technical Documentation
 
-1. [Overview](#overview)
-2. [Test Suite Architecture](#test-suite-architecture)
-3. [Benchmark Framework](#benchmark-framework)
-4. [Statistical Analysis](#statistical-analysis)
-5. [Report Generation](#report-generation)
-6. [Usage Guide](#usage-guide)
-7. [Interpreting Results](#interpreting-results)
-8. [Extending the Framework](#extending-the-framework)
+### Table of Contents
+1. [System Overview](#system-overview)
+2. [Architecture](#architecture)
+3. [Core Components](#core-components)
+4. [Benchmark Framework](#benchmark-framework)
+5. [Statistical Analysis](#statistical-analysis)
+6. [Reporting System](#reporting-system)
+7. [Usage Guide](#usage-guide)
+8. [Extension Guide](#extension-guide)
+9. [Performance Considerations](#performance-considerations)
+10. [Troubleshooting](#troubleshooting)
 
-## Overview
+---
 
-The QQN Optimizer testing and reporting framework provides comprehensive tools for evaluating optimization algorithms,
-performing statistical analysis, and generating publication-ready reports. The framework is designed to support academic
-research and industrial applications requiring rigorous performance validation.
+## System Overview
+
+The QQN Optimizer Testing and Benchmarking System is a comprehensive Rust-based framework designed for rigorous evaluation and comparison of optimization algorithms. The system provides standardized benchmarking capabilities, statistical analysis, and automated report generation for academic and research purposes.
 
 ### Key Features
 
-- **Automated Benchmarking**: Run optimization algorithms on standard test functions
-- **Statistical Analysis**: Perform significance tests and effect size calculations
-- **Visualization**: Generate convergence plots and performance profiles
-- **Academic Reporting**: Create LaTeX tables and HTML reports for publications
-- **Reproducibility**: Ensure consistent results with seed control and detailed logging
+- **Standardized Benchmarking**: Consistent evaluation across multiple optimization problems
+- **Statistical Rigor**: Welch's t-tests, Cohen's d effect sizes, and significance testing
+- **Comprehensive Reporting**: HTML reports with plots, CSV exports, and academic-quality documentation
+- **Extensible Architecture**: Easy addition of new optimizers and benchmark problems
+- **Robust Error Handling**: Graceful handling of numerical errors and convergence failures
+- **Performance Monitoring**: Detailed tracking of function evaluations, execution time, and memory usage
 
-## Test Suite Architecture
+### Design Principles
 
-### Core Components
+1. **Reproducibility**: Deterministic results with proper random seed management
+2. **Fairness**: Equal treatment of all optimizers with consistent termination criteria
+3. **Transparency**: Complete logging of all evaluation metrics and convergence behavior
+4. **Academic Standards**: Publication-ready statistical analysis and reporting
 
-#### 1. Benchmark Runner (`BenchmarkRunner`)
+---
 
-The main orchestrator for running optimization experiments.
+## Architecture
+
+### High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Experiment Runner                        │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   Benchmark     │  │   Statistical   │  │   Report     │ │
+│  │   Framework     │  │   Analysis      │  │  Generator   │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    Core Components                          │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   Optimizer     │  │  Optimization   │  │   Problem    │ │
+│  │    Trait        │  │   Problems      │  │   Wrapper    │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                   Utility Layer                            │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   Math Utils    │  │   Plotting      │  │   File I/O   │ │
+│  │                 │  │   Manager       │  │              │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Module Structure
+
+```
+src/
+├── benchmarks/
+│   ├── evaluation.rs          # Core benchmarking framework
+│   ├── functions.rs           # Optimization problem trait
+│   └── analytic_functions.rs  # Standard test functions
+├── core/
+│   ├── optimizer.rs           # Optimizer trait and types
+│   └── lbfgs.rs              # L-BFGS implementation
+├── utils/
+│   └── math.rs               # Mathematical utilities
+└── lib.rs                    # Public API
+
+tests/
+├── experiment_runner/
+│   ├── mod.rs                # Main experiment orchestration
+│   ├── report_generator.rs   # HTML/CSV report generation
+│   ├── plotting_manager.rs   # Visualization generation
+│   ├── statistical_analysis.rs # Statistical testing
+│   └── standard_optimizers.rs # Optimizer configurations
+└── benchmark_analytic_experiments.rs # Integration tests
+```
+
+---
+
+## Core Components
+
+### 1. Optimizer Trait
+
+The `Optimizer` trait defines the interface that all optimization algorithms must implement:
+
+```rust
+pub trait Optimizer: Send + Sync + Debug + 'static {
+    fn clone_box(&self) -> Box<dyn Optimizer>;
+    fn step(
+        &mut self,
+        params: &mut [Tensor],
+        function: Arc<dyn DifferentiableFunction + Send + Sync>,
+    ) -> CandleResult<StepResult>;
+    fn reset(&mut self);
+    fn name(&self) -> &str;
+    fn iteration(&self) -> usize;
+    fn stagnation_multiplier(&self) -> f64;
+    fn stagnation_count(&self) -> usize;
+    // ... additional methods
+}
+```
+
+#### Key Methods
+
+- **`step()`**: Performs a single optimization iteration
+- **`reset()`**: Resets optimizer state for new runs
+- **`stagnation_multiplier()`**: Provides relaxed convergence criteria
+- **`stagnation_count()`**: Threshold for applying relaxed criteria
+
+#### StepResult Structure
+
+```rust
+pub struct StepResult {
+    pub step_size: f64,
+    pub convergence_info: ConvergenceInfo,
+    pub metadata: OptimizationMetadata,
+}
+```
+
+### 2. Optimization Problems
+
+The `OptimizationProblem` trait defines benchmark problems:
+
+```rust
+pub trait OptimizationProblem: Send + Sync + Debug {
+    fn name(&self) -> &str;
+    fn dimension(&self) -> usize;
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64, Box<dyn std::error::Error>>;
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>, Box<dyn std::error::Error>>;
+    fn initial_point(&self) -> Vec<f64>;
+    fn optimal_value(&self) -> Option<f64>;
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem>;
+}
+```
+
+#### Standard Test Functions
+
+The system includes implementations of classical optimization benchmarks:
+
+- **Convex Functions**: Sphere, Matyas
+- **Non-Convex Unimodal**: Rosenbrock, Beale, Goldstein-Price, Levi
+- **Highly Multimodal**: Rastrigin, Ackley, Michalewicz, Styblinski-Tang
+
+### 3. Problem Wrapper
+
+The `ProblemWrapper` bridges optimization problems with the differentiable function interface:
+
+```rust
+pub struct ProblemWrapper {
+    problem: Box<dyn OptimizationProblem>,
+    function_evaluations: Arc<AtomicUsize>,
+    gradient_evaluations: Arc<AtomicUsize>,
+}
+```
+
+This wrapper:
+- Tracks function and gradient evaluation counts
+- Converts between tensor and f64 vector formats
+- Provides thread-safe evaluation counting
+
+---
+
+## Benchmark Framework
+
+### BenchmarkRunner
+
+The `BenchmarkRunner` orchestrates the execution of optimization benchmarks:
 
 ```rust
 pub struct BenchmarkRunner {
     config: BenchmarkConfig,
 }
+```
 
+#### Configuration
+
+```rust
 pub struct BenchmarkConfig {
-    pub max_iterations: usize,      // Maximum iterations per run
-    pub tolerance: f64,             // Convergence tolerance
-    pub time_limit: Duration,       // Time limit per run
-    pub random_seed: u64,           // For reproducibility
-    pub num_runs: usize,            // Runs per configuration
+    pub max_iterations: usize,           // Maximum optimization iterations
+    pub maximum_function_calls: usize,   // Function evaluation limit
+    pub min_improvement_percent: f64,    // Minimum improvement threshold
+    pub time_limit: DurationWrapper,     // Wall-clock time limit
+    pub num_runs: usize,                 // Independent runs per configuration
 }
 ```
 
-#### 2. Optimization Problems
+#### Execution Flow
 
-Test problems implement the `OptimizationProblem` trait:
+1. **Initialization**: Reset optimizer and randomize starting point
+2. **Optimization Loop**:
+   - Evaluate function and gradient
+   - Check convergence criteria
+   - Perform optimizer step
+   - Update trace and counters
+3. **Termination**: Record final results and convergence reason
 
-```rust
-pub trait OptimizationProblem {
-   fn name(&self) -> &str;
-   fn dimension(&self) -> usize;
-   fn initial_point(&self) -> Vec<f64>;
-   fn evaluate(&self, x: &[f64]) -> Result<f64>;
-   fn gradient(&self, x: &[f64]) -> Result<Vec<f64>>;
-   fn optimal_value(&self) -> Option<f64>;
-   fn convergence_tolerance(&self) -> f64;
-}
-```
+#### Convergence Criteria
 
-Available test functions include:
+The system employs multiple convergence criteria:
 
-- **Convex**: Sphere, Quadratic
-- **Non-convex**: Rosenbrock, Rastrigin, Ackley
-- **Multi-modal**: Griewank, Schwefel, Levy
-- **2D Problems**: Beale, Booth, Himmelblau, Matyas
+- **Gradient Tolerance**: `||∇f(x)|| < ε_grad`
+- **Function Tolerance**: Percentage improvement threshold
+- **Maximum Iterations**: Hard limit on optimization steps
+- **Maximum Evaluations**: Limit on function/gradient calls
+- **Time Limit**: Wall-clock time constraint
+- **Numerical Errors**: Detection of non-finite values
 
-#### 3. Result Storage
+#### Error Handling
 
-Results are stored in structured formats:
+Robust error handling includes:
+- **Numerical Error Tracking**: Count and limit non-finite values
+- **Graceful Degradation**: Continue with valid results when possible
+- **Detailed Logging**: Record error conditions and recovery attempts
 
-```rust
-pub struct SingleResult {
-    pub problem_name: String,
-    pub optimizer_name: String,
-    pub run_id: usize,
-    pub final_value: f64,
-    pub final_gradient_norm: f64,
-    pub iterations: usize,
-    pub convergence_achieved: bool,
-    pub execution_time: Duration,
-    pub trace: OptimizationTrace,
-    pub convergence_reason: ConvergenceReason,
-}
-```
+### Optimization Trace
 
-## Benchmark Framework
-
-### Running Benchmarks
-
-#### Basic Usage
-
-```rust
-use qqn_optimizer::benchmarks::*;
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Configure benchmark
-    let config = BenchmarkConfig {
-        max_iterations: 1000,
-        tolerance: 1e-6,
-        num_runs: 10,
-        ..Default::default()
-    };
-
-    // Create runner
-    let runner = BenchmarkRunner::new(config);
-
-    // Define problems
-    let problems = vec![
-        Box::new(SphereFunction::new(10)),
-        Box::new(RosenbrockFunction::new(10)),
-    ];
-
-    // Define optimizers
-    let optimizers = vec![
-        Box::new(QQNOptimizer::new(QQNConfig::default())),
-        Box::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-    ];
-
-    // Run benchmarks
-    let results = runner.run_benchmarks(problems, optimizers).await?;
-
-    // Save results
-    results.save_to_file(Path::new("results.json"))?;
-
-    Ok(())
-}
-```
-
-#### Comprehensive Experiments
-
-The `ExperimentRunner` provides high-level experiment management:
-
-```rust
-let runner = ExperimentRunner::new("output_directory".to_string());
-runner.run_comparative_benchmarks().await?;
-```
-
-This automatically:
-
-1. Runs multiple optimizers on standard test problems
-2. Performs statistical analysis
-3. Generates plots and visualizations
-4. Creates HTML and LaTeX reports
-
-### Convergence Tracking
-
-The framework tracks detailed optimization progress:
+The system maintains detailed traces of optimization progress:
 
 ```rust
 pub struct OptimizationTrace {
@@ -166,338 +247,610 @@ pub struct IterationData {
     pub gradient_norm: f64,
     pub step_size: f64,
     pub parameters: Vec<f64>,
-    pub timestamp: Duration,
+    pub timestamp: DurationWrapper,
+    pub total_function_evaluations: usize,
+    pub total_gradient_evaluations: usize,
 }
 ```
+
+### Results Structure
+
+```rust
+pub struct SingleResult {
+    pub problem_name: String,
+    pub optimizer_name: String,
+    pub run_id: usize,
+    pub final_value: f64,
+    pub final_gradient_norm: f64,
+    pub iterations: usize,
+    pub function_evaluations: usize,
+    pub gradient_evaluations: usize,
+    pub convergence_achieved: bool,
+    pub execution_time: Duration,
+    pub trace: OptimizationTrace,
+    pub convergence_reason: ConvergenceReason,
+    pub performance_metrics: PerformanceMetrics,
+    pub error_message: Option<String>,
+}
+```
+
+---
 
 ## Statistical Analysis
 
-### Analysis Components
+### Statistical Testing Framework
 
-#### 1. Convergence Comparison
+The `StatisticalAnalysis` component provides rigorous statistical comparisons:
 
-Compares convergence behavior across optimizers:
+#### Welch's t-test Implementation
 
 ```rust
-pub struct ConvergenceComparison {
-   pub optimizer_stats: HashMap<String, OptimizerStatistics>,
-   pub pairwise_comparisons: Vec<PairwiseComparison>,
-   pub significance_tests: Vec<SignificanceTest>,
+fn welch_t_test(&self, sample_a: &[f64], sample_b: &[f64]) -> anyhow::Result<(f64, f64)> {
+    // Calculate means
+    let mean_a = sample_a.iter().sum::<f64>() / sample_a.len() as f64;
+    let mean_b = sample_b.iter().sum::<f64>() / sample_b.len() as f64;
+
+    // Calculate variances
+    let var_a = sample_a.iter().map(|x| (x - mean_a).powi(2)).sum::<f64>()
+        / (sample_a.len() - 1) as f64;
+    let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f64>()
+        / (sample_b.len() - 1) as f64;
+
+    // Calculate standard error and t-statistic
+    let se = (var_a / sample_a.len() as f64 + var_b / sample_b.len() as f64).sqrt();
+    let t_stat = (mean_a - mean_b) / se;
+
+    // Calculate degrees of freedom (Welch-Satterthwaite equation)
+    let df = /* ... complex calculation ... */;
+
+    // Compute p-value
+    let p_value = self.t_distribution_p_value(t_stat.abs(), df);
+    Ok((t_stat, p_value))
 }
 ```
 
-#### 2. Statistical Tests
+#### Effect Size Calculation
 
-- **Welch's t-test**: For normally distributed results
-- **Mann-Whitney U test**: Non-parametric alternative
-- **Effect Size**: Cohen's d for practical significance
-
-#### 3. Performance Profiles
-
-Evaluates solver performance across problem sets:
+Cohen's d effect size:
 
 ```rust
-pub struct PerformanceProfiles {
-   pub tolerance_levels: Vec<f64>,
-   pub profiles: HashMap<String, ProfileData>,
+fn cohens_d(&self, sample_a: &[f64], sample_b: &[f64]) -> f64 {
+    let mean_a = sample_a.iter().sum::<f64>() / sample_a.len() as f64;
+    let mean_b = sample_b.iter().sum::<f64>() / sample_b.len() as f64;
+
+    let var_a = sample_a.iter().map(|x| (x - mean_a).powi(2)).sum::<f64>()
+        / (sample_a.len() - 1) as f64;
+    let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f64>()
+        / (sample_b.len() - 1) as f64;
+
+    let pooled_sd = ((var_a + var_b) / 2.0).sqrt();
+    (mean_a - mean_b) / pooled_sd
 }
 ```
 
-### Running Statistical Analysis
+#### Comparison Methodology
+
+1. **Grouping**: Results grouped by problem family for increased statistical power
+2. **Metrics**: Comparison on final objective values and computational cost
+3. **Significance Level**: α = 0.05 for statistical significance
+4. **Multiple Comparisons**: Pairwise comparisons between QQN and non-QQN optimizers
+
+### Performance Analysis
+
+#### Success Rate Calculation
 
 ```rust
-use qqn_optimizer::analysis::statistics::StatisticalAnalysis;
-
-// Create analysis from results
-let analysis = StatisticalAnalysis::new( & benchmark_results);
-
-// Access different analyses
-let convergence = analysis.convergence_comparison();
-let profiles = analysis.performance_profiles();
-let robustness = analysis.robustness_analysis();
-
-// Get significance tests
-for test in analysis.significance_tests() {
-if test.is_significant() {
-println ! ("{} significantly outperforms {}",
-test.optimizer_a, test.optimizer_b);
+pub fn success_rates(&self) -> HashMap<String, f64> {
+    let mut rates = HashMap::new();
+    for optimizer_name in self.get_optimizer_names() {
+        let results = self.get_results_for_optimizer(&optimizer_name);
+        let successful = results.iter().filter(|r| r.convergence_achieved).count();
+        let total = results.len();
+        rates.insert(optimizer_name, successful as f64 / total as f64);
+    }
+    rates
 }
+```
+
+#### Performance Metrics
+
+```rust
+pub struct PerformanceMetrics {
+    pub iterations_per_second: f64,
+    pub function_evaluations_per_second: f64,
+    pub gradient_evaluations_per_second: f64,
+    pub convergence_rate: f64,
 }
 ```
 
-## Report Generation
+---
 
-### HTML Reports
+## Reporting System
 
-The framework generates comprehensive HTML reports with:
+### HTML Report Generation
 
-1. **Executive Summary**
-    - Total problems tested
-    - Success rates by optimizer
-    - Key findings
+The `ReportGenerator` creates comprehensive HTML reports with:
 
-2. **Detailed Results**
-    - Performance tables for each problem
-    - Convergence statistics
-    - Timing information
+#### Executive Summary
+- Total problems and runs
+- Overall success rates by optimizer
+- Family-specific performance breakdowns
 
-3. **Statistical Analysis**
-    - Pairwise significance tests
-    - Effect sizes
-    - Confidence intervals
+#### Problem-Specific Analysis
+- Performance tables with statistical highlighting
+- Convergence plots (linear and logarithmic scales)
+- Detailed metrics comparison
 
-4. **Visualizations**
-    - Convergence plots
-    - Performance profiles
-    - Box plots
+#### Statistical Analysis Section
+- Pairwise comparison matrices
+- Significance testing results
+- Effect size interpretations
 
-### LaTeX Export
+#### Report Structure
 
-For academic publications:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QQN Optimizer Benchmark Results</title>
+    <style>/* Academic styling */</style>
+</head>
+<body>
+    <div class="header"><!-- Title and metadata --></div>
+    <div class="section"><!-- Executive Summary --></div>
+    <div class="section"><!-- Problem Analysis --></div>
+    <div class="section"><!-- Statistical Analysis --></div>
+    <div class="section"><!-- Conclusions --></div>
+    <footer><!-- Generation info --></footer>
+</body>
+</html>
+```
+
+### CSV Export System
+
+Multiple CSV formats for different analysis needs:
+
+#### Detailed Results (`detailed_results.csv`)
+```csv
+Problem,ProblemFamily,Dimension,Optimizer,Run,FinalValue,FinalGradientNorm,
+Iterations,FunctionEvals,GradientEvals,Time,Converged,ConvergenceReason
+```
+
+#### Summary Statistics (`summary_statistics.csv`)
+```csv
+Problem,ProblemFamily,Dimension,Optimizer,MeanFinalValue,MeanFinalValueSuccess,
+MeanFinalValueFail,StdFinalValue,BestValue,WorstValue,MeanIterations,
+MeanFunctionEvals,MeanTime,SuccessRate,NumRuns
+```
+
+#### Statistical Analysis (`statistical_analysis_raw_data.csv`)
+```csv
+Problem,QQN_Optimizer,NonQQN_Optimizer,Metric,Winner,Test_Statistic,
+P_Value,Significant,Effect_Size
+```
+
+### Plotting System
+
+The `PlottingManager` generates visualizations:
+
+#### Convergence Plots
+- Linear and logarithmic scales
+- Multiple optimizers per plot
+- Median convergence curves with confidence intervals
+
+#### Performance Comparisons
+- Bar charts of success rates
+- Box plots of performance distributions
+- Scatter plots of efficiency metrics
+
+#### Implementation Example
 
 ```rust
-use qqn_optimizer::tests::performance_analysis::LaTeXTableGenerator;
+pub async fn generate_convergence_plot(
+    &self,
+    problem_name: &str,
+    results: &BenchmarkResults,
+) -> anyhow::Result<()> {
+    // Extract convergence data
+    let mut optimizer_traces = HashMap::new();
+    for result in &results.results {
+        optimizer_traces
+            .entry(result.optimizer_name.clone())
+            .or_insert_with(Vec::new)
+            .push(&result.trace);
+    }
 
-// Generate performance table
-let latex_table = LaTeXTableGenerator::generate_performance_table( & results);
+    // Generate plot data
+    let plot_data = self.prepare_convergence_data(&optimizer_traces)?;
 
-// Generate significance table
-let significance_table = LaTeXTableGenerator::generate_significance_table( & analysis);
+    // Create and save plots
+    self.create_convergence_plot(&plot_data, problem_name, false).await?;
+    self.create_convergence_plot(&plot_data, problem_name, true).await?; // Log scale
+
+    Ok(())
+}
 ```
 
-Example LaTeX output:
-
-```latex
-\begin{table}[htbp]
-\centering
-\caption{Performance comparison of optimization algorithms}
-\label{tab:performance}
-\begin{tabular}{lcccc}
-\toprule
-Algorithm & Mean Final Value & Std Dev & Mean Iterations & Success Rate \\
-\midrule
-QQN & 1.23e-08 & 3.45e-09 & 145.3 & 98.5\% \\
-L-BFGS & 2.34e-08 & 5.67e-09 & 167.8 & 95.0\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-```
-
-### CSV Export
-
-For further analysis in external tools:
-
-```rust
-// Export detailed results
-results.save_to_csv(Path::new("detailed_results.csv")) ?;
-
-// Export summary statistics
-let summary = results.summary_statistics();
-summary.save_to_csv(Path::new("summary.csv")) ?;
-```
+---
 
 ## Usage Guide
 
-### Quick Start
-
-1. **Run Basic Benchmarks**
-
-```bash
-cargo test test_comprehensive_benchmarks -- --nocapture
-```
-
-2. **Generate Academic Report**
-
-```bash
-cargo test test_academic_citation_format -- --nocapture
-```
-
-3. **Export LaTeX Tables**
-
-```bash
-cargo test test_latex_table_generation -- --nocapture
-```
-
-### Custom Experiments
+### Basic Usage
 
 ```rust
-// Define custom problem
+use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkRunner};
+use std::time::Duration;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Configure benchmark parameters
+    let config = BenchmarkConfig {
+        max_iterations: 10000,
+        maximum_function_calls: 50000,
+        min_improvement_percent: 0.01,
+        time_limit: Duration::from_secs(600).into(),
+        num_runs: 10,
+    };
+
+    // Create runner and execute benchmarks
+    let runner = BenchmarkRunner::new(config);
+    let results = runner.run_benchmarks(problems, optimizers).await?;
+
+    // Save results
+    results.save_to_file(&Path::new("results.json"))?;
+
+    Ok(())
+}
+```
+
+### Comprehensive Experiment
+
+```rust
+use experiment_runner::ExperimentRunner;
+
+let experiment = ExperimentRunner::new(
+    "results/experiment_001".to_string(),
+    config
+);
+
+experiment.run_comparative_benchmarks(
+    problems,
+    optimizers
+).await?;
+```
+
+### Custom Optimizer Integration
+
+```rust
+#[derive(Debug)]
+struct MyOptimizer {
+    // Optimizer state
+}
+
+impl Optimizer for MyOptimizer {
+    fn step(&mut self, params: &mut [Tensor], function: Arc<dyn DifferentiableFunction>)
+        -> CandleResult<StepResult> {
+        // Implementation
+    }
+
+    fn name(&self) -> &str { "MyOptimizer" }
+    // ... other required methods
+}
+```
+
+### Custom Problem Definition
+
+```rust
+#[derive(Debug, Clone)]
 struct MyProblem {
-   dimension: usize,
+    dimension: usize,
 }
 
 impl OptimizationProblem for MyProblem {
-   fn evaluate(&self, x: &[f64]) -> Result<f64> {
-      // Your objective function
+    fn evaluate_f64(&self, x: &[f64]) -> Result<f64, Box<dyn std::error::Error>> {
+        // Objective function implementation
+    }
+
+    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
+        // Gradient computation
+    }
+
+    // ... other required methods
+}
+```
+
+---
+
+## Extension Guide
+
+### Adding New Optimizers
+
+1. **Implement the Optimizer Trait**:
+   ```rust
+   impl Optimizer for NewOptimizer {
+       fn step(&mut self, params: &mut [Tensor], function: Arc<dyn DifferentiableFunction>)
+           -> CandleResult<StepResult> {
+           // Core optimization logic
+       }
+
+       fn reset(&mut self) {
+           // Reset internal state
+       }
+
+       // ... implement all required methods
+   }
+   ```
+
+2. **Add to Standard Optimizers**:
+   ```rust
+   pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
+       vec![
+           // ... existing optimizers
+           ("NewOptimizer".to_string(), Arc::new(NewOptimizer::new())),
+       ]
+   }
+   ```
+
+### Adding New Benchmark Problems
+
+1. **Implement OptimizationProblem**:
+   ```rust
+   #[derive(Debug, Clone)]
+   pub struct NewFunction {
+       dimension: usize,
    }
 
-   fn gradient(&self, x: &[f64]) -> Result<Vec<f64>> {
-      // Your gradient computation
+   impl OptimizationProblem for NewFunction {
+       fn name(&self) -> &str { "NewFunction" }
+       fn dimension(&self) -> usize { self.dimension }
+
+       fn evaluate_f64(&self, x: &[f64]) -> Result<f64, Box<dyn std::error::Error>> {
+           // Function evaluation
+       }
+
+       fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
+           // Gradient computation
+       }
+
+       fn initial_point(&self) -> Vec<f64> {
+           // Starting point
+       }
+
+       fn optimal_value(&self) -> Option<f64> {
+           // Known optimum (if available)
+       }
+
+       fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+           Box::new(self.clone())
+       }
    }
-   // ... other trait methods
-}
+   ```
 
-// Run custom benchmark
-let problems = vec![Box::new(MyProblem { dimension: 10 })];
-let results = runner.run_benchmarks(problems, optimizers).await?;
-```
+2. **Update Problem Family Classification**:
+   ```rust
+   pub fn get_family(problem_name: &str) -> String {
+       match problem_name.split([' ', '_']).next().unwrap_or(problem_name) {
+           // ... existing cases
+           "NewFunction" => "Custom Family".to_string(),
+           // ...
+       }
+   }
+   ```
 
-### Configuration Options
+### Extending Statistical Analysis
 
-```rust
-// Aggressive convergence testing
-let config = BenchmarkConfig {
-max_iterations: 10000,
-tolerance: 1e-12,
-time_limit: Duration::from_secs(3600),
-num_runs: 50,
-random_seed: 42,
-};
+1. **Add New Statistical Tests**:
+   ```rust
+   impl StatisticalAnalysis {
+       pub fn mann_whitney_u_test(&self, sample_a: &[f64], sample_b: &[f64])
+           -> anyhow::Result<(f64, f64)> {
+           // Non-parametric test implementation
+       }
+   }
+   ```
 
-// Quick testing
-let config = BenchmarkConfig {
-max_iterations: 100,
-tolerance: 1e-6,
-time_limit: Duration::from_secs(60),
-num_runs: 3,
-random_seed: 42,
-};
-```
+2. **Custom Performance Metrics**:
+   ```rust
+   pub struct ExtendedPerformanceMetrics {
+       pub base_metrics: PerformanceMetrics,
+       pub custom_metric: f64,
+   }
+   ```
 
-## Interpreting Results
-
-### Performance Metrics
-
-1. **Final Value**: Lower is better for minimization
-2. **Gradient Norm**: Indicates convergence quality
-3. **Iterations**: Efficiency measure
-4. **Success Rate**: Robustness indicator
-5. **Execution Time**: Computational efficiency
-
-### Statistical Significance
-
-- **p-value < 0.05**: Statistically significant difference
-- **Effect Size**:
-    - Small: |d| < 0.2
-    - Medium: 0.2 ≤ |d| < 0.8
-    - Large: |d| ≥ 0.8
-
-### Performance Profiles
-
-Performance profiles show the fraction of problems solved within a performance ratio τ:
-
-- Higher curves indicate better performance
-- Leftmost point: fraction where optimizer was best
-- Rightmost value: robustness (fraction eventually solved)
-
-## Extending the Framework
-
-### Adding New Test Problems
+### Custom Report Sections
 
 ```rust
-use qqn_optimizer::benchmarks::functions::OptimizationProblem;
-
-pub struct CustomFunction {
-    // Your fields
-}
-
-impl OptimizationProblem for CustomFunction {
-    // Implement required methods
-}
-
-// Register in experiment
-let problems = vec![
-    Box::new(CustomFunction::new()),
-    // ... other problems
-];
-```
-
-### Adding New Analysis Metrics
-
-```rust
-impl BenchmarkResults {
-    pub fn custom_metric(&self) -> HashMap<String, f64> {
-        let mut metrics = HashMap::new();
-
-        for (optimizer, results) in self.group_by_optimizer() {
-            // Calculate your metric
-            let metric_value = calculate_custom_metric(results);
-            metrics.insert(optimizer, metric_value);
-        }
-
-        metrics
+impl ReportGenerator {
+    fn generate_custom_analysis(&self, results: &[BenchmarkResults]) -> String {
+        // Custom analysis implementation
     }
 }
 ```
 
-### Custom Visualizations
+---
 
-```rust
-use qqn_optimizer::analysis::plotting::PlottingEngine;
+## Performance Considerations
 
-impl PlottingEngine {
-    pub fn custom_plot(&self, data: &CustomData) -> Result<()> {
-        // Use plotters crate to create custom visualizations
-    }
-}
-```
+### Memory Management
 
-## Best Practices
+1. **Trace Data**: Large optimization traces can consume significant memory
+   ```rust
+   // Consider limiting trace size for long runs
+   if trace.iterations.len() > MAX_TRACE_SIZE {
+       trace.iterations.truncate(MAX_TRACE_SIZE);
+   }
+   ```
 
-1. **Reproducibility**
-    - Always set random seeds
-    - Document hardware and software versions
-    - Save raw results for future analysis
+2. **Result Storage**: Use streaming for large result sets
+   ```rust
+   // Write results incrementally rather than storing all in memory
+   ```
 
-2. **Statistical Rigor**
-    - Run sufficient repetitions (≥10)
-    - Report confidence intervals
-    - Use appropriate statistical tests
+### Computational Efficiency
 
-3. **Fair Comparison**
-    - Use same starting points
-    - Apply identical convergence criteria
-    - Consider problem-specific tolerances
+1. **Parallel Execution**: Runs are independent and can be parallelized
+   ```rust
+   // Future enhancement: parallel run execution
+   let futures: Vec<_> = (0..num_runs)
+       .map(|run_id| run_single_benchmark(problem, optimizer, run_id))
+       .collect();
+   ```
 
-4. **Reporting**
-    - Include both tables and visualizations
-    - Report failures and edge cases
-    - Provide interpretation guidelines
+2. **Function Evaluation Caching**: For expensive functions
+   ```rust
+   struct CachedProblem {
+       inner: Box<dyn OptimizationProblem>,
+       cache: HashMap<Vec<OrderedFloat<f64>>, f64>,
+   }
+   ```
+
+### Scalability Considerations
+
+1. **Large Problem Sets**: Consider batch processing
+2. **Long Runs**: Implement checkpointing for recovery
+3. **Resource Limits**: Monitor memory and CPU usage
+
+---
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Font Rendering Errors in Tests**
-    - The framework handles missing fonts gracefully
-    - Plots are optional for test success
+#### 1. Numerical Instability
 
-2. **Numerical Instabilities**
-    - Check gradient implementations
-    - Verify function continuity
-    - Use appropriate scaling
-
-3. **Memory Issues**
-    - Reduce trace storage frequency
-    - Limit problem dimensions
-    - Use streaming analysis for large datasets
-
-### Debug Mode
-
-Enable detailed logging:
+**Symptoms**: Non-finite function values, gradient explosion
+**Solutions**:
+- Adjust initial point randomization range
+- Implement gradient clipping
+- Use more robust line search parameters
 
 ```rust
-env_logger::builder()
-.filter_level(log::LevelFilter::Debug)
-.init();
+// Example: Gradient clipping
+let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+if gradient_norm > MAX_GRADIENT_NORM {
+    for g in gradient.iter_mut() {
+        *g *= MAX_GRADIENT_NORM / gradient_norm;
+    }
+}
 ```
 
-## References
+#### 2. Convergence Issues
 
-1. Dolan, E. D., & Moré, J. J. (2002). Benchmarking optimization software with performance profiles. Mathematical
-   Programming, 91(2), 201-213.
+**Symptoms**: No convergence achieved, excessive iterations
+**Solutions**:
+- Relax convergence criteria
+- Adjust stagnation parameters
+- Check problem scaling
 
-2. Moré, J. J., Garbow, B. S., & Hillstrom, K. E. (1981). Testing unconstrained optimization software. ACM Transactions
-   on Mathematical Software, 7(1), 17-41.
+```rust
+// Example: Adaptive tolerance
+let adaptive_tolerance = base_tolerance * (1.0 + problem_scale_factor);
+```
 
-3. Nocedal, J., & Wright, S. (2006). Numerical Optimization. Springer Science & Business Media.
+#### 3. Memory Issues
+
+**Symptoms**: Out of memory errors, slow performance
+**Solutions**:
+- Limit trace storage
+- Use streaming I/O
+- Reduce number of runs
+
+#### 4. Statistical Analysis Failures
+
+**Symptoms**: Invalid t-test results, NaN values
+**Solutions**:
+- Check sample sizes (minimum 2 per group)
+- Verify data validity (no infinite values)
+- Use non-parametric alternatives for skewed data
+
+### Debugging Tools
+
+#### 1. Verbose Logging
+
+```rust
+use log::{debug, info, warn, error};
+
+// Enable detailed logging
+env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
+```
+
+#### 2. Trace Analysis
+
+```rust
+// Examine optimization traces for debugging
+for iteration_data in &result.trace.iterations {
+    if !iteration_data.function_value.is_finite() {
+        warn!("Non-finite function value at iteration {}", iteration_data.iteration);
+    }
+}
+```
+
+#### 3. Parameter Validation
+
+```rust
+fn validate_parameters(params: &[f64]) -> Result<(), String> {
+    for (i, ¶m) in params.iter().enumerate() {
+        if !param.is_finite() {
+            return Err(format!("Parameter {} is not finite: {}", i, param));
+        }
+    }
+    Ok(())
+}
+```
+
+### Performance Profiling
+
+#### 1. Timing Analysis
+
+```rust
+use std::time::Instant;
+
+let start = Instant::now();
+// ... operation
+let duration = start.elapsed();
+println!("Operation took: {:?}", duration);
+```
+
+#### 2. Memory Profiling
+
+```rust
+// Use tools like valgrind or heaptrack for detailed memory analysis
+// Or implement custom memory tracking
+```
+
+#### 3. Function Call Counting
+
+The system automatically tracks function and gradient evaluations through the `ProblemWrapper`.
+
+---
+
+## Best Practices
+
+### 1. Experimental Design
+
+- **Multiple Runs**: Always use multiple independent runs (≥10)
+- **Random Seeds**: Ensure proper randomization for reproducibility
+- **Fair Comparison**: Use identical termination criteria for all optimizers
+- **Problem Diversity**: Include problems from different families
+
+### 2. Statistical Analysis
+
+- **Appropriate Tests**: Use Welch's t-test for unequal variances
+- **Effect Sizes**: Report Cohen's d alongside p-values
+- **Multiple Comparisons**: Consider Bonferroni correction for multiple tests
+- **Sample Size**: Ensure adequate power for statistical tests
+
+### 3. Reporting
+
+- **Transparency**: Report all metrics, including failures
+- **Reproducibility**: Include all configuration parameters
+- **Visualization**: Use appropriate scales (linear/log) for different metrics
+- **Academic Standards**: Follow publication guidelines for statistical reporting
+
+### 4. Code Quality
+
+- **Error Handling**: Implement comprehensive error handling
+- **Documentation**: Maintain clear documentation and comments
+- **Testing**: Include unit tests for critical components
+- **Version Control**: Track all changes and configurations
+
