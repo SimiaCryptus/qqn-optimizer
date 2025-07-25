@@ -2179,7 +2179,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
             ));
             // Show parameter evolution for first few and last few iterations
             if !best_run.trace.iterations.is_empty() {
-                content.push_str("#### Parameter Evolution (Selected Iterations)\n\n");
+                content.push_str("\n#### Parameter Evolution (Selected Iterations)\n\n");
                 content.push_str("<table style=\"border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;\">\n");
                 content.push_str("<tr style=\"background-color: #f2f2f2;\">\n");
                 content.push_str(
@@ -2353,7 +2353,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     fn generate_detailed_report_footer(&self, problem_name: &str, optimizer_name: &str) -> String {
         format!(
             r#"
-            
+
 ## Data Files
 * [Raw CSV Data](problems/{}_results.csv)
 * [Convergence Plot](convergence_{}.png)

@@ -391,7 +391,7 @@ Matrix showing all comparisons. Green indicates QQN variant won (statistically s
         matrix_section.push_str(
             r#"
 <table class="comparison-matrix">
-  <tr>
+  <tr><th></th>
 "#,
         );
         // Header row with non-QQN optimizers
@@ -455,7 +455,7 @@ Matrix showing all comparisons. Green indicates QQN variant won (statistically s
                                 };
                                 
                                 problem_section.push_str(&format!(
-                                    "<br><span style='color: {}; font-size: 0.85em;'>obj: Δ{}</span>",
+                                    "<br><span style='color: {}; font-size: 0.85em;'>obj: {}</span>",
                                     obj_color, delta_obj_str
                                 ));
                                 
@@ -492,7 +492,7 @@ Matrix showing all comparisons. Green indicates QQN variant won (statistically s
                                 };
                                 
                                 problem_section.push_str(&format!(
-                                    "<br><span style='color: {}; font-size: 0.85em;'>cost: Δ{}</span>",
+                                    "<br><span style='color: {}; font-size: 0.85em;'>cost: {}</span>",
                                     cost_color, delta_cost_str
                                 ));
                                 
@@ -521,7 +521,7 @@ Matrix showing all comparisons. Green indicates QQN variant won (statistically s
     <span style='color: #dc3545;'>Red</span> = Non-QQN optimizer won.
     <span style='color: #6c757d;'>Gray</span> = No statistically significant difference.
     (obj) = objective value comparison, (cost) = computational cost comparison.
-    Δ shows the signed difference (QQN mean - Non-QQN mean): negative values favor QQN for minimization problems.
+    deltas show the signed difference (QQN mean - Non-QQN mean): negative values favor QQN for minimization problems.
 </p>
             
 "#);
