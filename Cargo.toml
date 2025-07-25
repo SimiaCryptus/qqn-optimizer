@@ -23,6 +23,7 @@ tempfile = "3.8"
 log = "0.4.27"
 statrs = "0.18.0"
 rand_distr = "0.5.1"
+parking_lot = "0.12.4"
 
 [features]
 default = ["plotting"]

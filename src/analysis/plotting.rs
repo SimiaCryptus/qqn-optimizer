@@ -102,7 +102,11 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
                 .iter()
                 .map(|iter| iter.function_value)
                 .collect(),
-            evaluation_counts: Vec::new(), // Will be populated by caller with proper evaluation counts
+            evaluation_counts: trace
+                .iterations
+                .iter()
+                .map(|iter| iter.total_function_evaluations.max(iter.total_gradient_evaluations))
+                .collect(),
         };
         result.sanitize();
         result
@@ -252,7 +256,7 @@ impl PlottingEngine {
         if self.has_fonts {
             chart
                 .configure_mesh()
-                .x_desc("Function/Gradient Evaluations")
+                .x_desc("Max(Function, Gradient) Evaluations")
                 .y_desc("Objective Value")
                 .draw()?;
         } else {
@@ -442,7 +446,7 @@ impl PlottingEngine {
         if self.has_fonts {
             chart
                 .configure_mesh()
-                .x_desc("Function/Gradient Evaluations")
+                .x_desc("Max(Function, Gradient) Evaluations")
                 .y_desc("Log10(Objective Value)")
                 .draw()?;
         } else {
@@ -875,7 +879,7 @@ impl PlottingEngine {
         filename: &str,
     ) -> Result<()> {
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
-        let mut csv_content = String::from("Optimizer,Evaluation,ObjectiveValue\n");
+        let mut csv_content = String::from("Optimizer,MaxEvaluation,ObjectiveValue\n");
         for trace in traces {
             for (eval_count, obj_value) in trace
                 .evaluation_counts
@@ -904,7 +908,7 @@ impl PlottingEngine {
     ) -> Result<()> {
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
         let mut csv_content =
-            String::from("Optimizer,Evaluation,ObjectiveValue,LogObjectiveValue\n");
+            String::from("Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue\n");
         for trace in traces {
             for (eval_count, obj_value) in trace
                 .evaluation_counts

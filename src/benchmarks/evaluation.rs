@@ -1,3 +1,4 @@
+use std::cmp::max;
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::core::optimizer::Optimizer;
 use crate::utils::math::DifferentiableFunction;
@@ -461,7 +462,7 @@ impl BenchmarkRunner {
 
         while *iteration < self.config.max_iterations {
             // Check if we've exceeded maximum function calls
-            if *function_evaluations >= self.config.maximum_function_calls {
+            if max(*function_evaluations, *gradient_evaluations) >= self.config.maximum_function_calls {
                 info!(
                     "Maximum function evaluations reached: {}",
                     self.config.maximum_function_calls

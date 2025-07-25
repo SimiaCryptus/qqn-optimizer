@@ -1,10 +1,12 @@
 use crate::OptimizationProblem;
 use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
-use rand::{Rng};
+use parking_lot::RwLock;
+use rand::prelude::StdRng;
+use rand::{Rng, SeedableRng};
 use std::fs;
 use std::path::Path;
-use rand::prelude::StdRng;
+use std::sync::Arc;
 
 #[derive(Debug)]
 struct MnistData {
@@ -29,6 +31,21 @@ impl MLP {
         let ln2 = linear(hidden_dim, output_dim, vs.pp("ln2"))?;
         Ok(Self { ln1, ln2 })
     }
+    fn forward_with_dropout(&self, xs: &Tensor, dropout_rate: f64, training: bool) -> candle_core::Result<Tensor> {
+        let xs = self.ln1.forward(xs)?;
+        let xs = xs.relu()?;
+        let xs = if training && dropout_rate > 0.0 {
+            // Apply dropout during training
+            let keep_prob = 1.0 - dropout_rate;
+            let mask = Tensor::rand(0.0, 1.0, xs.shape(), &xs.device())?;
+            let mask = mask.ge(dropout_rate)?;
+            let tensor = xs.broadcast_mul(&mask)? / keep_prob;
+            tensor?
+        } else {
+            xs
+        };
+        self.ln2.forward(&xs)
+    }
 }
 
 impl Module for MLP {
@@ -42,13 +59,18 @@ impl Module for MLP {
 /// MNIST-like neural network training problem
 #[derive(Clone)]
 pub struct MnistNeuralNetwork {
-    x_tensor: Tensor, // 28x28 = 784 features
-    y_tensor: Tensor, // 10 classes (one-hot encoded)
+    x_data: Vec<Vec<f64>>, // Store raw data instead of tensors
+    y_data: Vec<Vec<f64>>, // Store raw labels
+    batch_size: usize,
     device: Device,
     name: String,
     varmap: VarMap,
     model: MLP,
     optimal_value: Option<f64>,
+    param_count: usize,
+    param_cache: Arc<RwLock<Option<Vec<f64>>>>,
+    dropout_rate: f64,
+    l2_regularization: f64,
 }
 
 impl MnistNeuralNetwork {
@@ -56,36 +78,40 @@ impl MnistNeuralNetwork {
         x_data: Vec<Vec<f64>>,
         y_data: Vec<Vec<f64>>,
         hidden_size: usize,
+        batch_size: Option<usize>,
         rng: &mut StdRng,
     ) -> anyhow::Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
+        let batch_size = batch_size.unwrap_or(32).min(n_samples);
         let name = format!("MNIST_NN_{}samples_hidden{}", n_samples, hidden_size);
 
-        // Convert to tensors
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
 
-        let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
-        let y_flat: Vec<f64> = y_data.into_iter().flatten().collect();
-
-        let x_tensor = Tensor::from_vec(x_flat, (n_samples, input_dim), &device)?;
-        let y_tensor = Tensor::from_vec(y_flat, (n_samples, output_dim), &device)?;
         // Create model with proper candle layers
         let varmap = VarMap::new();
         let vs = VarBuilder::from_varmap(&varmap, candle_core::DType::F64, &device);
         let model = MLP::new(vs, input_dim, hidden_size, output_dim)?;
+        // Pre-calculate parameter count
+        let param_count = (input_dim + 1) * hidden_size + (hidden_size + 1) * output_dim;
+
         // Initialize with He initialization for ReLU activation
         let instance = Self {
-            x_tensor,
-            y_tensor,
+            x_data,
+            y_data,
+            batch_size,
             device,
             name,
             varmap,
             model,
-            optimal_value: Option::from(0.5_f64),
+            optimal_value: None,
+            param_count,
+            param_cache: Arc::new(RwLock::new(None)),
+            dropout_rate: 0.2,
+            l2_regularization: 1e-4,
         };
-        instance.he_initialize(rng)?; // Use seed 42 for reproducibility
+        instance.he_initialize(rng)?;
 
         Ok(instance)
     }
@@ -94,17 +120,27 @@ impl MnistNeuralNetwork {
         self.optimal_value = value;
     }
 
-    pub fn load_mnist(n_samples: Option<usize>, hidden_size: usize, rng: &mut StdRng) -> anyhow::Result<Self> {
+    pub fn load_mnist(
+        n_samples: Option<usize>,
+        hidden_size: usize,
+        batch_size: Option<usize>,
+        rng: &mut StdRng,
+    ) -> anyhow::Result<Self> {
         if !Path::new("data/train-images-idx3-ubyte").exists() {
             println!("MNIST files not found, downloading...");
-            let _mnist_data = Self::download_mnist_data()?;
+            Self::download_mnist_data()?;
         }
         let mnist_data = Self::try_load_mnist_files()?;
         let actual_samples = n_samples.unwrap_or(1000).min(mnist_data.images.len());
+        // Shuffle indices for better training
+        let mut indices: Vec<usize> = (0..actual_samples).collect();
+        use rand::seq::SliceRandom;
+        indices.shuffle(rng);
+        
         let mut x_data = Vec::new();
         let mut y_data = Vec::new();
 
-        for i in 0..actual_samples {
+        for &i in &indices {
             // Convert image data to f64 and normalize to [0, 1]
             let image: Vec<f64> = mnist_data.images[i]
                 .iter()
@@ -119,7 +155,7 @@ impl MnistNeuralNetwork {
             y_data.push(label);
         }
 
-        Self::new(x_data, y_data, hidden_size, rng)
+        Self::new(x_data, y_data, hidden_size, batch_size, rng)
     }
 
     fn try_load_mnist_files() -> anyhow::Result<MnistData> {
@@ -179,29 +215,43 @@ impl MnistNeuralNetwork {
     }
 
     fn download_file(url: &str, path: &str) -> anyhow::Result<()> {
-        // Use std::process::Command to download with curl or wget as fallback
-        // This avoids the async runtime conflict
-        let output = std::process::Command::new("curl")
-            .args(&["-L", "-o", path, url])
-            .output();
 
-        match output {
-            Ok(result) if result.status.success() => Ok(()),
-            _ => {
-                // Fallback to wget if curl fails
-                let output = std::process::Command::new("wget")
-                    .args(&["-O", path, url])
-                    .output();
 
-                match output {
-                    Ok(result) if result.status.success() => Ok(()),
-                    _ => Err(anyhow::anyhow!(
-                        "Failed to download {} - neither curl nor wget available",
-                        url
-                    )),
-                }
+        use std::io::Write;
+        
+        // Try curl first
+        if let Ok(output) = std::process::Command::new("curl")
+            .args(&["-L", "-f", "-s", "-o", path, url])
+            .output()
+        {
+            if output.status.success() {
+                return Ok(());
             }
         }
+        
+        // Fallback to wget
+        if let Ok(output) = std::process::Command::new("wget")
+            .args(&["-q", "-O", path, url])
+            .output()
+        {
+            if output.status.success() {
+                return Ok(());
+            }
+        }
+        
+        // If both fail, try using reqwest in blocking mode
+        #[cfg(feature = "download")]
+        {
+            let response = reqwest::blocking::get(url)?;
+            let mut file = std::fs::File::create(path)?;
+            file.write_all(&response.bytes()?)?;
+            return Ok(());
+        }
+        
+        Err(anyhow::anyhow!(
+            "Failed to download {} - neither curl nor wget available",
+            url
+        ))
     }
 
     fn decompress_mnist_files() -> anyhow::Result<()> {
@@ -299,45 +349,51 @@ impl MnistNeuralNetwork {
         Ok(labels)
     }
 
-    pub fn create(n_samples: Option<usize>, hidden_size: usize, rng: &mut StdRng) -> anyhow::Result<Self> {
+    pub fn create(
+        n_samples: Option<usize>,
+        hidden_size: usize,
+        batch_size: Option<usize>,
+        rng: &mut StdRng,
+    ) -> anyhow::Result<Self> {
         // Validate hidden size to prevent overflow
-        if hidden_size > 1000 {
+        if hidden_size > 2048 {
             return Err(anyhow::anyhow!(
-                "Hidden size too large: {} (max 1000)",
+                "Hidden size too large: {} (max 2048)",
                 hidden_size
             ));
         }
         let samples = n_samples.unwrap_or(1000);
-        if samples > 10000 {
-            return Err(anyhow::anyhow!("Too many samples: {} (max 10000)", samples));
+        if samples > 60000 {
+            return Err(anyhow::anyhow!("Too many samples: {} (max 60000)", samples));
         }
 
         // Try to load real MNIST data first
-        Self::load_mnist(Some(samples), hidden_size, rng)
+        Self::load_mnist(Some(samples), hidden_size, batch_size, rng)
     }
 
     fn count_parameters(&self) -> usize {
-        // Count parameters from the actual model
-        self.varmap.data().lock().unwrap().len()
+        self.param_count
     }
 
     fn set_parameters(&self, params: &[f64]) -> anyhow::Result<()> {
         // Check all parameters for non-finite values before setting
-        for (i, &param) in params.iter().enumerate() {
-            if !param.is_finite() {
-                return Err(anyhow::anyhow!(
-                    "Attempting to set non-finite parameter at index {}: {}",
-                    i,
-                    param
-                ));
-            }
+        if params.iter().any(|&p| !p.is_finite()) {
+            return Err(anyhow::anyhow!("Non-finite parameters detected"));
         }
+        // Check for extreme values that might cause numerical instability
+        let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f64::max);
+        if max_abs > 1e6 {
+            return Err(anyhow::anyhow!("Parameters too large: max abs value = {}", max_abs));
+        }
+        
+        // Invalidate cache when parameters change
+        *self.param_cache.write() = None;
 
         // Set model parameters from flat vector
         let mut param_idx = 0;
-        let data = self.varmap.data().lock().unwrap();
+        let mut data = self.varmap.data().lock().unwrap();
 
-        for (_name, var) in data.iter() {
+        for (_name, var) in data.iter_mut() {
             let tensor = var.as_tensor();
             let elem_count = tensor.elem_count();
 
@@ -356,38 +412,41 @@ impl MnistNeuralNetwork {
     }
 
     fn get_parameters(&self) -> anyhow::Result<Vec<f64>> {
+        // Check cache first
+        if let Some(cached) = self.param_cache.read().as_ref() {
+            return Ok(cached.clone());
+        }
+
         let mut params = Vec::new();
+        params.reserve(self.param_count);
+
         let data = self.varmap.data().lock().unwrap();
 
         for (_, var) in data.iter() {
             let tensor = var.as_tensor();
             let values = tensor.flatten_all()?.to_vec1::<f64>()?;
-            // Check retrieved parameters for non-finite values
-            for (i, &val) in values.iter().enumerate() {
-                if !val.is_finite() {
-                    return Err(anyhow::anyhow!(
-                        "Non-finite parameter retrieved at index {}: {}",
-                        params.len() + i,
-                        val
-                    ));
-                }
-            }
             params.extend(values);
         }
+        // Cache the parameters
+        *self.param_cache.write() = Some(params.clone());
 
         Ok(params)
     }
     /// Initialize weights using He initialization (optimal for ReLU activation)
     fn he_initialize(&self, rng: &mut StdRng) -> anyhow::Result<()> {
-        let data = self.varmap.data().lock().unwrap();
-        for (_name, var) in data.iter() {
+        let mut data = self.varmap.data().lock().unwrap();
+        for (name, var) in data.iter_mut() {
             let tensor = var.as_tensor();
             let shape = tensor.shape();
             let dims = shape.dims();
             if dims.len() == 2 {
                 // This is a weight matrix
                 let fan_in = dims[1]; // Number of input units
-                let std_dev = (2.0 / fan_in as f64).sqrt();
+                let fan_out = dims[0]; // Number of output units
+                
+                // Use Glorot/Xavier initialization for better gradient flow
+                let std_dev = (2.0 / (fan_in + fan_out) as f64).sqrt();
+                
                 // Generate He-initialized weights
                 let mut weights = Vec::new();
                 for _ in 0..tensor.elem_count() {
@@ -398,11 +457,8 @@ impl MnistNeuralNetwork {
                 let new_tensor = Tensor::from_vec(weights, shape, &self.device)?;
                 var.set(&new_tensor)?;
             } else if dims.len() == 1 {
-                // This is a bias vector - initialize to small positive values for ReLU
-                let mut biases = Vec::new();
-                for _ in 0..tensor.elem_count() {
-                    biases.push(0.01); // Small positive bias for ReLU units
-                }
+                // This is a bias vector - initialize to zeros
+                let biases = vec![0.0; tensor.elem_count()];
                 let new_tensor = Tensor::from_vec(biases, shape, &self.device)?;
                 var.set(&new_tensor)?;
             }
@@ -421,9 +477,8 @@ impl MnistNeuralNetwork {
             }
             // Calculate statistics
             let mean: f64 = values.iter().sum::<f64>() / values.len() as f64;
-            let variance: f64 = values.iter()
-                .map(|x| (x - mean).powi(2))
-                .sum::<f64>() / values.len() as f64;
+            let variance: f64 =
+                values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
             let std_dev = variance.sqrt();
             let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
             let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
@@ -431,9 +486,7 @@ impl MnistNeuralNetwork {
             let zero_count = values.iter().filter(|&&x| x.abs() < 1e-10).count();
             let zero_percentage = (zero_count as f64 / values.len() as f64) * 100.0;
             // Check for extreme values
-            let extreme_count = values.iter()
-                .filter(|&&x| x.abs() > 3.0 * std_dev)
-                .count();
+            let extreme_count = values.iter().filter(|&&x| x.abs() > 3.0 * std_dev + mean.abs()).count();
             let extreme_percentage = (extreme_count as f64 / values.len() as f64) * 100.0;
             println!("\nParameter: {}", name);
             println!("  Shape: {:?}", tensor.shape());
@@ -441,27 +494,31 @@ impl MnistNeuralNetwork {
             println!("  Std Dev: {:.6}", std_dev);
             println!("  Min/Max: {:.6} / {:.6}", min, max);
             println!("  Zero values: {} ({:.2}%)", zero_count, zero_percentage);
-            println!("  Extreme values (>3σ): {} ({:.2}%)", extreme_count, extreme_percentage);
+            println!(
+                "  Extreme values (>3σ): {} ({:.2}%)",
+                extreme_count, extreme_percentage
+            );
             // Determine if this is a weight or bias based on shape
             let dims = tensor.shape().dims();
             if dims.len() == 2 {
                 // Weight matrix - check He initialization criteria
                 let fan_in = dims[1];
-                let expected_std = (2.0 / fan_in as f64).sqrt();
+                let fan_out = dims[0];
+                let expected_std = (2.0 / (fan_in + fan_out) as f64).sqrt();
                 let std_ratio = std_dev / expected_std;
-                println!("  Expected std (He): {:.6}", expected_std);
+                println!("  Expected std (Glorot): {:.6}", expected_std);
                 println!("  Actual/Expected ratio: {:.3}", std_ratio);
                 if std_ratio < 0.8 || std_ratio > 1.2 {
-                    println!("  ⚠️  Warning: Standard deviation deviates significantly from He initialization");
+                    println!("  ⚠️  Warning: Standard deviation deviates significantly from Glorot initialization");
                 } else {
                     println!("  ✓ Standard deviation is within expected range");
                 }
             } else if dims.len() == 1 {
                 // Bias vector
-                if mean.abs() < 0.005 {
-                    println!("  ⚠️  Warning: Bias initialization might be too small for ReLU");
+                if mean.abs() > 0.01 {
+                    println!("  ⚠️  Warning: Bias should be initialized to zero");
                 } else {
-                    println!("  ✓ Bias initialization appropriate for ReLU");
+                    println!("  ✓ Bias initialization is correct");
                 }
             }
             // General health checks
@@ -498,67 +555,59 @@ impl OptimizationProblem for MnistNeuralNetwork {
     }
 
     fn evaluate_f64(&self, params: &[f64]) -> anyhow::Result<f64> {
-        // Check input parameters for non-finite values
-        for (i, &param) in params.iter().enumerate() {
-            if !param.is_finite() {
-                return Err(anyhow::anyhow!(
-                    "Non-finite parameter at index {}: {}",
-                    i,
-                    param
-                ));
-            }
-        }
-
         // Set parameters in the model
         self.set_parameters(params)?;
 
-        // Forward pass using candle's Module trait
-        let y_pred = self.model.forward(&self.x_tensor)?;
-        // Check for non-finite values in predictions
-        let pred_values = y_pred.flatten_all()?.to_vec1::<f64>()?;
-        for (i, &val) in pred_values.iter().enumerate() {
-            if !val.is_finite() {
-                return Err(anyhow::anyhow!(
-                    "Non-finite prediction at index {}: {}",
-                    i,
-                    val
-                ));
+        let n_samples = self.x_data.len();
+        let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
+        let mut total_loss = 0.0;
+
+        // Process in batches
+        for batch_idx in 0..n_batches {
+            let start = batch_idx * self.batch_size;
+            let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
+            let batch_size = end - start;
+
+            // Create batch tensors on-demand
+            let mut x_batch_data = Vec::with_capacity(batch_size * self.x_data[0].len());
+            let mut y_batch_data = Vec::with_capacity(batch_size * self.y_data[0].len());
+
+            for i in start..end {
+                x_batch_data.extend_from_slice(&self.x_data[i]);
+                y_batch_data.extend_from_slice(&self.y_data[i]);
             }
+
+            let x_batch = Tensor::from_vec(
+                x_batch_data,
+                (batch_size, self.x_data[0].len()),
+                &self.device,
+            )?;
+            let y_batch = Tensor::from_vec(
+                y_batch_data,
+                (batch_size, self.y_data[0].len()),
+                &self.device,
+            )?;
+
+            // Forward pass
+            let y_pred = self.model.forward(&x_batch)?;
+            let y_pred = softmax(&y_pred, 1)?;
+
+            // Cross-entropy loss for this batch
+            let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
+            let batch_loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
+
+            let batch_loss_value = batch_loss.to_scalar::<f64>()?;
+            total_loss += batch_loss_value * (batch_size as f64);
         }
 
-        let y_pred = softmax(&y_pred, 1)?;
-        // Check softmax output for non-finite values
-        let softmax_values = y_pred.flatten_all()?.to_vec1::<f64>()?;
-        for (i, &val) in softmax_values.iter().enumerate() {
-            if !val.is_finite() {
-                return Err(anyhow::anyhow!(
-                    "Non-finite softmax output at index {}: {}",
-                    i,
-                    val
-                ));
-            }
-        }
+        // Average loss across all samples
+        let mut loss_value = total_loss / (n_samples as f64);
         
-        // Cross-entropy loss
-        let log_probs = y_pred.clamp(1e-15, 1.0)?.log()?;
-        // Check log probabilities for non-finite values
-        let log_prob_values = log_probs.flatten_all()?.to_vec1::<f64>()?;
-        for (i, &val) in log_prob_values.iter().enumerate() {
-            if !val.is_finite() {
-                return Err(anyhow::anyhow!(
-                    "Non-finite log probability at index {}: {}",
-                    i,
-                    val
-                ));
-            }
+        // Add L2 regularization
+        if self.l2_regularization > 0.0 {
+            let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
+            loss_value += 0.5 * self.l2_regularization * params_squared_sum;
         }
-
-        let loss = (&self.y_tensor * &log_probs)?
-            .sum_keepdim(1)?
-            .mean_all()?
-            .neg()?;
-
-        let loss_value = loss.to_scalar::<f64>()?;
 
         // Check final loss for non-finite values
         if !loss_value.is_finite() {
@@ -569,71 +618,93 @@ impl OptimizationProblem for MnistNeuralNetwork {
     }
 
     fn gradient_f64(&self, params: &[f64]) -> anyhow::Result<Vec<f64>> {
-        // Check input parameters for non-finite values
-        for (i, &param) in params.iter().enumerate() {
-            if !param.is_finite() {
-                return Err(anyhow::anyhow!(
-                    "Non-finite parameter in gradient computation at index {}: {}",
-                    i,
-                    param
-                ));
-            }
-        }
-
         // Set parameters
         self.set_parameters(params)?;
+        let n_samples = self.x_data.len();
+        let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
+        // Accumulate gradients across batches
+        let mut accumulated_grads = vec![0.0; self.param_count];
+        for batch_idx in 0..n_batches {
+            let start = batch_idx * self.batch_size;
+            let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
+            let batch_size = end - start;
+            // Create batch tensors on-demand
+            let mut x_batch_data = Vec::with_capacity(batch_size * self.x_data[0].len());
+            let mut y_batch_data = Vec::with_capacity(batch_size * self.y_data[0].len());
+            for i in start..end {
+                x_batch_data.extend_from_slice(&self.x_data[i]);
+                y_batch_data.extend_from_slice(&self.y_data[i]);
+            }
+            let x_batch = Tensor::from_vec(
+                x_batch_data,
+                (batch_size, self.x_data[0].len()),
+                &self.device,
+            )?;
+            let y_batch = Tensor::from_vec(
+                y_batch_data,
+                (batch_size, self.y_data[0].len()),
+                &self.device,
+            )?;
 
-        // Create variables for autodiff
-        let mut vars = Vec::new();
-        let data = self.varmap.data().lock().unwrap();
-        for (_, var) in data.iter() {
-            vars.push(var.clone());
-        }
-        drop(data);
-        // Forward pass with autodiff
-        let y_pred = self.model.forward(&self.x_tensor)?;
-        let y_pred = softmax(&y_pred, 1)?;
-        // Compute loss
-        let log_probs = y_pred.log()?;
-        let loss = (&self.y_tensor * &log_probs)?
-            .sum_keepdim(1)?
-            .mean_all()?
-            .neg()?;
-        // Check loss before backward pass
-        let loss_value = loss.to_scalar::<f64>()?;
-        if !loss_value.is_finite() {
-            return Err(anyhow::anyhow!(
-                "Non-finite loss in gradient computation: {}",
-                loss_value
-            ));
-        }
+            // Create variables for autodiff
+            let mut vars = Vec::new();
+            vars.reserve(4); // We know we have 4 variables (2 weights, 2 biases)
 
-        // Compute gradients using candle's autodiff
-        let grads = loss.backward()?;
-        // Extract gradients in the same order as parameters
-        let mut grad_vec = Vec::new();
-        for var in &vars {
-            if let Some(grad) = grads.get(var) {
-                let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
-                // Check each gradient value for non-finite values
-                for (i, &val) in grad_values.iter().enumerate() {
-                    if !val.is_finite() {
-                        return Err(anyhow::anyhow!(
-                            "Non-finite gradient value at index {}: {}",
-                            grad_vec.len() + i,
-                            val
-                        ));
+            let data = self.varmap.data().lock().unwrap();
+            for (_, var) in data.iter() {
+                vars.push(var.clone());
+            }
+            drop(data);
+
+            // Forward pass with autodiff
+            let y_pred = self.model.forward(&x_batch)?;
+            let y_pred = softmax(&y_pred, 1)?;
+
+            // Compute loss
+            let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
+            let loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
+
+            // Compute gradients using candle's autodiff
+            let grads = loss.backward()?;
+
+            // Extract gradients in the same order as parameters
+            let mut grad_idx = 0;
+
+            for var in &vars {
+                if let Some(grad) = grads.get(var) {
+                    let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
+                    for (i, &g) in grad_values.iter().enumerate() {
+                        accumulated_grads[grad_idx + i] += g * (batch_size as f64);
                     }
+                    grad_idx += grad_values.len();
+                } else {
+                    // If no gradient, assume zero
+                    let tensor = var.as_tensor();
+                    grad_idx += tensor.elem_count();
                 }
-                grad_vec.extend(grad_values);
-            } else {
-                // If no gradient, assume zero
-                let tensor = var.as_tensor();
-                grad_vec.extend(vec![0.0; tensor.elem_count()]);
             }
         }
 
-        Ok(grad_vec)
+        // Average gradients across all samples
+        for g in &mut accumulated_grads {
+            *g /= n_samples as f64;
+        }
+        // Add L2 regularization gradient
+        if self.l2_regularization > 0.0 {
+            for (i, g) in accumulated_grads.iter_mut().enumerate() {
+                *g += self.l2_regularization * params[i];
+            }
+        }
+        // Gradient clipping to prevent exploding gradients
+        let grad_norm: f64 = accumulated_grads.iter().map(|g| g * g).sum::<f64>().sqrt();
+        if grad_norm > 10.0 {
+            let scale = 10.0 / grad_norm;
+            for g in &mut accumulated_grads {
+                *g *= scale;
+            }
+        }
+
+        Ok(accumulated_grads)
     }
     fn optimal_value(&self) -> Option<f64> {
         self.optimal_value

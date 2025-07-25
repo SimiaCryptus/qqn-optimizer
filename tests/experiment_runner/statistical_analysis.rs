@@ -19,7 +19,7 @@ impl StatisticalAnalysis {
         _config: &BenchmarkConfig,
         output_dir: &str,
     ) -> anyhow::Result<String> {
-        let mut section = String::from(r#""#, );
+        let mut section = String::new();
 
         // Check if we have enough data
         let total_results: usize = all_results.iter().map(|(_, r)| r.results.len()).sum();
@@ -123,39 +123,30 @@ impl StatisticalAnalysis {
                                 / qqn_final_values.len() as f64;
                             let non_qqn_mean: f64 = non_qqn_final_values.iter().sum::<f64>()
                                 / non_qqn_final_values.len() as f64;
-                            let _winner = if significant {
+                            let winner = if significant {
                                 if qqn_mean < non_qqn_mean {
                                     win_matrix
                                         .entry((qqn_opt.clone(), non_qqn_opt.clone()))
                                         .or_insert((0, 0))
                                         .0 += 1;
-                                    format!("<span style='color: #28a745; font-weight: bold;'>{}</span>", qqn_opt)
+                                    qqn_opt.clone()
                                 } else {
                                     win_matrix
                                         .entry((qqn_opt.clone(), non_qqn_opt.clone()))
                                         .or_insert((0, 0))
                                         .1 += 1;
-                                    format!("<span style='color: #dc3545; font-weight: bold;'>{}</span>", non_qqn_opt)
+                                    non_qqn_opt.clone()
                                 }
                             } else {
-                                "—".to_string()
+                                "-".to_string()
                             };
 
-                            let winner_name = if significant {
-                                if qqn_mean < non_qqn_mean {
-                                    qqn_opt
-                                } else {
-                                    non_qqn_opt
-                                }
-                            } else {
-                                "-"
-                            };
                             csv_data.push(format!(
                                 "{},{},{},Final_Objective_Value,{},{:.6},{:.6},{},{:.6}",
                                 family_name,
                                 qqn_opt,
                                 non_qqn_opt,
-                                winner_name,
+                                winner,
                                 t_stat,
                                 p_value,
                                 significant,
@@ -163,16 +154,8 @@ impl StatisticalAnalysis {
                             ));
                         }
                         Err(e) => {
-                            section.push_str(&format!(
-                                r#"                <tr>
-                                <td>{}</td>
-                                <td>{}</td>
-                                <td>{}</td>
-                                <td colspan="7"><em>Test failed: {}</em></td>
-                            </tr>
-"#,
-                                family_name, qqn_opt, non_qqn_opt, e
-                            ));
+                            eprintln!("Warning: Statistical test failed for {} vs {} on {}: {}", 
+                                     qqn_opt, non_qqn_opt, family_name, e);
                         }
                     }
                     // Test on computational cost
@@ -209,7 +192,9 @@ impl StatisticalAnalysis {
                                 effect_size
                             ));
                         }
-                        Err(_e) => {
+                        Err(e) => {
+                            eprintln!("Warning: Cost comparison test failed for {} vs {} on {}: {}", 
+                                     qqn_opt, non_qqn_opt, family_name, e);
                         }
                     }
                 }
@@ -220,17 +205,10 @@ impl StatisticalAnalysis {
             section.push_str(&self.generate_comparison_matrix(&grouped_optimizer_results)?);
         }
 
-        // Save CSV data
-        if let Err(e) = self.save_statistical_analysis_csv(&csv_data, output_dir) {
-            eprintln!("Warning: Failed to save statistical analysis CSV: {}", e);
-        }
 
-        section.push_str(r#"
-<style>
-    .significant-row { background-color: #f0f8ff; }
-    .significant-row td { font-weight: 500; }
-</style>
-        "#);
+        
+        // Save CSV data
+        self.save_statistical_analysis_csv(&csv_data, output_dir)?;
 
         Ok(section)
     }
@@ -352,8 +330,9 @@ impl StatisticalAnalysis {
             return 0.0;
         }
 
-        (mean_a - mean_b) / pooled_sd
+        (mean_a - mean_b).abs() / pooled_sd
     }
+    
     fn generate_comparison_matrix(
         &self,
         grouped_results: &HashMap<String, HashMap<String, Vec<(f64, f64)>>>,

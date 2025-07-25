@@ -33,7 +33,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
         }).run_comparative_benchmarks(vec![
             Arc::new(
                 {
-                    let mut network = MnistNeuralNetwork::create(Some(5000), 20, &mut rng)
+                    let mut network = MnistNeuralNetwork::create(Some(5000), 20, Some(1000), &mut rng)
                         .expect("Failed to create MNIST neural network");
                     network.set_optimal_value(Option::from(0.05));
                     network

@@ -233,9 +233,9 @@ impl Default for LineSearchConfig {
             method: LineSearchMethod::StrongWolfe,
             c1: 1e-4,
             c2: 0.01,
-            max_iterations: 50,
+            max_iterations: 10,
             initial_step: 1.0,
-            min_step: 1e-16,
+            min_step: 1e-8,
             max_step: 100.0,
             verbose: false,
             line_bracket_method: 1, // Default to gradient-based bracketing

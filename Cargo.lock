@@ -1358,6 +1358,7 @@ dependencies = [
  "flate2",
  "log",
  "ordered-float",
+ "parking_lot",
  "plotters",
  "rand 0.9.1",
  "rand_distr 0.5.1",

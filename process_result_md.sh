@@ -26,6 +26,12 @@ while IFS= read -r -d '' md_file; do
     md_dir=$(dirname "$md_file")
     base_name=$(basename "$md_file" .md)
     output_file="${md_dir}/${base_name}.html"
+    # Skip if output file already exists
+    if [ -f "$output_file" ]; then
+      log "Skipping $md_file - output file $output_file already exists"
+      continue
+    fi
+    
     
     log "Converting $md_file to $output_file"
     
@@ -59,6 +65,12 @@ while IFS= read -r -d '' tex_file; do
     tex_dir=$(dirname "$tex_file")
     base_name=$(basename "$tex_file" .tex)
     output_file="${tex_dir}/${base_name}.pdf"
+    # Skip if output file already exists
+    if [ -f "$output_file" ]; then
+      log "Skipping $tex_file - output file $output_file already exists"
+      continue
+    fi
+    
     log "Converting $tex_file to $output_file"
     # Use pdflatex to compile TeX to PDF
     # Run in the directory containing the TeX file to handle relative paths

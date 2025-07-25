@@ -515,7 +515,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 if result.convergence_achieved {
                     *score += 1.0;
                 }
-                if result.final_value < 1e-6 {
+                if result.final_value.is_finite() && result.final_value < 1e-6 {
                     *score += 0.5;
                 }
                 // Track efficiency (success rate / mean time)
@@ -544,39 +544,19 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 if result.convergence_achieved {
                     *score += 1.0;
                 }
-                if result.final_value < 1e-6 {
+                if result.final_value.is_finite() && result.final_value < 1e-6 {
                     *score += 0.5;
                 }
             }
         }
+        r#"
 
-        let best_optimizer = optimizer_scores
-            .iter()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            .map(|(name, _)| name.clone())
-            .unwrap_or_else(|| "Unknown".to_string());
-        let most_efficient = optimizer_efficiency
-            .iter()
-            .map(|(name, (successes, total_time))| {
-                let efficiency = *successes as f64 / total_time;
-                (name.clone(), efficiency)
-            })
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-            .map(|(name, _)| name)
-            .unwrap_or_else(|| "Unknown".to_string());
-        format!(
-            r#"
-            
 ## Conclusions
 
 ### Key Findings
 
-- The **{}** optimizer demonstrated the best overall performance across the test suite.
-- The **{}** optimizer showed the best efficiency (success rate per unit time).
 
-"#,
-            best_optimizer, most_efficient,
-        )
+"#.to_string()
     }
 
     fn generate_html_footer(&self) -> String {

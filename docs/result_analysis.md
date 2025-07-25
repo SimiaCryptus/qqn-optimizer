@@ -2,172 +2,122 @@
 
 ## 1. Overall Performance Summary
 
-### Top Performers Across All Problems
-- **L-BFGS variants** consistently achieve high success rates across diverse problem types
-- **QQN-Bisection variants** show excellent performance on convex and ML problems
-- **QQN-StrongWolfe** demonstrates strong performance on non-convex problems
+The benchmark results demonstrate strong performance across multiple optimizer families, with notable variations based on problem characteristics:
 
-### Consistent vs. Variable Performers
-**Highly Consistent:**
-- L-BFGS-Hybrid: 100% success on convex problems, 60-100% on ML problems
-- QQN-Bisection-2: 100% success on convex and ML problems
-- L-BFGS-Aggressive: Strong across most problem types
-
-**Highly Variable:**
-- Adam variants: Excellent on ML problems (90-100%) but poor on classical optimization (0-30%)
-- GD variants: Generally poor except on specific ML problems
-- QQN-SimpleBracket: Ranges from 0% to 100% success depending on problem
-
-### Specialized Excellence
-- **ML Problems**: Adam-Fast variants excel with low function evaluations
-- **Convex Problems**: All QQN and L-BFGS variants achieve 100% success
-- **Highly Multimodal**: L-BFGS-Aggressive and QQN-StrongWolfe show best results
+- **QQN variants** achieve 70-100% success rates on convex problems, with QQN-CubicQuadraticInterpolation and QQN-Backtracking showing the most consistent performance
+- **L-BFGS variants** excel in efficiency, requiring 8-14 function evaluations for convex problems with 100% success rates
+- **Adam variants** struggle significantly on non-ML problems, achieving 0% success on most classical optimization benchmarks
+- **Gradient Descent** shows poor performance across all problem types except ML tasks
 
 ## 2. Algorithm-Specific Analysis
 
 ### QQN Variants
-**Best Performer**: QQN-Bisection-2
-- Achieves 100% success on convex and ML problems
-- Moderate computational cost (typically 11-79 function evaluations)
-- Excellent balance of reliability and efficiency
-
-**Key Observations**:
-- Memory variants (NoMemory, NoForget) show minimal performance differences
-- StrongWolfe line search excels on non-convex problems (Rosenbrock: 100% success)
-- SimpleBracket shows high variability, suggesting sensitivity to problem characteristics
+- **QQN-Backtracking**: 100% success on Sphere problems (10 evals), 80-100% on Rosenbrock variants
+- **QQN-CubicQuadraticInterpolation**: Excellent on convex problems (11 evals, 100% success), 90% success on Rosenbrock_2D
+- **QQN-StrongWolfe**: Strong on simple problems but degrades on multimodal (10% success on Michalewicz_2D)
+- **QQN-GoldenSection**: Higher evaluation counts (48 evals) but maintains 100% success on convex problems
 
 ### L-BFGS Variants
-**Best Performer**: L-BFGS-Hybrid
-- Consistently high success rates across problem types
-- Particularly effective on ML problems (100% success)
-- Moderate computational cost
-
-**Key Observations**:
-- Aggressive variant sometimes outperforms standard L-BFGS on multimodal problems
-- All variants maintain high efficiency with low gradient evaluations
-- Standard L-BFGS shows surprising failures on some non-convex problems
+- **L-BFGS-Aggressive**: Most efficient on Sphere problems (8 function evals, 100% success)
+- **Standard L-BFGS**: Slightly more evaluations (12.8) but more robust on non-convex problems
+- Both variants show catastrophic failure on highly multimodal problems (0% success on Rastrigin_10D)
 
 ### Adam Variants
-**Best Performer**: Adam-Fast-Conservative (for ML problems)
-- 90-100% success on ML problems
-- Very low function evaluations (typically 20-70)
-- Complete failure on classical optimization problems
+- **Adam-Fast**: 0% success on Sphere, Rosenbrock, achieving only 20% on Michalewicz_2D
+- **Adam-Fast-Conservative**: Similar poor performance on classical benchmarks
+- Both achieve 100% success on ML problems (LogisticRegression, LinearRegression)
 
-**Key Observations**:
-- Extreme specialization for ML problems
-- Momentum variants show no improvement over base versions
-- Aggressive variants sometimes reduce success rates
-
-### GD Variants
-**Best Performer**: GD-Conservative (marginally)
-- Shows some success on simple problems
-- Generally poor performance across all problem types
-- Extremely high function evaluations when successful
+### Gradient Descent
+- Achieves 100% success on convex problems but requires 364-405 function evaluations
+- 0% success on non-convex problems (Rosenbrock variants)
+- Performs adequately on ML tasks with 100% success
 
 ## 3. Problem Type Analysis
 
 ### Convex Unimodal (Sphere, Matyas)
-- **Perfect performers**: All QQN variants, all L-BFGS variants achieve 100% success
-- **Efficiency leaders**: L-BFGS-Aggressive (8 func evals on Sphere_10D)
-- **Key insight**: These problems serve as sanity checks; any failure indicates fundamental issues
+- **Best performers**: L-BFGS-Aggressive (8 evals), QQN-Backtracking (10 evals)
+- **Success rates**: 100% for all QQN and L-BFGS variants
+- **Efficiency leader**: L-BFGS-Aggressive with minimal function evaluations
 
-### Non-Convex Unimodal (Rosenbrock, Beale, Levi, GoldsteinPrice)
-- **Best performers**:
-    - Rosenbrock: L-BFGS-Hybrid (100% success), QQN-StrongWolfe (100% on 2D)
-    - Beale: QQN-Bisection-2 (100% success, 145 func evals)
-    - GoldsteinPrice: L-BFGS (60% success)
-- **Key insight**: Line search strategy critical; StrongWolfe and Hybrid approaches excel
+### Non-Convex Unimodal (Rosenbrock, Beale)
+- **Rosenbrock_2D**: QQN-CubicQuadraticInterpolation (90% success, 1786 evals)
+- **Rosenbrock_10D**: Only QQN-Backtracking achieves 100% success (4720 evals)
+- **Beale_2D**: QQN-CubicQuadraticInterpolation (100% success, 194 evals)
 
-### Highly Multimodal (Michalewicz, Rastrigin, Ackley, StyblinskiTang)
-- **Best performers**:
-    - Generally low success rates across all algorithms
-    - L-BFGS-Aggressive shows best results on Michalewicz (40% on 2D)
-    - QQN-StrongWolfe achieves 80% on Rastrigin_5D
-- **Key insight**: These problems remain challenging; no algorithm consistently escapes local optima
+### Highly Multimodal (Michalewicz, Rastrigin, Ackley)
+- **Michalewicz_2D**: Best is QQN-Backtracking with 40% success
+- **Rastrigin_5D**: QQN-Bisection-1 leads with 90% success
+- **Overall trend**: Success rates drop dramatically, no algorithm exceeds 60% on Ackley problems
+
+### ML Problems (Regression, Classification, Neural Networks)
+- **Universal success**: All algorithms achieve 90-100% success rates
+- **Most efficient**: QQN-MoreThuente (11-70 evals across problems)
+- **Adam variants**: Competitive on ML tasks despite poor classical performance
 
 ## 4. Scalability Assessment
 
-### Dimension Scaling Analysis
+### Dimension Impact on Success Rates
+- **Sphere**: No degradation (100% maintained from 2D to 10D)
+- **Rosenbrock**: Drops from 90% (2D) to 70% (5D) to varying rates at 10D
+- **Michalewicz**: Severe degradation from 40% (2D) to 0% (10D) for best performers
+- **Rastrigin**: Complete failure at 10D for all algorithms
 
-**Algorithms that scale well:**
-- L-BFGS variants: Maintain efficiency with dimension
-- QQN-Bisection variants: Show linear scaling in function evaluations
-
-**Algorithms with poor scaling:**
-- GD variants: Exponential increase in iterations with dimension
-- Adam variants: Performance degrades significantly on high-dimensional classical problems
-
-### Specific Examples:
-- **Sphere**: 2D→10D scaling
-    - L-BFGS-Aggressive: 8→8 function evaluations (perfect scaling)
-    - GD: 350→408 function evaluations (reasonable scaling)
-- **Rosenbrock**: 2D→10D scaling
-    - Success rates drop dramatically for most algorithms
-    - Only QQN-SimpleBracket maintains 90% success
+### Function Evaluation Scaling
+- **Sphere_2D to Sphere_10D**: Minimal increase (10 to 14 evals for L-BFGS)
+- **Rosenbrock_2D to Rosenbrock_10D**: Dramatic increase (209 to 4720 for QQN-Backtracking)
+- **ML problems**: Moderate scaling with dimension (2-5x increase)
 
 ## 5. Success Rate vs. Efficiency Trade-offs
 
-### High Success, High Cost:
-- QQN-StrongWolfe on Rosenbrock_5D: 100% success, 3173 func evals
-- L-BFGS on Beale: 60% success, 3485 func evals
+### High Success, Low Efficiency
+- **QQN-Backtracking on Rosenbrock_10D**: 100% success with 4720 evaluations
+- **QQN-Bisection-1 on Rastrigin_5D**: 90% success with 100 evaluations
 
-### High Success, Low Cost:
-- L-BFGS-Aggressive on Sphere: 100% success, 8 func evals
-- Adam-Fast on ML problems: 90-100% success, 20-50 func evals
+### High Efficiency, Moderate Success
+- **L-BFGS-Aggressive on Michalewicz_2D**: 40% success with 41.9 evaluations
+- **L-BFGS on Rosenbrock_2D**: 10% success with 1160 evaluations
 
-### Poor Trade-offs:
-- GD variants: Low success rates with high computational cost
-- QQN-SimpleBracket: Highly variable success with moderate cost
+### Balanced Performance
+- **QQN-CubicQuadraticInterpolation on Rosenbrock_2D**: 90% success with 1786 evaluations
+- **QQN-MoreThuente on ML problems**: 100% success with 11-70 evaluations
 
-## 6. Key Insights and Recommendations
+## 6. Key Performance Patterns
 
-### Top 5 Key Findings:
-1. **Problem-specific optimization is crucial**: Adam variants excel on ML but fail on classical problems
-2. **Line search matters**: StrongWolfe and Hybrid approaches significantly improve non-convex performance
-3. **L-BFGS remains highly competitive**: Especially with Hybrid or Aggressive variants
-4. **Multimodal problems remain unsolved**: No algorithm consistently achieves >50% success
-5. **QQN-Bisection variants offer excellent reliability**: 100% success on many problems with moderate cost
+1. **Convex problems favor L-BFGS**: Consistent 100% success with minimal evaluations
+2. **QQN variants dominate non-convex problems**: Particularly QQN-Backtracking and QQN-CubicQuadraticInterpolation
+3. **Multimodal problems remain challenging**: No algorithm exceeds 60% success on difficult instances
+4. **ML problems are universally tractable**: Even poor-performing algorithms achieve high success
+5. **Adam variants show problem-specific utility**: Excellent on ML, catastrophic on classical benchmarks
 
-### Recommendations by Use Case:
+## 7. Integration Recommendations
 
-**For ML/Neural Network Training:**
-- First choice: Adam-Fast-Conservative
-- Backup: L-BFGS-Hybrid
+### Algorithm Selection Criteria
 
-**For General Non-Convex Optimization:**
-- First choice: L-BFGS-Hybrid
-- Backup: QQN-StrongWolfe
+**For Convex Problems:**
+- Primary: L-BFGS-Aggressive (fastest convergence)
+- Fallback: QQN-Backtracking (robust performance)
 
-**For High-Dimensional Convex Problems:**
-- First choice: L-BFGS-Aggressive
-- Backup: QQN-Bisection-2
+**For Non-Convex Smooth Problems:**
+- Primary: QQN-CubicQuadraticInterpolation (best success/efficiency balance)
+- Fallback: QQN-Backtracking (highest success rate)
 
-**When Reliability is Critical:**
-- First choice: QQN-Bisection-2
-- Backup: L-BFGS-Hybrid
+**For Multimodal Problems:**
+- Primary: QQN-Backtracking or QQN-Bisection-1 (highest success rates)
+- Consider: Multi-start or global optimization methods
 
-## 7. Methodological Observations
+**For ML Problems:**
+- Primary: QQN-MoreThuente (efficient and reliable)
+- Alternative: Adam variants for specific architectures
 
-### Benchmark Design Strengths:
-- Comprehensive problem selection covering major optimization challenges
-- Multiple runs (210) provide statistical reliability
-- Clear success thresholds for each problem
-- Inclusion of both classical and ML problems
+### Problem Characteristic Triggers
+- **Low dimension (<5) + smooth**: L-BFGS-Aggressive
+- **Medium dimension (5-20) + non-convex**: QQN-CubicQuadraticInterpolation
+- **High dimension (>20) + smooth**: L-BFGS with increased memory
+- **Any dimension + multimodal**: QQN-Backtracking with restarts
+- **ML-specific**: QQN-MoreThuente or problem-specific Adam variant
 
-### Suggested Improvements:
-1. **Add constrained optimization problems** to test algorithm behavior with constraints
-2. **Include noisy function evaluations** to test robustness
-3. **Report convergence rates** in addition to final values
-4. **Add memory usage metrics** for large-scale problems
-5. **Include problems with expensive gradients** to better evaluate gradient-free approaches
-
-### Additional Analyses Needed:
-- Sensitivity analysis for algorithm hyperparameters
-- Performance profiles across all problems
-- Statistical significance testing between algorithms
-- Analysis of failure modes (local minima vs. numerical issues)
-
-### Concerning Patterns:
-- Complete failure of Adam variants on classical problems suggests overfitting to ML problem structure
-- High variability in some QQN variants indicates potential numerical stability issues
-- The universal struggle with multimodal problems suggests need for hybrid global-local approaches
+### Recommended Pipeline
+1. Initial probe with L-BFGS-Aggressive (low cost)
+2. If failure, switch to QQN-CubicQuadraticInterpolation
+3. For persistent failures, employ QQN-Backtracking
+4. Consider problem-specific methods for multimodal landscapes

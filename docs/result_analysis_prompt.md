@@ -1,39 +1,32 @@
 You are an expert in numerical optimization and algorithm analysis. Please analyze the provided optimization benchmark report and provide a comprehensive assessment covering the following areas:
 
 ## 1. Overall Performance Summary
-- Identify the top-performing algorithms across all test problems
-- Highlight algorithms that consistently perform well vs. those with variable performance
-- Note any algorithms that excel in specific problem types or dimensions
+- Cite specific success rates and efficiency metrics from the report
 
 ## 2. Algorithm-Specific Analysis
 For each optimizer family (QQN variants, L-BFGS variants, Adam variants, GD variants):
-- Compare performance within the family
-- Identify the best variant and explain why it outperforms others
-- Note any surprising results or counterintuitive findings
+- Quote exact performance numbers (success rates, function evaluations) to support comparisons
+- Highlight specific test cases where performance differences are most pronounced
 
 ## 3. Problem Type Analysis
 Analyze performance across different problem families:
-- **Convex Unimodal** (Sphere, Matyas): Which algorithms excel and why?
-- **Non-Convex Unimodal** (Rosenbrock, Beale, Levi, GoldsteinPrice): How do algorithms handle non-convexity?
-- **Highly Multimodal** (Michalewicz, Rastrigin, Ackley, StyblinskiTang): Which algorithms best navigate multiple local optima?
+- Include specific success rates and convergence metrics for each problem category
 
 ## 4. Scalability Assessment
-- Compare algorithm performance between 2D and higher-dimensional versions of the same problems
-- Identify algorithms that scale well vs. those that degrade with dimension
-- Note computational efficiency trends (function/gradient evaluations)
+- Provide exact performance degradation percentages where applicable
 
 ## 5. Success Rate vs. Efficiency Trade-offs
-- Analyze the relationship between success rates and computational cost
-- Identify algorithms that achieve good balance between reliability and efficiency
-- Highlight cases where high success rate comes at significant computational cost
+- Quote specific examples with exact numbers (e.g., "Algorithm X achieves 95% success with 500 evaluations vs Algorithm Y with 80% success in 200 evaluations")
 
-## 6. Key Insights and Recommendations
-- What are the 3-5 most important findings from this benchmark?
-- Which algorithms would you recommend for different use cases?
-- Are there any concerning patterns or unexpected results that warrant further investigation?
+## 6. Key Performance Patterns
+- Summarize the 3-5 most important performance patterns observed
+- Identify clear winners for different problem categories
+- Note any consistent failure modes or performance bottlenecks
+- Support all observations with specific data citations from the report
 
-## 7. Methodological Observations
-- Comment on the benchmark design (problem selection, success thresholds, etc.)
-- Suggest any improvements or additional analyses that would be valuable
+## 7. Integration Recommendations
+- Based on the results, which algorithms should be prioritized in the optimization pipeline?
+- What problem characteristics should trigger the use of specific algorithms?
+- Provide clear decision criteria based on the benchmark data
 
-Please structure your analysis clearly with headings and bullet points. Support your conclusions with specific data from the report, including numerical comparisons where relevant. Focus on actionable insights that would help practitioners choose appropriate optimization algorithms for their specific needs.
+Please structure your analysis clearly with headings and bullet points. Every major claim should be supported with specific data from the report, including exact numerical values and direct quotes where relevant. Focus on extracting and interpreting the concrete results to inform algorithm selection in the optimization pipeline.
