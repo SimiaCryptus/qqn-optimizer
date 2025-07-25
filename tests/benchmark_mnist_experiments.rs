@@ -73,18 +73,19 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                 },
             ),
         ], vec![
-            // (
-            //     "QQN-Backtracking".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig {
-            //         line_search: LineSearchConfig {
-            //             method: LineSearchMethod::Backtracking,
-            //             max_iterations: 5,
-            //             ..LineSearchConfig::default()
-            //         },
-            //         lbfgs_history: 15,
-            //         ..Default::default()
-            //     })),
-            // ),
+            (
+                "QQN-Backtracking".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Backtracking,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
+                    gradient_scale_factor: 1000.0,
+                    ..Default::default()
+                })),
+            ),
             (
                 "QQN-CubicQuadraticInterpolation".to_string(),
                 Arc::new(QQNOptimizer::new(QQNConfig {
@@ -95,6 +96,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     },
                     min_step_persist: 5e-1,
                     lbfgs_history: 30,
+                    gradient_scale_factor: 1000.0,
                     ..Default::default()
                 })),
             ),
@@ -108,45 +110,49 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     },
                     min_step_persist: 5e-1,
                     lbfgs_history: 30,
+                    gradient_scale_factor: 1000.0,
                     ..Default::default()
                 })),
             ),
-            // (
-            //     "QQN-Bisection".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig {
-            //         line_search: LineSearchConfig {
-            //             method: LineSearchMethod::Bisection,
-            //             max_iterations: 5,
-            //             ..LineSearchConfig::default()
-            //         },
-            //         lbfgs_history: 15,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "QQN-MoreThuente".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig {
-            //         line_search: LineSearchConfig {
-            //             method: LineSearchMethod::MoreThuente,
-            //             max_iterations: 5,
-            //             ..LineSearchConfig::default()
-            //         },
-            //         lbfgs_history: 15,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (
-            //     "QQN-GoldenSection".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig {
-            //         line_search: LineSearchConfig {
-            //             method: LineSearchMethod::GoldenSection,
-            //             max_iterations: 5,
-            //             ..LineSearchConfig::default()
-            //         },
-            //         lbfgs_history: 15,
-            //         ..Default::default()
-            //     })),
-            // ),
+            (            
+                "QQN-Bisection".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Bisection,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
+                    gradient_scale_factor: 1000.0,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-MoreThuente".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::MoreThuente,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
+                    gradient_scale_factor: 1000.0,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-GoldenSection".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::GoldenSection,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
+                    gradient_scale_factor: 1000.0,
+                    ..Default::default()
+                })),
+            ),
             (
                 "L-BFGS".to_string(),
                 Arc::new(LBFGSOptimizer::new(LBFGSConfig {
