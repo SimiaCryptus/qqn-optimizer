@@ -53,7 +53,7 @@ pub fn init_logging_with_mode(compact: bool) -> Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "qqn_optimizer=debug".into());
+        .unwrap_or_else(|_| "qqn_optimizer=info".into());
 
     let registry = tracing_subscriber::registry().with(env_filter);
 
