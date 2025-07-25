@@ -3,10 +3,17 @@ use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
 use parking_lot::RwLock;
 use rand::prelude::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+#[derive(Debug, Clone, Copy)]
+pub enum ActivationType {
+    ReLU,
+    Logistic,
+    Sinewave,
+}
+
 
 #[derive(Debug)]
 struct MnistData {
@@ -18,6 +25,7 @@ struct MnistData {
 struct MLP {
     ln1: Linear,
     ln2: Linear,
+    activation: ActivationType,
 }
 
 impl MLP {
@@ -26,14 +34,29 @@ impl MLP {
         input_dim: usize,
         hidden_dim: usize,
         output_dim: usize,
+        activation: ActivationType,
     ) -> candle_core::Result<Self> {
         let ln1 = linear(input_dim, hidden_dim, vs.pp("ln1"))?;
         let ln2 = linear(hidden_dim, output_dim, vs.pp("ln2"))?;
-        Ok(Self { ln1, ln2 })
+        Ok(Self { ln1, ln2, activation })
     }
+    fn apply_activation(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
+        match self.activation {
+            ActivationType::ReLU => xs.relu(),
+            ActivationType::Logistic => {
+                // Logistic/Sigmoid: 1 / (1 + exp(-x))
+                let neg_xs = xs.neg()?;
+                let exp_neg_xs = neg_xs.exp()?;
+                let one_plus_exp = exp_neg_xs.affine(1.0, 1.0)?;
+                Tensor::ones_like(xs)?.broadcast_div(&one_plus_exp)
+            }
+            ActivationType::Sinewave => xs.sin(),
+        }
+    }
+    
     fn forward_with_dropout(&self, xs: &Tensor, dropout_rate: f64, training: bool) -> candle_core::Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
-        let xs = xs.relu()?;
+        let xs = self.apply_activation(&xs)?;
         let xs = if training && dropout_rate > 0.0 {
             // Apply dropout during training
             let keep_prob = 1.0 - dropout_rate;
@@ -51,7 +74,7 @@ impl MLP {
 impl Module for MLP {
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
-        let xs = xs.relu()?;
+        let xs = self.apply_activation(&xs)?;
         self.ln2.forward(&xs)
     }
 }
@@ -71,6 +94,7 @@ pub struct MnistNeuralNetwork {
     param_cache: Arc<RwLock<Option<Vec<f64>>>>,
     dropout_rate: f64,
     l2_regularization: f64,
+    activation: ActivationType,
 }
 
 impl MnistNeuralNetwork {
@@ -80,11 +104,18 @@ impl MnistNeuralNetwork {
         hidden_size: usize,
         batch_size: Option<usize>,
         rng: &mut StdRng,
+        activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let batch_size = batch_size.unwrap_or(32).min(n_samples);
-        let name = format!("MNIST_NN_{}samples_hidden{}", n_samples, hidden_size);
+        let activation = activation.unwrap_or(ActivationType::ReLU);
+        let activation_name = match activation {
+            ActivationType::ReLU => "relu",
+            ActivationType::Logistic => "logistic",
+            ActivationType::Sinewave => "sine",
+        };
+        let name = format!("MNIST_NN_{}samples_hidden{}_{}", n_samples, hidden_size, activation_name);
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
@@ -92,11 +123,11 @@ impl MnistNeuralNetwork {
         // Create model with proper candle layers
         let varmap = VarMap::new();
         let vs = VarBuilder::from_varmap(&varmap, candle_core::DType::F64, &device);
-        let model = MLP::new(vs, input_dim, hidden_size, output_dim)?;
+        let model = MLP::new(vs, input_dim, hidden_size, output_dim, activation)?;
         // Pre-calculate parameter count
         let param_count = (input_dim + 1) * hidden_size + (hidden_size + 1) * output_dim;
 
-        // Initialize with He initialization for ReLU activation
+        // Initialize with appropriate initialization for the activation
         let instance = Self {
             x_data,
             y_data,
@@ -110,8 +141,9 @@ impl MnistNeuralNetwork {
             param_cache: Arc::new(RwLock::new(None)),
             dropout_rate: 0.2,
             l2_regularization: 1e-4,
+            activation,
         };
-        instance.he_initialize(rng)?;
+        instance.initialize_weights(rng)?;
 
         Ok(instance)
     }
@@ -125,6 +157,7 @@ impl MnistNeuralNetwork {
         hidden_size: usize,
         batch_size: Option<usize>,
         rng: &mut StdRng,
+        activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
         if !Path::new("data/train-images-idx3-ubyte").exists() {
             println!("MNIST files not found, downloading...");
@@ -155,7 +188,7 @@ impl MnistNeuralNetwork {
             y_data.push(label);
         }
 
-        Self::new(x_data, y_data, hidden_size, batch_size, rng)
+        Self::new(x_data, y_data, hidden_size, batch_size, rng, activation)
     }
 
     fn try_load_mnist_files() -> anyhow::Result<MnistData> {
@@ -217,8 +250,6 @@ impl MnistNeuralNetwork {
     fn download_file(url: &str, path: &str) -> anyhow::Result<()> {
 
 
-        use std::io::Write;
-        
         // Try curl first
         if let Ok(output) = std::process::Command::new("curl")
             .args(&["-L", "-f", "-s", "-o", path, url])
@@ -354,6 +385,7 @@ impl MnistNeuralNetwork {
         hidden_size: usize,
         batch_size: Option<usize>,
         rng: &mut StdRng,
+        activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
         // Validate hidden size to prevent overflow
         if hidden_size > 2048 {
@@ -368,7 +400,7 @@ impl MnistNeuralNetwork {
         }
 
         // Try to load real MNIST data first
-        Self::load_mnist(Some(samples), hidden_size, batch_size, rng)
+        Self::load_mnist(Some(samples), hidden_size, batch_size, rng, activation)
     }
 
     fn count_parameters(&self) -> usize {
@@ -432,8 +464,9 @@ impl MnistNeuralNetwork {
 
         Ok(params)
     }
-    /// Initialize weights using He initialization (optimal for ReLU activation)
-    fn he_initialize(&self, rng: &mut StdRng) -> anyhow::Result<()> {
+
+    /// Initialize weights using appropriate initialization for the activation function
+    fn initialize_weights(&self, rng: &mut StdRng) -> anyhow::Result<()> {
         let mut data = self.varmap.data().lock().unwrap();
         for (name, var) in data.iter_mut() {
             let tensor = var.as_tensor();
@@ -443,14 +476,28 @@ impl MnistNeuralNetwork {
                 // This is a weight matrix
                 let fan_in = dims[1]; // Number of input units
                 let fan_out = dims[0]; // Number of output units
-                
-                // Use Glorot/Xavier initialization for better gradient flow
-                let std_dev = (2.0 / (fan_in + fan_out) as f64).sqrt();
-                
-                // Generate He-initialized weights
+
+                // Choose initialization based on activation function
+                let std_dev = match self.activation {
+                    ActivationType::ReLU => {
+                        // He initialization for ReLU
+                        (2.0 / fan_in as f64).sqrt()
+                    }
+                    ActivationType::Logistic => {
+                        // Xavier/Glorot initialization for logistic
+                        (2.0 / (fan_in + fan_out) as f64).sqrt()
+                    }
+                    ActivationType::Sinewave => {
+                        // For sine activation, use a smaller initialization
+                        // to keep inputs in the linear region of sine
+                        (1.0 / (fan_in + fan_out) as f64).sqrt()
+                    }
+                };
+
+                // Generate initialized weights
                 let mut weights = Vec::new();
                 for _ in 0..tensor.elem_count() {
-                    // Sample from normal distribution with He scaling
+                    // Sample from normal distribution with appropriate scaling
                     let normal: f64 = rng.sample(rand_distr::StandardNormal);
                     weights.push(normal * std_dev);
                 }
@@ -504,12 +551,21 @@ impl MnistNeuralNetwork {
                 // Weight matrix - check He initialization criteria
                 let fan_in = dims[1];
                 let fan_out = dims[0];
-                let expected_std = (2.0 / (fan_in + fan_out) as f64).sqrt();
+                let expected_std = match self.activation {
+                    ActivationType::ReLU => (2.0 / fan_in as f64).sqrt(),
+                    ActivationType::Logistic => (2.0 / (fan_in + fan_out) as f64).sqrt(),
+                    ActivationType::Sinewave => (1.0 / (fan_in + fan_out) as f64).sqrt(),
+                };
                 let std_ratio = std_dev / expected_std;
-                println!("  Expected std (Glorot): {:.6}", expected_std);
+                let init_name = match self.activation {
+                    ActivationType::ReLU => "He",
+                    ActivationType::Logistic => "Xavier/Glorot",
+                    ActivationType::Sinewave => "Small Xavier",
+                };
+                println!("  Expected std ({}): {:.6}", init_name, expected_std);
                 println!("  Actual/Expected ratio: {:.3}", std_ratio);
                 if std_ratio < 0.8 || std_ratio > 1.2 {
-                    println!("  ⚠️  Warning: Standard deviation deviates significantly from Glorot initialization");
+                    println!("  ⚠️  Warning: Standard deviation deviates significantly from {} initialization", init_name);
                 } else {
                     println!("  ✓ Standard deviation is within expected range");
                 }

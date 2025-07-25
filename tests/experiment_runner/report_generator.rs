@@ -95,6 +95,8 @@ impl ReportGenerator {
         self.generate_csv_exports(all_results)?;
         // Generate LaTeX tables
         self.generate_latex_tables(all_results).await?;
+        // Generate comprehensive LaTeX document
+        self.generate_comprehensive_latex_document(all_results, &Path::new(&self.output_dir).join("latex"))?;
 
 
         Ok(())
@@ -379,7 +381,7 @@ impl ReportGenerator {
             let optimizer_filename = optimizer.replace(" ", "_");
             let detailed_report_filename =
                 format!("detailed_{}_{}.md", problem_filename, optimizer_filename);
-            let optimizer_link = format!("<a href=\"{}\">{}</a>", detailed_report_filename, optimizer);
+            let optimizer_link = format!(r#"<a href="{}">{}</a>"#, detailed_report_filename, optimizer);
             
             // Format the separated statistics
             let final_value_str = format!(
@@ -604,7 +606,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 
             for result in &results.results {
                 csv_content.push_str(&format!(
-                    "{},{},{},{},{},{:.6e},{:.6e},{},{},{},{:.3},{},{:?}\n",
+                    "{},{},{},{},{},{:.6e},{:.6e},{},{},{},{:.3},{},\"{:?}\"\n",
                     problem_name,
                     problem_family,
                     dimension,
@@ -858,7 +860,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{longtable}
 \usepackage{xcolor}
 \usepackage{siunitx}
+\usepackage{adjustbox}
 \begin{document}
+\adjustbox{width=\textwidth,center}{
 \begin{longtable}{l*{8}{S[table-format=2.2e-1]}}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
 \toprule
@@ -973,6 +977,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         }
         latex_content.push_str(
             r#"\end{longtable}
+}
 \end{document}
 "#,
         );
@@ -997,6 +1002,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{array}
 \usepackage{siunitx}
 \usepackage{xcolor}
+\usepackage{adjustbox}
 \begin{document}
 "#,
         );
@@ -1005,6 +1011,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \centering
 \caption{{Performance Results for {} Problem}}
 \label{{tab:{}}}
+\adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{l*{{7}}{{S[table-format=2.2e-1]}}}}
 \toprule
 \textbf{{Optimizer}} & \textbf{{Mean Final}} & \textbf{{Std Dev}} & \textbf{{Best}} & \textbf{{Worst}} & \textbf{{Mean Func}} & \textbf{{Success}} & \textbf{{Mean Time}} \\
@@ -1097,6 +1104,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         latex_content.push_str(
             r#"\bottomrule
 \end{tabular}
+}
 \end{table}
 \end{document}
 "#,
@@ -1118,11 +1126,13 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{array}
 \usepackage{siunitx}
 \usepackage{multirow}
+\usepackage{adjustbox}
 \begin{document}
 \begin{table}[htbp]
 \centering
 \caption{Summary Statistics by Problem Family}
 \label{tab:summary_statistics}
+\adjustbox{width=\textwidth,center}{
 \begin{tabular}{l*{6}{S[table-format=2.2e-1]}}
 \toprule
 \textbf{Problem Family} & \textbf{Optimizer} & \textbf{Avg Success} & \textbf{Avg Final} & \textbf{Avg Func} & \textbf{Avg Grad} & \textbf{Avg Time} \\
@@ -1198,6 +1208,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         latex_content.push_str(
             r#"\bottomrule
 \end{tabular}
+}
 \end{table}
 \end{document}
 "#,
@@ -1241,6 +1252,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{array}
 \usepackage{xcolor}
 \usepackage{multirow}
+\usepackage{adjustbox}
 \begin{document}
 "#,
         );
@@ -1249,6 +1261,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \centering
 \caption{{QQN vs Non-QQN Optimizer Comparison Matrix}}
 \label{{tab:comparison_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{l{}}}
 \toprule
 \textbf{{QQN Optimizer}} {}\\ 
@@ -1324,6 +1337,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         latex_content.push_str(
             r#"\bottomrule
 \end{tabular}
+}
 \end{table}
 \textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
 \end{document}
@@ -1355,6 +1369,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{float}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{adjustbox}
 \title{Quadratic Quasi-Newton (QQN) Optimizer: Comprehensive Benchmark Results}
 \author{QQN Benchmark Suite}
 \date{\today}
@@ -1452,7 +1467,8 @@ All raw experimental data, convergence plots, and additional analysis files are 
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         let mut content = String::from(
-            r#"\begin{longtable}{l*{8}{S[table-format=2.2e-1]}}
+            r#"\adjustbox{width=\textwidth,center}{
+\begin{longtable}{l*{8}{S[table-format=2.2e-1]}}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
 \toprule
 \textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
@@ -1566,7 +1582,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 content.push_str("\\midrule\n");
             }
         }
-        content.push_str("\\end{longtable}\n");
+        content.push_str("\\end{longtable}\n}\n");
         Ok(content)
     }
     /// Generate summary statistics table content (without document wrapper)
@@ -1580,6 +1596,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \centering
 \caption{Summary Statistics by Problem Family}
 \label{tab:summary_statistics}
+\adjustbox{width=\textwidth,center}{
 \begin{tabular}{l*{6}{S[table-format=2.2e-1]}}
 \toprule
 \textbf{Problem Family} & \textbf{Optimizer} & \textbf{Avg Success} & \textbf{Avg Final} & \textbf{Avg Func} & \textbf{Avg Grad} & \textbf{Avg Time} \\
@@ -1654,6 +1671,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         content.push_str(
             r#"\bottomrule
 \end{tabular}
+}
 \end{table}
 "#,
         );
@@ -1690,6 +1708,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \centering
 \caption{{QQN vs Non-QQN Optimizer Comparison Matrix}}
 \label{{tab:comparison_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{l{}}}
 \toprule
 \textbf{{QQN Optimizer}} {}\\ 
@@ -1765,6 +1784,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         content.push_str(
             r#"\bottomrule
 \end{tabular}
+}
 \end{table}
 \textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
 "#,
@@ -1784,6 +1804,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \centering
 \caption{{Performance Results for {} Problem}}
 \label{{tab:{}}}
+\adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{l*{{7}}{{S[table-format=2.2e-1]}}}}
 \toprule
 \textbf{{Optimizer}} & \textbf{{Mean Final}} & \textbf{{Std Dev}} & \textbf{{Best}} & \textbf{{Worst}} & \textbf{{Mean Func}} & \textbf{{Success}} & \textbf{{Mean Time}} \\
@@ -1895,7 +1916,6 @@ All raw experimental data, convergence plots, and additional analysis files are 
             .replace("~", "\\textasciitilde{}")
             .replace("\\", "\\textbackslash{}")
     }
-
 
     /// Generate detailed reports for each optimizer-problem combination
     async fn generate_detailed_reports(
@@ -2038,7 +2058,8 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 .replace("MaxIterations", "Max Iter")
                 .replace("MaxFunctionEvaluations", "Max Func")
                 .replace("TimeLimit", "Time")
-                .replace("NumericalError", "Num Err");
+                .replace("NumericalError", "Num Err")
+                .replace("\"", "");
             content.push_str(&format!(
                 r#"<tr style="{}">
 <td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
@@ -2160,21 +2181,28 @@ All raw experimental data, convergence plots, and additional analysis files are 
             // Show parameter evolution for first few and last few iterations
             if !best_run.trace.iterations.is_empty() {
                 content.push_str("\n#### Parameter Evolution (Selected Iterations)\n\n");
-                content.push_str("<table style=\"border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;\">\n");
-                content.push_str("<tr style=\"background-color: #f2f2f2;\">\n");
+                content.push_str(r#"<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
+"#);
+                content.push_str(r#"<tr style="background-color: #f2f2f2;">
+"#);
                 content.push_str(
-                    "<th style=\"border: 1px solid #ddd; padding: 4px;\">Iteration</th>\n",
+                    r#"<th style="border: 1px solid #ddd; padding: 4px;">Iteration</th>
+"#,
                 );
                 content.push_str(
-                    "<th style=\"border: 1px solid #ddd; padding: 4px;\">Function Value</th>\n",
+                    r#"<th style="border: 1px solid #ddd; padding: 4px;">Function Value</th>
+"#,
                 );
                 content.push_str(
-                    "<th style=\"border: 1px solid #ddd; padding: 4px;\">Gradient Norm</th>\n",
+                    r#"<th style="border: 1px solid #ddd; padding: 4px;">Gradient Norm</th>
+"#,
                 );
                 content.push_str(
-                    "<th style=\"border: 1px solid #ddd; padding: 4px;\">Step Size</th>\n",
+                    r#"<th style="border: 1px solid #ddd; padding: 4px;">Step Size</th>
+"#,
                 );
-                content.push_str("<th style=\"border: 1px solid #ddd; padding: 4px;\">Parameters (first 5)</th>\n");
+                content.push_str(r#"<th style="border: 1px solid #ddd; padding: 4px;">Parameters (first 5)</th>
+"#);
                 content.push_str("</tr>\n");
                 let iterations_to_show = if best_run.trace.iterations.len() <= 10 {
                     best_run.trace.iterations.iter().collect::<Vec<_>>()
@@ -2205,7 +2233,8 @@ All raw experimental data, convergence plots, and additional analysis files are 
                         params_str
                     };
                     content.push_str(&format!(
-                        "<tr><td style=\"border: 1px solid #ddd; padding: 4px;\">{}</td><td style=\"border: 1px solid #ddd; padding: 4px;\">{:.3e}</td><td style=\"border: 1px solid #ddd; padding: 4px;\">{:.3e}</td><td style=\"border: 1px solid #ddd; padding: 4px;\">{:.3e}</td><td style=\"border: 1px solid #ddd; padding: 4px;\">[{}]</td></tr>\n",
+                    r#"<tr><td style="border: 1px solid #ddd; padding: 4px;">{}</td><td style="border: 1px solid #ddd; padding: 4px;">{:.3e}</td><td style="border: 1px solid #ddd; padding: 4px;">{:.3e}</td><td style="border: 1px solid #ddd; padding: 4px;">{:.3e}</td><td style="border: 1px solid #ddd; padding: 4px;">[{}]</td></tr>
+"#,
                         iter_data.iteration,
                         iter_data.function_value,
                         iter_data.gradient_norm,
@@ -2279,11 +2308,12 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut numerical_failures = 0;
         let mut max_iter_failures = 0;
         for run in &failed_runs {
-            match run.convergence_reason {
-                qqn_optimizer::benchmarks::evaluation::ConvergenceReason::TimeLimit => timeout_failures += 1,
-                qqn_optimizer::benchmarks::evaluation::ConvergenceReason::NumericalError => numerical_failures += 1,
-                qqn_optimizer::benchmarks::evaluation::ConvergenceReason::MaxIterations => max_iter_failures += 1,
-                qqn_optimizer::benchmarks::evaluation::ConvergenceReason::MaxFunctionEvaluations => {
+            use qqn_optimizer::benchmarks::evaluation::ConvergenceReason;
+            match &run.convergence_reason {
+                ConvergenceReason::TimeLimit => timeout_failures += 1,
+                ConvergenceReason::NumericalError => numerical_failures += 1,
+                ConvergenceReason::MaxIterations => max_iter_failures += 1,
+                ConvergenceReason::MaxFunctionEvaluations => {
                     if run.iterations < 10 {
                         early_failures += 1;
                     }

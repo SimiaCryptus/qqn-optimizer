@@ -22,7 +22,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
-            max_iterations: 10000,
+            max_iterations: 1000,
             maximum_function_calls: 10000,
             min_improvement_percent: 1e-7,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),

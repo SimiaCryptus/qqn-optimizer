@@ -1,6 +1,6 @@
 use crate::experiment_runner::{ExperimentRunner};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
-use qqn_optimizer::benchmarks::mnist::MnistNeuralNetwork;
+use qqn_optimizer::benchmarks::mnist::{ActivationType, MnistNeuralNetwork};
 use qqn_optimizer::{init_logging, AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, QQNConfig, QQNOptimizer};
 use std::fs;
 use std::sync::Arc;
@@ -22,56 +22,143 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     println!("Creating benchmark results in: {}", output_dir.display());
 
     let mut rng: StdRng = StdRng::seed_from_u64(42);
+    let samples = 1000;
+    let max_evals = 250;
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
-            max_iterations: 1000,
-            maximum_function_calls: 1000,
+            max_iterations: max_evals,
+            maximum_function_calls: max_evals,
             min_improvement_percent: 1e-7,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 1,
         }).run_comparative_benchmarks(vec![
             Arc::new(
                 {
-                    let mut network = MnistNeuralNetwork::create(Some(5000), 20, Some(1000), &mut rng)
-                        .expect("Failed to create MNIST neural network");
+                    let mut network = MnistNeuralNetwork::create(
+                        Some(samples),
+                        20,
+                        Some(samples),
+                        &mut rng,
+                        Some(ActivationType::ReLU)
+                    ).expect("Failed to create MNIST neural network");
+                    network.set_optimal_value(Option::from(0.05));
+                    network
+                },
+            ),
+            Arc::new(
+                {
+                    let mut network = MnistNeuralNetwork::create(
+                        Some(samples),
+                        20,
+                        Some(samples),
+                        &mut rng,
+                        Some(ActivationType::Logistic)
+                    ).expect("Failed to create MNIST neural network");
+                    network.set_optimal_value(Option::from(0.05));
+                    network
+                },
+            ),
+            Arc::new(
+                {
+                    let mut network = MnistNeuralNetwork::create(
+                        Some(samples),
+                        20,
+                        Some(samples),
+                        &mut rng,
+                        Some(ActivationType::Sinewave)
+                    ).expect("Failed to create MNIST neural network");
                     network.set_optimal_value(Option::from(0.05));
                     network
                 },
             ),
         ], vec![
+            // (
+            //     "QQN-Backtracking".to_string(),
+            //     Arc::new(QQNOptimizer::new(QQNConfig {
+            //         line_search: LineSearchConfig {
+            //             method: LineSearchMethod::Backtracking,
+            //             max_iterations: 5,
+            //             ..LineSearchConfig::default()
+            //         },
+            //         lbfgs_history: 15,
+            //         ..Default::default()
+            //     })),
+            // ),
             (
-                "QQN-Bisection".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig::default())),
-            ),
-            (
-                "QQN-Backtracking-Hybrid".to_string(),
+                "QQN-CubicQuadraticInterpolation".to_string(),
                 Arc::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
-                        method: LineSearchMethod::Backtracking,
-                        c1: 1e-3,
-                        c2: 0.9,
-                        max_iterations: 75,
+                        method: LineSearchMethod::CubicQuadraticInterpolation,
+                        max_iterations: 5,
                         ..LineSearchConfig::default()
                     },
-                    lbfgs_history: 15,
+                    min_step_persist: 5e-1,
+                    lbfgs_history: 30,
                     ..Default::default()
                 })),
             ),
             (
-                "L-BFGS".to_string(),
-                Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
-            ),
-            (
-                "GD".to_string(),
-                Arc::new(GDOptimizer::new(Default::default())),
-            ),
-            (
-                "Adam-Fast".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1,
-                    lr_schedule: "constant".to_string(),
+                "QQN-StrongWolfe".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::StrongWolfe,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    min_step_persist: 5e-1,
+                    lbfgs_history: 30,
                     ..Default::default()
+                })),
+            ),
+            // (
+            //     "QQN-Bisection".to_string(),
+            //     Arc::new(QQNOptimizer::new(QQNConfig {
+            //         line_search: LineSearchConfig {
+            //             method: LineSearchMethod::Bisection,
+            //             max_iterations: 5,
+            //             ..LineSearchConfig::default()
+            //         },
+            //         lbfgs_history: 15,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "QQN-MoreThuente".to_string(),
+            //     Arc::new(QQNOptimizer::new(QQNConfig {
+            //         line_search: LineSearchConfig {
+            //             method: LineSearchMethod::MoreThuente,
+            //             max_iterations: 5,
+            //             ..LineSearchConfig::default()
+            //         },
+            //         lbfgs_history: 15,
+            //         ..Default::default()
+            //     })),
+            // ),
+            // (
+            //     "QQN-GoldenSection".to_string(),
+            //     Arc::new(QQNOptimizer::new(QQNConfig {
+            //         line_search: LineSearchConfig {
+            //             method: LineSearchMethod::GoldenSection,
+            //             max_iterations: 5,
+            //             ..LineSearchConfig::default()
+            //         },
+            //         lbfgs_history: 15,
+            //         ..Default::default()
+            //     })),
+            // ),
+            (
+                "L-BFGS".to_string(),
+                Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+                    ..LBFGSConfig::lax()
+                })),
+            ),
+            (
+                "Adam".to_string(),
+                Arc::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.1, // Standard for deep learning
+                    lr_schedule: "adaptive".to_string(),
+                    ..AdamConfig::deep_learning()
                 })),
             ),
         ]),

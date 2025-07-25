@@ -706,7 +706,7 @@ impl AckleyFunction {
             a,
             b,
             c,
-            name: format!("Ackley_{}D_a{}_b{}_c{}", dimension, a, b, c),
+            name: format!("Ackley_{}D_a{}_b{}_c{:0.2e}", dimension, a, b, c),
         }
     }
 }

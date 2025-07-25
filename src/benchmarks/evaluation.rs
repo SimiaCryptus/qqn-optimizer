@@ -552,17 +552,6 @@ impl BenchmarkRunner {
             }
 
             // Record iteration data
-            trace.check_convergence_with_optimizer(
-                *iteration,
-                f_val,
-                optimizer,
-                input_floats,
-                &gradient,
-                0.0, // Will be updated after step
-                start_time.elapsed(),
-                *function_evaluations,
-                *gradient_evaluations,
-            );
 
             // Check convergence
             let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
@@ -575,6 +564,18 @@ impl BenchmarkRunner {
             if let Some(optimal_value) = problem.optimal_value() {
                 if f_val < optimal_value {
                     info!("Converged by function tolerance at iteration {}", iteration);
+                   // Record final iteration data before returning
+                   trace.check_convergence_with_optimizer(
+                       *iteration,
+                       f_val,
+                       optimizer,
+                       input_floats,
+                       &gradient,
+                       0.0,
+                       start_time.elapsed(),
+                       *function_evaluations,
+                       *gradient_evaluations,
+                   );
                     return Ok(ConvergenceReason::FunctionTolerance);
                 }
             }
@@ -600,6 +601,18 @@ impl BenchmarkRunner {
                     "Maximum function evaluations reached after step: {}",
                     self.config.maximum_function_calls
                 );
+               // Record final iteration data before returning
+               trace.check_convergence_with_optimizer(
+                   *iteration,
+                   f_val,
+                   optimizer,
+                   input_floats,
+                   &gradient,
+                   step_result.step_size,
+                   start_time.elapsed(),
+                   *function_evaluations,
+                   *gradient_evaluations,
+               );
                 return Ok(ConvergenceReason::MaxFunctionEvaluations);
             }
 
@@ -610,6 +623,18 @@ impl BenchmarkRunner {
                     "Converged by optimizer at iteration {}: step_size={:.6e}",
                     iteration, step_result.step_size
                 );
+               // Record final iteration data before returning
+               trace.check_convergence_with_optimizer(
+                   *iteration - 1, // Use previous iteration number since we already incremented
+                   f_val,
+                   optimizer,
+                   input_floats,
+                   &gradient,
+                   step_result.step_size,
+                   start_time.elapsed(),
+                   *function_evaluations,
+                   *gradient_evaluations,
+               );
                 return Ok(ConvergenceReason::GradientTolerance);
             }
 
@@ -638,10 +663,18 @@ impl BenchmarkRunner {
                 }
             }
 
-            // Update step size in trace
-            if let Some(last_iteration) = trace.iterations.last_mut() {
-                last_iteration.step_size = step_result.step_size;
-            }
+           // Record iteration data only after successful step
+           trace.check_convergence_with_optimizer(
+               *iteration - 1, // Use previous iteration number since we already incremented
+               f_val,
+               optimizer,
+               input_floats,
+               &gradient,
+               step_result.step_size,
+               start_time.elapsed(),
+               *function_evaluations,
+               *gradient_evaluations,
+           );
 
             // Check for numerical errors
             if input_floats.iter().any(|&xi| !xi.is_finite()) {
