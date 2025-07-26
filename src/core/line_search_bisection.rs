@@ -3,7 +3,18 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::{anyhow, Error};
 use log::debug;
 
-/// Configuration for bisection line search
+/// Configuration for bisection line search algorithm.
+///
+/// The bisection line search is a robust method that finds optimal step sizes by:
+/// 1. Finding a "far point" where the function behavior changes
+/// 2. Using bisection to locate where the gradient becomes zero
+///
+/// This approach is particularly effective for well-behaved functions but may be
+/// slower than more sophisticated methods like Wolfe line search for complex problems.
+///
+/// # Trade-offs
+/// - **Strengths**: Robust, guaranteed convergence for unimodal functions, simple to understand
+/// - **Weaknesses**: Can be slow for complex functions, may not handle poorly conditioned problems optimally
 #[derive(Debug, Clone)]
 pub struct BisectionConfig {
     pub max_iterations: usize,     // Maximum bisection iterations
@@ -12,7 +23,12 @@ pub struct BisectionConfig {
     pub max_step: f64,             // Maximum step size
     pub initial_step: f64,         // Initial step size
     pub verbose: bool,             // Enable verbose logging
-    pub line_bracket_method: u8, // 1: gradient-based bracketing, 2: function-value-based bracketing
+    /// Method for finding the far point to establish search bracket:
+    /// - Method 1: Gradient-based bracketing - finds point where f(t) < f(0) and gradient > 0
+    /// - Method 2: Function-value-based bracketing - finds point where f(t) > f(0)
+    ///
+    /// Method 1 is generally more robust for optimization, Method 2 is simpler but less precise.
+    pub line_bracket_method: u8,
 }
 
 impl Default for BisectionConfig {
@@ -30,6 +46,11 @@ impl Default for BisectionConfig {
 }
 impl BisectionConfig {
     /// Create a strict configuration with tight tolerances and more iterations
+    ///
+    /// Use this when:
+    /// - High precision is critical
+    /// - Computational cost is not a primary concern
+    /// - Working with well-conditioned problems
     /// Suitable for high-precision optimization where accuracy is critical
     pub fn strict() -> Self {
         Self {
@@ -44,6 +65,11 @@ impl BisectionConfig {
     }
 
     /// Create a lax configuration with loose tolerances and fewer iterations
+    ///
+    /// Use this when:
+    /// - Speed is more important than precision
+    /// - Working with noisy or ill-conditioned functions
+    /// - Performing exploratory optimization
     /// Suitable for fast optimization where speed is more important than precision
     pub fn lax() -> Self {
         Self {
@@ -62,6 +88,10 @@ impl BisectionConfig {
     }
 
     /// Create a configuration with verbose logging enabled
+    ///
+    /// Useful for:
+    /// - Debugging line search behavior
+    /// - Understanding convergence patterns
     pub fn verbose() -> Self {
         Self {
             verbose: true,
@@ -69,7 +99,28 @@ impl BisectionConfig {
         }
     }
 }
-/// Bisection line search implementation
+
+/// Bisection line search implementation for one-dimensional optimization.
+///
+/// This line search method uses a two-phase approach:
+/// 1. **Bracketing Phase**: Find a "far point" that establishes a search interval
+/// 2. **Bisection Phase**: Use bisection method to find where the gradient is zero
+///
+/// # Algorithm Overview
+/// The bisection method is particularly effective when:
+/// - The objective function is unimodal along the search direction
+/// - Gradient information is reliable and inexpensive to compute
+/// - Robustness is preferred over speed
+///
+/// # Performance Characteristics
+/// - **Time Complexity**: O(log(1/ε)) where ε is the desired tolerance
+/// - **Function Evaluations**: Typically 10-50 per line search
+/// - **Convergence**: Linear convergence rate
+///
+/// # Limitations
+/// - May be slower than Wolfe conditions for well-behaved problems
+/// - Requires gradient evaluations at each iteration
+/// - Less effective for functions with multiple local minima along search direction
 #[derive(Debug, Clone)]
 pub struct BisectionLineSearch {
     config: BisectionConfig,
@@ -219,7 +270,12 @@ impl BisectionLineSearch {
     pub fn new(config: BisectionConfig) -> Self {
         Self { config }
     }
+    
     /// Set the initial step size for the next line search
+    ///
+    /// The initial step size affects the bracketing phase performance.
+    /// Larger steps may find the bracket faster but risk overshooting,
+    /// while smaller steps are more conservative but may require more iterations.
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
@@ -243,6 +299,13 @@ impl BisectionLineSearch {
     }
 
     /// Find the point where gradient is approximately zero using bisection
+    ///
+    /// This is the core bisection algorithm that assumes we have a proper bracket
+    /// where the gradient changes sign. If no proper bracket exists, it returns
+    /// the point with the smallest absolute gradient.
+    ///
+    /// # Returns
+    /// The step size where the gradient is closest to zero within the given interval.
     pub(crate) fn find_zero_gradient(
         &self,
         left: f64,
@@ -307,7 +370,18 @@ impl BisectionLineSearch {
 }
 
 
-/// Find far point using gradient-based method
+/// Find far point using gradient-based method (Method 1).
+///
+/// This method searches for a point where:
+/// - f(t) < f(0) (function value is still better than starting point)
+/// - gradient > 0 (function is starting to increase, indicating we've passed the minimum)
+///
+/// This approach is more sophisticated than simple function-value bracketing because
+/// it uses gradient information to identify when we've likely passed the optimal point.
+///
+/// # Parameters
+/// - `f0`: Function value at the starting point (t=0)
+/// - `initial_step`: Starting step size for the search
 /// Looks for a point where f(t) < f(0) and gradient is positive (function starts increasing)
 pub(crate) fn find_far_point_1(
     problem: &OneDimensionalProblem,
@@ -364,7 +438,16 @@ pub(crate) fn find_far_point_1(
     Ok(t)
 }
 
-/// Find far point using simple function-value-based method
+/// Find far point using simple function-value-based method (Method 2).
+///
+/// This method searches for a point where f(t) > f(0), meaning the function value
+/// is worse than the starting point. This is simpler than the gradient-based method
+/// but may be less precise in identifying the optimal bracket.
+///
+/// # Use Cases
+/// - When gradient computation is expensive or unreliable
+/// - For functions where gradient-based bracketing fails
+/// - As a fallback when Method 1 doesn't converge
 /// Looks for a point where f(t) > f(0) (function value is worse than starting point)
 pub(crate) fn find_far_point_2(
     problem: &OneDimensionalProblem,

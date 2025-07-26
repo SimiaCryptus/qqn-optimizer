@@ -32,17 +32,31 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             num_runs: 1,
             ..BenchmarkConfig::default()
         }).run_comparative_benchmarks(vec![
-            Arc::new(SphereFunction::new(2))
+            Arc::new(RosenbrockFunction::new(10)),
+            // Arc::new(SphereFunction::new(2))
         ], vec![
             (
-                "Adam".to_string(),
-                Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.01,
-                    lr_schedule: "adaptive".to_string(),
-                    verbose: true,
+                "QQN-Backtracking".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::StrongWolfe,
+                        c1: 1e-4,
+                        c2: 0.01,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
                     ..Default::default()
                 })),
             ),
+            // (
+            //     "Adam".to_string(),
+            //     Arc::new(AdamOptimizer::new(AdamConfig {
+            //         learning_rate: 0.01,
+            //         lr_schedule: "adaptive".to_string(),
+            //         verbose: true,
+            //         ..Default::default()
+            //     })),
+            // ),
         ]),
     ).await;
 

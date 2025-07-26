@@ -1,9 +1,43 @@
 //! L-BFGS (Limited-memory Broyden-Fletcher-Goldfarb-Shanno) optimizer implementation.
 //!
-//! This implementation provides a robust quasi-Newton optimization method that maintains
-//! a limited history of gradient and parameter changes to approximate the inverse Hessian.
-//! It serves both as a baseline optimizer for benchmarking and as a core component of the
-//! QQN algorithm.
+//! This implementation provides a robust quasi-Newton optimization method that approximates
+//! the inverse Hessian matrix using a limited history of gradient and parameter changes.
+//! L-BFGS is particularly effective for smooth, differentiable optimization problems and
+//! serves both as a standalone optimizer and as a core component of the QQN algorithm.
+//!
+//! ## Algorithm Overview
+//!
+//! L-BFGS uses the two-loop recursion algorithm to compute search directions:
+//! 1. **First loop**: Computes correction factors α_i using stored s_k and y_k vectors
+//! 2. **Scaling**: Applies initial Hessian approximation H₀ = γI where γ = (s_k^T y_k)/(y_k^T y_k)
+//! 3. **Second loop**: Applies corrections to obtain the final search direction
+//!
+//! The method maintains vectors s_k = x_{k+1} - x_k (parameter changes) and 
+//! y_k = ∇f_{k+1} - ∇f_k (gradient changes) to implicitly represent the inverse Hessian.
+//!
+//! ## Strengths
+//!
+//! - **Superlinear convergence** on smooth, well-conditioned problems
+//! - **Memory efficient**: O(m) storage where m is history size (typically 5-20)
+//! - **Scale invariant**: Automatically adapts to problem scaling through γ parameter
+//! - **Robust line search**: Uses strong Wolfe conditions for step size selection
+//! - **Curvature awareness**: Exploits second-order information without computing Hessian
+//!
+//! ## Weaknesses
+//!
+//! - **Requires smooth functions**: Performance degrades on non-smooth or noisy objectives
+//! - **Memory effects**: Poor history can slow convergence or cause instability
+//! - **Initialization sensitivity**: First few iterations use steepest descent
+//! - **Curvature condition**: May reject updates when s_k^T y_k ≤ 0 (negative curvature)
+//! - **Local method**: Can get trapped in local minima like other gradient-based methods
+//!
+//! ## Configuration Strategies
+//!
+//! The implementation provides three main configuration presets:
+//! - **Default**: Balanced settings suitable for most problems
+//! - **Strict**: Conservative settings for ill-conditioned or sensitive problems
+//! - **Lax**: Aggressive settings for well-conditioned problems requiring fast convergence
+//! - **QQN**: Specialized settings when used as a component within QQN
 
 use crate::core::line_search::create_line_search;
 use crate::core::line_search::{LineSearch, LineSearchConfig};
@@ -22,29 +56,100 @@ use crate::core::line_search::create_1d_problem_linear;
 use crate::LineSearchMethod;
 
 /// Configuration parameters for the L-BFGS optimizer.
+///
+/// This struct controls all aspects of L-BFGS behavior, from memory usage to numerical
+/// stability. The parameters can significantly impact convergence speed and robustness.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LBFGSConfig {
-    /// Number of previous iterations to store for Hessian approximation
+    /// Number of previous iterations to store for Hessian approximation.
+    ///
+    /// **Range**: 1-50, **Typical**: 5-20, **Default**: 10
+    ///
+    /// Larger values provide better Hessian approximation but use more memory and
+    /// computation. Values below 5 may converge slowly, while values above 20
+    /// rarely provide significant benefit and can cause numerical issues.
     pub history_size: usize,
-    /// Line search configuration
+    
+    /// Line search configuration for step size selection.
+    ///
+    /// Controls how the optimizer finds an appropriate step size along the search
+    /// direction. Uses strong Wolfe conditions by default for robust convergence.
     pub line_search: LineSearchConfig,
-    /// Numerical stability constant
+    
+    /// Numerical stability constant for avoiding division by zero.
+    ///
+    /// **Range**: 1e-16 to 1e-6, **Default**: 1e-8
+    ///
+    /// Used in curvature condition checks and gradient magnitude comparisons.
+    /// Smaller values allow more aggressive optimization but may cause instability.
     pub epsilon: f64,
-    /// Maximum number of iterations for two-loop recursion
+    
+    /// Maximum number of correction pairs to use in two-loop recursion.
+    ///
+    /// **Range**: 1 to history_size, **Default**: 10
+    ///
+    /// Limits computational cost when history is large. Should typically equal
+    /// history_size unless computational budget is severely constrained.
     pub max_correction_pairs: usize,
-    /// Maximum allowed step size
+    
+    /// Maximum allowed step size in any single iteration.
+    ///
+    /// **Range**: 0.1 to 100+, **Default**: 2.0
+    ///
+    /// Prevents excessively large steps that could cause numerical instability
+    /// or overshooting. Conservative values (0.5-1.0) improve stability but
+    /// may slow convergence on well-conditioned problems.
     pub max_step_size: f64,
-    /// Minimum allowed step size
+    
+    /// Minimum allowed step size before declaring convergence failure.
+    ///
+    /// **Range**: 1e-20 to 1e-10, **Default**: 1e-16
+    ///
+    /// Prevents infinite loops when line search cannot find acceptable step.
+    /// Very small values allow more persistent optimization attempts.
     pub min_step_size: f64,
-    /// Maximum allowed parameter change per iteration
+    
+    /// Maximum allowed parameter change per iteration (L∞ norm).
+    ///
+    /// **Range**: 0.01 to 1000+, **Default**: 1.0
+    ///
+    /// Prevents large parameter jumps that might destabilize optimization.
+    /// Useful for problems where parameters have physical meaning or constraints.
+    /// Set to 0.0 to disable this constraint.
     pub max_param_change: f64,
-    /// Gradient clipping threshold (0.0 to disable)
+    
+    /// Gradient clipping threshold to prevent numerical overflow.
+    ///
+    /// **Range**: 0.0 (disabled) to 1e6+, **Default**: 1e3
+    ///
+    /// Clips gradient norm to this value if exceeded. Useful for problems with
+    /// occasional large gradients. Set to 0.0 to disable clipping.
     pub gradient_clip: f64,
-    /// Enable recovery mechanism when stuck
+    
+    /// Enable recovery mechanism when optimization stagnates.
+    ///
+    /// **Default**: true
+    ///
+    /// When enabled, resets L-BFGS history and scaling when no improvement
+    /// is observed for `recovery_patience` iterations. Helps escape from
+    /// poor local approximations but may discard useful curvature information.
     pub enable_recovery: bool,
-    /// Number of iterations with no progress before triggering recovery
+    
+    /// Number of iterations without improvement before triggering recovery.
+    ///
+    /// **Range**: 1-20, **Default**: 5
+    ///
+    /// Lower values trigger recovery more aggressively, potentially helping
+    /// with difficult problems but also discarding good approximations sooner.
     pub recovery_patience: usize,
-    /// Enable verbose logging of tensor data and internal state
+    
+    /// Enable verbose logging of tensor data and internal state.
+    ///
+    /// **Default**: false
+    ///
+    /// When enabled, logs detailed information about gradients, directions,
+    /// step sizes, and internal L-BFGS state. Useful for debugging but
+    /// significantly increases log volume.
     pub verbose: bool,
 }
 
@@ -75,9 +180,17 @@ impl Default for LBFGSConfig {
 impl LBFGSConfig {
     /// Create a strict L-BFGS configuration with conservative settings.
     ///
-    /// This configuration prioritizes numerical stability and convergence guarantees
-    /// over speed. Suitable for problems where robustness is more important than
-    /// performance, or when dealing with ill-conditioned problems.
+    /// **Use case**: Ill-conditioned problems, high-precision requirements, or when
+    /// numerical stability is more important than convergence speed.
+    ///
+    /// **Key characteristics**:
+    /// - Small history size (5) to reduce memory effects from poor approximations
+    /// - Conservative step sizes (max 0.5) to prevent overshooting
+    /// - Small parameter changes (max 0.1) for gradual, stable progress
+    /// - High precision epsilon (1e-10) for careful numerical comparisons
+    /// - Patient recovery (10 iterations) to avoid premature history resets
+    ///
+    /// **Trade-offs**: More robust convergence but potentially slower on well-conditioned problems.
     pub fn strict() -> Self {
         Self {
             history_size: 5,  // Smaller history to reduce memory effects
@@ -101,9 +214,18 @@ impl LBFGSConfig {
     }
     /// Create a lax L-BFGS configuration with aggressive settings.
     ///
-    /// This configuration prioritizes speed and allows larger steps, potentially
-    /// at the cost of numerical stability. Suitable for well-conditioned problems
-    /// where fast convergence is desired.
+    /// **Use case**: Well-conditioned problems where fast convergence is desired
+    /// and numerical stability is less of a concern.
+    ///
+    /// **Key characteristics**:
+    /// - Large history size (20) for better Hessian approximation
+    /// - Aggressive step sizes (max 50.0) for rapid progress
+    /// - Large parameter changes (max 100.0) allowing big jumps
+    /// - Relaxed curvature condition (c2=0.1) for easier line search acceptance
+    /// - Quick recovery (2 iterations) to rapidly adapt to changing conditions
+    ///
+    /// **Trade-offs**: Faster convergence on suitable problems but higher risk of
+    /// numerical instability or overshooting on difficult problems.
     pub fn lax() -> Self {
         Self {
             history_size: 20,  // Larger history for better approximation
@@ -127,9 +249,18 @@ impl LBFGSConfig {
     }
     /// Create a configuration optimized for use within the QQN algorithm.
     ///
-    /// This configuration disables some safety checks and uses settings that
-    /// work well when L-BFGS is used as a component of a larger optimization
-    /// algorithm rather than as a standalone optimizer.
+    /// **Use case**: When L-BFGS serves as a subroutine within the QQN algorithm
+    /// rather than as a standalone optimizer.
+    ///
+    /// **Key characteristics**:
+    /// - Balanced history size (10) for good approximation without excess overhead
+    /// - Moderate curvature condition (c2=0.5) balancing acceptance and quality
+    /// - Disabled gradient clipping (0.0) - QQN handles gradient conditioning
+    /// - Disabled recovery mechanism - QQN manages higher-level adaptation
+    /// - Moderate step sizes (max 10.0) suitable for local refinement
+    ///
+    /// **Rationale**: QQN provides its own mechanisms for handling difficult cases,
+    /// so L-BFGS can focus on local quasi-Newton steps without redundant safety measures.
     pub fn for_qqn() -> Self {
         Self {
             history_size: 10,
@@ -155,35 +286,93 @@ impl LBFGSConfig {
 
 
 /// State information for L-BFGS optimization.
+///
+/// Maintains the limited memory representation of the inverse Hessian approximation
+/// through stored parameter and gradient differences. The state evolves as optimization
+/// progresses, building up curvature information to guide future search directions.
+///
+/// ## Memory Layout
+///
+/// The L-BFGS approximation is stored implicitly through:
+/// - `s_history`: Parameter differences s_k = x_{k+1} - x_k
+/// - `y_history`: Gradient differences y_k = ∇f_{k+1} - ∇f_k  
+/// - `rho_history`: Precomputed values ρ_k = 1/(s_k^T y_k) for efficiency
+///
+/// ## Curvature Condition
+///
+/// Updates are only accepted when the curvature condition s_k^T y_k > ε is satisfied.
+/// When violated, Powell's damping may be applied to maintain positive definiteness
+/// of the Hessian approximation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LBFGSState {
-    /// History of parameter differences (s_k = x_{k+1} - x_k)
+    /// History of parameter differences (s_k = x_{k+1} - x_k).
+    ///
+    /// Each entry represents how parameters changed in a previous iteration.
+    /// Used in the two-loop recursion to apply curvature corrections.
     #[serde(skip_serializing, skip_deserializing)]
     s_history: VecDeque<Vec<Tensor>>,
-    /// History of gradient differences (y_k = g_{k+1} - g_k)
+    
+    /// History of gradient differences (y_k = ∇f_{k+1} - ∇f_k).
+    ///
+    /// Each entry represents how gradients changed in a previous iteration.
+    /// Combined with s_history to capture local curvature information.
     #[serde(skip_serializing, skip_deserializing)]
     y_history: VecDeque<Vec<Tensor>>,
-    /// Reciprocals of s_k^T y_k for efficiency
+    
+    /// Precomputed reciprocals ρ_k = 1/(s_k^T y_k) for computational efficiency.
+    ///
+    /// These values are used repeatedly in the two-loop recursion, so precomputing
+    /// them avoids redundant dot product calculations.
     rho_history: VecDeque<f64>,
-    /// Previous gradient for computing differences
+    
+    /// Previous gradient for computing y_k differences in next update.
+    ///
+    /// Stored from the previous iteration to compute y_k = ∇f_k - ∇f_{k-1}
+    /// when the next update occurs.
     #[serde(skip_serializing, skip_deserializing)]
     prev_gradient: Option<Vec<Tensor>>,
-    /// Current iteration number
+    
+    /// Current iteration number for tracking optimization progress.
     iteration: usize,
-    /// Scaling factor for initial Hessian approximation
+    
+    /// Scaling factor γ for initial Hessian approximation H₀ = γI.
+    ///
+    /// Updated each iteration as γ = (s_k^T y_k)/(y_k^T y_k) to capture
+    /// the characteristic scale of the problem's curvature.
     gamma: f64,
-    /// Numerical stability constant
+    
+    /// Numerical stability constant for avoiding division by zero and other issues.
     epsilon: f64,
-    /// Best function value seen so far
+    
+    /// Best function value encountered during optimization.
+    ///
+    /// Used to track progress and trigger recovery mechanisms when
+    /// no improvement is observed for extended periods.
     best_function_value: Option<f64>,
-    /// Number of iterations without improvement
+    
+    /// Counter for iterations without improvement in function value.
+    ///
+    /// When this exceeds recovery_patience, the recovery mechanism
+    /// may reset the L-BFGS history to escape poor approximations.
     no_improvement_count: usize,
-    /// Previous parameters for recovery
+    
+    /// Previous parameters stored for potential recovery from numerical issues.
+    ///
+    /// If the current iteration produces non-finite values, optimization
+    /// can revert to this previous state.
     #[serde(skip_serializing, skip_deserializing)]
     prev_params: Option<Vec<Tensor>>,
-    /// Disable safety checks when used within QQN
+    
+    /// Flag to disable certain safety checks when used within QQN.
+    ///
+    /// When true, skips some numerical validation that QQN handles at a higher level,
+    /// allowing for more aggressive local optimization behavior.
     disable_checks: bool,
-    /// Maximum allowed gradient norm for numerical stability
+    
+    /// Maximum allowed gradient norm before applying scaling for numerical stability.
+    ///
+    /// Gradients exceeding this threshold are scaled down to prevent overflow
+    /// in subsequent computations.
     max_gradient_norm: f64,
 }
 
@@ -225,6 +414,35 @@ impl LBFGSState {
     }
 
     /// Compute the L-BFGS search direction using the two-loop recursion
+    ///
+    /// This is the core L-BFGS algorithm that computes the search direction p_k = -H_k ∇f_k
+    /// where H_k is the approximate inverse Hessian. The method uses the two-loop recursion:
+    ///
+    /// **First loop** (backward through history):
+    /// ```text
+    /// q = ∇f_k
+    /// for i = k-1, k-2, ..., k-m:
+    ///     α_i = ρ_i (s_i^T q)
+    ///     q = q - α_i y_i
+    /// ```
+    ///
+    /// **Scaling**: r = γ q where γ = (s_{k-1}^T y_{k-1})/(y_{k-1}^T y_{k-1})
+    ///
+    /// **Second loop** (forward through history):
+    /// ```text
+    /// for i = k-m, ..., k-2, k-1:
+    ///     β_i = ρ_i (y_i^T r)  
+    ///     r = r + (α_i - β_i) s_i
+    /// ```
+    ///
+    /// Returns -r as the descent direction.
+    ///
+    /// ## Error Handling
+    ///
+    /// - Falls back to steepest descent if no history exists
+    /// - Handles numerical issues (NaN, Inf) gracefully
+    /// - Skips problematic history pairs while preserving others
+    /// - Validates gradient magnitude and applies scaling if needed
     pub fn estimate_optimum(
         &mut self,
         position: &[Tensor],
@@ -481,6 +699,30 @@ impl LBFGSState {
 
 
     /// Update the L-BFGS state with new gradient and step information.
+    ///
+    /// Incorporates information from the latest optimization step to improve the
+    /// inverse Hessian approximation. This method:
+    ///
+    /// 1. **Computes differences**: s_k = x_{k+1} - x_k, y_k = ∇f_{k+1} - ∇f_k
+    /// 2. **Checks curvature condition**: Ensures s_k^T y_k > ε for positive definiteness
+    /// 3. **Applies Powell damping**: Modifies y_k if curvature condition fails
+    /// 4. **Updates history**: Adds (s_k, y_k, ρ_k) to limited memory storage
+    /// 5. **Updates scaling**: Recomputes γ = (s_k^T y_k)/(y_k^T y_k)
+    ///
+    /// ## Curvature Condition and Powell Damping
+    ///
+    /// The curvature condition s_k^T y_k > 0 ensures the Hessian approximation
+    /// remains positive definite. When violated, Powell damping interpolates:
+    /// ```text
+    /// θ = 0.8 * threshold / (threshold - s_k^T y_k)  if s_k^T y_k < 0.2 * threshold
+    /// y_k_damped = θ y_k + (1-θ) B_k s_k
+    /// ```
+    /// This maintains theoretical convergence properties while handling negative curvature.
+    ///
+    /// ## Memory Management
+    ///
+    /// When history reaches capacity, the oldest (s_k, y_k, ρ_k) triple is removed
+    /// to make room for the new information, maintaining constant memory usage.
     pub fn update(
         &mut self,
         old_params: &[Tensor],

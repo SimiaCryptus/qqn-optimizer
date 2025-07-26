@@ -3,7 +3,25 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 
-/// Configuration for Cubic/Quadratic interpolation line search
+/// A sophisticated line search algorithm that uses cubic and quadratic interpolation
+/// to efficiently find step sizes satisfying the Wolfe conditions.
+/// 
+/// # Algorithm Overview
+/// 
+/// This line search combines cubic and quadratic interpolation techniques:
+/// 1. **Cubic Interpolation**: When both function values and gradients are available
+///    at two points, uses cubic Hermite interpolation to find a better step size
+/// 2. **Quadratic Interpolation**: When only one gradient is available, falls back
+///    to quadratic interpolation using function values and one gradient
+/// 3. **Safeguarding**: Ensures interpolated points don't get too close to interval
+///    boundaries, maintaining numerical stability
+/// 4. **Bracketing**: Maintains an interval containing acceptable step sizes
+/// 
+/// # Strengths
+/// - High-order interpolation provides fast convergence for smooth functions
+/// - Robust safeguarding prevents numerical issues
+/// - Adaptive between cubic and quadratic interpolation
+/// - Configurable for different precision/speed tradeoffs
 #[derive(Debug, Clone)]
 pub struct CubicQuadraticConfig {
     pub c1: f64,
@@ -13,7 +31,13 @@ pub struct CubicQuadraticConfig {
     pub max_step: f64,
     pub initial_step: f64,
     pub verbose: bool,
+    /// Minimum fraction of interval to move during interpolation.
+    /// Prevents interpolated points from getting too close to interval boundaries,
+    /// which could cause numerical instability. Typical values: 0.05-0.2.
     pub interpolation_safeguard: f64, // Minimum fraction of interval to move
+    /// Factor for extrapolation when curvature condition fails.
+    /// When the curvature condition is not satisfied (gradient magnitude too large),
+    /// the step size is multiplied by this factor. Typical values: 1.5-3.0.
     pub extrapolation_factor: f64,    // Factor for extrapolation steps
 }
 
@@ -32,6 +56,7 @@ impl Default for CubicQuadraticConfig {
         }
     }
 }
+/// Configuration presets for different optimization scenarios
 impl CubicQuadraticConfig {
     /// Create a strict configuration for high-precision optimization
     /// - Stricter Wolfe conditions (c1=1e-4, c2=0.1)
@@ -70,6 +95,12 @@ impl CubicQuadraticConfig {
         }
     }
     /// Create the default configuration
+    /// 
+    /// Provides a balanced setup suitable for most optimization problems:
+    /// - Standard Wolfe conditions (c1=1e-4, c2=0.1)
+    /// - Moderate iteration limit (20)
+    /// - Conservative safeguards for stability
+    /// Create the default configuration
     pub fn default_config() -> Self {
         Self::default()
     }
@@ -82,7 +113,22 @@ pub struct CubicQuadraticLineSearch {
     config: CubicQuadraticConfig,
 }
 
+/// Cubic/Quadratic interpolation line search implementation
+///
+/// # Weaknesses
+/// - Requires gradient evaluations, making it more expensive per iteration
+/// - May struggle with non-smooth or discontinuous functions
+/// - Cubic interpolation can be sensitive to numerical errors in gradients
+/// - Performance depends heavily on the quality of gradient information
+///
+/// # Best Use Cases
+/// - Smooth, well-conditioned optimization problems
+/// - When gradient information is reliable and relatively cheap to compute
+/// - Problems where high-precision line search is beneficial
 impl CubicQuadraticLineSearch {
+    /// Set the initial step size for the next line search
+    /// 
+    /// The step size will be clamped to the configured min/max bounds.
     /// Set the initial step size for the next line search
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
@@ -90,6 +136,8 @@ impl CubicQuadraticLineSearch {
     pub fn new(config: CubicQuadraticConfig) -> Self {
         Self { config }
     }
+    /// Create with default configuration
+    /// Equivalent to `CubicQuadraticLineSearch::new(CubicQuadraticConfig::default())`
     /// Create with default configuration
     pub fn default_search() -> Self {
         Self::new(CubicQuadraticConfig::default())
@@ -117,6 +165,7 @@ impl CubicQuadraticLineSearch {
     pub fn with_config(config: CubicQuadraticConfig) -> Self {
         Self { config }
     }
+    /// Log a message if verbose mode is enabled
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
             debug!("CubicQuadratic: {}", message);
@@ -124,6 +173,21 @@ impl CubicQuadraticLineSearch {
     }
 
     /// Cubic interpolation between two points with function and gradient values
+    /// 
+    /// Uses cubic Hermite interpolation to find a point that minimizes a cubic polynomial
+    /// fitted through two points with known function values and gradients.
+    /// 
+    /// # Arguments
+    /// * `a`, `b` - The two x-coordinates
+    /// * `fa`, `fb` - Function values at a and b
+    /// * `ga`, `gb` - Gradient values at a and b
+    /// 
+    /// # Returns
+    /// * `Some(t)` - Interpolated point between a and b (with safeguarding)
+    /// * `None` - If interpolation fails (e.g., identical points, negative discriminant)
+    /// 
+    /// The returned point is safeguarded to be at least `interpolation_safeguard` 
+    /// fraction away from both interval endpoints.
     fn cubic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64, gb: f64) -> Option<f64> {
         let h = b - a;
         if h.abs() < f64::EPSILON {
@@ -178,7 +242,20 @@ impl CubicQuadraticLineSearch {
             Some(t)
         }
     }
+    
     /// Quadratic interpolation using function values and one gradient
+    /// 
+    /// Uses quadratic interpolation when only one gradient is available.
+    /// Fits a quadratic polynomial through two function values and one gradient.
+    /// 
+    /// # Arguments
+    /// * `a`, `b` - The two x-coordinates  
+    /// * `fa`, `fb` - Function values at a and b
+    /// * `ga` - Gradient value at point a
+    /// 
+    /// # Returns
+    /// * `Some(t)` - Interpolated point (with safeguarding)
+    /// * `None` - If interpolation fails (e.g., zero denominator)
     fn quadratic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64) -> Option<f64> {
         let h = b - a;
         if h.abs() < f64::EPSILON {
@@ -202,7 +279,16 @@ impl CubicQuadraticLineSearch {
             Some(t)
         }
     }
+    
     /// Check Wolfe conditions
+    /// 
+    /// Evaluates both the Armijo (sufficient decrease) and curvature conditions.
+    /// 
+    /// # Returns
+    /// * `(armijo, curvature)` - Tuple of booleans indicating which conditions are satisfied
+    /// 
+    /// - Armijo: f(α) ≤ f(0) + c₁·α·f'(0)
+    /// - Curvature: |f'(α)| ≤ c₂·|f'(0)|
     fn check_wolfe(
         &self,
         f0: f64,

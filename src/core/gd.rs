@@ -1,3 +1,63 @@
+//! # Gradient Descent (GD) Optimizer
+//!
+//! This module implements a comprehensive gradient descent optimizer with advanced features
+//! for robust optimization across different problem types.
+//!
+//! ## Algorithm Overview
+//!
+//! The gradient descent algorithm follows the iterative update rule:
+//! ```text
+//! θ_{t+1} = θ_t - α * ∇f(θ_t)
+//! ```
+//! where:
+//! - θ_t are the parameters at iteration t
+//! - α is the learning rate (step size)
+//! - ∇f(θ_t) is the gradient of the objective function at θ_t
+//!
+//! ## Key Features
+//!
+//! ### Momentum Support
+//! - **Standard Momentum**: Accumulates gradients with exponential decay
+//!   ```text
+//!   v_t = β * v_{t-1} + ∇f(θ_t)
+//!   θ_{t+1} = θ_t - α * v_t
+//!   ```
+//! - **Nesterov Momentum**: Uses look-ahead gradient for better convergence
+//!   ```text
+//!   v_t = β * v_{t-1} + ∇f(θ_t)
+//!   θ_{t+1} = θ_t - α * (β * v_t + ∇f(θ_t))
+//!   ```
+//!
+//! ### Adaptive Learning Rate
+//! Automatically adjusts learning rate based on gradient magnitude to prevent
+//! divergence with large gradients while maintaining progress with small gradients.
+//!
+//! ### Gradient Clipping
+//! Prevents gradient explosion by clipping gradients to a maximum norm,
+//! essential for training stability on challenging optimization landscapes.
+//!
+//! ### Weight Decay (L2 Regularization)
+//! Adds regularization term to prevent overfitting: `grad += weight_decay * param`
+//!
+//! ## Strengths
+//! - Simple and well-understood algorithm
+//! - Guaranteed convergence for convex functions with appropriate learning rate
+//! - Memory efficient (O(n) for momentum, O(1) otherwise)
+//! - Robust with gradient clipping and adaptive learning rate
+//! - Good baseline performance across many problem types
+//!
+//! ## Weaknesses
+//! - Can be slow on ill-conditioned problems
+//! - Sensitive to learning rate selection
+//! - May oscillate in narrow valleys (partially addressed by momentum)
+//! - No automatic scaling for different parameter dimensions
+//! - Can get stuck in saddle points (though momentum helps)
+//!
+//! ## When to Use
+//! - **Good for**: Well-conditioned problems, when simplicity is valued, baseline comparisons
+//! - **Avoid for**: Highly ill-conditioned problems, when fast convergence is critical
+//! - **Consider alternatives**: Adam/AdamW for adaptive per-parameter scaling, L-BFGS for smooth functions
+
 use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result as CandleResult, Tensor};
@@ -7,23 +67,91 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// Configuration parameters for the GD optimizer.
+///
+/// This struct controls all aspects of the gradient descent optimization process,
+/// from basic parameters like learning rate to advanced features like adaptive
+/// learning rate scaling and gradient clipping.
+///
+/// # Parameter Guidelines
+///
+/// ## Learning Rate (`learning_rate`)
+/// - **Range**: Typically 1e-4 to 1e-1
+/// - **Too high**: Causes divergence, oscillation, or overshooting
+/// - **Too low**: Slow convergence, may get stuck in local minima
+/// - **Recommendation**: Start with 0.01, adjust based on convergence behavior
+///
+/// ## Momentum (`momentum`)
+/// - **Range**: 0.0 to 0.99 (0.0 = no momentum)
+/// - **Benefits**: Accelerates convergence, helps escape local minima, smooths oscillations
+/// - **Drawbacks**: Can overshoot, requires tuning, adds memory overhead
+/// - **Recommendation**: 0.9 for most problems, 0.0 for simple convex functions
+///
+/// ## Weight Decay (`weight_decay`)
+/// - **Range**: 0.0 to 1e-2 (0.0 = no regularization)
+/// - **Purpose**: Prevents overfitting by penalizing large parameter values
+/// - **Effect**: Equivalent to L2 regularization in the loss function
+/// - **Recommendation**: 1e-4 to 1e-3 for regularization, 0.0 for pure optimization
+///
+/// ## Gradient Clipping (`max_grad_norm`)
+/// - **Range**: 1.0 to 100.0 (0.0 = no clipping)
+/// - **Purpose**: Prevents gradient explosion, stabilizes training
+/// - **Trade-off**: Too aggressive clipping can slow convergence
+/// - **Recommendation**: 10.0 for most problems, 1.0 for unstable functions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GDConfig {
     /// Learning rate (step size)
+    /// 
+    /// Controls the size of parameter updates. Higher values lead to faster
+    /// convergence but risk overshooting or divergence. Lower values are
+    /// more stable but converge slowly.
     pub learning_rate: f64,
+    
     /// Momentum coefficient (0.0 = no momentum, 0.9 = high momentum)
+    /// 
+    /// Accumulates gradients from previous iterations to accelerate convergence
+    /// and smooth out oscillations. Higher values provide more acceleration
+    /// but can cause overshooting.
     pub momentum: f64,
+    
     /// Weight decay (L2 regularization)
+    /// 
+    /// Adds a penalty term proportional to parameter magnitude, equivalent
+    /// to L2 regularization. Helps prevent overfitting by encouraging
+    /// smaller parameter values.
     pub weight_decay: f64,
+    
     /// Enable Nesterov momentum
+    /// 
+    /// Uses "look-ahead" gradients for better convergence properties.
+    /// Only effective when momentum > 0. Generally provides better
+    /// convergence than standard momentum.
     pub nesterov: bool,
+    
     /// Maximum gradient norm for clipping (0.0 = no clipping)
+    /// 
+    /// Clips gradients to this maximum norm to prevent gradient explosion.
+    /// Essential for training stability on functions with large gradients
+    /// or steep regions.
     pub max_grad_norm: f64,
+    
     /// Enable adaptive learning rate based on gradient magnitude
+    /// 
+    /// Automatically reduces learning rate when gradients are large to
+    /// prevent divergence. Uses a sigmoid-like scaling function that
+    /// preserves learning rate for moderate gradients.
     pub adaptive_lr: bool,
+    
     /// Minimum learning rate when using adaptive scaling
+    /// 
+    /// Prevents adaptive learning rate from becoming too small, which
+    /// could halt optimization progress. Only used when adaptive_lr is true.
     pub min_learning_rate: f64,
+    
     /// Enable verbose logging
+    /// 
+    /// Provides detailed logging of optimization progress including
+    /// parameter values, gradients, and internal computations.
+    /// Useful for debugging but can impact performance.
     pub verbose: bool,
 }
 
@@ -41,9 +169,21 @@ impl Default for GDConfig {
         }
     }
 }
+
 impl GDConfig {
     /// Create a strict configuration with conservative settings for stable convergence.
-    /// Best for: Ill-conditioned problems, functions with large gradients, production use.
+    /// 
+    /// **Best for**: 
+    /// - Ill-conditioned problems with high condition numbers
+    /// - Functions with large or unstable gradients
+    /// - Production environments where stability is critical
+    /// - When you need guaranteed convergence over speed
+    /// 
+    /// **Characteristics**:
+    /// - Very small learning rate (0.001) for stability
+    /// - No momentum to avoid overshooting
+    /// - Aggressive gradient clipping (norm = 1.0)
+    /// - Adaptive learning rate enabled for additional safety
     pub fn strict() -> Self {
         Self {
             learning_rate: 0.001,
@@ -56,8 +196,20 @@ impl GDConfig {
             verbose: false,
         }
     }
+    
     /// Create a lax configuration with aggressive settings for fast convergence.
-    /// Best for: Well-conditioned problems, experimentation, when speed is prioritized.
+    /// 
+    /// **Best for**:
+    /// - Well-conditioned problems with reasonable condition numbers
+    /// - Experimentation and hyperparameter tuning
+    /// - When convergence speed is prioritized over stability
+    /// - Functions with well-behaved gradients
+    /// 
+    /// **Characteristics**:
+    /// - Large learning rate (0.1) for fast progress
+    /// - High momentum (0.9) with Nesterov acceleration
+    /// - Relaxed gradient clipping (norm = 100.0)
+    /// - Adaptive learning rate disabled for consistent behavior
     pub fn lax() -> Self {
         Self {
             learning_rate: 0.1,
@@ -70,8 +222,23 @@ impl GDConfig {
             verbose: false,
         }
     }
+    
     /// Create a configuration optimized for the Rosenbrock function and similar challenging landscapes.
-    /// Best for: Non-convex optimization, functions with narrow valleys.
+    /// 
+    /// **Best for**:
+    /// - Non-convex optimization problems
+    /// - Functions with narrow valleys or ridges (like Rosenbrock)
+    /// - Problems with vastly different curvatures in different directions
+    /// - Optimization landscapes with saddle points
+    /// 
+    /// **Characteristics**:
+    /// - Moderate learning rate (0.001) to handle steep gradients
+    /// - High momentum (0.9) with Nesterov to navigate valleys
+    /// - Moderate gradient clipping for stability
+    /// - Adaptive learning rate to handle varying gradient magnitudes
+    /// 
+    /// **Note**: The Rosenbrock function f(x,y) = (1-x)² + 100(y-x²)² is a classic
+    /// test case with a narrow curved valley that challenges most optimizers.
     pub fn rosenbrock() -> Self {
         Self {
             learning_rate: 0.001,
@@ -84,8 +251,22 @@ impl GDConfig {
             verbose: false,
         }
     }
+    
     /// Create a configuration with verbose logging enabled for debugging.
-    /// Based on the default configuration but with detailed logging.
+    /// 
+    /// **Best for**:
+    /// - Debugging optimization problems
+    /// - Understanding optimizer behavior
+    /// - Analyzing convergence patterns
+    /// - Educational purposes
+    /// 
+    /// **Characteristics**:
+    /// - Based on default configuration for balanced behavior
+    /// - Verbose logging enabled for detailed output
+    /// - Shows parameter values, gradients, and internal computations
+    /// 
+    /// **Warning**: Verbose logging can significantly impact performance
+    /// and should not be used in production or performance-critical code.
     pub fn debug() -> Self {
         Self {
             learning_rate: 0.01,
@@ -102,17 +283,37 @@ impl GDConfig {
 
 
 /// State information for GD optimization.
+///
+/// Maintains the internal state of the gradient descent optimizer across
+/// optimization steps. This includes iteration counting and momentum buffers.
+///
+/// # Serialization Note
+/// 
+/// The momentum buffer is excluded from serialization (`serde(skip)`) because
+/// Tensor objects cannot be easily serialized. When deserializing, the momentum
+/// buffer will be reinitialized on the first optimization step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GDState {
     /// Current iteration number
+    /// 
+    /// Tracks the number of optimization steps taken. Used for logging,
+    /// convergence criteria, and potential learning rate scheduling.
     pub iteration: usize,
+    
     /// Momentum buffer (velocity)
+    /// 
+    /// Stores the accumulated momentum for each parameter tensor.
+    /// Only allocated when momentum > 0. The buffer has the same
+    /// structure as the parameter tensors.
     #[serde(skip_serializing, skip_deserializing)]
     pub momentum_buffer: Option<Vec<Tensor>>,
 }
 
 impl GDState {
     /// Create a new GD state.
+    /// 
+    /// Initializes the state with zero iterations and no momentum buffer.
+    /// The momentum buffer will be allocated on the first step if momentum > 0.
     pub fn new() -> Self {
         Self {
             iteration: 0,
@@ -121,25 +322,67 @@ impl GDState {
     }
 
     /// Reset the GD state to initial conditions.
+    /// 
+    /// Clears the iteration counter and momentum buffer, effectively
+    /// restarting the optimization from scratch. Useful for multiple
+    /// optimization runs or when changing problem parameters.
     pub fn reset(&mut self) {
         self.iteration = 0;
         self.momentum_buffer = None;
     }
 
     /// Get the current iteration number.
+    /// 
+    /// Returns the number of optimization steps completed. This can be
+    /// used for convergence analysis or learning rate scheduling.
     pub fn iteration(&self) -> usize {
         self.iteration
     }
 }
 
 /// GD optimizer implementation.
+///
+/// The main gradient descent optimizer that implements the [`Optimizer`] trait.
+/// Supports various advanced features including momentum, adaptive learning rates,
+/// gradient clipping, and weight decay.
+///
+/// # Algorithm Details
+///
+/// The optimizer implements the following update sequence:
+/// 
+/// 1. **Gradient Computation**: Compute ∇f(θ_t) using the provided function
+/// 2. **Weight Decay**: Add L2 regularization term: `grad += weight_decay * param`
+/// 3. **Gradient Clipping**: Clip gradients if norm exceeds `max_grad_norm`
+/// 4. **Adaptive Learning Rate**: Scale learning rate based on gradient magnitude
+/// 5. **Momentum Update**: Accumulate gradients with momentum (if enabled)
+/// 6. **Parameter Update**: Apply the final update: `param -= learning_rate * update`
+///
+/// # Memory Usage
+///
+/// - **Without momentum**: O(1) additional memory
+/// - **With momentum**: O(n) additional memory for momentum buffers
+/// - **Temporary allocations**: O(n) for gradient computations and updates
+///
+/// # Thread Safety
+///
+/// The optimizer is not thread-safe due to mutable state. Use separate
+/// optimizer instances for concurrent optimization or implement external
+/// synchronization.
 #[derive(Debug)]
 pub struct GDOptimizer {
     config: GDConfig,
     state: GDState,
     /// Stagnation multiplier for relaxed convergence criteria
+    /// 
+    /// Used to relax convergence criteria when the optimizer appears
+    /// to be making slow progress. Higher values make convergence
+    /// detection more lenient.
     stagnation_multiplier: f64,
+    
     /// Stagnation count threshold
+    /// 
+    /// Number of consecutive steps with minimal progress before
+    /// applying stagnation-based convergence relaxation.
     stagnation_count: usize,
 }
 

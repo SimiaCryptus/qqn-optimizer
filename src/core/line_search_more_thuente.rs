@@ -4,7 +4,21 @@ use anyhow::anyhow;
 use log::debug;
 use std::f64::EPSILON;
 
-/// Configuration for More-Thuente line search
+/// Configuration for the More-Thuente line search algorithm.
+///
+/// The More-Thuente line search is a sophisticated algorithm that finds step sizes
+/// satisfying the strong Wolfe conditions. It maintains an interval that brackets
+/// an acceptable step and uses polynomial interpolation to efficiently narrow
+/// this interval.
+///
+/// # Parameters
+/// - `c1`: Armijo condition parameter (sufficient decrease)
+/// - `c2`: Strong Wolfe curvature condition parameter
+/// - `xtol`: Relative tolerance for step size convergence
+/// - `ftol`: Tolerance for function decrease (currently unused but reserved)
+/// - `min_step`/`max_step`: Bounds on acceptable step sizes
+/// - `max_iterations`: Maximum number of function evaluations
+/// - `initial_step`: Starting step size for the search
 #[derive(Debug, Clone)]
 pub struct MoreThuenteConfig {
     pub c1: f64,
@@ -19,6 +33,14 @@ pub struct MoreThuenteConfig {
 }
 
 impl Default for MoreThuenteConfig {
+    /// Creates a balanced configuration suitable for most optimization problems.
+    ///
+    /// Uses standard values from numerical optimization literature:
+    /// - c1 = 1e-4: Standard Armijo parameter ensuring sufficient decrease
+    /// - c2 = 0.9: Standard strong Wolfe parameter for quasi-Newton methods
+    /// - xtol = 1e-12: Tight relative tolerance for step size
+    /// - ftol = 1e-6: Function tolerance (reserved for future use)
+    /// - 50 iterations: Usually sufficient for most well-conditioned problems
     fn default() -> Self {
         Self {
             c1: 1e-4,  // Standard Armijo parameter
@@ -35,6 +57,14 @@ impl Default for MoreThuenteConfig {
 }
 impl MoreThuenteConfig {
     /// Create a strict configuration for high-precision optimization
+    ///
+    /// Best for:
+    /// - High-precision scientific computing
+    /// - When function evaluations are cheap
+    /// - Problems requiring very accurate line searches
+    ///
+    /// Trade-offs:
+    /// - More function evaluations per line search
     /// - Tighter tolerances for very accurate line searches
     /// - More iterations allowed
     /// - Stricter Wolfe conditions
@@ -52,6 +82,14 @@ impl MoreThuenteConfig {
         }
     }
     /// Create a lax configuration for fast, approximate line searches
+    ///
+    /// Best for:
+    /// - Large-scale optimization where speed is critical
+    /// - When function evaluations are expensive
+    /// - Early stages of optimization algorithms
+    ///
+    /// Trade-offs:
+    /// - Less precise step sizes but faster convergence to approximate solutions
     /// - Looser tolerances for faster convergence
     /// - Fewer iterations
     /// - More permissive Wolfe conditions
@@ -75,8 +113,45 @@ impl MoreThuenteConfig {
 }
 
 
-/// More-Thuente line search implementation
-/// Based on the algorithm described in "Line Search Algorithms with Guaranteed Sufficient Decrease"
+/// More-Thuente line search implementation.
+///
+/// This is a robust and efficient line search algorithm that finds step sizes satisfying
+/// the strong Wolfe conditions. It's particularly well-suited for quasi-Newton methods
+/// and other optimization algorithms requiring reliable step size selection.
+///
+/// # Algorithm Overview
+///
+/// The More-Thuente algorithm maintains an interval [stx, sty] that brackets an acceptable
+/// step size. It uses polynomial interpolation (cubic when possible, quadratic as fallback)
+/// to generate trial points and systematically narrows the bracket until convergence.
+///
+/// # Strengths
+/// - **Robust**: Handles ill-conditioned functions and numerical difficulties gracefully
+/// - **Efficient**: Uses sophisticated interpolation to minimize function evaluations
+/// - **Reliable**: Guarantees strong Wolfe conditions when they exist
+/// - **Well-tested**: Extensively used in production optimization software
+/// - **Adaptive**: Automatically adjusts to function behavior during the search
+///
+/// # Weaknesses
+/// - **Complex**: More sophisticated than simple backtracking, harder to understand/debug
+/// - **Overhead**: May be overkill for simple problems where backtracking suffices
+/// - **Parameter sensitivity**: Performance can depend on c1, c2 parameter choices
+/// - **Memory**: Maintains more state than simpler line search methods
+///
+/// # When to Use
+/// - **Recommended for**: Quasi-Newton methods (BFGS, L-BFGS), conjugate gradient
+/// - **Good for**: Problems where function evaluations are moderately expensive
+/// - **Consider alternatives for**: Very cheap functions (backtracking), very expensive functions (trust region)
+///
+/// # References
+/// Based on "Line Search Algorithms with Guaranteed Sufficient Decrease" by
+/// Moré and Thuente (1994), ACM Transactions on Mathematical Software.
+///
+/// # Example
+/// ```rust,ignore
+/// let line_search = MoreThuenteLineSearch::moderate().with_verbose();
+/// let result = line_search.optimize_1d(&problem)?;
+/// ```
 #[derive(Debug, Clone)]
 pub struct MoreThuenteLineSearch {
     config: MoreThuenteConfig,
@@ -84,6 +159,9 @@ pub struct MoreThuenteLineSearch {
 
 impl MoreThuenteLineSearch {
     /// Set the initial step size for the next line search
+    ///
+    /// The step size will be clamped to [min_step, max_step] bounds.
+    /// A good initial step size can significantly improve performance.
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
@@ -96,6 +174,11 @@ impl MoreThuenteLineSearch {
     }
 
     /// Create a strict configuration for high-precision optimization
+    ///
+    /// Uses tighter tolerances and more iterations for problems requiring
+    /// very accurate line searches. Best when function evaluations are
+    /// relatively cheap and high precision is needed.
+    ///
     /// - Tighter tolerances for very accurate line searches
     /// - More iterations allowed
     /// - Stricter Wolfe conditions
@@ -104,6 +187,11 @@ impl MoreThuenteLineSearch {
     }
 
     /// Create a lax configuration for fast, approximate line searches
+    ///
+    /// Uses looser tolerances and fewer iterations for problems where
+    /// speed is more important than precision. Best for large-scale
+    /// optimization or when function evaluations are expensive.
+    ///
     /// - Looser tolerances for faster convergence
     /// - Fewer iterations
     /// - More permissive Wolfe conditions
@@ -112,7 +200,10 @@ impl MoreThuenteLineSearch {
     }
 
     /// Create the default/moderate configuration
-    /// Same as Default::default() but more explicit
+    ///
+    /// Balanced configuration suitable for most optimization problems.
+    /// Same as `Default::default()` but more explicit about the intent.
+    /// Good starting point for most applications.
     pub fn moderate() -> Self {
         Self::new(MoreThuenteConfig::default())
     }
@@ -121,12 +212,22 @@ impl MoreThuenteLineSearch {
         self.config.verbose = true;
         self
     }
+    /// Log a message if verbose mode is enabled
+    /// Uses the `log` crate's debug level for output
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
             debug!("MoreThuente: {}", message);
         }
     }
     /// Check strong Wolfe conditions
+    ///
+    /// Returns (armijo_satisfied, curvature_satisfied) where:
+    /// - Armijo condition: f(α) ≤ f(0) + c1 * α * f'(0) (sufficient decrease)
+    /// - Strong Wolfe curvature: |f'(α)| ≤ c2 * |f'(0)| (curvature condition)
+    ///
+    /// Both conditions must be satisfied for the step to be acceptable.
+    /// The strong Wolfe conditions ensure both sufficient decrease and
+    /// that the step size is not too small (avoiding slow convergence).
     fn check_wolfe_conditions(
         &self,
         f0: f64,
@@ -142,6 +243,20 @@ impl MoreThuenteLineSearch {
         (armijo, curvature)
     }
     /// Update interval using More-Thuente rules
+    ///
+    /// This is the core of the More-Thuente algorithm. It maintains an interval
+    /// [stx, sty] that brackets an acceptable step and uses polynomial interpolation
+    /// to generate new trial points.
+    ///
+    /// The algorithm handles four main cases:
+    /// 1. Higher function value: Use cubic interpolation to find minimum
+    /// 2. Lower function value with opposite derivative signs: Bracket found
+    /// 3. Lower function value with decreasing gradient magnitude: Extrapolate
+    /// 4. Lower function value with non-decreasing gradient: Handle bracketed case
+    ///
+    /// Each case uses different interpolation strategies optimized for that
+    /// particular situation. The method includes safeguards against numerical
+    /// instability and ensures the new step stays within reasonable bounds.
     fn update_interval(
         &self,
         stx: &mut f64,
@@ -289,6 +404,13 @@ impl MoreThuenteLineSearch {
         }
     }
     /// Update the interval endpoints based on function values and gradients
+    ///
+    /// This method updates the bracket endpoints (stx, sty) based on the
+    /// current trial point. It implements the More-Thuente update rules
+    /// that ensure the interval always contains an acceptable step.
+    ///
+    /// The logic ensures that stx always corresponds to the best point
+    /// found so far that satisfies the Armijo condition.
     fn update_endpoints(
         &self,
         stx: &mut f64,

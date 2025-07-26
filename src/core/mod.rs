@@ -43,19 +43,35 @@ pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
 
 /// Default L-BFGS history size
 pub const DEFAULT_LBFGS_HISTORY: usize = 10;
+
 pub mod adam;
 pub mod gd;
-mod line_search_cubic_quadratic;
-mod line_search_golden_section;
-mod line_search_more_thuente;
-mod line_search_bisection;
-mod line_search_backtracking;
-pub(crate) mod line_search_strong_wolfe;
+pub mod line_search_cubic_quadratic;
+pub mod line_search_golden_section;
+pub mod line_search_more_thuente;
+pub mod line_search_bisection;
+pub mod line_search_backtracking;
+pub mod line_search_strong_wolfe;
 
 pub use gd::{GDConfig, GDOptimizer, GDState};
-pub use line_search_backtracking::BacktrackingLineSearch;
-pub use line_search_strong_wolfe::StrongWolfeConfig;
-pub use line_search_strong_wolfe::StrongWolfeLineSearch;
+pub use line_search_backtracking::{
+    BacktrackingConfig, BacktrackingLineSearch,
+};
+pub use line_search_strong_wolfe::{
+    StrongWolfeConfig, StrongWolfeLineSearch,
+};
+pub use line_search_bisection::{
+    BisectionConfig,BisectionLineSearch,
+};
+pub use line_search_cubic_quadratic::{
+    CubicQuadraticConfig, CubicQuadraticLineSearch,
+};
+pub use line_search_golden_section::{
+    GoldenSectionConfig, GoldenSectionLineSearch,
+};
+pub use line_search_more_thuente::{
+    MoreThuenteConfig, MoreThuenteLineSearch,
+};
 
 #[cfg(test)]
 mod tests {

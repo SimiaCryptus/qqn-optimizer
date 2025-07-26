@@ -3,15 +3,48 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 
 
-/// Configuration for backtracking line search
+/// Configuration parameters for the backtracking line search algorithm.
+///
+/// The backtracking line search uses the Armijo condition to ensure sufficient decrease
+/// in the objective function. Starting from an initial step size, it repeatedly reduces
+/// the step by a factor `rho` until the Armijo condition is satisfied:
+///
+/// f(x + α*p) ≤ f(x) + c1*α*∇f(x)ᵀp
+///
+/// where:
+/// - α is the step size
+/// - p is the search direction
+/// - c1 is the Armijo parameter (typically 1e-4)
+///
+/// # Parameter Guidelines
+/// - `c1`: Controls strictness of sufficient decrease (0 < c1 < 1, typically 1e-4)
+/// - `rho`: Backtracking factor (0 < rho < 1, typically 0.5)
+/// - Smaller `rho` means more aggressive backtracking (faster convergence but more function evaluations)
+/// - Larger `c1` means stricter acceptance criteria (more conservative steps)
 #[derive(Debug, Clone)]
 pub struct BacktrackingConfig {
-    pub c1: f64,               // Armijo condition parameter
-    pub rho: f64,              // Backtracking factor (0 < rho < 1)
-    pub max_iterations: usize, // Maximum backtracking iterations
-    pub min_step: f64,         // Minimum step size
-    pub initial_step: f64,     // Initial step size
-    pub max_step: f64,         // Maximum step size (optional, can be used to limit step size)
+    /// Armijo condition parameter (0 < c1 < 1, typically 1e-4).
+    /// Controls the required amount of decrease in the objective function.
+    /// Smaller values are more permissive, larger values are more strict.
+    pub c1: f64,
+    
+    /// Backtracking factor (0 < rho < 1, typically 0.5).
+    /// The step size is multiplied by this factor in each backtracking iteration.
+    /// Smaller values lead to more aggressive backtracking.
+    pub rho: f64,
+    
+    /// Maximum number of backtracking iterations before giving up.
+    pub max_iterations: usize,
+    
+    /// Minimum allowable step size. If the step becomes smaller than this,
+    /// the algorithm will attempt to use this minimum step if it provides improvement.
+    pub min_step: f64,
+    
+    /// Initial step size to try. This is reset for each line search.
+    pub initial_step: f64,
+    
+    /// Maximum allowable step size (typically f64::MAX for no limit).
+    pub max_step: f64,
 }
 
 impl Default for BacktrackingConfig {
@@ -27,10 +60,21 @@ impl Default for BacktrackingConfig {
     }
 }
 impl BacktrackingConfig {
-    /// Create a strict configuration with conservative parameters
-    /// - Stricter Armijo condition (c1 = 1e-3)
-    /// - More aggressive backtracking (rho = 0.3)
-    /// - Higher iteration limit for thorough search
+    /// Create a strict configuration with conservative parameters.
+    ///
+    /// This configuration is suitable for problems where robustness is more important
+    /// than speed, or when dealing with noisy or ill-conditioned functions.
+    ///
+    /// # Parameters
+    /// - Stricter Armijo condition (c1 = 1e-3) - requires more decrease
+    /// - More aggressive backtracking (rho = 0.3) - reduces step size faster
+    /// - Higher iteration limit (200) - allows more thorough search
+    /// - Smaller minimum step (1e-15) - can handle very small steps
+    ///
+    /// # Use Cases
+    /// - Ill-conditioned optimization problems
+    /// - Functions with numerical noise
+    /// - When convergence reliability is critical
     pub fn strict() -> Self {
         Self {
             c1: 1e-3,              // Stricter Armijo condition
@@ -41,10 +85,21 @@ impl BacktrackingConfig {
             max_step: f64::MAX,    // No upper limit by default
         }
     }
-    /// Create a lax configuration with permissive parameters
-    /// - Relaxed Armijo condition (c1 = 1e-6)
-    /// - Conservative backtracking (rho = 0.8)
-    /// - Lower iteration limit for faster convergence
+    /// Create a lax configuration with permissive parameters.
+    ///
+    /// This configuration prioritizes speed over robustness and is suitable for
+    /// well-behaved functions where fast convergence is desired.
+    ///
+    /// # Parameters
+    /// - Relaxed Armijo condition (c1 = 1e-6) - accepts smaller decreases
+    /// - Conservative backtracking (rho = 0.8) - reduces step size slowly
+    /// - Lower iteration limit (50) - gives up sooner for speed
+    /// - Larger minimum step (1e-10) - avoids very small steps
+    ///
+    /// # Use Cases
+    /// - Well-conditioned smooth functions
+    /// - When computational budget is limited
+    /// - Initial exploration phases of optimization
     pub fn lax() -> Self {
         Self {
             c1: 1e-6,              // More permissive Armijo condition
@@ -55,50 +110,118 @@ impl BacktrackingConfig {
             max_step: f64::MAX,    // No upper limit by default
         }
     }
-    /// Create the default configuration
+    /// Create the default configuration.
+    ///
+    /// Equivalent to `BacktrackingConfig::default()`. Provides balanced parameters
+    /// suitable for most optimization problems.
     pub fn default_config() -> Self {
         Self::default()
     }
 }
 
 
-/// Backtracking line search implementation (Armijo rule only)
+/// Backtracking line search implementation using the Armijo rule.
+///
+/// This is a simple but robust line search method that starts with an initial step size
+/// and repeatedly reduces it by a constant factor until the Armijo sufficient decrease
+/// condition is satisfied:
+///
+/// f(x + α*p) ≤ f(x) + c1*α*∇f(x)ᵀp
+///
+/// # Algorithm
+/// 1. Start with initial step size α₀
+/// 2. Evaluate f(x + α*p)
+/// 3. If Armijo condition is satisfied, return α
+/// 4. Otherwise, set α ← ρ*α and repeat from step 2
+/// 5. Stop if α becomes too small or max iterations reached
+///
+/// # Strengths
+/// - Simple and robust
+/// - Guaranteed to find acceptable step (under mild conditions)
+/// - Low memory requirements
+/// - Works well for most optimization algorithms
+///
+/// # Weaknesses
+/// - Only uses first-order information (no curvature)
+/// - May take many iterations for ill-conditioned problems
+/// - Can be conservative (smaller steps than necessary)
+/// - No strong Wolfe conditions (may not ensure good curvature condition)
+///
+/// # Typical Use Cases
+/// - Gradient descent and quasi-Newton methods
+/// - When simplicity and robustness are preferred over efficiency
+/// - Problems where second-order information is unavailable or unreliable
 #[derive(Debug, Clone)]
 pub struct BacktrackingLineSearch {
     config: BacktrackingConfig,
 }
 
 impl BacktrackingLineSearch {
-    /// Set the initial step size for the next line search
+    /// Set the initial step size for the next line search.
+    ///
+    /// The step size will be clamped to the range [min_step, max_step].
+    /// This is useful for adaptive step size strategies where the initial
+    /// step is based on previous iterations.
+    ///
+    /// # Arguments
+    /// * `step` - The desired initial step size
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
+    /// Create a new backtracking line search with the given configuration.
     pub fn new(config: BacktrackingConfig) -> Self {
         Self { config }
     }
-    /// Create with default configuration
+    
+    /// Create a backtracking line search with default configuration.
+    ///
+    /// Uses balanced parameters suitable for most optimization problems:
+    /// - c1 = 1e-4 (standard Armijo parameter)
+    /// - rho = 0.5 (moderate backtracking)
+    /// - max_iterations = 100
+    /// - min_step = 1e-12
     pub fn default_search() -> Self {
         Self::new(BacktrackingConfig::default())
     }
 
-    /// Create a strict backtracking line search with conservative parameters
-    /// - Stricter Armijo condition (c1 = 1e-3)
-    /// - More aggressive backtracking (rho = 0.3)
-    /// - Higher iteration limit for thorough search
+    /// Create a strict backtracking line search with conservative parameters.
+    ///
+    /// This variant prioritizes robustness over speed and is recommended for:
+    /// - Ill-conditioned problems
+    /// - Noisy objective functions  
+    /// - When convergence reliability is critical
+    ///
+    /// Uses stricter acceptance criteria and more thorough search.
     pub fn strict() -> Self {
         Self::new(BacktrackingConfig::strict())
     }
 
-    /// Create a lax backtracking line search with permissive parameters
-    /// - Relaxed Armijo condition (c1 = 1e-6)
-    /// - Conservative backtracking (rho = 0.8)
-    /// - Lower iteration limit for faster convergence
+    /// Create a lax backtracking line search with permissive parameters.
+    ///
+    /// This variant prioritizes speed over robustness and is recommended for:
+    /// - Well-conditioned smooth functions
+    /// - When computational budget is limited
+    /// - Initial exploration phases
+    ///
+    /// Uses more permissive acceptance criteria for faster convergence.
     pub fn lax() -> Self {
         Self::new(BacktrackingConfig::lax())
     }
-    /// Create a backtracking line search optimized for robust optimization
-    /// - Balanced parameters for reliability over speed
-    /// - Good for ill-conditioned problems
+    
+    /// Create a backtracking line search optimized for robust optimization.
+    ///
+    /// This variant is designed for maximum reliability when dealing with
+    /// challenging optimization problems. It uses:
+    /// - Standard Armijo parameter (c1 = 1e-4) for balanced acceptance
+    /// - Moderate backtracking (rho = 0.5) 
+    /// - Very high iteration limit (500) for thorough search
+    /// - Very small minimum step (1e-16) to handle difficult cases
+    ///
+    /// # Use Cases
+    /// - Highly ill-conditioned problems
+    /// - Functions with multiple scales
+    /// - When other line search methods fail
+    /// - Research or exploratory optimization
     pub fn robust() -> Self {
         Self::new(BacktrackingConfig {
             c1: 1e-4,              // Standard Armijo parameter
@@ -112,6 +235,32 @@ impl BacktrackingLineSearch {
 }
 
 impl LineSearch for BacktrackingLineSearch {
+    /// Perform one-dimensional optimization along the given search direction.
+    ///
+    /// This method implements the backtracking line search algorithm with the Armijo rule.
+    /// It starts with the configured initial step size and repeatedly reduces it until
+    /// the Armijo sufficient decrease condition is satisfied.
+    ///
+    /// # Arguments
+    /// * `problem` - The one-dimensional optimization problem containing the objective
+    ///               function and initial directional derivative
+    ///
+    /// # Returns
+    /// * `Ok(LineSearchResult)` - Contains the optimal step size and termination reason
+    /// * `Err(anyhow::Error)` - If the search direction is not a descent direction or
+    ///                          if no improvement is possible within machine precision
+    ///
+    /// # Algorithm Details
+    /// 1. Verify that the search direction is a descent direction (∇f·p < 0)
+    /// 2. Start with initial step size α
+    /// 3. For each iteration:
+    ///    - Evaluate f(x + α*p)
+    ///    - Check if Armijo condition is satisfied: f(x + α*p) ≤ f(x) + c1*α*∇f·p
+    ///    - If satisfied, return α
+    ///    - Otherwise, set α ← ρ*α and continue
+    /// 4. If α becomes smaller than min_step, try the minimum step
+    /// 5. If max iterations reached, return the best point found
+    /// 6. As a last resort, try machine epsilon step size
     fn optimize_1d<'a>(
         &mut self,
         problem: &'a OneDimensionalProblem,
@@ -185,13 +334,25 @@ impl LineSearch for BacktrackingLineSearch {
 
         Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"))
     }
+    /// Reset the line search state.
+    ///
+    /// For backtracking line search, this is a no-op since the algorithm is stateless.
+    /// Each call to `optimize_1d` is independent of previous calls.
 
     fn reset(&mut self) {
         // Backtracking line search is stateless, nothing to reset
     }
+    /// Create a boxed clone of this line search instance.
+    ///
+    /// This is used by the optimization framework to create independent copies
+    /// of the line search for different optimization runs.
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
+    /// Get a mutable reference to this instance as `Any` for downcasting.
+    ///
+    /// This allows users to access backtracking-specific methods like
+    /// `set_initial_step` when they have a `Box<dyn LineSearch>`.
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self

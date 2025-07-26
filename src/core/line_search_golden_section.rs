@@ -3,7 +3,19 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 
-/// Configuration for Golden Section line search
+/// Configuration for Golden Section line search algorithm.
+///
+/// The Golden Section search is a bracketing method that uses the golden ratio (φ ≈ 1.618)
+/// to efficiently narrow down the interval containing the minimum. It maintains the golden
+/// ratio property throughout the search, requiring only one new function evaluation per iteration.
+///
+/// # Algorithm Properties
+/// - **Convergence Rate**: Linear with ratio ≈ 0.618 (slower than Newton-type methods)
+/// - **Function Evaluations**: Moderate (one per iteration after initial bracketing)
+/// - **Robustness**: Very robust, guaranteed to converge for unimodal functions
+/// - **Memory**: Minimal memory requirements (stateless)
+/// - **Derivatives**: Does not require derivative information
+/// - **Bracket Requirement**: Needs to establish a proper bracket [a,b,c] where f(b) < min(f(a), f(c))
 #[derive(Debug, Clone)]
 pub struct GoldenSectionConfig {
     pub max_iterations: usize,
@@ -28,6 +40,12 @@ impl Default for GoldenSectionConfig {
 }
 impl GoldenSectionConfig {
     /// Create a strict configuration for high-precision optimization
+    ///
+    /// Use this when:
+    /// - High precision is required
+    /// - Function evaluations are relatively cheap
+    /// - Robustness is more important than speed
+    /// - Working with well-conditioned problems
     /// - Higher iteration limit for thorough search
     /// - Tighter tolerance for precise convergence
     /// - Smaller minimum step for fine-grained control
@@ -43,6 +61,12 @@ impl GoldenSectionConfig {
     }
 
     /// Create a lax configuration for fast, approximate optimization
+    ///
+    /// Use this when:
+    /// - Speed is more important than precision
+    /// - Function evaluations are expensive
+    /// - Working with noisy or ill-conditioned functions
+    /// - Only rough optimization is needed
     /// - Lower iteration limit for speed
     /// - Looser tolerance for quick convergence
     /// - Larger minimum step to avoid getting stuck
@@ -69,7 +93,32 @@ impl GoldenSectionConfig {
 }
 
 
-/// Golden Section line search implementation
+/// Golden Section line search implementation.
+///
+/// This algorithm finds the minimum of a unimodal function along a given direction using
+/// the golden section search method. It's a derivative-free optimization technique that
+/// maintains optimal reduction of the search interval at each iteration.
+///
+/// # Algorithm Overview
+/// 1. **Bracketing Phase**: Find three points [a, b, c] such that f(b) < min(f(a), f(c))
+/// 2. **Golden Section Phase**: Iteratively narrow the bracket using golden ratio points
+/// 3. **Convergence**: Stop when interval width < tolerance or max iterations reached
+///
+/// # Strengths
+/// - **Robust**: Always converges for unimodal functions
+/// - **Derivative-free**: Only requires function evaluations
+/// - **Predictable**: Convergence rate is known and consistent
+/// - **Simple**: Easy to implement and understand
+/// - **Optimal**: Minimizes maximum number of evaluations for worst-case scenario
+///
+/// # Weaknesses
+/// - **Slow convergence**: Linear convergence rate (O(φ^n))
+/// - **Bracketing required**: Must find initial bracket, which can be expensive
+/// - **Unimodal assumption**: Assumes function has single minimum in search direction
+/// - **No derivative use**: Doesn't exploit gradient information when available
+/// - **Fixed reduction**: Cannot adapt reduction rate based on function behavior
+///
+/// # When to Use
 /// Uses the golden ratio to narrow down the interval containing the minimum
 #[derive(Debug, Clone)]
 pub struct GoldenSectionLineSearch {
@@ -127,6 +176,11 @@ impl LineSearch for GoldenSectionLineSearch {
 }
 impl GoldenSectionLineSearch {
     /// Set the initial step size for the next line search
+    ///
+    /// The initial step size affects the bracketing phase. A good initial step:
+    /// - Should be roughly the expected optimal step size
+    /// - Too small: may miss the minimum or require many bracketing steps
+    /// - Too large: may overshoot and require bracket contraction
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
@@ -152,7 +206,12 @@ impl GoldenSectionLineSearch {
     }
     /// Golden ratio constant
     const RESPHI: f64 = 0.618033988749895; // 1/phi = phi - 1
-    /// Find minimum using golden section search
+    
+    /// Find minimum using golden section search.
+    ///
+    /// This is the core algorithm that performs the golden section search within
+    /// an established bracket. It maintains the golden ratio property to ensure
+    /// optimal interval reduction at each iteration.
     fn find_minimum(&self, problem: &OneDimensionalProblem) -> anyhow::Result<f64> {
         // First, establish a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c)
         let (a, b, c) = self.find_bracket(problem)?;
@@ -195,7 +254,20 @@ impl GoldenSectionLineSearch {
         self.log_verbose(&format!("Golden section completed with x={:.3e}", final_x));
         Ok(final_x)
     }
-    /// Find a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c)
+    
+    /// Find a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c).
+    ///
+    /// This is often the most expensive part of the golden section search, as it may
+    /// require many function evaluations to establish a proper bracket. The algorithm:
+    ///
+    /// 1. Starts at the origin (step size 0)
+    /// 2. Finds a point where the function decreases (using initial_step)
+    /// 3. Expands using golden ratio until function increases again
+    /// 4. Ensures the middle point has the lowest function value
+    ///
+    /// # Failure Cases
+    /// - Function doesn't decrease in the given direction (not a descent direction)
+    /// - Cannot find a point where function increases (unbounded below)
     fn find_bracket(&self, problem: &OneDimensionalProblem) -> anyhow::Result<(f64, f64, f64)> {
         let mut a = 0.0;
         let mut step = self.config.initial_step;
@@ -489,7 +561,7 @@ mod tests {
     }
     #[test]
     fn test_golden_section_bracket_finding() {
-        init_logging().unwrap();
+        init_logging(false).unwrap();
         let line_search = GoldenSectionLineSearch::new(GoldenSectionConfig {
             initial_step: 0.1,
             max_step: 5.0,

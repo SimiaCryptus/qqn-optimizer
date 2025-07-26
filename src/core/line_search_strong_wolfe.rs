@@ -3,6 +3,23 @@ use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 use serde::{Deserialize, Serialize};
+/// Strong Wolfe line search implementation following Nocedal & Wright Algorithm 3.5.
+///
+/// The Strong Wolfe conditions ensure both sufficient decrease (Armijo condition) and
+/// sufficient curvature reduction. This is a robust line search method that guarantees
+/// convergence for quasi-Newton methods and provides good step sizes for optimization.
+///
+/// ## Algorithm Overview
+/// 1. Start with an initial step size α₀
+/// 2. Check if current step satisfies both Wolfe conditions
+/// 3. If not, use a zoom procedure to bracket and refine the step size
+/// 4. The zoom phase uses interpolation to efficiently find acceptable steps
+///
+/// ## Wolfe Conditions
+/// - **Armijo (sufficient decrease)**: f(αₖ) ≤ f(0) + c₁αₖf'(0)
+/// - **Strong curvature**: |f'(αₖ)| ≤ c₂|f'(0)|
+///
+/// where c₁ and c₂ are parameters with 0 < c₁ < c₂ < 1.
 
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,6 +48,15 @@ impl Default for StrongWolfeConfig {
 }
 impl StrongWolfeConfig {
     /// Strict configuration with tight tolerances for high-precision optimization
+    ///
+    /// **Use when:**
+    /// - High precision is required
+    /// - Function evaluations are cheap
+    /// - Convergence quality is more important than speed
+    ///
+    /// **Characteristics:**
+    /// - Very strict sufficient decrease (c₁ = 1e-6)
+    /// - Very strict curvature condition (c₂ = 0.1)
     /// - Smaller c1 for stricter sufficient decrease
     /// - Smaller c2 for stricter curvature condition
     /// - More iterations allowed
@@ -48,6 +74,15 @@ impl StrongWolfeConfig {
     }
 
     /// Lax configuration with relaxed tolerances for robust optimization
+    ///
+    /// **Use when:**
+    /// - Function evaluations are expensive
+    /// - Approximate solutions are acceptable
+    /// - Speed is more important than precision
+    ///
+    /// **Characteristics:**
+    /// - Relaxed sufficient decrease (c₁ = 1e-2)
+    /// - Very relaxed curvature condition (c₂ = 0.99)
     /// - Larger c1 for more lenient sufficient decrease
     /// - Larger c2 for more lenient curvature condition
     /// - Fewer iterations for efficiency
@@ -74,6 +109,35 @@ impl StrongWolfeConfig {
         self
     }
 }
+/// Strong Wolfe line search implementation.
+///
+/// This implementation follows the algorithm described in Nocedal & Wright's
+/// "Numerical Optimization" (Algorithm 3.5). It combines a bracketing phase
+/// with a zoom phase to efficiently find step sizes satisfying the Strong Wolfe conditions.
+///
+/// ## Strengths
+/// - **Robust convergence**: Guarantees finding acceptable step sizes for descent directions
+/// - **Quasi-Newton compatibility**: Strong curvature condition ensures good Hessian updates
+/// - **Adaptive**: Automatically adjusts step size based on function behavior
+/// - **Efficient**: Uses interpolation in zoom phase to minimize function evaluations
+/// - **Well-tested**: Based on extensively studied and proven algorithms
+///
+/// ## Weaknesses
+/// - **Function evaluation cost**: May require multiple evaluations per line search
+/// - **Gradient requirement**: Needs both function and gradient evaluations
+/// - **Parameter sensitivity**: Performance depends on c₁, c₂ parameter choices
+/// - **Complexity**: More complex than simple backtracking methods
+///
+/// ## Typical Use Cases
+/// - Quasi-Newton methods (BFGS, L-BFGS)
+/// - Conjugate gradient methods
+/// - Any optimization where both function and gradient are available
+/// - Problems requiring robust step size selection
+///
+/// ## Parameter Guidelines
+/// - **c₁**: Usually 1e-4, controls sufficient decrease strictness
+/// - **c₂**: Usually 0.9 for Newton/quasi-Newton, 0.1 for conjugate gradient
+/// - **max_iterations**: 20-100 depending on precision requirements
 
 
 /// Strong Wolfe line search implementation
@@ -84,6 +148,9 @@ pub struct StrongWolfeLineSearch {
 
 impl StrongWolfeLineSearch {
     /// Set the initial step size for the next line search
+    ///
+    /// The step size will be clamped to [min_step, max_step] range.
+    /// This is useful for adaptive step size strategies.
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
@@ -110,6 +177,10 @@ impl StrongWolfeLineSearch {
     }
 
     /// Check Armijo condition: f(α) ≤ f(0) + c1*α*f'(0)
+    ///
+    /// This ensures sufficient decrease in the objective function.
+    /// A smaller c₁ makes the condition stricter, requiring more decrease.
+    /// Typical values: c₁ ∈ [1e-6, 1e-2]
     fn armijo_condition(
         &self,
         f0: f64,
@@ -136,6 +207,11 @@ impl StrongWolfeLineSearch {
     }
 
     /// Check curvature condition: |f'(α)| ≤ c2*|f'(0)|
+    ///
+    /// This ensures the gradient magnitude has decreased sufficiently.
+    /// The strong version uses absolute values (vs. regular Wolfe: f'(α) ≥ c₂f'(0)).
+    /// A smaller c₂ makes the condition stricter.
+    /// Typical values: c₂ ∈ [0.1, 0.99] depending on optimization method.
     fn curvature_condition(&self, grad_alpha: f64, directional_derivative: f64) -> bool {
         let threshold = self.config.c2 * directional_derivative.abs();
         let satisfied = grad_alpha.abs() <= threshold;
@@ -149,6 +225,17 @@ impl StrongWolfeLineSearch {
     }
 
     /// Zoom phase of Strong Wolfe line search
+    ///
+    /// This is the core refinement procedure that brackets an acceptable step size
+    /// between α_lo and α_hi, then uses interpolation to efficiently find a point
+    /// satisfying both Wolfe conditions.
+    ///
+    /// The zoom procedure maintains the invariant that:
+    /// - α_lo satisfies the Armijo condition
+    /// - The interval [α_lo, α_hi] contains step sizes satisfying Strong Wolfe conditions
+    ///
+    /// Uses safeguarded interpolation to ensure robust convergence and avoid
+    /// getting stuck in very small intervals.
     fn zoom(
         &self,
         alpha_lo: f64,
@@ -215,6 +302,19 @@ impl StrongWolfeLineSearch {
 }
 
 impl LineSearch for StrongWolfeLineSearch {
+    /// Perform one-dimensional optimization using Strong Wolfe line search.
+    ///
+    /// This method implements the complete Strong Wolfe algorithm:
+    /// 1. **Initialization**: Start with initial step size
+    /// 2. **Bracketing phase**: Find interval containing acceptable step
+    /// 3. **Zoom phase**: Refine the interval using interpolation
+    ///
+    /// ## Error Conditions
+    /// - Returns error if direction is not a descent direction (f'(0) ≥ 0)
+    /// - Returns error if function appears ill-conditioned
+    ///
+    /// ## Fallback Strategy
+    /// If standard algorithm fails, tries machine epsilon steps as last resort.
     fn optimize_1d(
         &mut self,
         problem: &OneDimensionalProblem,
