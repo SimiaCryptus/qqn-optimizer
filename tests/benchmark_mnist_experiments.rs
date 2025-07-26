@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
-use qqn_optimizer::core::{GDConfig, GDOptimizer};
 
 mod experiment_runner;
 

@@ -8,3 +8,4 @@ data/
 *.log
 *.aux
 *.out
+*.blg
