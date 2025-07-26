@@ -141,6 +141,7 @@ This creates a parabolic arc in optimization space that starts tangent to the gr
 ### 3.2.1 Why This Matters: The Geometric Paradigm
 
 Traditional approaches to combining optimization methods include:
+
 * **Algebraic**: Matrix updates, weighted sums, switching rules
 * **Constrained**: Trust regions, feasible directions
 * **Stochastic**: Random combinations, probabilistic selection
