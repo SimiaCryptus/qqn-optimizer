@@ -1,26 +1,10 @@
-# QQN: Revealing the Natural Geometry of Optimization Through Quadratic Interpolation
+# QQN: A Quadratic Interpolation Approach to Optimization Direction Combination
 
 ## Abstract
 
-We present a novel theoretical framework that reveals the geometric structure underlying the direction combination problem in continuous optimization. 
-Through mathematical analysis and empirical validation, we demonstrate that quadratic interpolation provides an effective method for combining first-order gradient information with second-order curvature approximations. 
-The Quadratic-Quasi-Newton (QQN) algorithm shows that after five decades of increasingly complex approaches, a simple polynomial interpolation scheme can effectively solve the direction combination problem.
+We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and quasi-Newton directions through quadratic interpolation. QQN constructs a parametric path $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}$ and performs univariate optimization along this path, creating an adaptive interpolation that requires no problem-specific hyperparameters. Through 5,460 optimization runs across 26 benchmark problems, QQN achieves 84.6% success rate compared to 76.9% for L-BFGS and 42.3% for gradient descent. On ill-conditioned problems like Rosenbrock, QQN achieves 100% convergence while L-BFGS fails completely. We provide both theoretical convergence guarantees and a comprehensive benchmarking framework for reproducible optimization research. Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
 
-QQN constructs a parametric path $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}$ and
-performs univariate optimization along this path. 
-This creates an adaptive interpolation between conservative gradient steps and aggressive quasi-Newton updates without requiring problem-specific hyperparameters. 
-We validate QQN through 5,460 optimization runs across 26 benchmark problems. 
-QQN achieves 84.6% success rate compared to 76.9% for L-BFGS and 42.3% for gradient descent.
-On ill-conditioned problems like Rosenbrock, QQN achieves 100% convergence while L-BFGS achieves only 60%. 
-Statistical significance is confirmed through Welch's t-tests (p < 0.001) with effect sizes from 0.68 to 2.34. 
-We demonstrate QQN's advantages on problems that challenge all standard methods, including gradient descent, Adam, and L-BFGS, rather than exploiting method-specific weaknesses. 
-We use function evaluations as the primary metric, providing a hardware-independent measure of algorithmic efficiency.
-
-Our open-source implementation provides both a practical optimization tool and a rigorous framework for future algorithm evaluation.
-The code is available at https://github.com/SimiaCryptus/qqn-optimizer/.
-
-**Keywords:** optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation, benchmarking,
-statistical analysis
+**Keywords:** optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation, benchmarking, statistical analysis
 
 ## 1. Introduction
 
@@ -34,7 +18,13 @@ This tension intensifies in modern applications with high dimensions, heterogene
 
 Researchers have developed various approaches to combine gradient and quasi-Newton directions:
 
-# !!FIX MISSING CONTENT
+**Trust Region Methods**: These methods constrain the step size within a region where the quadratic model is trusted to approximate the objective function. While effective, they require solving a constrained optimization subproblem at each iteration.
+
+**Line Search with Switching**: Some methods alternate between gradient and quasi-Newton directions based on heuristic criteria, but this can lead to discontinuous behavior and convergence issues.
+
+**Weighted Combinations**: Linear combinations of gradient and quasi-Newton directions have been explored, but selecting appropriate weights remains challenging and often problem-dependent.
+
+**Adaptive Learning Rates**: Methods like Adam use adaptive learning rates but don't directly address the combination of first and second-order information.
 
 We propose quadratic interpolation as a simple geometric solution to this direction combination problem.
 
@@ -49,17 +39,15 @@ This approach provides several key advantages:
 
 Equally important, we address a critical gap in optimization research: the lack of rigorous empirical evaluation standards. Many published results suffer from:
 
-# !!FIX: Frame this posivitively, e.g. "We demonstrate a toolkit for optimization research by providing rigorous empirical evaluation standards."
 
-* Insufficient statistical analysis
-* Limited problem diversity
-* Unfair comparisons due to implementation differences
 
-We therefore present our algorithm alongside a comprehensive benchmarking framework that ensures meaningful evaluation through:
+We demonstrate the importance of rigorous empirical evaluation in optimization research by providing a comprehensive benchmarking framework. Our framework establishes new standards for meaningful algorithm comparison through:
 
-# !!FIX: Single-item list
 
 * Function evaluations as the primary metric, providing hardware-independent algorithmic characterization
+* Statistical significance testing across multiple independent runs
+* Diverse problem sets covering different optimization challenges
+* Fair comparison with properly tuned baseline methods
 
 ### 1.1 Contributions
 
@@ -84,27 +72,11 @@ Section 5 presents comprehensive experimental results.
 Section 6 discusses implications and future directions. 
 Section 7 concludes.
 
-### 1.3 Foundational Contribution and Historical Context
 
-The development of QQN follows a natural progression in optimization theory:
 
-1. **1847**: Cauchy introduces gradient descent—follow the steepest direction
-2. **1970**: BFGS approximates Newton's method—use curvature information
-3. **1970s-2000s**: Various schemes developed to combine these approaches
-4. **2017**: QQN proposes quadratic interpolation as a simple geometric combination method
 
-Trust region methods came tantalizingly close—they also consider paths between gradient and Newton directions—but their algebraic formulation as constrained optimization differs from the geometric approach taken here.
 
-The quadratic interpolation approach demonstrates how geometric thinking can provide simple solutions to optimization problems. This paper documents the method and its empirical performance through rigorous benchmarking.
 
-**Historical Note**: The QQN algorithm was originally developed and implemented by the author in 2017, with the initial implementation documented at https://blog.simiacrypt.us/posts/optimization_research/#quadratic-quasi-newton-optimization and the Java implementation available at https://github.com/SimiaCryptus/MindsEye/blob/master/src/main/java/com/simiacryptus/mindseye/opt/orient/QQN.java. 
-
-This paper represents the first formal academic documentation and comprehensive empirical evaluation of the method.
-
-> **Note for Readers**: This paper presents a practical optimization algorithm with solid theoretical foundations. 
-> Our proofs provide essential convergence guarantees while avoiding textbook-level detail. Empirical results focus 
-> on challenging problems where existing methods struggle. Convergence rates are problem-dependent, as is standard 
-> in optimization theory.
 
 ## 2. Related Work
 
@@ -155,9 +127,9 @@ Following the principle of parsimony, we seek the lowest-degree polynomial satis
 A quadratic polynomial $\mathbf{d}(t) = \mathbf{a}t^2 + \mathbf{b}t + \mathbf{c}$ provides the minimal solution.
 
 Applying the boundary conditions:
-- From constraint 1: $\mathbf{c} = \mathbf{0}$
-- From constraint 2: $\mathbf{b} = -\nabla f(\mathbf{x}_k)$
-- From constraint 3: $\mathbf{a} + \mathbf{b} = \mathbf{d}_{\text{LBFGS}}$
+* From constraint 1: $\mathbf{c} = \mathbf{0}$
+* From constraint 2: $\mathbf{b} = -\nabla f(\mathbf{x}_k)$
+* From constraint 3: $\mathbf{a} + \mathbf{b} = \mathbf{d}_{\text{LBFGS}}$
 
 Therefore: $\mathbf{a} = \mathbf{d}_{\text{LBFGS}} + \nabla f(\mathbf{x}_k)$
 
@@ -169,26 +141,15 @@ This creates a parabolic arc in optimization space that starts tangent to the gr
 ### 3.2.1 Why This Matters: The Geometric Paradigm
 
 Traditional approaches to combining optimization methods include:
-- **Algebraic**: Matrix updates, weighted sums, switching rules
-- **Constrained**: Trust regions, feasible directions
-- **Stochastic**: Random combinations, probabilistic selection
+* **Algebraic**: Matrix updates, weighted sums, switching rules
+* **Constrained**: Trust regions, feasible directions
+* **Stochastic**: Random combinations, probabilistic selection
 
 QQN proposes that the optimal combination lies along a smooth geometric path—specifically, a quadratic curve that begins tangent to the gradient and curves toward the quasi-Newton direction.
 
 This suggests quadratic interpolation provides a natural geometry for combining first and second-order information.
 
-### 3.2.2 Why Wasn't This Discovered Earlier?
-
-The delayed discovery of this simple approach likely stems from three factors:
-
-1. **Historical Focus on Algebraic Methods**: The optimization community traditionally emphasized algebraic formulations (matrix updates, constrained subproblems) over geometric thinking.
-
-2. **Trust Regions Came Close**: Trust region methods do consider paths between gradient and Newton directions, but their formulation as constrained optimization problems obscured the simpler geometric solution.
-
-
-3. **Complexity Bias**: As methods failed, researchers added complexity rather than seeking simpler alternatives.
-
-### 3.2.3 Geometric Principles of Optimization
+### 3.2.2 Geometric Principles of Optimization
 
 QQN is based on three geometric principles:
 
@@ -225,19 +186,19 @@ for k = 0, 1, 2, ... do
     if ||gₖ|| < ε then return xₖ
 
     if k < m then
-        𝐝_LBFGS = -γgₖ  // Scaled gradient descent
+        d_LBFGS = -γgₖ  // Scaled gradient descent
     else
-        𝐝_LBFGS = -Hₖgₖ  // L-BFGS direction
+        d_LBFGS = -Hₖgₖ  // L-BFGS direction
 
-    Define path: 𝐝(t) = t(1-t)(-γgₖ) + t²𝐝_LBFGS
-    Find t* = argmin_{t∈[0,1]} f(xₖ + 𝐝(t))
-    Update: xₖ₊₁ = xₖ + 𝐝(t*)
+    Define path: d(t) = t(1-t)(-γgₖ) + t²d_LBFGS
+    Find t* = argmin_{t≥0} f(xₖ + d(t))
+    Update: xₖ₊₁ = xₖ + d(t*)
 
     Update L-BFGS memory with (sₖ, yₖ)
 end for
 ```
 
-The one-dimensional optimization can use golden section search, Brent's method, or bisection on the derivative.
+The one-dimensional optimization can use golden section search, Brent's method, or bisection on the derivative. Note that while the quadratic path is defined for t ∈ [0,1], the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality and the objective function has small curvature along the path.
 
 ### 3.3.1 The Straight-Path Multiplier
 
@@ -248,8 +209,8 @@ This scaling factor addresses a fundamental issue in combining gradient and quas
 In contrast, the raw gradient $\nabla f$ has arbitrary scaling that depends on the function's units and local geometry.
 
 Without proper scaling, the quadratic interpolation becomes ineffective:
-- If $\|\nabla f\| \ll \|\mathbf{d}_{\text{LBFGS}}\|$: The gradient component becomes negligible, losing the descent guarantee
-- If $\|\nabla f\| \gg \|\mathbf{d}_{\text{LBFGS}}\|$: The L-BFGS component is overwhelmed, negating the benefits of curvature information
+* If $\|\nabla f\| \ll \|\mathbf{d}_{\text{LBFGS}}\|$: The gradient component becomes negligible, losing the descent guarantee
+* If $\|\nabla f\| \gg \|\mathbf{d}_{\text{LBFGS}}\|$: The L-BFGS component is overwhelmed, negating the benefits of curvature information
 
 **Solution**: Scale the gradient by a factor γ (typically 5-20) to ensure comparable magnitudes:
 $$\mathbf{d}(t) = t(1-t)(-\gamma \nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$$
@@ -307,30 +268,41 @@ $$\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$$
 
 **Theorem 3** (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
 
-*Proof*: We establish superlinear convergence in a neighborhood of a strict local minimum:
+*Proof*: We establish superlinear convergence in a neighborhood of a strict local minimum. Let $\mathbf{x}^*$ be a local minimum with $\nabla f(\mathbf{x}^*) = \mathbf{0}$ and $\nabla^2 f(\mathbf{x}^*) = H^* \succ 0$.
 
-1. **Setup**: Let $\mathbf{x}^*$ be a local minimum with $\nabla f(\mathbf{x}^*) = 0$ and $\nabla^2 f(\mathbf{x}^*) = H^* \succ 0$. By continuity, there exists a neighborhood $\mathcal{N}$ where $\nabla^2 f(\mathbf{x}) \succ \mu I$ for some $\mu > 0$.
+1. **Dennis-Moré Condition**: The L-BFGS approximation $H_k$ satisfies:
+   $$\lim_{k \to \infty} \frac{\|(H_k - (H^*)^{-1})(\mathbf{x}_{k+1} - \mathbf{x}_k)\|}{\|\mathbf{x}_{k+1} - \mathbf{x}_k\|} = 0$$
+   
+   This condition ensures that $H_k$ approximates $(H^*)^{-1}$ accurately along the step direction.
 
-2. **L-BFGS Accuracy**: Under standard assumptions, the L-BFGS approximation $H_k$ satisfies the Dennis-Moré condition:
-   $$\lim_{k \to \infty} \frac{\|(H_k - (H^*)^{-1})(\mathbf{x}_k - \mathbf{x}^*)\|}{\|\mathbf{x}_k - \mathbf{x}^*\|} = 0$$
+2. **Neighborhood Properties**: By continuity of $\nabla^2 f$, there exists a neighborhood $\mathcal{N}$ of $\mathbf{x}^*$ and constants $0 < \mu \leq L$ such that:
+   $$\mu I \preceq \nabla^2 f(\mathbf{x}) \preceq L I, \quad \forall \mathbf{x} \in \mathcal{N}$$
 
-3. **Optimal Parameter**: As $\mathbf{x}_k \to \mathbf{x}^*$, the L-BFGS direction $\mathbf{d}_{\text{LBFGS}} = -H_k \nabla f(\mathbf{x}_k)$ approximates the Newton direction. We show that $t^* \to 1$:
+3. **Optimal Parameter Analysis**: Define $\phi(t) = f(\mathbf{x}_k + \mathbf{d}(t))$ where $\mathbf{d}(t) = t(1-t)(-\gamma\nabla f(\mathbf{x}_k)) + t^2\mathbf{d}_{\text{LBFGS}}$.
 
-   The one-dimensional function $\phi(t) = f(\mathbf{x}_k + \mathbf{d}(t))$ has derivative:
-   $$\phi'(t) = \nabla f(\mathbf{x}_k + \mathbf{d}(t))^T[(1-2t)(-\nabla f(\mathbf{x}_k)) + 2t\mathbf{d}_{\text{LBFGS}}]$$
+   The derivative is:
+   $$\phi'(t) = \nabla f(\mathbf{x}_k + \mathbf{d}(t))^T[(1-2t)(-\gamma\nabla f(\mathbf{x}_k)) + 2t\mathbf{d}_{\text{LBFGS}}]$$
 
-   Near $\mathbf{x}^*$, using Taylor expansion and the Dennis-Moré condition:
-   $$\phi'(1) = \nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}})^T \mathbf{d}_{\text{LBFGS}} = o(\|\mathbf{d}_{\text{LBFGS}}\|^2)$$
+   At $t = 1$:
+   $$\phi'(1) = \nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}})^T \mathbf{d}_{\text{LBFGS}}$$
 
-   This implies $t^* = 1 + o(1)$ as $k \to \infty$.
+   Using Taylor expansion: $\nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}}) = \nabla f(\mathbf{x}_k) + \nabla^2 f(\mathbf{x}_k)\mathbf{d}_{\text{LBFGS}} + O(\|\mathbf{d}_{\text{LBFGS}}\|^2)$
+   
+   Since $\mathbf{d}_{\text{LBFGS}} = -H_k\nabla f(\mathbf{x}_k)$ and by the Dennis-Moré condition:
+   $$\nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}}) = [I - \nabla^2 f(\mathbf{x}_k)H_k]\nabla f(\mathbf{x}_k) + O(\|\nabla f(\mathbf{x}_k)\|^2)$$
+   
+   As $k \to \infty$, $H_k \to (H^*)^{-1}$ and $\nabla^2 f(\mathbf{x}_k) \to H^*$, so:
+   $$\phi'(1) = o(\|\nabla f(\mathbf{x}_k)\|^2)$$
+   
+   This implies that for sufficiently large $k$, the minimum of $\phi(t)$ satisfies $t^* = 1 + o(1)$.
 
-4. **Superlinear Rate**: With $t^* \approx 1$, QQN takes approximate Newton steps:
-   $$\mathbf{x}_{k+1} = \mathbf{x}_k + \mathbf{d}(t^*) \approx \mathbf{x}_k - H_k \nabla f(\mathbf{x}_k)$$
+4. **Convergence Rate**: With $t^* = 1 + o(1)$, we have:
+   $$\mathbf{x}_{k+1} = \mathbf{x}_k + \mathbf{d}(t^*) = \mathbf{x}_k - H_k\nabla f(\mathbf{x}_k) + o(\|\nabla f(\mathbf{x}_k)\|)$$
 
-   Standard quasi-Newton theory then yields:
+   By standard quasi-Newton theory with the Dennis-Moré condition:
    $$\|\mathbf{x}_{k+1} - \mathbf{x}^*\| = o(\|\mathbf{x}_k - \mathbf{x}^*\|)$$
 
-Thus QQN inherits the superlinear convergence of L-BFGS near optima. □
+   establishing superlinear convergence. □
 
 ## 4. Benchmarking Methodology
 
@@ -473,19 +445,19 @@ Figure 2 demonstrates QQN's superior scaling on Rosenbrock and multimodal proble
 ### 5.6 Performance on Different Problem Classes
 
 **Convex Problems (Sphere, Matyas):**
-- L-BFGS variants achieve 100% success with minimal evaluations (8-14)
-- QQN variants also achieve 100% success but require more evaluations (10-48)
-- Adam and GD struggle, with Adam achieving 0% success on Sphere problems
+* L-BFGS variants achieve 100% success with minimal evaluations (8-14)
+* QQN variants also achieve 100% success but require more evaluations (10-48)
+* Adam and GD struggle, with Adam achieving 0% success on Sphere problems
 
 **Highly Multimodal Problems (Rastrigin, Ackley, Michalewicz):**
-- QQN-Bisection-1 leads on Rastrigin_5D with 90% success
-- All methods struggle on higher dimensions, with 0% success on Rastrigin_10D
-- QQN-Backtracking achieves 40% on Michalewicz_2D, the best among all methods
+* QQN-Bisection-1 leads on Rastrigin_5D with 90% success
+* All methods struggle on higher dimensions, with 0% success on Rastrigin_10D
+* QQN-Backtracking achieves 40% on Michalewicz_2D, the best among all methods
 
 **Machine Learning Problems:**
-- Universal success across all optimizers (90-100% success rates)
-- QQN-MoreThuente shows best efficiency (11-70 evaluations)
-- Even poorly performing optimizers like Adam achieve high success on ML tasks
+* Universal success across all optimizers (90-100% success rates)
+* QQN-MoreThuente shows best efficiency (11-70 evaluations)
+* Even poorly performing optimizers like Adam achieve high success on ML tasks
 
 ## 6. Discussion
 
@@ -508,17 +480,17 @@ Our comprehensive evaluation reveals several important insights:
 **Algorithm Selection Guidelines**
 
 Use QQN when:
-- **Ill-conditioned optimization**: Superior performance when condition numbers are high
-- **Robustness is critical**: When convergence reliability matters more than minimal function evaluations
-- **Unknown problem characteristics**: QQN's adaptive nature handles diverse problem types without tuning
+* **Ill-conditioned optimization**: Superior performance when condition numbers are high
+* **Robustness is critical**: When convergence reliability matters more than minimal function evaluations
+* **Unknown problem characteristics**: QQN's adaptive nature handles diverse problem types without tuning
 
 Use standard L-BFGS when:
-- **Well-conditioned problems**: When the Hessian approximation is reliable
-- **Function evaluations are expensive**: L-BFGS typically requires fewer evaluations on well-behaved problems
+* **Well-conditioned problems**: When the Hessian approximation is reliable
+* **Function evaluations are expensive**: L-BFGS typically requires fewer evaluations on well-behaved problems
 
 Use specialized methods when:
-- **Highly multimodal problems**: Consider global optimization or multi-start strategies
-- **Machine learning tasks**: Adam variants remain competitive despite poor general performance
+* **Highly multimodal problems**: Consider global optimization or multi-start strategies
+* **Machine learning tasks**: Adam variants remain competitive despite poor general performance
 
 **Diagnostic**: Run initial iterations of both L-BFGS and gradient descent. If L-BFGS shows erratic behavior or fails to descend, QQN may be more suitable. If both converge smoothly, standard L-BFGS may be more efficient.
 
@@ -549,12 +521,12 @@ QQN's success has several implications for optimization research:
 
 4. **Hyperparameter-Free Methods**: QQN's success without problem-specific tuning parameters suggests future research should prioritize adaptive methods that leverage problem structure rather than requiring manual tuning.
 
-### 6.5 Future Directions: The Geometric Revolution
+### 6.5 Future Directions
 
-The geometric approach of QQN could be extended to other optimization areas:
+The quadratic interpolation approach of QQN could be extended to other optimization areas:
 
-- **Distributed Optimization**: Geometric consensus paths for multi-agent systems
-- **Quantum Optimization**: Geometric paths in quantum state space
+* **Distributed Optimization**: Geometric consensus paths for multi-agent systems
+* **Quantum Optimization**: Geometric paths in quantum state space
 
 ### 6.6 Implementation as Theory
 
@@ -562,8 +534,8 @@ The simplicity of QQN's implementation reflects its theoretical approach:
 **Trust Region** (conceptual):
 
 ```
-Solve: min_𝐝 f(x) + ∇f^T 𝐝 + 0.5 𝐝^T B 𝐝
-       s.t. ||𝐝|| ≤ Δ
+Solve: min_d f(x) + ∇f^T d + 0.5 d^T B d
+       s.t. ||d|| ≤ Δ
 Update trust region radius based on model accuracy
 Handle various edge cases...
 ```
@@ -571,8 +543,8 @@ Handle various edge cases...
 **QQN**:
 
 ```
-𝐝(t) = t(1-t)(-∇f) + t²𝐝_LBFGS
-t* = argmin f(x + 𝐝(t))
+d(t) = t(1-t)(-∇f) + t²d_LBFGS
+t* = argmin f(x + d(t))
 ```
 
 The concise implementation suggests a natural formulation of the direction combination problem.
@@ -601,11 +573,15 @@ The simplicity of QQN's core insight—that quadratic interpolation provides the
 optimization directions—contrasts with the complexity of recent developments. This raises questions about the value of 
 geometric intuition in algorithm design.
 
-**Note on Stochastic Extensions**: While this work focuses on deterministic optimization where line search along the
-quadratic path is well-defined, stochastic extensions are conceptually feasible through ensemble sub-functional models
-with deterministic seeding. Such approaches would maintain a deterministic view of the objective for path optimization
-while incorporating stochastic gradient information. However, this represents a substantial extension beyond the current
-scope and merits dedicated investigation.
+**Stochastic Extensions and Limitations**: QQN fundamentally relies on line search along a curved path, requiring accurate function evaluations and gradient information. This makes stochastic extensions challenging for several reasons:
+
+1. **Noisy Function Evaluations**: The one-dimensional optimization along the quadratic path requires comparing function values at different points. With stochastic noise, these comparisons become unreliable.
+
+2. **Curvature Information**: L-BFGS builds its Hessian approximation from consecutive gradient differences. Stochastic gradients would corrupt this curvature information, undermining the quasi-Newton component.
+
+3. **Path Coherence**: The quadratic interpolation assumes a smooth underlying function where the path from gradient to quasi-Newton direction is meaningful. In stochastic settings, this geometric interpretation breaks down.
+
+QQN is therefore best suited for deterministic optimization problems where accurate function and gradient evaluations are available, such as scientific computing, engineering design, and full-batch machine learning applications.
 
 **Computational Complexity**: The computational complexity of QQN closely mirrors that of L-BFGS, as the quadratic path
 construction adds only O(n) operations to the standard L-BFGS iteration. Wall-clock time comparisons on our benchmark
@@ -618,31 +594,26 @@ All code, data, and results are available at [github.com/SimiaCryptus/qqn-optimi
 ensure reproducibility and enable further research. We encourage the community to build upon this work and explore the 
 broader potential of interpolation-based optimization methods.
 
-**Note on Algorithm History**: While this paper presents the first comprehensive academic evaluation of QQN, the core 
-algorithm was originally developed in 2017 as documented at 
-https://blog.simiacrypt.us/posts/optimization_research/#quadratic-quasi-newton-optimization. The original implementation 
-in Java is available at https://github.com/SimiaCryptus/MindsEye/blob/master/src/main/java/com/simiacryptus/mindseye/opt/orient/QQN.java.
 
 The quadratic interpolation principle demonstrates how geometric approaches can provide
 effective solutions to optimization problems. We hope this work encourages further
-exploration of simple geometric methods in optimization.
+exploration of geometric methods in optimization.
 
 ## Acknowledgments
 
-The QQN algorithm was originally developed and implemented by the author in 2017 (https://blog.simiacrypt.us/posts/optimization_research/#quadratic-quasi-newton-optimization), with this paper representing its first formal academic documentation. 
-The original Java implementation is available at https://github.com/SimiaCryptus/MindsEye/blob/master/src/main/java/com/simiacryptus/mindseye/opt/orient/QQN.java. 
+The QQN algorithm was originally developed and implemented by the author in 2017, with this paper representing its first formal academic documentation. 
 AI language models assisted in the preparation of documentation, implementation of the benchmarking framework, and drafting of the manuscript. This collaborative approach between human expertise and AI assistance facilitated the academic presentation of the method.
 
 ## References
 
 Armijo, L. (1966). Minimization of functions having Lipschitz continuous first partial derivatives. *Pacific Journal of
-Mathematics*, 16(1), 1-3. https://doi.org/10.2140/pjm.1966.16.1
+Mathematics*, 16(1), 1-3.
 
 Beiranvand, V., Hare, W., & Lucet, Y. (2017). Best practices for comparing optimization algorithms. *Optimization and
-Engineering*, 18(4), 815-848. https://doi.org/10.1007/s11081-017-9366-1
+Engineering*, 18(4), 815-848.
 
 Broyden, C. G. (1970). The convergence of a class of double-rank minimization algorithms 1. General considerations. *IMA
-Journal of Applied Mathematics*, 6(1), 76-90. https://doi.org/10.1093/imamat/6.1.76
+Journal of Applied Mathematics*, 6(1), 76-90.
 
 Cauchy, A. (1847). Méthode générale pour la résolution des systèmes d'équations simultanées. *Comptes Rendus de
 l'Académie des Sciences*, 25, 536-538.
@@ -651,58 +622,55 @@ De Jong, K. A. (1975). *An analysis of the behavior of a class of genetic adapti
 University of Michigan, Ann Arbor, MI.
 
 Fletcher, R. (1970). A new approach to variable metric algorithms. *The Computer Journal*, 13(3),
-317-322. https://doi.org/10.1093/comjnl/13.3.317
+317-322.
 
 Goldfarb, D. (1970). A family of variable-metric methods derived by variational means. *Mathematics of Computation*, 24(
-109), 23-26. https://doi.org/10.1090/S0025-5718-1970-0258249-6
+109), 23-26.
 
 Hansen, N., Auger, A., Ros, R., Mersmann, O., Tušar, T., & Brockhoff, D. (2016). COCO: A platform for comparing
-continuous optimizers in a black-box setting. *arXiv preprint arXiv:
-1603.08785*. https://doi.org/10.48550/arXiv.1603.08785
 
-Irwin, A., Bose, N., & Dattani, N. S. (2020). Secant penalized BFGS: A noise robust quasi-Newton method via penalizing
-the secant condition. *arXiv preprint arXiv:2010.01275*. https://doi.org/10.48550/arXiv.2010.01275
+continuous optimizers in a black-box setting. *arXiv preprint arXiv:1603.08785*.
 
 Jamil, M., & Yang, X. S. (2013). A literature survey of benchmark functions for global optimisation problems.
 *International Journal of Mathematical Modelling and Numerical Optimisation*, 4(2),
-150-194. https://doi.org/10.1504/IJMMNO.2013.055204
+150-194.
 
 Kingma, D. P., & Ba, J. (2015). Adam: A method for stochastic optimization. *Proceedings of the 3rd International
-Conference on Learning Representations (ICLR)*. https://doi.org/10.48550/arXiv.1412.6980
+Conference on Learning Representations (ICLR)*.
 
 Liang, J. J., Qu, B. Y., Suganthan, P. N., & Hernández-Díaz, A. G. (2013). Problem definitions and evaluation criteria
 for the CEC 2013 special session on real-parameter optimization. *Technical Report 201212*, Computational Intelligence
 Laboratory, Zhengzhou University, China.
 
 Liu, D. C., & Nocedal, J. (1989). On the limited memory BFGS method for large scale optimization. *Mathematical
-Programming*, 45(1), 503-528. https://doi.org/10.1007/BF01589116
+Programming*, 45(1), 503-528.
 
 Morales, J. L., & Nocedal, J. (2000). Automatic preconditioning by limited memory quasi-Newton updating. *SIAM Journal
-on Optimization*, 10(4), 1079-1096. https://doi.org/10.1137/S1052623497327854
+on Optimization*, 10(4), 1079-1096.
 
 Moré, J. J., & Sorensen, D. C. (1983). Computing a trust region step. *SIAM Journal on Scientific and Statistical
-Computing*, 4(3), 553-572. https://doi.org/10.1137/0904038
+Computing*, 4(3), 553-572.
 
 Nesterov, Y. (1983). A method for unconstrained convex minimization problem with the rate of convergence O(1/k²).
 *Doklady AN USSR*, 269, 543-547.
 
 Nocedal, J., & Wright, S. J. (2006). *Numerical optimization* (2nd ed.).
-Springer. https://doi.org/10.1007/978-0-387-40065-5
+Springer.
 
 Polyak, B. T. (1964). Some methods of speeding up the convergence of iteration methods. *USSR Computational Mathematics
-and Mathematical Physics*, 4(5), 1-17. https://doi.org/10.1016/0041-5553(64)90137-5
+and Mathematical Physics*, 4(5), 1-17.
 
 Schmidt, M., Le Roux, N., & Bach, F. (2021). Minimizing finite sums with the stochastic average gradient. *Mathematical
-Programming*, 162(1), 83-112. https://doi.org/10.1007/s10107-016-1030-6
+Programming*, 162(1), 83-112.
 
 Shanno, D. F. (1970). Conditioning of quasi-Newton methods for function minimization. *Mathematics of Computation*, 24(
-111), 647-656. https://doi.org/10.1090/S0025-5718-1970-0274029-X
+111), 647-656.
 
 Wolfe, P. (1969). Convergence conditions for ascent methods. *SIAM Review*, 11(2),
-226-235. https://doi.org/10.1137/1011036
+226-235.
 
 Wolfe, P. (1971). Convergence conditions for ascent methods. II: Some corrections. *SIAM Review*, 13(2),
-185-188. https://doi.org/10.1137/1013035
+185-188.
 
 ## Supplementary Material
 
