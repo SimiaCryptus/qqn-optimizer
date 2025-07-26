@@ -1,10 +1,11 @@
 use super::{PlottingManager, ReportGenerator};
 use log::{info, warn, error};
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, SingleResult};
+use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult};
 use qqn_optimizer::{ OptimizationProblem, Optimizer};
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
+use std::time::Duration;
 
 /// Core experiment runner focused on benchmark execution
 pub struct ExperimentRunner {
@@ -165,4 +166,51 @@ impl ExperimentRunner {
 
         Ok(results)
     }
+}
+
+pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs: usize, time_limit: Duration, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
+    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    fs::create_dir_all(&output_dir)?;
+    println!("Creating benchmark results in: {}", output_dir.display());
+    let result = tokio::time::timeout(
+        Duration::from_secs(30000),
+        ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
+            max_iterations: max_evals,
+            maximum_function_calls: max_evals,
+            time_limit: DurationWrapper::from(time_limit),
+            num_runs: num_runs,
+            ..BenchmarkConfig::default()
+        }).run_comparative_benchmarks(problems, optimizers),
+    ).await;
+    match result {
+        Ok(Ok(())) => {
+            println!("Benchmark completed successfully");
+        }
+        Ok(Err(e)) => {
+            eprintln!("Benchmark failed: {}", e);
+            return Err(e.into());
+        }
+        Err(_) => {
+            eprintln!("Benchmark timed out");
+            return Err("Benchmark execution timed out".into());
+        }
+    }
+
+    // Verify outputs were generated
+    assert!(output_dir.join("benchmark_report.md").exists());
+    assert!(output_dir.join("detailed_results.csv").exists());
+    assert!(output_dir.join("summary_statistics.csv").exists());
+
+    // Read and verify HTML content
+    let html_content = fs::read_to_string(output_dir.join("benchmark_report.md"))?;
+    assert!(html_content.contains("QQN Optimizer"));
+
+    println!(
+        "Comprehensive benchmark report generated at: {}",
+        output_dir.display()
+    );
+
+    Ok(())
 }

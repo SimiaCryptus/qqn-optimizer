@@ -52,6 +52,7 @@ pub mod line_search_more_thuente;
 pub mod line_search_bisection;
 pub mod line_search_backtracking;
 pub mod line_search_strong_wolfe;
+pub mod trust_region;
 
 pub use gd::{GDConfig, GDOptimizer, GDState};
 pub use line_search_backtracking::{
@@ -72,6 +73,7 @@ pub use line_search_golden_section::{
 pub use line_search_more_thuente::{
     MoreThuenteConfig, MoreThuenteLineSearch,
 };
+pub use trust_region::{TrustRegionConfig, TrustRegionOptimizer, TrustRegionState};
 
 #[cfg(test)]
 mod tests {

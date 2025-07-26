@@ -24,8 +24,8 @@ use serde::{Deserialize, Serialize};
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrongWolfeConfig {
-    pub c1: f64,               // Armijo condition parameter (0 < c1 < c2 < 1)
-    pub c2: f64,               // Curvature condition parameter
+    pub c1: f64,               // Armijo condition parameter: controls sufficient decrease strictness
+    pub c2: f64,               // Curvature condition parameter: controls gradient reduction requirement
     pub max_iterations: usize, // Maximum line search iterations
     pub min_step: f64,         // Minimum step size
     pub max_step: f64,         // Maximum step size
@@ -36,7 +36,7 @@ pub struct StrongWolfeConfig {
 impl Default for StrongWolfeConfig {
     fn default() -> Self {
         Self {
-            c1: 1e-4,              // Standard Nocedal & Wright recommendation
+            c1: 1e-4,              // Standard value: good balance of decrease vs acceptance
             c2: 0.9,
             max_iterations: 50,
             min_step: 1e-16,
@@ -55,10 +55,10 @@ impl StrongWolfeConfig {
     /// - Convergence quality is more important than speed
     ///
     /// **Characteristics:**
-    /// - Very strict sufficient decrease (c₁ = 1e-6)
-    /// - Very strict curvature condition (c₂ = 0.1)
-    /// - Smaller c1 for stricter sufficient decrease
-    /// - Smaller c2 for stricter curvature condition
+    /// - Very strict sufficient decrease (c₁ = 1e-6): requires more function reduction
+    /// - Very strict curvature condition (c₂ = 0.1): requires significant gradient reduction
+    /// - Low c₁ → demands larger decrease, may reject good steps, more function evaluations
+    /// - Low c₂ → demands flatter gradient, better for conjugate gradient methods
     /// - More iterations allowed
     /// - Tighter step size bounds
     pub fn strict() -> Self {
@@ -81,10 +81,10 @@ impl StrongWolfeConfig {
     /// - Speed is more important than precision
     ///
     /// **Characteristics:**
-    /// - Relaxed sufficient decrease (c₁ = 1e-2)
-    /// - Very relaxed curvature condition (c₂ = 0.99)
-    /// - Larger c1 for more lenient sufficient decrease
-    /// - Larger c2 for more lenient curvature condition
+    /// - Relaxed sufficient decrease (c₁ = 1e-2): accepts smaller decreases
+    /// - Very relaxed curvature condition (c₂ = 0.99): accepts minimal gradient change
+    /// - High c₁ → accepts smaller decreases, faster acceptance, fewer evaluations
+    /// - High c₂ → accepts steeper gradients, better for quasi-Newton methods
     /// - Fewer iterations for efficiency
     /// - Wider step size bounds
     pub fn lax() -> Self {
@@ -135,8 +135,30 @@ impl StrongWolfeConfig {
 /// - Problems requiring robust step size selection
 ///
 /// ## Parameter Guidelines
-/// - **c₁**: Usually 1e-4, controls sufficient decrease strictness
-/// - **c₂**: Usually 0.9 for Newton/quasi-Newton, 0.1 for conjugate gradient
+/// ### Parameter Effects and Guidelines
+///
+/// **c₁ (Armijo parameter)**: Controls sufficient decrease requirement
+/// - **Lower c₁ (e.g., 1e-6)**: More strict, demands larger function decrease
+///   - ✓ Better convergence quality, more precise steps
+///   - ✗ More function evaluations, may reject good steps
+/// - **Higher c₁ (e.g., 1e-2)**: More lenient, accepts smaller decreases
+///   - ✓ Faster line search, fewer function evaluations
+///   - ✗ May accept poor steps, slower overall convergence
+/// - **Typical range**: [1e-6, 1e-2], commonly 1e-4
+///
+/// **c₂ (Curvature parameter)**: Controls gradient reduction requirement
+/// - **Lower c₂ (e.g., 0.1)**: Strict curvature, demands flatter gradients
+///   - ✓ Better for conjugate gradient methods, ensures good search directions
+///   - ✗ More gradient evaluations, may be too restrictive for Newton methods
+/// - **Higher c₂ (e.g., 0.9)**: Lenient curvature, accepts steeper gradients
+///   - ✓ Better for Newton/quasi-Newton, fewer gradient evaluations
+///   - ✗ May not provide sufficient curvature information
+/// - **Method-specific recommendations**:
+///   - Newton/Quasi-Newton: c₂ = 0.9 (can handle steeper gradients)
+///   - Conjugate Gradient: c₂ = 0.1-0.4 (needs flatter gradients for orthogonality)
+///   - Steepest Descent: c₂ = 0.5-0.9 (flexible)
+///
+/// **Constraint**: Must satisfy 0 < c₁ < c₂ < 1 for theoretical guarantees
 /// - **max_iterations**: 20-100 depending on precision requirements
 
 
@@ -179,8 +201,19 @@ impl StrongWolfeLineSearch {
     /// Check Armijo condition: f(α) ≤ f(0) + c1*α*f'(0)
     ///
     /// This ensures sufficient decrease in the objective function.
-    /// A smaller c₁ makes the condition stricter, requiring more decrease.
-    /// Typical values: c₁ ∈ [1e-6, 1e-2]
+    ///
+    /// **Effect of c₁ values:**
+    /// - **Smaller c₁** (e.g., 1e-6): Stricter condition
+    ///   - Requires larger function decrease: f(α) must be much smaller than f(0)
+    ///   - More function evaluations but better step quality
+    ///   - May reject steps that would still lead to good convergence
+    /// - **Larger c₁** (e.g., 1e-2): More lenient condition
+    ///   - Accepts smaller function decreases
+    ///   - Faster line search with fewer evaluations
+    ///   - Risk of accepting steps with insufficient progress
+    ///
+    /// **Geometric interpretation**: c₁ controls the slope of the acceptance line
+    /// from the origin. Smaller c₁ = flatter line = stricter acceptance.
     fn armijo_condition(
         &self,
         f0: f64,
@@ -210,8 +243,22 @@ impl StrongWolfeLineSearch {
     ///
     /// This ensures the gradient magnitude has decreased sufficiently.
     /// The strong version uses absolute values (vs. regular Wolfe: f'(α) ≥ c₂f'(0)).
-    /// A smaller c₂ makes the condition stricter.
-    /// Typical values: c₂ ∈ [0.1, 0.99] depending on optimization method.
+    ///
+    /// **Effect of c₂ values:**
+    /// - **Smaller c₂** (e.g., 0.1): Stricter curvature condition
+    ///   - Requires |f'(α)| << |f'(0)|: gradient must be much flatter
+    ///   - More gradient evaluations but better curvature information
+    ///   - Essential for conjugate gradient methods (maintains direction orthogonality)
+    ///   - May be too restrictive for Newton methods
+    /// - **Larger c₂** (e.g., 0.9): More lenient curvature condition
+    ///   - Accepts |f'(α)| ≈ |f'(0)|: allows steeper gradients
+    ///   - Fewer gradient evaluations, faster line search
+    ///   - Suitable for Newton/quasi-Newton (can handle approximate curvature)
+    ///   - May not provide enough curvature reduction for some methods
+    ///
+    /// **Why method-dependent?**
+    /// - Conjugate gradient needs orthogonal directions → requires flat gradients → small c₂
+    /// - Newton methods have good curvature info → can handle steep gradients → large c₂
     fn curvature_condition(&self, grad_alpha: f64, directional_derivative: f64) -> bool {
         let threshold = self.config.c2 * directional_derivative.abs();
         let satisfied = grad_alpha.abs() <= threshold;
