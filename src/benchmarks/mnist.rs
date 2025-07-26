@@ -23,8 +23,7 @@ struct MnistData {
 
 #[derive(Debug, Clone)]
 struct MLP {
-    ln1: Linear,
-    ln2: Linear,
+    layers: Vec<Linear>,
     activation: ActivationType,
 }
 
@@ -32,13 +31,23 @@ impl MLP {
     fn new(
         vs: VarBuilder,
         input_dim: usize,
-        hidden_dim: usize,
+        hidden_dims: &[usize],
         output_dim: usize,
         activation: ActivationType,
     ) -> candle_core::Result<Self> {
-        let ln1 = linear(input_dim, hidden_dim, vs.pp("ln1"))?;
-        let ln2 = linear(hidden_dim, output_dim, vs.pp("ln2"))?;
-        Ok(Self { ln1, ln2, activation })
+        let mut layers = Vec::new();
+        let mut prev_dim = input_dim;
+        
+        // Create hidden layers
+        for (i, &hidden_dim) in hidden_dims.iter().enumerate() {
+            layers.push(linear(prev_dim, hidden_dim, vs.pp(format!("ln{}", i)))?);
+            prev_dim = hidden_dim;
+        }
+        
+        // Create output layer
+        layers.push(linear(prev_dim, output_dim, vs.pp(format!("ln{}", hidden_dims.len())))?);
+        
+        Ok(Self { layers, activation })
     }
     fn apply_activation(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         match self.activation {
@@ -55,27 +64,45 @@ impl MLP {
     }
     
     fn forward_with_dropout(&self, xs: &Tensor, dropout_rate: f64, training: bool) -> candle_core::Result<Tensor> {
-        let xs = self.ln1.forward(xs)?;
-        let xs = self.apply_activation(&xs)?;
-        let xs = if training && dropout_rate > 0.0 {
-            // Apply dropout during training
-            let keep_prob = 1.0 - dropout_rate;
-            let mask = Tensor::rand(0.0, 1.0, xs.shape(), &xs.device())?;
-            let mask = mask.ge(dropout_rate)?;
-            let tensor = xs.broadcast_mul(&mask)? / keep_prob;
-            tensor?
-        } else {
-            xs
-        };
-        self.ln2.forward(&xs)
+        let mut xs = xs.clone();
+        
+        // Apply all layers except the last one with activation and dropout
+        for (i, layer) in self.layers.iter().enumerate() {
+            xs = layer.forward(&xs)?;
+            
+            // Apply activation to all but the last layer
+            if i < self.layers.len() - 1 {
+                xs = self.apply_activation(&xs)?;
+                
+                // Apply dropout during training (not on the last layer)
+                if training && dropout_rate > 0.0 {
+                    let keep_prob = 1.0 - dropout_rate;
+                    let mask = Tensor::rand(0.0, 1.0, xs.shape(), &xs.device())?;
+                    let mask = mask.ge(dropout_rate)?;
+                    xs = (xs.broadcast_mul(&mask)? / keep_prob)?;
+                }
+            }
+        }
+        
+        Ok(xs)
     }
 }
 
 impl Module for MLP {
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
-        let xs = self.ln1.forward(xs)?;
-        let xs = self.apply_activation(&xs)?;
-        self.ln2.forward(&xs)
+        let mut xs = xs.clone();
+        
+        // Apply all layers except the last one with activation
+        for (i, layer) in self.layers.iter().enumerate() {
+            xs = layer.forward(&xs)?;
+            
+            // Apply activation to all but the last layer
+            if i < self.layers.len() - 1 {
+                xs = self.apply_activation(&xs)?;
+            }
+        }
+        
+        Ok(xs)
     }
 }
 
@@ -101,11 +128,15 @@ impl MnistNeuralNetwork {
     pub fn new(
         x_data: Vec<Vec<f64>>,
         y_data: Vec<Vec<f64>>,
-        hidden_size: usize,
+        hidden_sizes: &[usize],
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
+        if hidden_sizes.is_empty() {
+            return Err(anyhow::anyhow!("At least one hidden layer size must be specified"));
+        }
+        
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let batch_size = batch_size.unwrap_or(32).min(n_samples);
@@ -115,7 +146,8 @@ impl MnistNeuralNetwork {
             ActivationType::Logistic => "logistic",
             ActivationType::Sinewave => "sine",
         };
-        let name = format!("MNIST_NN_{}samples_hidden{}_{}", n_samples, hidden_size, activation_name);
+        let hidden_str = hidden_sizes.iter().map(|s| s.to_string()).collect::<Vec<_>>().join("x");
+        let name = format!("MNIST_NN_{}samples_hidden{}_{}", n_samples, hidden_str, activation_name);
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
@@ -123,9 +155,16 @@ impl MnistNeuralNetwork {
         // Create model with proper candle layers
         let varmap = VarMap::new();
         let vs = VarBuilder::from_varmap(&varmap, candle_core::DType::F64, &device);
-        let model = MLP::new(vs, input_dim, hidden_size, output_dim, activation)?;
+        let model = MLP::new(vs, input_dim, hidden_sizes, output_dim, activation)?;
+        
         // Pre-calculate parameter count
-        let param_count = (input_dim + 1) * hidden_size + (hidden_size + 1) * output_dim;
+        let mut param_count = 0;
+        let mut prev_dim = input_dim;
+        for &hidden_dim in hidden_sizes {
+            param_count += (prev_dim + 1) * hidden_dim;
+            prev_dim = hidden_dim;
+        }
+        param_count += (prev_dim + 1) * output_dim;
 
         // Initialize with appropriate initialization for the activation
         let instance = Self {
@@ -154,7 +193,7 @@ impl MnistNeuralNetwork {
 
     pub fn load_mnist(
         n_samples: Option<usize>,
-        hidden_size: usize,
+        hidden_sizes: &[usize],
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
@@ -188,7 +227,7 @@ impl MnistNeuralNetwork {
             y_data.push(label);
         }
 
-        Self::new(x_data, y_data, hidden_size, batch_size, rng, activation)
+        Self::new(x_data, y_data, hidden_sizes, batch_size, rng, activation)
     }
 
     fn try_load_mnist_files() -> anyhow::Result<MnistData> {
@@ -382,17 +421,25 @@ impl MnistNeuralNetwork {
 
     pub fn create(
         n_samples: Option<usize>,
-        hidden_size: usize,
+        hidden_sizes: &[usize],
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
-        // Validate hidden size to prevent overflow
-        if hidden_size > 2048 {
-            return Err(anyhow::anyhow!(
-                "Hidden size too large: {} (max 2048)",
-                hidden_size
-            ));
+        // Validate hidden sizes to prevent overflow
+        for (i, &hidden_size) in hidden_sizes.iter().enumerate() {
+            if hidden_size > 2048 {
+                return Err(anyhow::anyhow!(
+                    "Hidden size at layer {} too large: {} (max 2048)",
+                    i, hidden_size
+                ));
+            }
+            if hidden_size == 0 {
+                return Err(anyhow::anyhow!(
+                    "Hidden size at layer {} cannot be zero",
+                    i
+                ));
+            }
         }
         let samples = n_samples.unwrap_or(1000);
         if samples > 60000 {
@@ -400,7 +447,17 @@ impl MnistNeuralNetwork {
         }
 
         // Try to load real MNIST data first
-        Self::load_mnist(Some(samples), hidden_size, batch_size, rng, activation)
+        Self::load_mnist(Some(samples), hidden_sizes, batch_size, rng, activation)
+    }
+    /// Convenience function to create a network with a single hidden layer
+    pub fn create_single_hidden(
+        n_samples: Option<usize>,
+        hidden_size: usize,
+        batch_size: Option<usize>,
+        rng: &mut StdRng,
+        activation: Option<ActivationType>,
+    ) -> anyhow::Result<Self> {
+        Self::create(n_samples, &[hidden_size], batch_size, rng, activation)
     }
 
     fn count_parameters(&self) -> usize {
@@ -468,7 +525,7 @@ impl MnistNeuralNetwork {
     /// Initialize weights using appropriate initialization for the activation function
     fn initialize_weights(&self, rng: &mut StdRng) -> anyhow::Result<()> {
         let mut data = self.varmap.data().lock().unwrap();
-        for (name, var) in data.iter_mut() {
+        for (_name, var) in data.iter_mut() {
             let tensor = var.as_tensor();
             let shape = tensor.shape();
             let dims = shape.dims();
@@ -704,7 +761,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
 
             // Create variables for autodiff
             let mut vars = Vec::new();
-            vars.reserve(4); // We know we have 4 variables (2 weights, 2 biases)
+            vars.reserve(self.model.layers.len() * 2); // Each layer has weights and biases
 
             let data = self.varmap.data().lock().unwrap();
             for (_, var) in data.iter() {

@@ -459,6 +459,39 @@ impl BenchmarkRunner {
         let mut numerical_error_count = 0;
         let mut best_f_val = f64::INFINITY;
         let mut no_improvement_count = 0;
+        // Record initial evaluation (t0) before optimization starts
+        let initial_f_val = match problem.evaluate_f64(input_floats) {
+            Ok(val) => val,
+            Err(e) => {
+                return Err(BenchmarkError::ProblemError(format!(
+                    "Initial function evaluation failed: {}", e
+                )));
+            }
+        };
+        *function_evaluations += 1;
+        let initial_gradient = match problem.gradient_f64(input_floats) {
+            Ok(grad) => grad,
+            Err(e) => {
+                return Err(BenchmarkError::ProblemError(format!(
+                    "Initial gradient evaluation failed: {}", e
+                )));
+            }
+        };
+        *gradient_evaluations += 1;
+        // Record initial state (iteration 0)
+        trace.check_convergence_with_optimizer(
+            0,
+            initial_f_val,
+            optimizer,
+            input_floats,
+            &initial_gradient,
+            0.0, // No step size for initial evaluation
+            start_time.elapsed(),
+            *function_evaluations,
+            *gradient_evaluations,
+        );
+        best_f_val = initial_f_val;
+
 
         while *iteration < self.config.max_iterations {
             // Check if we've exceeded maximum function calls

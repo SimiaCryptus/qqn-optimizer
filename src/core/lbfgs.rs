@@ -19,6 +19,7 @@ use std::time::Instant;
 
 // Convert to 1D problem for line search
 use crate::core::line_search::create_1d_problem_linear;
+use crate::LineSearchMethod;
 
 /// Configuration parameters for the L-BFGS optimizer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,6 +57,7 @@ impl Default for LBFGSConfig {
                 c2: 0.9,   // Standard curvature condition for L-BFGS
                 initial_step: 1.0,
                 max_step: 2.0,  // Moderate maximum step
+                method: LineSearchMethod::StrongWolfe,
                 ..LineSearchConfig::default()
             },
             epsilon: 1e-8,

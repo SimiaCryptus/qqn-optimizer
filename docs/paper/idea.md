@@ -261,6 +261,20 @@ QQN replaces this complex procedure with a single one-dimensional optimization o
 eliminates step size initialization issues, and the quadratic path naturally handles cases where the pure L-BFGS
 direction is poor.
 
+### 3.6 The Straight-Path Multiplier
+A subtle but crucial implementation detail concerns the scale mismatch between gradient and L-BFGS directions. The L-BFGS direction $\mathbf{d}_{\text{LBFGS}} = -H_k \nabla f$ incorporates curvature information and typically has a magnitude appropriate for unit steps. In contrast, the gradient $\nabla f$ may have arbitrary scaling depending on the function's characteristics.
+To address this, QQN employs a **straight-path multiplier** $\gamma$ (typically 5-20) that scales the gradient component:
+$$\mathbf{d}(t) = t(1-t)(-\gamma \nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$$
+This scaling serves several purposes:
+1. **Scale Compatibility**: Ensures the gradient and L-BFGS components have comparable magnitudes, preventing one from dominating the interpolation
+2. **Effective Step Sizes**: Without scaling, the gradient component might be too small to make meaningful progress, especially early in optimization when $t$ is small
+3. **Maintains Bounded Domain**: The line search still operates on $t \in [0,1]$, preserving theoretical properties while exploring appropriate step sizes
+The actual step taken is $\mathbf{x}_{k+1} = \mathbf{x}_k + \mathbf{d}(t^*)$, where the scaling factor $\gamma$ is absorbed into the path definition. This is analogous to how traditional gradient descent methods require a learning rate to scale the raw gradient.
+**Implementation Note**: When QQN falls back to pure gradient descent (e.g., during initial iterations or when L-BFGS fails), the algorithm uses:
+$$\mathbf{x}_{k+1} = \mathbf{x}_k - \gamma t^* \nabla f$$
+where $t^*$ is found via line search. This ensures consistent behavior whether using the quadratic path or pure gradient steps.
+
+
 ## 4. Theoretical Analysis
 
 ### 4.1 Global Convergence
@@ -364,6 +378,16 @@ if condition_estimate > threshold:
 else:
     m = max(m - 1, m_min)
 ```
+
+**QQN-Adaptive-Scaling**: Dynamically adjust the straight-path multiplier based on observed step sizes:
+```
+if average_t* < 0.1:  // Steps too small
+    γ = min(γ * 1.5, γ_max)
+else if average_t* > 0.9:  // Steps too large
+    γ = max(γ / 1.5, γ_min)
+```
+This variant adapts the gradient scaling to maintain effective interpolation throughout optimization.
+
 **QQN-Adaptive-1D**: Dynamically select one-dimensional solver based on observed function behavior:
 ```
 // Initial aggressive attempt

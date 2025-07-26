@@ -36,6 +36,7 @@ fn main() -> Result<()> {
         verbose: false,          // Enable verbose output
         min_step_persist: 0.0,
         min_step_size: 0.0,
+        gradient_scale_factor: 10.0,
     };
 
     let mut optimizer = QQNOptimizer::new(config);
