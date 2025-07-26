@@ -73,7 +73,9 @@ pub use line_search_golden_section::{
 pub use line_search_more_thuente::{
     MoreThuenteConfig, MoreThuenteLineSearch,
 };
-pub use trust_region::{TrustRegionConfig, TrustRegionOptimizer, TrustRegionState};
+pub use trust_region::{
+    TrustRegionConfig, TrustRegionOptimizer, TrustRegionState
+};
 
 #[cfg(test)]
 mod tests {

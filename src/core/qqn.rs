@@ -359,6 +359,26 @@ impl QQNOptimizer {
         reason: &str,
     ) -> CandleResult<StepResult> {
         info!("Using steepest descent: {}", reason);
+        // Check for convergence before attempting steepest descent
+        let grad_norm = compute_magnitude(gradients)?;
+        if grad_norm < self.config.epsilon {
+            info!("Converged: gradient norm {:.3e} < epsilon {:.3e}", grad_norm, self.config.epsilon);
+            return Ok(StepResult {
+                step_size: 0.0,
+                convergence_info: ConvergenceInfo {
+                    converged: true,
+                    function_change: Some(0.0),
+                },
+                metadata: {
+                    let mut metadata = OptimizationMetadata::default();
+                    metadata.optimizer_data.insert("method".to_string(), 0.0); // 0 = steepest descent
+                    metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+                    metadata.optimizer_data.insert("converged".to_string(), 1.0);
+                    metadata
+                },
+            });
+        }
+        
         // Evaluate function at current parameters to check for increasing steps
         let initial_function_value = function.evaluate(nd_params)?;
         debug!(
@@ -374,6 +394,26 @@ impl QQNOptimizer {
             self.config.gradient_scale_factor
         );
         self.log_tensor_data("Steepest Descent Direction", &direction);
+        // Check if direction is essentially zero (this should be caught above, but double-check)
+        let direction_norm = compute_magnitude(&direction)?;
+        if direction_norm < self.config.epsilon {
+            warn!("Direction norm {:.3e} is too small, indicating convergence", direction_norm);
+            return Ok(StepResult {
+                step_size: 0.0,
+                convergence_info: ConvergenceInfo {
+                    converged: true,
+                    function_change: Some(0.0),
+                },
+                metadata: {
+                    let mut metadata = OptimizationMetadata::default();
+                    metadata.optimizer_data.insert("method".to_string(), 0.0);
+                    metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+                    metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
+                    metadata.optimizer_data.insert("converged".to_string(), 1.0);
+                    metadata
+                },
+            });
+        }
 
         // Convert to f64 for line search
         let params_f64: Vec<f64> = nd_params
@@ -619,6 +659,26 @@ impl Optimizer for QQNOptimizer {
         debug!("Initial function value: {:.6e}", initial_function_value);
         let initial_gradients = function.gradient(params)?;
         self.log_tensor_data("Computed Gradients", &initial_gradients);
+        // Check for convergence based on gradient norm
+        let grad_norm = compute_magnitude(&initial_gradients)?;
+        if grad_norm < self.config.epsilon {
+            info!("Converged: gradient norm {:.3e} < epsilon {:.3e}", grad_norm, self.config.epsilon);
+            self.state.iteration += 1;
+            return Ok(StepResult {
+                step_size: 0.0,
+                convergence_info: ConvergenceInfo {
+                    converged: true,
+                    function_change: Some(0.0),
+                },
+                metadata: {
+                    let mut metadata = OptimizationMetadata::default();
+                    metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+                    metadata.optimizer_data.insert("converged".to_string(), 1.0);
+                    metadata
+                },
+            });
+        }
+
 
         // Check for NaN/Inf in inputs
         for (i, grad) in initial_gradients.iter().enumerate() {

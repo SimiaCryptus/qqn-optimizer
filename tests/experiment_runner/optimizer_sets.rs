@@ -6,17 +6,6 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         // QQN variants
         (
-            "QQN-Bisection-1".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::Bisection,
-                    line_bracket_method: 1,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
             "QQN-Bisection-2".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
@@ -52,71 +41,16 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
             })),
         ),
         (
-            "QQN-CubicQuadraticInterpolation".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::CubicQuadraticInterpolation,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
-            "QQN-GoldenSection".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::GoldenSection,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        (
-            "QQN-MoreThuente".to_string(),
-            Arc::new(QQNOptimizer::new(QQNConfig {
-                line_search: LineSearchConfig {
-                    method: LineSearchMethod::MoreThuente,
-                    ..LineSearchConfig::default()
-                },
-                ..Default::default()
-            })),
-        ),
-        // Trust Region
-        (
             "Trust Region".to_string(),
             Arc::new(TrustRegionOptimizer::new(TrustRegionConfig::default())),
         ),
-
-        // L-BFGS variants
         (
             "L-BFGS".to_string(),
             Arc::new(LBFGSOptimizer::new(LBFGSConfig::default())),
         ),
         (
-            "L-BFGS-Aggressive".to_string(),
-            Arc::new(LBFGSOptimizer::new(LBFGSConfig {
-                history_size: 5,
-                max_step_size: 10.0,
-                max_param_change: 10.0,
-                gradient_clip: 0.0,
-                ..Default::default()
-            })),
-        ),
-
-        // Gradient Descent variants
-        (
             "GD".to_string(),
             Arc::new(GDOptimizer::new(Default::default())),
-        ),
-
-        // Adam variants
-        (
-            "Adam-Fast".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
-                learning_rate: 0.1,
-                lr_schedule: "constant".to_string(),
-                ..Default::default()
-            })),
         ),
         (
             "Adam".to_string(),
@@ -152,7 +86,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
             })),
         ),
         (
-            "QQN-Bisection-2".to_string(),
+            "QQN-Bisection".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::Bisection,
@@ -171,40 +105,42 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
             })),
         ),
         (
-            "QQN-Backtracking-Conservative".to_string(),
+            "QQN-StrongWolfe-Fast".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
-                    method: LineSearchMethod::Backtracking,
+                    method: LineSearchMethod::StrongWolfe,
                     c1: 1e-4,
-                    c2: 0.9,
-                    max_iterations: 30,
-                    initial_step: 0.5,
-                    min_step: 1e-12,
-                    max_step: 2.0,
+                    c2: 0.1,
+                    max_iterations: 20,
+                    initial_step: 1.0,
+                    min_step: 1e-10,
+                    max_step: 10.0,
                     verbose: false,
                     line_bracket_method: 1,
                 },
-                lbfgs_history: 20,
-                epsilon: 1e-8,
+                lbfgs_history: 10,
+                epsilon: 1e-6,
+                gradient_scale_factor: 1000.0,
                 ..Default::default()
             })),
         ),
         (
-            "QQN-MoreThuente-Robust".to_string(),
+            "QQN-Bisection-Fast".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
-                    method: LineSearchMethod::MoreThuente,
+                    method: LineSearchMethod::Bisection,
+                    line_bracket_method: 2,
                     c1: 1e-4,
-                    c2: 0.1,
-                    max_iterations: 25,
+                    c2: 0.9,
+                    max_iterations: 20,
                     initial_step: 1.0,
-                    min_step: 1e-12,
-                    max_step: 5.0,
+                    min_step: 1e-10,
+                    max_step: 10.0,
                     verbose: false,
-                    line_bracket_method: 1,
                 },
-                lbfgs_history: 15,
-                epsilon: 1e-7,
+                lbfgs_history: 10,
+                epsilon: 1e-6,
+                gradient_scale_factor: 1000.0,
                 ..Default::default()
             })),
         ),
@@ -558,7 +494,51 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         (
             "Trust Region".to_string(),
-            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig::default())),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 1.0,
+                max_radius: 100.0,
+                min_radius: 1e-8,
+                eta_1: 0.1,
+                eta_2: 0.75,
+                gamma_1: 0.25,
+                gamma_2: 2.0,
+                max_subproblem_iterations: 50,
+                subproblem_tolerance: 1e-6,
+                use_cauchy_fallback: true,
+                verbose: false,
+            })),
+        ),
+        (
+            "Trust Region-Aggressive".to_string(),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 10.0,
+                max_radius: 1000.0,
+                min_radius: 1e-6,
+                eta_1: 0.2,
+                eta_2: 0.9,
+                gamma_1: 0.5,
+                gamma_2: 5.0,
+                max_subproblem_iterations: 30,
+                subproblem_tolerance: 1e-4,
+                use_cauchy_fallback: false,
+                verbose: false,
+            })),
+        ),
+        (
+            "Trust Region-Conservative".to_string(),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 0.1,
+                max_radius: 10.0,
+                min_radius: 1e-10,
+                eta_1: 0.05,
+                eta_2: 0.5,
+                gamma_1: 0.1,
+                gamma_2: 3.0,
+                max_subproblem_iterations: 100,
+                subproblem_tolerance: 1e-8,
+                use_cauchy_fallback: true,
+                verbose: false,
+            })),
         ),
     ]
 }

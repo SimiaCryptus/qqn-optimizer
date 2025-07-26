@@ -69,7 +69,8 @@ impl ReportGenerator {
         self.generate_detailed_reports(all_results).await?;
 
         let mut html_content = self.generate_header();
-        // html_content.push_str(&self.generate_executive_summary(all_results));
+html_content.push_str(&self.generate_header());
+        html_content.push_str(&self.generate_winner_summary_table(all_results));
 
         for (problem, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem, results)?);
@@ -101,6 +102,93 @@ impl ReportGenerator {
 
         Ok(())
     }
+    fn generate_winner_summary_table(
+        &self,
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+    ) -> String {
+        let mut summary = String::from(
+            r#"## Quick Summary: Winners by Problem
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Problem</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Family</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Winner</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Success Rate</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Mean Final Value</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Runner-up</th>
+</tr>
+"#,
+        );
+        for (problem, results) in all_results {
+            let problem_name = problem.name();
+            let problem_family = get_family(problem_name);
+            let mut optimizer_stats = HashMap::new();
+            for result in &results.results {
+                let stats = optimizer_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert(Vec::new());
+                stats.push(result);
+            }
+            let mut perf_data = Vec::new();
+            for (optimizer, runs) in &optimizer_stats {
+                let final_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
+                if final_values.is_empty() {
+                    continue;
+                }
+                let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+                let success_rate = success_count as f64 / runs.len() as f64;
+                let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+                perf_data.push((optimizer.clone(), success_rate, mean_final));
+            }
+            // Sort by success rate first, then by mean final value
+            perf_data.sort_by(|a, b| {
+                let success_cmp = b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal);
+                if success_cmp != std::cmp::Ordering::Equal {
+                    success_cmp
+                } else {
+                    a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal)
+                }
+            });
+            if !perf_data.is_empty() {
+                let winner = &perf_data[0];
+                let runner_up = if perf_data.len() > 1 { &perf_data[1] } else { winner };
+                let winner_style = if winner.0.contains("QQN") {
+                    "background-color: #d4edda; font-weight: bold;"
+                } else {
+                    "font-weight: bold;"
+                };
+                summary.push_str(&format!(
+                    r#"<tr style="{}">
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{:.1}%</td>
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{:.2e}</td>
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
+</tr>
+"#,
+                    winner_style,
+                    problem_name,
+                    problem_family,
+                    winner.0,
+                    winner.1 * 100.0,
+                    winner.2,
+                    if perf_data.len() > 1 { &runner_up.0 } else { "-" }
+                ));
+            }
+        }
+        summary.push_str(
+            r#"</table>
+**Legend:** 🏆 Winner determined by success rate first, then by mean final value. QQN winners are highlighted in green.
+"#,
+        );
+        summary
+    }
+
 
     fn generate_header(&self) -> String {
         format!(

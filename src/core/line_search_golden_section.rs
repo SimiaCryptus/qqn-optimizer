@@ -561,7 +561,6 @@ mod tests {
     }
     #[test]
     fn test_golden_section_bracket_finding() {
-        init_logging(false).unwrap();
         let line_search = GoldenSectionLineSearch::new(GoldenSectionConfig {
             initial_step: 0.1,
             max_step: 5.0,

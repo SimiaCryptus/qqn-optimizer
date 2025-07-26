@@ -24,6 +24,24 @@ impl ExperimentRunner {
             plotting_manager: PlottingManager::new(output_dir),
         }
     }
+    /// Run benchmarks with problem-specific optimizer sets
+    pub async fn run_championship_benchmarks(
+        &self, 
+        problem_optimizer_map: std::collections::HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>
+    ) -> anyhow::Result<()> {
+        info!("Starting championship benchmarks with problem-specific optimizers");
+        // Ensure output directory exists
+        fs::create_dir_all(&self.output_dir)?;
+        // Run benchmarks for each problem with its specific optimizers
+        let mut all_results: Vec<(Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
+        for (problem_name, optimizers) in &problem_optimizer_map {
+            // Find the problem by name (we'll need to pass problems separately or store them)
+            info!("Running championship benchmarks for problem: {}", problem_name);
+            // This will be handled by the calling function
+        }
+        Ok(())
+    }
+    
     
     /// Run comprehensive comparative benchmarks
     pub async fn run_comparative_benchmarks(&self, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> anyhow::Result<()> {
@@ -48,8 +66,15 @@ impl ExperimentRunner {
         }
 
         // Generate comprehensive analysis and reports
-        self.plotting_manager.generate_all_plots(&all_results).await?;
-        self.report_generator.generate_main_report(&all_results, &problems).await?;
+       
+       // Convert to the expected format with references
+       let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
+           .iter()
+           .map(|(problem, results)| (*problem, results.clone()))
+           .collect();
+       
+       self.plotting_manager.generate_all_plots(&results_refs).await?;
+       self.report_generator.generate_main_report(&results_refs, &problems).await?;
 
         info!(
             "Benchmark experiments completed. Results saved to: {}",
@@ -167,6 +192,107 @@ impl ExperimentRunner {
         Ok(results)
     }
 }
+pub async fn run_championship_benchmark(
+    report_path_prefix: &str,
+    max_evals: usize,
+    num_runs: usize,
+    time_limit: Duration,
+    problems: Vec<Arc<dyn OptimizationProblem>>,
+    championship_config: std::collections::HashMap<String, Vec<String>>,
+    all_optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
+    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    fs::create_dir_all(&output_dir)?;
+    println!("Creating championship benchmark results in: {}", output_dir.display());
+    // Create optimizer lookup map
+    let optimizer_map: std::collections::HashMap<String, Arc<dyn Optimizer>> = all_optimizers
+        .into_iter()
+        .collect();
+    let config = BenchmarkConfig {
+        max_iterations: max_evals,
+        maximum_function_calls: max_evals,
+        time_limit: DurationWrapper::from(time_limit),
+        num_runs: num_runs,
+        ..BenchmarkConfig::default()
+    };
+    let runner = BenchmarkRunner::new(config.clone());
+    let mut all_results: Vec<(Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
+    // Run each problem with only its champion optimizers
+    for problem in &problems {
+        let problem_name = problem.name();
+        if let Some(champion_names) = championship_config.get(problem_name) {
+            info!("Running championship benchmarks for problem: {}", problem_name);
+            // Get only the champion optimizers for this problem
+            let mut problem_optimizers = Vec::new();
+            for champion_name in champion_names {
+                if let Some(optimizer) = optimizer_map.get(champion_name) {
+                    problem_optimizers.push((champion_name.clone(), optimizer.clone()));
+                } else {
+                    warn!("Champion optimizer '{}' not found for problem '{}'", champion_name, problem_name);
+                }
+            }
+            if problem_optimizers.is_empty() {
+                warn!("No valid champion optimizers found for problem: {}", problem_name);
+                continue;
+            }
+            // Run benchmarks for this problem with its champions
+            let mut results = BenchmarkResults::new(config.clone());
+            for (opt_name, optimizer) in &problem_optimizers {
+                for run_id in 0..config.num_runs {
+                    let result = match runner
+                        .run_single_benchmark(problem.as_ref(), &mut optimizer.clone_box(), run_id, opt_name)
+                        .await
+                    {
+                        Ok(mut result) => {
+                            // Apply convergence criteria
+                            if let Some(optimal_value) = problem.optimal_value() {
+                                let success_threshold = optimal_value + 1e-6;
+                                result.convergence_achieved &= result.final_value.is_finite() && result.final_value < success_threshold;
+                            }
+                            if !result.final_value.is_finite() {
+                                result.convergence_achieved = false;
+                                if result.error_message.is_none() {
+                                    result.error_message = Some(format!("Non-finite final value: {}", result.final_value));
+                                }
+                            }
+                            result
+                        }
+                        Err(e) => {
+                            error!("Benchmark failed for {} with {}: {}", problem_name, opt_name, e);
+                            let mut failed_result = SingleResult::new(opt_name.clone(), run_id);
+                            failed_result.convergence_achieved = false;
+                            failed_result.final_value = f64::INFINITY;
+                            failed_result.error_message = Some(format!("Evaluation error: {}", e));
+                            failed_result
+                        }
+                    };
+                    results.add_result(result);
+                }
+            }
+            all_results.push((problem.clone(), results));
+        } else {
+            warn!("No championship configuration found for problem: {}", problem_name);
+        }
+        tokio::task::yield_now().await;
+    }
+    // Generate reports and plots
+    let report_generator = ReportGenerator::new(output_dir.to_string_lossy().to_string(), config.clone());
+    let plotting_manager = PlottingManager::new(output_dir.to_string_lossy().to_string());
+       
+       // Convert to the expected format with references
+       let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
+           .iter()
+           .map(|(problem, results)| (problem, results.clone()))
+           .collect();
+       
+       plotting_manager.generate_all_plots(&results_refs).await?;
+       report_generator.generate_main_report(&results_refs, &problems).await?;
+    println!("Championship benchmark completed successfully");
+    Ok(())
+}
+
 
 pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs: usize, time_limit: Duration, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");

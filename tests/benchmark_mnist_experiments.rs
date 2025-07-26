@@ -128,7 +128,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
         500,
         2,
         Duration::from_secs(60),
-        mnist_problems(&mut StdRng::seed_from_u64(42), 1000),
+        mnist_problems(1000),
         optimizers
     ).await;
 
