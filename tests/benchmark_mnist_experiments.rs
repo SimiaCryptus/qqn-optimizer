@@ -12,7 +12,7 @@ mod experiment_runner;
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    init_logging().unwrap();
+    init_logging(false).unwrap();
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/mnist_{}", timestamp);
@@ -21,16 +21,16 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     println!("Creating benchmark results in: {}", output_dir.display());
 
     let mut rng: StdRng = StdRng::seed_from_u64(42);
-    let samples = 5000;
-    let max_evals = 500;
+    let samples = 3000;
+    let max_evals = 400;
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
             max_iterations: max_evals,
             maximum_function_calls: max_evals,
-            min_improvement_percent: 1e-7,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
-            num_runs: 5,
+            num_runs: 2,
+            ..BenchmarkConfig::default()
         }).run_comparative_benchmarks(vec![
             Arc::new(
                 {
@@ -83,7 +83,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     let mut network = MnistNeuralNetwork::create(
                         Some(samples),
                         &[
-                            20,
+                            20, 20, 20
                         ],
                         Some(samples),
                         &mut rng,
@@ -126,7 +126,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
             ),
         ], vec![
             (
-                "QQN-Backtracking".to_string(),
+                "QQN-Backtracking-Fast".to_string(),
                 Arc::new(QQNOptimizer::new(QQNConfig {
                     line_search: LineSearchConfig {
                         method: LineSearchMethod::Backtracking,
@@ -135,6 +135,33 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     },
                     lbfgs_history: 15,
                     gradient_scale_factor: 1000.0,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-CubicQuadraticInterpolation-Fast".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::CubicQuadraticInterpolation,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    min_step_persist: 5e-1,
+                    lbfgs_history: 30,
+                    gradient_scale_factor: 1000.0,
+                    ..Default::default()
+                })),
+            ),
+            (
+                "QQN-Backtracking".to_string(),
+                Arc::new(QQNOptimizer::new(QQNConfig {
+                    line_search: LineSearchConfig {
+                        method: LineSearchMethod::Backtracking,
+                        max_iterations: 5,
+                        ..LineSearchConfig::default()
+                    },
+                    lbfgs_history: 15,
+                    gradient_scale_factor: 1.0,
                     ..Default::default()
                 })),
             ),
@@ -148,60 +175,7 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                     },
                     min_step_persist: 5e-1,
                     lbfgs_history: 30,
-                    gradient_scale_factor: 1000.0,
-                    ..Default::default()
-                })),
-            ),
-            // (
-            //     "QQN-StrongWolfe".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig {
-            //         line_search: LineSearchConfig {
-            //             method: LineSearchMethod::StrongWolfe,
-            //             max_iterations: 5,
-            //             ..LineSearchConfig::default()
-            //         },
-            //         min_step_persist: 5e-1,
-            //         lbfgs_history: 30,
-            //         gradient_scale_factor: 1000.0,
-            //         ..Default::default()
-            //     })),
-            // ),
-            // (            
-            //     "QQN-Bisection".to_string(),
-            //     Arc::new(QQNOptimizer::new(QQNConfig {
-            //         line_search: LineSearchConfig {
-            //             method: LineSearchMethod::Bisection,
-            //             max_iterations: 5,
-            //             ..LineSearchConfig::default()
-            //         },
-            //         lbfgs_history: 15,
-            //         gradient_scale_factor: 1000.0,
-            //         ..Default::default()
-            //     })),
-            // ),
-            (
-                "QQN-MoreThuente".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig {
-                    line_search: LineSearchConfig {
-                        method: LineSearchMethod::MoreThuente,
-                        max_iterations: 5,
-                        ..LineSearchConfig::default()
-                    },
-                    lbfgs_history: 15,
-                    gradient_scale_factor: 1000.0,
-                    ..Default::default()
-                })),
-            ),
-            (
-                "QQN-GoldenSection".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig {
-                    line_search: LineSearchConfig {
-                        method: LineSearchMethod::GoldenSection,
-                        max_iterations: 5,
-                        ..LineSearchConfig::default()
-                    },
-                    lbfgs_history: 15,
-                    gradient_scale_factor: 1000.0,
+                    gradient_scale_factor: 1.0,
                     ..Default::default()
                 })),
             ),
@@ -212,9 +186,17 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
                 })),
             ),
             (
+                "Adam-Fast".to_string(),
+                Arc::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.1,
+                    lr_schedule: "adaptive".to_string(),
+                    ..AdamConfig::deep_learning()
+                })),
+            ),
+            (
                 "Adam".to_string(),
                 Arc::new(AdamOptimizer::new(AdamConfig {
-                    learning_rate: 0.1, // Standard for deep learning
+                    learning_rate: 0.005,
                     lr_schedule: "adaptive".to_string(),
                     ..AdamConfig::deep_learning()
                 })),

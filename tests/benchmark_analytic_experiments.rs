@@ -8,25 +8,27 @@ use experiment_runner::ExperimentRunner;
 use qqn_optimizer::benchmarks::analytic_functions::{AckleyFunction, BealeFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SphereFunction};
 use qqn_optimizer::benchmarks::analytic_functions::{GoldsteinPriceFunction, LeviFunction, MatyasFunction, StyblinskiTangFunction};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
+use qqn_optimizer::init_logging;
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // init_logging()?;
+    init_logging(false)?;
     
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/functions_{}", timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
     fs::create_dir_all(&output_dir)?;
     println!("Creating benchmark results in: {}", output_dir.display());
-    
+
+    let max_evals = 1000;
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
-            max_iterations: 1000,
-            maximum_function_calls: 10000,
-            min_improvement_percent: 1e-7,
+            max_iterations: max_evals,
+            maximum_function_calls: max_evals,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 10,
+            ..BenchmarkConfig::default()
         }).run_comparative_benchmarks(vec![
             Arc::new(SphereFunction::new(2)),
             Arc::new(SphereFunction::new(10)),

@@ -55,7 +55,7 @@ impl Default for QQNConfig {
             verbose: false,
             min_step_persist: 1e-1,
             min_step_size: 1e-10,
-            gradient_scale_factor: 10.0,
+            gradient_scale_factor: 1.0,
         }
     }
 }
@@ -80,7 +80,7 @@ impl QQNConfig {
             verbose: false,
             min_step_persist: 1e-2,
             min_step_size: 1e-10,
-            gradient_scale_factor: 5.0, // More conservative scaling
+            gradient_scale_factor: 1.0, // More conservative scaling
         }
     }
     /// Create a lax configuration with aggressive settings for faster convergence
@@ -101,7 +101,7 @@ impl QQNConfig {
             verbose: false,
             min_step_persist: 1e-2,
             min_step_size: 1e-10,
-            gradient_scale_factor: 20.0, // More aggressive scaling
+            gradient_scale_factor: 1.0, // More aggressive scaling
         }
     }
     /// Create a configuration with verbose logging enabled
@@ -1288,7 +1288,7 @@ mod tests {
             verbose: false,
             min_step_persist: 1e-2,
             min_step_size: 1e-10,
-            gradient_scale_factor: 10.0,
+            gradient_scale_factor: 1.0,
         };
         let optimizer = QQNOptimizer::new(config.clone());
         assert_eq!(optimizer.config.lbfgs_history, 5);

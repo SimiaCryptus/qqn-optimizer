@@ -42,18 +42,23 @@ pub use benchmarks::mnist::MnistNeuralNetwork;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Initialize logging for the framework
-pub fn init_logging() -> Result<()> {
-    init_logging_with_mode(true)
+pub fn init_logging(debug: bool) -> Result<()> {
+    init_logging_with_mode(true, debug)
 }
 
 /// Initialize logging with configurable format mode
 /// - compact: if true, uses compact format (raw output only)
 /// - compact: if false, uses default format (with timestamp, level, source)
-pub fn init_logging_with_mode(compact: bool) -> Result<()> {
+pub fn init_logging_with_mode(compact: bool, debug: bool) -> Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "qqn_optimizer=info".into());
+    let env_filter = if debug {
+        tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "qqn_optimizer=debug".into())
+    } else { 
+        tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "qqn_optimizer=info".into())
+    };
 
     let registry = tracing_subscriber::registry().with(env_filter);
 

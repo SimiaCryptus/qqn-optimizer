@@ -387,44 +387,71 @@ impl ReportGenerator {
             let final_value_str = format!(
                 "{:.2e} / {:.2e} / {:.2e}",
                 mean_final,
-                if mean_final_success.is_finite() {
-                    *mean_final_success
-                } else {
-                    *mean_final
-                },
-                if mean_final_fail.is_finite() {
-                    *mean_final_fail
-                } else {
-                    *mean_final
-                }
+               mean_final_success,
+               mean_final_fail
+            );
+            // Create formatted strings for success/fail values
+            let success_str = if mean_final_success.is_nan() || !mean_final_success.is_finite() {
+                "-".to_string()
+            } else {
+                format!("{:.2e}", mean_final_success)
+            };
+            let fail_str = if mean_final_fail.is_nan() || !mean_final_fail.is_finite() {
+                "-".to_string()
+            } else {
+                format!("{:.2e}", mean_final_fail)
+            };
+            let final_value_str = format!(
+                "{:.2e} / {} / {}",
+                mean_final,
+                success_str,
+                fail_str
             );
             let func_evals_str = format!(
                 "{:.1} / {:.1} / {:.1}",
+              mean_func_evals,
+               mean_func_evals_success,
+               mean_func_evals_fail
+            );
+            // Create formatted strings for function evaluations
+            let func_success_str = if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
+                "-".to_string()
+            } else {
+                format!("{:.1}", mean_func_evals_success)
+            };
+            let func_fail_str = if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
+                "-".to_string()
+            } else {
+                format!("{:.1}", mean_func_evals_fail)
+            };
+            let func_evals_str = format!(
+                "{:.1} / {} / {}",
                 mean_func_evals,
-                if mean_func_evals_success.is_finite() {
-                    *mean_func_evals_success
-                } else {
-                    *mean_func_evals
-                },
-                if mean_func_evals_fail.is_finite() {
-                    *mean_func_evals_fail
-                } else {
-                    *mean_func_evals
-                }
+                func_success_str,
+                func_fail_str
             );
             let grad_evals_str = format!(
                 "{:.1} / {:.1} / {:.1}",
+              mean_grad_evals,
+               mean_grad_evals_success,
+               mean_grad_evals_fail
+            );
+            // Create formatted strings for gradient evaluations
+            let grad_success_str = if mean_grad_evals_success.is_nan() || !mean_grad_evals_success.is_finite() {
+                "-".to_string()
+            } else {
+                format!("{:.1}", mean_grad_evals_success)
+            };
+            let grad_fail_str = if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
+                "-".to_string()
+            } else {
+                format!("{:.1}", mean_grad_evals_fail)
+            };
+            let grad_evals_str = format!(
+                "{:.1} / {} / {}",
                 mean_grad_evals,
-                if mean_grad_evals_success.is_finite() {
-                    *mean_grad_evals_success
-                } else {
-                    *mean_grad_evals
-                },
-                if mean_grad_evals_fail.is_finite() {
-                    *mean_grad_evals_fail
-                } else {
-                    *mean_grad_evals
-                }
+                grad_success_str,
+                grad_fail_str
             );
 
             section.push_str(&format!(
@@ -757,18 +784,18 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     dimension,
                     optimizer,
                     mean_final,
-                    if mean_final_success.is_finite() { mean_final_success } else { mean_final },
-                    if mean_final_fail.is_finite() { mean_final_fail } else { mean_final },
+                   if successful_runs.is_empty() { f64::NAN } else { mean_final_success },
+                   if unsuccessful_runs.is_empty() { f64::NAN } else { mean_final_fail },
                     std_final,
                     best_final,
                     worst_final,
                     mean_iterations,
                     mean_function_evals,
-                    if mean_func_evals_success.is_finite() { mean_func_evals_success } else { mean_function_evals },
-                    if mean_func_evals_fail.is_finite() { mean_func_evals_fail } else { mean_function_evals },
+                   if successful_runs.is_empty() { f64::NAN } else { mean_func_evals_success },
+                   if unsuccessful_runs.is_empty() { f64::NAN } else { mean_func_evals_fail },
                     mean_gradient_evals,
-                    if mean_grad_evals_success.is_finite() { mean_grad_evals_success } else { mean_gradient_evals },
-                    if mean_grad_evals_fail.is_finite() { mean_grad_evals_fail } else { mean_gradient_evals },
+                   if successful_runs.is_empty() { f64::NAN } else { mean_grad_evals_success },
+                   if unsuccessful_runs.is_empty() { f64::NAN } else { mean_grad_evals_fail },
                     mean_time,
                     success_rate,
                     runs.len()

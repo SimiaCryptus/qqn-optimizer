@@ -114,10 +114,10 @@ pub fn standard_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
             })),
         ),
         (
-            "Adam-Fast-Conservative".to_string(),
+            "Adam".to_string(),
             Arc::new(AdamOptimizer::new(AdamConfig {
-                learning_rate: 0.05,
-                lr_schedule: "constant".to_string(),
+                learning_rate: 0.01,
+                lr_schedule: "adaptive".to_string(),
                 gradient_clip: Some(1.0),
                 ..Default::default()
             })),

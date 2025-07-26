@@ -10,11 +10,11 @@ use experiment_runner::ExperimentRunner;
 use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, DurationWrapper};
 use qqn_optimizer::core::GDOptimizer;
-use qqn_optimizer::{init_logging, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, MnistNeuralNetwork, QQNConfig, QQNOptimizer};
+use qqn_optimizer::{init_logging, AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, MnistNeuralNetwork, QQNConfig, QQNOptimizer, SphereFunction};
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    init_logging()?;
+    init_logging(true)?;
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/test_{}", timestamp);
@@ -22,28 +22,24 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     fs::create_dir_all(&output_dir)?;
     println!("Creating benchmark results in: {}", output_dir.display());
 
+    let max_evals = 10000;
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
-            max_iterations: 10000,
-            maximum_function_calls: 10000,
-            min_improvement_percent: 1e-3,
+            max_iterations: max_evals,
+            maximum_function_calls: max_evals,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 1,
+            ..BenchmarkConfig::default()
         }).run_comparative_benchmarks(vec![
-            Arc::new(RosenbrockFunction::new(5)),
+            Arc::new(SphereFunction::new(2))
         ], vec![
             (
-                "QQN-Backtracking-Hybrid".to_string(),
-                Arc::new(QQNOptimizer::new(QQNConfig {
-                    line_search: LineSearchConfig {
-                        method: LineSearchMethod::Backtracking,
-                        c1: 1e-3,
-                        c2: 0.9,
-                        max_iterations: 75,
-                        ..LineSearchConfig::default()
-                    },
-                    lbfgs_history: 15,
+                "Adam".to_string(),
+                Arc::new(AdamOptimizer::new(AdamConfig {
+                    learning_rate: 0.01,
+                    lr_schedule: "adaptive".to_string(),
+                    verbose: true,
                     ..Default::default()
                 })),
             ),

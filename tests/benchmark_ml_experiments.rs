@@ -14,7 +14,7 @@ mod experiment_runner;
 
 #[tokio::test]
 async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    init_logging().unwrap();
+    init_logging(false).unwrap();
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("results/ml_{}", timestamp);
@@ -23,14 +23,15 @@ async fn test_comprehensive_benchmarks() -> Result<(), Box<dyn std::error::Error
     println!("Creating benchmark results in: {}", output_dir.display());
 
     let mut rng: StdRng = StdRng::seed_from_u64(42);
+    let max_evals = 1000;
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
         ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
-            max_iterations: 1000,
-            maximum_function_calls: 1000,
-            min_improvement_percent: 1e-7,
+            max_iterations: max_evals,
+            maximum_function_calls: max_evals,
             time_limit: DurationWrapper::from(Duration::from_secs(60)),
             num_runs: 10,
+            ..BenchmarkConfig::default()
         }).run_comparative_benchmarks(vec![
             Arc::new(
                 {

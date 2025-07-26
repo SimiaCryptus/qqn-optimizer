@@ -52,7 +52,7 @@ impl Default for BenchmarkConfig {
         Self {
             max_iterations: 10000,
             maximum_function_calls: 50000,
-            min_improvement_percent: 0.01, // 0.01% minimum improvement
+            min_improvement_percent: 1e-7, // 0.01% minimum improvement
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             num_runs: 10,
         }
@@ -266,7 +266,7 @@ pub struct BenchmarkRunner {
 }
 
 const MAX_NUMERICAL_ERRORS: usize = 3;
-const MAX_NO_IMPROVEMENT: usize = 2; // Reduced since we have percentage-based improvement
+const MAX_NO_IMPROVEMENT: usize = 5; // Reduced since we have percentage-based improvement
 
 impl BenchmarkRunner {
     pub fn new(config: BenchmarkConfig) -> Self {
@@ -545,13 +545,21 @@ impl BenchmarkRunner {
 
             if (improvement_percent / stagnation_multiplier) >= self.config.min_improvement_percent
             {
+                debug!(
+                    "Iteration {}: Improvement {:.3e}%, best value updated to {:.6e}",
+                    iteration, improvement_percent, f_val
+                );
                 best_f_val = f_val;
                 no_improvement_count = 0;
             } else {
                 no_improvement_count += 1;
+                debug!(
+                    "Iteration {}: Improvement {:.3e}%, no improvement count: {}",
+                    iteration, improvement_percent, no_improvement_count
+                );
                 if no_improvement_count >= (MAX_NO_IMPROVEMENT + stagnation_tolerance) {
                     info!(
-                        "No improvement >= {:.3}% for {} iterations, terminating",
+                        "No improvement >= {:.3e}% for {} iterations, terminating",
                         self.config.min_improvement_percent, MAX_NO_IMPROVEMENT
                     );
                     return Ok(ConvergenceReason::FunctionTolerance);
