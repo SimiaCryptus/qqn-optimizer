@@ -30,7 +30,6 @@ This approach provides several key advantages:
 
 1. **Hyperparameter-Free Operation**: Unlike methods requiring learning rates, momentum coefficients, or trust region radii, QQN adapts automatically to problem characteristics without problem-specific tuning parameters. 
    While implementation details such as 1D solver tolerances exist, these are standard numerical parameters rather than algorithm-specific hyperparameters requiring problem-dependent tuning.
-   While implementation details such as 1D solver tolerances exist, these are standard numerical parameters rather than algorithm-specific hyperparameters requiring problem-dependent tuning.
 
 2. **Guaranteed Descent**: The path construction ensures descent from any starting point, eliminating convergence failures common in quasi-Newton methods.
 
@@ -81,7 +80,6 @@ L-BFGS [@liu1989limited] reduces memory requirements to O(mn), making it practic
 However, these methods require complex line search procedures and can fail on non-convex problems.
 
 **Hybrid Approaches**: Trust region methods [@more1983computing] interpolate between gradient and Newton directions but require expensive subproblem solutions. 
-Unlike QQN's direct path optimization, trust region methods solve a constrained quadratic programming problem at each iteration, fundamentally differing in both computational approach and theoretical framework. 
 Unlike QQN's direct path optimization, trust region methods solve a constrained quadratic programming problem at each iteration, fundamentally differing in both computational approach and theoretical framework. 
 Switching strategies [@morales2000automatic] alternate between methods but can exhibit discontinuous behavior.
 Our approach is motivated by practical optimization challenges encountered in production machine learning systems, where robustness often matters more than theoretical optimality.
@@ -261,7 +259,6 @@ $$\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$$
    $\Delta_k \geq c\|\nabla f(\mathbf{x}_k)\|_2^2$, we have $\sum_{k=0}^{\infty} \|\nabla f(\mathbf{x}_k)\|_2^2 < \infty$, 
    implying $\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$. □
 The constant $c > 0$ in step 4 arises from the quadratic path construction, which ensures that for small $t$, the decrease is dominated by the gradient term, yielding $f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - ct\|\nabla f(\mathbf{x}_k)\|_2^2$ for some $c$ related to the Lipschitz constant and the straight-path multiplier γ.
-
 
 **Theorem 3** (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
 
@@ -629,6 +626,3 @@ The authors declare no competing interests.
 
 All experimental data, including raw optimization trajectories and statistical analyses, are available at https://github.com/SimiaCryptus/qqn-optimizer/.
 
-# References
-
-<!-- References will be automatically generated from the BibTeX file -->
