@@ -1,4 +1,7 @@
 use std::f64::consts::PI;
+use rand::Rng;
+use rand_chacha::ChaCha8Rng;
+use rand_chacha::rand_core::SeedableRng;
 use crate::OptimizationProblem;
 
 /// Matyas function: f(x, y) = 0.26(x² + y²) - 0.48xy
@@ -1136,6 +1139,470 @@ impl OptimizationProblem for ZakharovFunction {
         Some(1e-8)
     }
 }
+/// Extended Rosenbrock function with adjustable conditioning
+/// f(x) = Σ[α(x_{i+1} - x_i²)² + (1 - x_i)²] where α controls conditioning
+/// For α >> 1, the problem becomes highly ill-conditioned
+#[derive(Debug, Clone)]
+pub struct IllConditionedRosenbrock {
+    dimension: usize,
+    alpha: f64,
+    name: String,
+}
+impl IllConditionedRosenbrock {
+    pub fn new(dimension: usize, alpha: f64) -> Self {
+        Self {
+            dimension,
+            alpha,
+            name: format!("IllConditionedRosenbrock_{}D_alpha{}", dimension, alpha),
+        }
+    }
+}
+impl OptimizationProblem for IllConditionedRosenbrock {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        let mut initial = vec![-1.2; self.dimension];
+        for i in (1..self.dimension).step_by(2) {
+            initial[i] = 1.0;
+        }
+        initial
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let mut sum = 0.0;
+        for i in 0..self.dimension - 1 {
+            let term1 = self.alpha * (x[i + 1] - x[i] * x[i]).powi(2);
+            let term2 = (1.0 - x[i]).powi(2);
+            sum += term1 + term2;
+        }
+        Ok(sum)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let mut grad = vec![0.0; self.dimension];
+        for i in 0..self.dimension - 1 {
+            grad[i] += -4.0 * self.alpha * x[i] * (x[i + 1] - x[i] * x[i]) - 2.0 * (1.0 - x[i]);
+            grad[i + 1] += 2.0 * self.alpha * (x[i + 1] - x[i] * x[i]);
+        }
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(1e-6)
+    }
+}
+/// Trigonometric function - highly ill-conditioned
+/// f(x) = Σ[n - Σcos(x_j) + i(1 - cos(x_i) - sin(x_i))]²
+#[derive(Debug, Clone)]
+pub struct TrigonometricFunction {
+    dimension: usize,
+    name: String,
+}
+impl TrigonometricFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self {
+            dimension,
+            name: format!("Trigonometric_{}D", dimension),
+        }
+    }
+}
+impl OptimizationProblem for TrigonometricFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![0.2; self.dimension]
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let n = self.dimension as f64;
+        let cos_sum: f64 = x.iter().map(|&xi| xi.cos()).sum();
+        let mut total = 0.0;
+        for i in 0..self.dimension {
+            let term = n - cos_sum + (i + 1) as f64 * (1.0 - x[i].cos() - x[i].sin());
+            total += term * term;
+        }
+        Ok(total)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let n = self.dimension as f64;
+        let cos_sum: f64 = x.iter().map(|&xi| xi.cos()).sum();
+        let mut grad = vec![0.0; self.dimension];
+        for j in 0..self.dimension {
+            for i in 0..self.dimension {
+                let term = n - cos_sum + (i + 1) as f64 * (1.0 - x[i].cos() - x[i].sin());
+                if i == j {
+                    let deriv = x[j].sin() + (i + 1) as f64 * (x[i].sin() - x[i].cos());
+                    grad[j] += 2.0 * term * deriv;
+                } else {
+                    grad[j] += 2.0 * term * x[j].sin();
+                }
+            }
+        }
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(1e-6)
+    }
+}
+/// Penalty function I - constrained optimization via penalty method
+/// f(x) = Σ(x_i - 1)² + α * Σmax(0, x_i - 0.25)²
+#[derive(Debug, Clone)]
+pub struct PenaltyFunctionI {
+    dimension: usize,
+    alpha: f64,
+    name: String,
+}
+impl PenaltyFunctionI {
+    pub fn new(dimension: usize) -> Self {
+        Self::with_penalty(dimension, 1e6)
+    }
+    pub fn with_penalty(dimension: usize, alpha: f64) -> Self {
+        Self {
+            dimension,
+            alpha,
+            name: format!("PenaltyI_{}D_alpha{:.0e}", dimension, alpha),
+        }
+    }
+}
+impl OptimizationProblem for PenaltyFunctionI {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![0.5; self.dimension]
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let objective: f64 = x.iter().map(|&xi| (xi - 1.0).powi(2)).sum();
+        let penalty: f64 = x.iter()
+            .map(|&xi| self.alpha * (xi - 0.25).max(0.0).powi(2))
+            .sum();
+        Ok(objective + penalty)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let grad: Vec<f64> = x.iter()
+            .map(|&xi| {
+                let obj_grad = 2.0 * (xi - 1.0);
+                let penalty_grad = if xi > 0.25 {
+                    2.0 * self.alpha * (xi - 0.25)
+                } else {
+                    0.0
+                };
+                obj_grad + penalty_grad
+            })
+            .collect();
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(1e-6)
+    }
+}
+/// Barrier function - constrained optimization with logarithmic barrier
+/// f(x) = Σx_i² - μ * Σlog(x_i) where x_i > 0
+#[derive(Debug, Clone)]
+pub struct BarrierFunction {
+    dimension: usize,
+    mu: f64,
+    name: String,
+}
+impl BarrierFunction {
+    pub fn new(dimension: usize) -> Self {
+        Self::with_barrier(dimension, 0.1)
+    }
+    pub fn with_barrier(dimension: usize, mu: f64) -> Self {
+        Self {
+            dimension,
+            mu,
+            name: format!("Barrier_{}D_mu{}", dimension, mu),
+        }
+    }
+}
+impl OptimizationProblem for BarrierFunction {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![1.0; self.dimension]
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        // Check feasibility
+        if x.iter().any(|&xi| xi <= 0.0) {
+            return Err(anyhow::anyhow!("Barrier function requires x > 0"));
+        }
+        let objective: f64 = x.iter().map(|&xi| xi * xi).sum();
+        let x1: Vec<f64> = x.iter().map(|&xi| xi.ln()).collect();
+        let barrier: f64 = -self.mu * x1.iter().sum::<f64>();
+        Ok(objective + barrier)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        if x.iter().any(|&xi| xi <= 0.0) {
+            return Err(anyhow::anyhow!("Barrier function requires x > 0"));
+        }
+        let grad: Vec<f64> = x.iter()
+            .map(|&xi| 2.0 * xi - self.mu / xi)
+            .collect();
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(1e-6)
+    }
+}
+/// Noisy sphere function - sphere with additive Gaussian noise
+/// f(x) = Σx_i² + ε where ε ~ N(0, σ²)
+#[derive(Debug, Clone)]
+pub struct NoisySphere {
+    dimension: usize,
+    noise_level: f64,
+    seed: u64,
+    name: String,
+}
+impl NoisySphere {
+    pub fn new(dimension: usize, noise_level: f64) -> Self {
+        Self::with_seed(dimension, noise_level, 42)
+    }
+    pub fn with_seed(dimension: usize, noise_level: f64, seed: u64) -> Self {
+        Self {
+            dimension,
+            noise_level,
+            seed,
+            name: format!("NoisySphere_{}D_sigma{}", dimension, noise_level),
+        }
+    }
+}
+impl OptimizationProblem for NoisySphere {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![1.0; self.dimension]
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let sphere_value: f64 = x.iter().map(|&xi| xi * xi).sum();
+        // Generate deterministic noise based on x coordinates
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        use std::hash::{Hash, Hasher};
+        for &xi in x {
+            xi.to_bits().hash(&mut hasher);
+        }
+        self.seed.hash(&mut hasher);
+        let hash = hasher.finish();
+        let mut rng = ChaCha8Rng::seed_from_u64(hash);
+        let noise: f64 = rng.random::<f64>() * 2.0 - 1.0; // [-1, 1]
+        Ok(sphere_value + self.noise_level * noise)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        // Use finite differences for noisy gradient
+        let h = 1e-6;
+        let mut grad = vec![0.0; self.dimension];
+        for i in 0..self.dimension {
+            let mut x_plus = x.to_vec();
+            let mut x_minus = x.to_vec();
+            x_plus[i] += h;
+            x_minus[i] -= h;
+            let f_plus = self.evaluate_f64(&x_plus)?;
+            let f_minus = self.evaluate_f64(&x_minus)?;
+            grad[i] = (f_plus - f_minus) / (2.0 * h);
+        }
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(self.noise_level * 3.0) // 3 sigma tolerance
+    }
+}
+/// Sparse Rosenbrock - Rosenbrock where only adjacent pairs interact
+/// f(x) = Σ[100(x_{2i} - x_{2i-1}²)² + (1 - x_{2i-1})²]
+#[derive(Debug, Clone)]
+pub struct SparseRosenbrock {
+    dimension: usize,
+    name: String,
+}
+impl SparseRosenbrock {
+    pub fn new(dimension: usize) -> Self {
+        if dimension % 2 != 0 {
+            panic!("SparseRosenbrock requires even dimension");
+        }
+        Self {
+            dimension,
+            name: format!("SparseRosenbrock_{}D", dimension),
+        }
+    }
+}
+impl OptimizationProblem for SparseRosenbrock {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        let mut initial = vec![0.0; self.dimension];
+        for i in (0..self.dimension).step_by(2) {
+            initial[i] = -1.2;
+            initial[i + 1] = 1.0;
+        }
+        initial
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let mut sum = 0.0;
+        for i in (0..self.dimension).step_by(2) {
+            let term1 = 100.0 * (x[i + 1] - x[i] * x[i]).powi(2);
+            let term2 = (1.0 - x[i]).powi(2);
+            sum += term1 + term2;
+        }
+        Ok(sum)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let mut grad = vec![0.0; self.dimension];
+        for i in (0..self.dimension).step_by(2) {
+            grad[i] = -400.0 * x[i] * (x[i + 1] - x[i] * x[i]) - 2.0 * (1.0 - x[i]);
+            grad[i + 1] = 200.0 * (x[i + 1] - x[i] * x[i]);
+        }
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(1e-6)
+    }
+}
+/// Sparse quadratic function - diagonal + sparse off-diagonal terms
+/// f(x) = Σx_i² + Σ(x_i * x_{i+k}) for specific k values
+#[derive(Debug, Clone)]
+pub struct SparseQuadratic {
+    dimension: usize,
+    sparsity_pattern: Vec<usize>,
+    name: String,
+}
+impl SparseQuadratic {
+    pub fn new(dimension: usize) -> Self {
+        // Default sparsity: interact with neighbors at distance 1 and 3
+        Self::with_pattern(dimension, vec![1, 3])
+    }
+    pub fn with_pattern(dimension: usize, sparsity_pattern: Vec<usize>) -> Self {
+        Self {
+            dimension,
+            sparsity_pattern: sparsity_pattern.clone(),
+            name: format!("SparseQuadratic_{}D_pattern{:?}", dimension, sparsity_pattern),
+        }
+    }
+}
+impl OptimizationProblem for SparseQuadratic {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        self.dimension
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        vec![1.0; self.dimension]
+    }
+    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        // Diagonal terms
+        let mut sum: f64 = x.iter().map(|&xi| xi * xi).sum();
+        // Sparse off-diagonal terms
+        for i in 0..self.dimension {
+            for &k in &self.sparsity_pattern {
+                if i + k < self.dimension {
+                    sum += 0.1 * x[i] * x[i + k];
+                }
+            }
+        }
+        Ok(sum)
+    }
+    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        if x.len() != self.dimension {
+            return Err(anyhow::anyhow!("Input dimension mismatch"));
+        }
+        let mut grad = vec![0.0; self.dimension];
+        // Diagonal terms
+        for i in 0..self.dimension {
+            grad[i] = 2.0 * x[i];
+        }
+        // Sparse off-diagonal terms
+        for i in 0..self.dimension {
+            for &k in &self.sparsity_pattern {
+                if i + k < self.dimension {
+                    grad[i] += 0.1 * x[i + k];
+                    grad[i + k] += 0.1 * x[i];
+                }
+            }
+        }
+        Ok(grad)
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(1e-6)
+    }
+}
 
 
 
@@ -1143,7 +1610,7 @@ impl OptimizationProblem for ZakharovFunction {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use crate::benchmarks::analytic_functions::{AckleyFunction, BealeFunction, BoothFunction, GoldsteinPriceFunction, GriewankFunction, HimmelblauFunction, LeviFunction, LevyFunction, MatyasFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SchwefelFunction, SphereFunction, StyblinskiTangFunction, ZakharovFunction};
+    use crate::benchmarks::analytic_functions::{AckleyFunction, BealeFunction, BoothFunction, GoldsteinPriceFunction, GriewankFunction, HimmelblauFunction, LeviFunction, LevyFunction, MatyasFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SchwefelFunction, SphereFunction, StyblinskiTangFunction, ZakharovFunction, IllConditionedRosenbrock, TrigonometricFunction, PenaltyFunctionI, BarrierFunction, NoisySphere, SparseRosenbrock, SparseQuadratic};
 
     const EPSILON: f64 = 1e-10;
     const GRADIENT_EPSILON: f64 = 1e-6;
@@ -1620,5 +2087,128 @@ mod tests {
         for point in test_points {
             test_gradient_numerical(&problem, &point, GRADIENT_EPSILON);
         }
+    }
+    #[test]
+    fn test_ill_conditioned_rosenbrock() {
+        let problem = IllConditionedRosenbrock::new(2, 1000.0);
+        // Test at global minimum
+        let optimum = vec![1.0, 1.0];
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
+        // Test gradient
+        let point = vec![0.5, 0.5];
+        test_gradient_numerical(&problem, &point, GRADIENT_EPSILON);
+        // Verify it's more ill-conditioned than standard Rosenbrock
+        let standard = RosenbrockFunction::new(2);
+        let point = vec![0.9, 0.9];
+        let ill_grad = problem.gradient_f64(&point).unwrap();
+        let std_grad = standard.gradient_f64(&point).unwrap();
+        // The ill-conditioned version should have larger gradient components
+        assert!(ill_grad[1].abs() > std_grad[1].abs());
+    }
+    #[test]
+    fn test_trigonometric_function() {
+        let problem = TrigonometricFunction::new(3);
+        // Test at a point
+        let point = vec![0.1, 0.2, 0.3];
+        let value = problem.evaluate_f64(&point).unwrap();
+        assert!(value >= 0.0);
+        // Test gradient
+        test_gradient_numerical(&problem, &point, 1e-5);
+    }
+    #[test]
+    fn test_penalty_function() {
+        let problem = PenaltyFunctionI::with_penalty(2, 1000.0);
+        // Test at feasible point
+        let feasible = vec![0.2, 0.1];
+        let value = problem.evaluate_f64(&feasible).unwrap();
+        // Test at infeasible point
+        let infeasible = vec![0.5, 0.5];
+        let infeasible_value = problem.evaluate_f64(&infeasible).unwrap();
+        // Infeasible point should have higher value due to penalty
+        assert!(infeasible_value > value);
+        // Test gradient
+        test_gradient_numerical(&problem, &feasible, GRADIENT_EPSILON);
+    }
+    #[test]
+    fn test_barrier_function() {
+        let problem = BarrierFunction::new(2);
+        // Test at interior point
+        let point = vec![1.0, 2.0];
+        let value = problem.evaluate_f64(&point).unwrap();
+        assert!(value.is_finite());
+        // Test gradient
+        test_gradient_numerical(&problem, &point, GRADIENT_EPSILON);
+        // Test infeasible point
+        let infeasible = vec![-1.0, 1.0];
+        assert!(problem.evaluate_f64(&infeasible).is_err());
+    }
+    #[test]
+    fn test_noisy_sphere() {
+        let problem = NoisySphere::new(2, 0.1);
+        // Test multiple evaluations at same point
+        let point = vec![1.0, 1.0];
+        let value1 = problem.evaluate_f64(&point).unwrap();
+        let value2 = problem.evaluate_f64(&point).unwrap();
+        // Should be deterministic for same input
+        assert_eq!(value1, value2);
+        // Test that noise is bounded
+        let true_value = 2.0; // 1² + 1²
+        assert!((value1 - true_value).abs() <= 0.1);
+    }
+    #[test]
+    fn test_sparse_rosenbrock() {
+        let problem = SparseRosenbrock::new(4);
+        // Test at global minimum
+        let optimum = vec![1.0, 1.0, 1.0, 1.0];
+        assert_relative_eq!(
+            problem.evaluate_f64(&optimum).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
+        // Test sparsity structure
+        let point = vec![0.0, 0.0, 1.0, 1.0];
+        let grad = problem.gradient_f64(&point).unwrap();
+        // Variables 0,1 should not affect gradients of 2,3
+        assert_ne!(grad[0], 0.0);
+        assert_ne!(grad[1], 0.0);
+        assert_eq!(grad[2], 0.0);
+        assert_eq!(grad[3], 0.0);
+    }
+    #[test]
+    fn test_sparse_quadratic() {
+        let problem = SparseQuadratic::new(5);
+        // Test at origin
+        let origin = vec![0.0; 5];
+        assert_relative_eq!(
+            problem.evaluate_f64(&origin).unwrap(),
+            0.0,
+            epsilon = EPSILON
+        );
+        // Test gradient
+        let point = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        test_gradient_numerical(&problem, &point, GRADIENT_EPSILON);
+        // Test custom sparsity pattern
+        let custom = SparseQuadratic::with_pattern(4, vec![2]);
+        let grad = custom.gradient_f64(&vec![1.0, 0.0, 0.0, 0.0]).unwrap();
+        // Only x[0] and x[2] should interact
+        assert_ne!(grad[0], 2.0); // Not just diagonal
+        assert_eq!(grad[1], 0.0); // No interaction
+    }
+    #[test]
+    fn test_constrained_problems_properties() {
+        let penalty = PenaltyFunctionI::new(3);
+        let barrier = BarrierFunction::new(3);
+        // Both should have proper dimensions
+        assert_eq!(penalty.dimension(), 3);
+        assert_eq!(barrier.dimension(), 3);
+        // Initial points should be feasible
+        let penalty_init = penalty.initial_point();
+        let barrier_init = barrier.initial_point();
+        assert!(penalty.evaluate_f64(&penalty_init).is_ok());
+        assert!(barrier.evaluate_f64(&barrier_init).is_ok());
     }
 }

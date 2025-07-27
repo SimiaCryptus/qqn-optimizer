@@ -4,6 +4,7 @@ use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
 use parking_lot::RwLock;
 use rand::prelude::StdRng;
 use rand::Rng;
+use rayon::prelude::*;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -53,11 +54,11 @@ impl MLP {
         match self.activation {
             ActivationType::ReLU => xs.relu(),
             ActivationType::Logistic => {
-                // Logistic/Sigmoid: 1 / (1 + exp(-x))
+                // Implement sigmoid manually: 1 / (1 + exp(-x))
                 let neg_xs = xs.neg()?;
                 let exp_neg_xs = neg_xs.exp()?;
-                let one_plus_exp = exp_neg_xs.affine(1.0, 1.0)?;
-                Tensor::ones_like(xs)?.broadcast_div(&one_plus_exp)
+                let one_plus_exp = (exp_neg_xs + 1.0)?;
+                one_plus_exp.recip()
             }
             ActivationType::Sinewave => xs.sin(),
         }
@@ -119,9 +120,12 @@ pub struct MnistNeuralNetwork {
     optimal_value: Option<f64>,
     param_count: usize,
     param_cache: Arc<RwLock<Option<Vec<f64>>>>,
+    gradient_cache: Arc<RwLock<Option<Vec<f64>>>>,
+    batch_tensors: Arc<RwLock<Option<(Tensor, Tensor)>>>, // Cache for batch tensors
     dropout_rate: f64,
     l2_regularization: f64,
     activation: ActivationType,
+    precision: candle_core::DType,
 }
 
 impl MnistNeuralNetwork {
@@ -137,7 +141,8 @@ impl MnistNeuralNetwork {
             return Err(anyhow::anyhow!("At least one hidden layer size must be specified"));
         }
         
-        let device = Device::Cpu;
+        // Use CUDA if available
+        let device = Device::cuda_if_available(0)?;
         let n_samples = x_data.len();
         let batch_size = batch_size.unwrap_or(32).min(n_samples);
         let activation = activation.unwrap_or(ActivationType::ReLU);
@@ -151,10 +156,11 @@ impl MnistNeuralNetwork {
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
+        let precision = candle_core::DType::F64;
 
         // Create model with proper candle layers
         let varmap = VarMap::new();
-        let vs = VarBuilder::from_varmap(&varmap, candle_core::DType::F64, &device);
+        let vs = VarBuilder::from_varmap(&varmap, precision, &device);
         let model = MLP::new(vs, input_dim, hidden_sizes, output_dim, activation)?;
         
         // Pre-calculate parameter count
@@ -178,9 +184,12 @@ impl MnistNeuralNetwork {
             optimal_value: None,
             param_count,
             param_cache: Arc::new(RwLock::new(None)),
+            gradient_cache: Arc::new(RwLock::new(None)),
+            batch_tensors: Arc::new(RwLock::new(None)),
             dropout_rate: 0.2,
             l2_regularization: 1e-4,
             activation,
+            precision,
         };
         instance.initialize_weights(rng)?;
 
@@ -209,8 +218,8 @@ impl MnistNeuralNetwork {
         use rand::seq::SliceRandom;
         indices.shuffle(rng);
         
-        let mut x_data = Vec::new();
-        let mut y_data = Vec::new();
+        let mut x_data = Vec::with_capacity(actual_samples);
+        let mut y_data = Vec::with_capacity(actual_samples);
 
         for &i in &indices {
             // Convert image data to f64 and normalize to [0, 1]
@@ -386,7 +395,7 @@ impl MnistNeuralNetwork {
         let cols = u32::from_be_bytes(cols_bytes) as usize;
 
         // Read image data
-        let mut images = Vec::new();
+        let mut images = Vec::with_capacity(num_images);
         for _ in 0..num_images {
             let mut image = vec![0u8; rows * cols];
             reader.read_exact(&mut image)?;
@@ -475,8 +484,9 @@ impl MnistNeuralNetwork {
             return Err(anyhow::anyhow!("Parameters too large: max abs value = {}", max_abs));
         }
         
-        // Invalidate cache when parameters change
+        // Invalidate caches when parameters change
         *self.param_cache.write() = None;
+        *self.gradient_cache.write() = None;
 
         // Set model parameters from flat vector
         let mut param_idx = 0;
@@ -506,8 +516,7 @@ impl MnistNeuralNetwork {
             return Ok(cached.clone());
         }
 
-        let mut params = Vec::new();
-        params.reserve(self.param_count);
+        let mut params = Vec::with_capacity(self.param_count);
 
         let data = self.varmap.data().lock().unwrap();
 
@@ -552,7 +561,7 @@ impl MnistNeuralNetwork {
                 };
 
                 // Generate initialized weights
-                let mut weights = Vec::new();
+                let mut weights = Vec::with_capacity(tensor.elem_count());
                 for _ in 0..tensor.elem_count() {
                     // Sample from normal distribution with appropriate scaling
                     let normal: f64 = rng.sample(rand_distr::StandardNormal);
@@ -675,31 +684,38 @@ impl OptimizationProblem for MnistNeuralNetwork {
         let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
         let mut total_loss = 0.0;
 
-        // Process in batches
-        for batch_idx in 0..n_batches {
+        // Process batches in parallel using rayon
+        let batch_losses: Vec<(f64, usize)> = (0..n_batches)
+            .into_par_iter()
+            .map(|batch_idx| -> anyhow::Result<(f64, usize)> {
             let start = batch_idx * self.batch_size;
             let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
             let batch_size = end - start;
 
-            // Create batch tensors on-demand
-            let mut x_batch_data = Vec::with_capacity(batch_size * self.x_data[0].len());
-            let mut y_batch_data = Vec::with_capacity(batch_size * self.y_data[0].len());
 
-            for i in start..end {
-                x_batch_data.extend_from_slice(&self.x_data[i]);
-                y_batch_data.extend_from_slice(&self.y_data[i]);
-            }
 
-            let x_batch = Tensor::from_vec(
-                x_batch_data,
-                (batch_size, self.x_data[0].len()),
-                &self.device,
-            )?;
-            let y_batch = Tensor::from_vec(
-                y_batch_data,
-                (batch_size, self.y_data[0].len()),
-                &self.device,
-            )?;
+            // Use Tensor::cat for efficient batch creation
+            let x_tensors: Vec<Tensor> = (start..end)
+                .map(|i| {
+                    Tensor::from_vec(
+                        self.x_data[i].clone(),
+                        (1, self.x_data[0].len()),
+                        &self.device,
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let x_batch = Tensor::cat(&x_tensors, 0)?;
+
+            let y_tensors: Vec<Tensor> = (start..end)
+                .map(|i| {
+                    Tensor::from_vec(
+                        self.y_data[i].clone(),
+                        (1, self.y_data[0].len()),
+                        &self.device,
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let y_batch = Tensor::cat(&y_tensors, 0)?;
 
             // Forward pass
             let y_pred = self.model.forward(&x_batch)?;
@@ -710,7 +726,13 @@ impl OptimizationProblem for MnistNeuralNetwork {
             let batch_loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
 
             let batch_loss_value = batch_loss.to_scalar::<f64>()?;
-            total_loss += batch_loss_value * (batch_size as f64);
+            Ok((batch_loss_value, batch_size))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+        // Aggregate batch losses
+        for (loss, size) in batch_losses {
+            total_loss += loss * (size as f64);
         }
 
         // Average loss across all samples
@@ -731,37 +753,56 @@ impl OptimizationProblem for MnistNeuralNetwork {
     }
 
     fn gradient_f64(&self, params: &[f64]) -> anyhow::Result<Vec<f64>> {
+        // Check gradient cache first
+        if let Some(cached) = self.gradient_cache.read().as_ref() {
+            if let Some(cached_params) = self.param_cache.read().as_ref() {
+                if cached_params == params {
+                    return Ok(cached.clone());
+                }
+            }
+        }
+
         // Set parameters
         self.set_parameters(params)?;
         let n_samples = self.x_data.len();
         let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
+        
         // Accumulate gradients across batches
         let mut accumulated_grads = vec![0.0; self.param_count];
-        for batch_idx in 0..n_batches {
+        
+        // Process batches in parallel
+        let batch_grads: Vec<Vec<f64>> = (0..n_batches)
+            .into_par_iter()
+            .map(|batch_idx| -> anyhow::Result<Vec<f64>> {
             let start = batch_idx * self.batch_size;
             let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
             let batch_size = end - start;
-            // Create batch tensors on-demand
-            let mut x_batch_data = Vec::with_capacity(batch_size * self.x_data[0].len());
-            let mut y_batch_data = Vec::with_capacity(batch_size * self.y_data[0].len());
-            for i in start..end {
-                x_batch_data.extend_from_slice(&self.x_data[i]);
-                y_batch_data.extend_from_slice(&self.y_data[i]);
-            }
-            let x_batch = Tensor::from_vec(
-                x_batch_data,
-                (batch_size, self.x_data[0].len()),
-                &self.device,
-            )?;
-            let y_batch = Tensor::from_vec(
-                y_batch_data,
-                (batch_size, self.y_data[0].len()),
-                &self.device,
-            )?;
+            
+            // Use Tensor::cat for efficient batch creation
+            let x_tensors: Vec<Tensor> = (start..end)
+                .map(|i| {
+                    Tensor::from_vec(
+                        self.x_data[i].clone(),
+                        (1, self.x_data[0].len()),
+                        &self.device,
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let x_batch = Tensor::cat(&x_tensors, 0)?;
+
+            let y_tensors: Vec<Tensor> = (start..end)
+                .map(|i| {
+                    Tensor::from_vec(
+                        self.y_data[i].clone(),
+                        (1, self.y_data[0].len()),
+                        &self.device,
+                    )
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let y_batch = Tensor::cat(&y_tensors, 0)?;
 
             // Create variables for autodiff
-            let mut vars = Vec::new();
-            vars.reserve(self.model.layers.len() * 2); // Each layer has weights and biases
+            let mut vars = Vec::with_capacity(self.model.layers.len() * 2); // Each layer has weights and biases
 
             let data = self.varmap.data().lock().unwrap();
             for (_, var) in data.iter() {
@@ -781,13 +822,14 @@ impl OptimizationProblem for MnistNeuralNetwork {
             let grads = loss.backward()?;
 
             // Extract gradients in the same order as parameters
+            let mut batch_grads = vec![0.0; self.param_count];
             let mut grad_idx = 0;
 
             for var in &vars {
                 if let Some(grad) = grads.get(var) {
                     let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
                     for (i, &g) in grad_values.iter().enumerate() {
-                        accumulated_grads[grad_idx + i] += g * (batch_size as f64);
+                        batch_grads[grad_idx + i] = g * (batch_size as f64);
                     }
                     grad_idx += grad_values.len();
                 } else {
@@ -796,18 +838,28 @@ impl OptimizationProblem for MnistNeuralNetwork {
                     grad_idx += tensor.elem_count();
                 }
             }
+            Ok(batch_grads)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+        // Aggregate gradients from all batches
+        for batch_grad in batch_grads {
+            for (i, &g) in batch_grad.iter().enumerate() {
+                accumulated_grads[i] += g;
+            }
         }
 
         // Average gradients across all samples
         for g in &mut accumulated_grads {
             *g /= n_samples as f64;
         }
+        
         // Add L2 regularization gradient
         if self.l2_regularization > 0.0 {
             for (i, g) in accumulated_grads.iter_mut().enumerate() {
                 *g += self.l2_regularization * params[i];
             }
         }
+        
         // Gradient clipping to prevent exploding gradients
         let grad_norm: f64 = accumulated_grads.iter().map(|g| g * g).sum::<f64>().sqrt();
         if grad_norm > 10.0 {
@@ -816,6 +868,8 @@ impl OptimizationProblem for MnistNeuralNetwork {
                 *g *= scale;
             }
         }
+        // Cache the gradient
+        *self.gradient_cache.write() = Some(accumulated_grads.clone());
 
         Ok(accumulated_grads)
     }

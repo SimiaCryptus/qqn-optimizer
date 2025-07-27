@@ -488,7 +488,7 @@ impl BenchmarkRunner {
         problem_wrapper: Arc<ProblemWrapper>,
     ) -> Result<ConvergenceReason, BenchmarkError> {
         let mut numerical_error_count = 0;
-        let mut best_f_val = f64::INFINITY;
+        let mut best_f_val: f64 = f64::INFINITY;
         let mut no_improvement_count = 0;
         // Record initial evaluation (t0) before optimization starts
         let initial_f_val = match problem.evaluate_f64(input_floats) {

@@ -333,7 +333,11 @@ impl ReportGenerator {
                 runs.iter().map(|r| r.function_evaluations as f64).collect();
             let gradient_evals: Vec<f64> =
                 runs.iter().map(|r| r.gradient_evaluations as f64).collect();
-            let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+            let success_count = if is_no_threshold_mode() {
+                runs.iter().filter(|r| r.convergence_achieved).count()
+            } else {
+                0
+            };
             let execution_times: Vec<f64> = runs
                 .iter()
                 .map(|r| r.execution_time.as_secs_f64())

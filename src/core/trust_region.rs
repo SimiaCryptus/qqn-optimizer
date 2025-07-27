@@ -27,11 +27,11 @@
 
 use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 use crate::utils::math::{
-    compute_magnitude, dot_product, vector_add, vector_scale, vector_subtract,
+    compute_magnitude, dot_product,
     DifferentiableFunction,
 };
-use candle_core::{Device, Result as CandleResult, Tensor};
-use log::{debug, info, warn};
+use candle_core::{Result as CandleResult, Tensor};
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;

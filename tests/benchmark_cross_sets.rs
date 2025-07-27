@@ -10,7 +10,7 @@ use qqn_optimizer::{init_logging, OptimizationProblem};
 use qqn_optimizer::benchmarks::evaluation::{disable_no_threshold_mode, enable_no_threshold_mode};
 
 #[tokio::test]
-async fn families() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn families() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
@@ -27,8 +27,8 @@ async fn families() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-// #[tokio::test]
-async fn calibration() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+#[tokio::test]
+async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
@@ -46,7 +46,7 @@ async fn calibration() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 }
 
 #[tokio::test]
-async fn full_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     // Disable no threshold mode for this test
     disable_no_threshold_mode();
@@ -63,8 +63,8 @@ async fn full_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-// #[tokio::test]
-async fn test_mnist() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+#[tokio::test]
+async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
