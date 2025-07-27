@@ -1,8 +1,10 @@
 use super::{PlottingManager, ReportGenerator};
-use log::{info, warn, error};
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult};
-use qqn_optimizer::{ OptimizationProblem, Optimizer};
-use qqn_optimizer::benchmarks::evaluation::{enable_no_threshold_mode};
+use log::{error, info, warn};
+use qqn_optimizer::benchmarks::evaluation::enable_no_threshold_mode;
+use qqn_optimizer::benchmarks::evaluation::{
+    BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult,
+};
+use qqn_optimizer::{OptimizationProblem, Optimizer};
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
@@ -25,11 +27,11 @@ impl ExperimentRunner {
             plotting_manager: PlottingManager::new(output_dir),
         }
     }
-    
+
     /// Run benchmarks with problem-specific optimizer sets
     pub async fn run_championship_benchmarks(
-        &self, 
-        problem_optimizer_map: std::collections::HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>
+        &self,
+        problem_optimizer_map: std::collections::HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>,
     ) -> anyhow::Result<()> {
         info!("Starting championship benchmarks with problem-specific optimizers");
         // Ensure output directory exists
@@ -38,19 +40,26 @@ impl ExperimentRunner {
         let mut all_results: Vec<(Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
         for (problem_name, optimizers) in &problem_optimizer_map {
             // Find the problem by name (we'll need to pass problems separately or store them)
-            info!("Running championship benchmarks for problem: {}", problem_name);
+            info!(
+                "Running championship benchmarks for problem: {}",
+                problem_name
+            );
             // This will be handled by the calling function
         }
         Ok(())
     }
-    
+
     /// Run comprehensive comparative benchmarks
-    pub async fn run_comparative_benchmarks(&self, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> anyhow::Result<()> {
+    pub async fn run_comparative_benchmarks(
+        &self,
+        problems: Vec<Arc<dyn OptimizationProblem>>,
+        optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+    ) -> anyhow::Result<()> {
         info!("Starting comprehensive comparative benchmarks");
 
         // Ensure output directory exists
         fs::create_dir_all(&self.output_dir)?;
-        
+
         // Validate problems
         self.validate_problems(&problems).await?;
 
@@ -67,15 +76,19 @@ impl ExperimentRunner {
         }
 
         // Generate comprehensive analysis and reports
-       
-       // Convert to the expected format with references
-       let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
-           .iter()
-           .map(|(problem, results)| (*problem, results.clone()))
-           .collect();
-       
-       self.plotting_manager.generate_all_plots(&results_refs).await?;
-       self.report_generator.generate_main_report(&results_refs, false).await?;
+
+        // Convert to the expected format with references
+        let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
+            .iter()
+            .map(|(problem, results)| (*problem, results.clone()))
+            .collect();
+
+        self.plotting_manager
+            .generate_all_plots(&results_refs)
+            .await?;
+        self.report_generator
+            .generate_main_report(&results_refs, false)
+            .await?;
 
         info!(
             "Benchmark experiments completed. Results saved to: {}",
@@ -86,7 +99,10 @@ impl ExperimentRunner {
         Ok(())
     }
 
-    pub async fn validate_problems(&self, problems: &[Arc<dyn OptimizationProblem>]) -> anyhow::Result<()> {
+    pub async fn validate_problems(
+        &self,
+        problems: &[Arc<dyn OptimizationProblem>],
+    ) -> anyhow::Result<()> {
         for problem in problems {
             let initial_params = problem.initial_point();
             let mut rng = rand::rngs::StdRng::try_from_os_rng()
@@ -95,7 +111,7 @@ impl ExperimentRunner {
                 .iter()
                 .map(|&x| x + rng.random_range(-1.0..1.0))
                 .collect();
-            
+
             // Try to evaluate with error handling for non-finite values
             let initial_value = match problem.evaluate_f64(&initial_params) {
                 Ok(val) if val.is_finite() => val,
@@ -116,7 +132,7 @@ impl ExperimentRunner {
                     continue;
                 }
             };
-            
+
             info!(
                 "Problem {}: initial_value = {:.6e}, dimensions = {}",
                 problem.name(),
@@ -145,7 +161,13 @@ impl ExperimentRunner {
         for (opt_name, ref optimizer) in optimizers.iter() {
             for run_id in 0..self.config.num_runs {
                 let mut result = match runner
-                    .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name, self.config.initial_point_noise)
+                    .run_single_benchmark(
+                        problem,
+                        &mut optimizer.clone_box(),
+                        run_id,
+                        &opt_name,
+                        self.config.initial_point_noise,
+                    )
                     .await
                 {
                     Ok(result) => result,
@@ -168,7 +190,8 @@ impl ExperimentRunner {
 
                 if let Some(optimal_value) = problem.optimal_value() {
                     let success_threshold = optimal_value;
-                    result.convergence_achieved &= result.best_value.is_finite() && result.best_value < success_threshold;
+                    result.convergence_achieved &=
+                        result.best_value.is_finite() && result.best_value < success_threshold;
                 } else {
                     result.convergence_achieved = false;
                 }
@@ -182,17 +205,17 @@ impl ExperimentRunner {
                     );
                     result.convergence_achieved = false;
                     if result.error_message.is_none() {
-                        result.error_message = Some(format!("Non-finite best value: {}", result.best_value));
+                        result.error_message =
+                            Some(format!("Non-finite best value: {}", result.best_value));
                     }
                 }
-                
+
                 results.add_result(result);
             }
         }
 
         Ok(results)
     }
-    
 }
 
 pub async fn run_championship_benchmark(
@@ -206,16 +229,18 @@ pub async fn run_championship_benchmark(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Enable no threshold mode for championship benchmarks
     enable_no_threshold_mode();
-    
+
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
     fs::create_dir_all(&output_dir)?;
-    println!("Creating championship benchmark results in: {}", output_dir.display());
+    println!(
+        "Creating championship benchmark results in: {}",
+        output_dir.display()
+    );
     // Create optimizer lookup map
-    let optimizer_map: std::collections::HashMap<String, Arc<dyn Optimizer>> = all_optimizers
-        .into_iter()
-        .collect();
+    let optimizer_map: std::collections::HashMap<String, Arc<dyn Optimizer>> =
+        all_optimizers.into_iter().collect();
     let config = BenchmarkConfig {
         max_iterations: max_evals,
         maximum_function_calls: max_evals,
@@ -229,18 +254,27 @@ pub async fn run_championship_benchmark(
     for problem in &problems {
         let problem_name = problem.name();
         if let Some(champion_names) = championship_config.get(problem_name) {
-            info!("Running championship benchmarks for problem: {}", problem_name);
+            info!(
+                "Running championship benchmarks for problem: {}",
+                problem_name
+            );
             // Get only the champion optimizers for this problem
             let mut problem_optimizers = Vec::new();
             for champion_name in champion_names {
                 if let Some(optimizer) = optimizer_map.get(champion_name) {
                     problem_optimizers.push((champion_name.clone(), optimizer.clone()));
                 } else {
-                    warn!("Champion optimizer '{}' not found for problem '{}'", champion_name, problem_name);
+                    warn!(
+                        "Champion optimizer '{}' not found for problem '{}'",
+                        champion_name, problem_name
+                    );
                 }
             }
             if problem_optimizers.is_empty() {
-                warn!("No valid champion optimizers found for problem: {}", problem_name);
+                warn!(
+                    "No valid champion optimizers found for problem: {}",
+                    problem_name
+                );
                 continue;
             }
             // Run benchmarks for this problem with its champions
@@ -253,7 +287,7 @@ pub async fn run_championship_benchmark(
                             &mut optimizer.clone_box(),
                             run_id,
                             opt_name,
-                            config.initial_point_noise
+                            config.initial_point_noise,
                         )
                         .await
                     {
@@ -261,18 +295,25 @@ pub async fn run_championship_benchmark(
                             // Apply convergence criteria
                             if let Some(optimal_value) = problem.optimal_value() {
                                 let success_threshold = optimal_value + 1e-6;
-                                result.convergence_achieved &= result.best_value.is_finite() && result.best_value < success_threshold;
+                                result.convergence_achieved &= result.best_value.is_finite()
+                                    && result.best_value < success_threshold;
                             }
                             if !result.best_value.is_finite() {
                                 result.convergence_achieved = false;
                                 if result.error_message.is_none() {
-                                    result.error_message = Some(format!("Non-finite best value: {}", result.best_value));
+                                    result.error_message = Some(format!(
+                                        "Non-finite best value: {}",
+                                        result.best_value
+                                    ));
                                 }
                             }
                             result
                         }
                         Err(e) => {
-                            error!("Benchmark failed for {} with {}: {}", problem_name, opt_name, e);
+                            error!(
+                                "Benchmark failed for {} with {}: {}",
+                                problem_name, opt_name, e
+                            );
                             let mut failed_result = SingleResult::new(opt_name.clone(), run_id);
                             failed_result.convergence_achieved = false;
                             failed_result.final_value = f64::INFINITY;
@@ -286,31 +327,44 @@ pub async fn run_championship_benchmark(
             }
             all_results.push((problem.clone(), results));
         } else {
-            warn!("No championship configuration found for problem: {}", problem_name);
+            warn!(
+                "No championship configuration found for problem: {}",
+                problem_name
+            );
         }
         tokio::task::yield_now().await;
     }
     // Generate reports and plots
-    let report_generator = ReportGenerator::new(output_dir.to_string_lossy().to_string(), config.clone());
+    let report_generator =
+        ReportGenerator::new(output_dir.to_string_lossy().to_string(), config.clone());
     let plotting_manager = PlottingManager::new(output_dir.to_string_lossy().to_string());
-       
-       // Convert to the expected format with references
-       let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
-           .iter()
-           .map(|(problem, results)| (problem, results.clone()))
-           .collect();
-       
-       plotting_manager.generate_all_plots(&results_refs).await?;
-       // Use optimizer families for championship benchmarks
-       report_generator.generate_main_report(&results_refs, true).await?;
+
+    // Convert to the expected format with references
+    let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
+        .iter()
+        .map(|(problem, results)| (problem, results.clone()))
+        .collect();
+
+    plotting_manager.generate_all_plots(&results_refs).await?;
+    // Use optimizer families for championship benchmarks
+    report_generator
+        .generate_main_report(&results_refs, true)
+        .await?;
     println!("Championship benchmark completed successfully");
     Ok(())
 }
 
-pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs: usize, time_limit: Duration, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn run_benchmark(
+    report_path_prefix: &str,
+    max_evals: usize,
+    num_runs: usize,
+    time_limit: Duration,
+    problems: Vec<Arc<dyn OptimizationProblem>>,
+    optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Enable no threshold mode for benchmarks
     enable_no_threshold_mode();
-    
+
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
@@ -318,14 +372,19 @@ pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs:
     println!("Creating benchmark results in: {}", output_dir.display());
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
-        ExperimentRunner::new(output_dir.to_string_lossy().to_string(), BenchmarkConfig {
-            max_iterations: max_evals,
-            maximum_function_calls: max_evals,
-            time_limit: DurationWrapper::from(time_limit),
-            num_runs: num_runs,
-            ..BenchmarkConfig::default()
-        }).run_comparative_benchmarks(problems, optimizers),
-    ).await;
+        ExperimentRunner::new(
+            output_dir.to_string_lossy().to_string(),
+            BenchmarkConfig {
+                max_iterations: max_evals,
+                maximum_function_calls: max_evals,
+                time_limit: DurationWrapper::from(time_limit),
+                num_runs: num_runs,
+                ..BenchmarkConfig::default()
+            },
+        )
+        .run_comparative_benchmarks(problems, optimizers),
+    )
+    .await;
     match result {
         Ok(Ok(())) => {
             println!("Benchmark completed successfully");
@@ -370,7 +429,10 @@ pub fn get_optimizer_family(optimizer_name: &str) -> String {
     } else if optimizer_name.starts_with("Adam") {
         "Adam".to_string()
     } else {
-        warn!("Unknown optimizer family for '{}', using full name", optimizer_name);
+        warn!(
+            "Unknown optimizer family for '{}', using full name",
+            optimizer_name
+        );
         optimizer_name.to_string()
     }
 }

@@ -455,11 +455,10 @@ impl ReportGenerator {
             } else {
                 match a.7.partial_cmp(&b.7) {
                     Some(ord) => {
-                        let result = ord.reverse();
-                        if result == Ordering::Equal {
-                            a.1.total_cmp(&b.1) // If success rates are equal, compare mean_final
+                        if ord == Ordering::Equal {
+                            (a.5+a.6).total_cmp(&(b.5 + b.6)) // If success rates are equal, compare mean function and gradient evaluations
                         } else {
-                            result // Sort by success rate first
+                            ord.reverse() // Sort by success rate first
                         }
                     }
                     None => match (a.7.is_nan(), b.7.is_nan()) {

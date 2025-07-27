@@ -7,15 +7,33 @@ use crate::experiment_runner::experiment_runner::run_benchmark;
 use crate::experiment_runner::optimizer_sets::{adam_variants, gd_variants, lbfgs_variants, qqn_line_search_optimizers, qqn_variants, standard_optimizers, trust_region_variants};
 use crate::experiment_runner::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 use qqn_optimizer::{init_logging, OptimizationProblem};
-use qqn_optimizer::benchmarks::evaluation::enable_no_threshold_mode;
+use qqn_optimizer::benchmarks::evaluation::{disable_no_threshold_mode, enable_no_threshold_mode};
 
 #[tokio::test]
-async fn test_individually() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn test_families() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    test("results/tests_",{
+    test("results/families_",{
+        let mut problems = analytic_problems();
+        problems.extend(ml_problems());
+        problems
+    }).await?;
+
+    // Explicitly flush any pending async operations
+    tokio::task::yield_now().await;
+
+    Ok(())
+}
+
+// #[tokio::test]
+async fn preliminary_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    init_logging(false)?;
+    // Enable no threshold mode for this test
+    enable_no_threshold_mode();
+
+    test_all("results/preliminary_",{
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems
@@ -28,12 +46,12 @@ async fn test_individually() -> Result<(), Box<dyn std::error::Error + Send + Sy
 }
 
 #[tokio::test]
-async fn test_together() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn threshold_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
-    // Enable no threshold mode for this test
-    enable_no_threshold_mode();
+    // Disable no threshold mode for this test
+    disable_no_threshold_mode();
 
-    test_all("results/omni_",{
+    test_all("results/thresholds_",{
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems
@@ -64,7 +82,7 @@ async fn test_all(
     problems: Vec<Arc<dyn OptimizationProblem>>
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let max_evals = 1000;
-    let num_runs = 10;
+    let num_runs = 20;
     run_benchmark(
         &format!("{}all_optimizers_", prefix),
         max_evals,

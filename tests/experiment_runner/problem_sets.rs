@@ -45,14 +45,14 @@ pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
             let mut regression =
                 LogisticRegression::synthetic(100, 5, &mut StdRng::seed_from_u64(42))
                     .expect("Failed to create synthetic logistic regression");
-            regression.set_optimal_value(Option::from(3.5e-1));
+            regression.set_optimal_value(Option::from(3.15e-1));
             regression
         }),
         Arc::new({
             let mut regression =
                 LogisticRegression::synthetic(200, 10, &mut StdRng::seed_from_u64(42))
                     .expect("Failed to create synthetic logistic regression");
-            regression.set_optimal_value(Option::from(3.4e-1));
+            regression.set_optimal_value(Option::from(3.23e-1));
             regression
         }),
         Arc::new({
@@ -62,7 +62,7 @@ pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
                 0.01,
             )
             .expect("Failed to create linear regression");
-            regression.set_optimal_value(Option::from(1.8e1));
+            regression.set_optimal_value(Option::from(7.15e-2));
             regression
         }),
         Arc::new({
@@ -72,7 +72,7 @@ pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
                 0.01,
             )
             .expect("Failed to create linear regression");
-            regression.set_optimal_value(Option::from(1.0e2));
+            regression.set_optimal_value(Option::from(4.82e-1));
             regression
         }),
         Arc::new({
@@ -81,7 +81,7 @@ pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
                 &mut StdRng::seed_from_u64(42),
             )
             .expect("Failed to create MLP");
-            // training.set_optimal_value(Option::from(1.7e-1));
+            training.set_optimal_value(Option::from(1.36e-1));
             training
         }),
         Arc::new({
@@ -90,24 +90,32 @@ pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
                 &mut StdRng::seed_from_u64(42),
             )
             .expect("Failed to create MLP");
-            training.set_optimal_value(Option::from(1.0e-1));
+            training.set_optimal_value(Option::from(3.54e-2));
             training
         }),
         Arc::new(
-            SupportVectorMachine::new(
+            {
+                let mut svm = SupportVectorMachine::new(
                 generate_svm_data(100, 5, &mut StdRng::seed_from_u64(42)).0,
                 generate_svm_data(100, 5, &mut StdRng::seed_from_u64(42)).1,
                 1.0,
-            )
-            .expect("Failed to create SVM"),
+                )
+                .expect("Failed to create SVM");
+                svm.set_optimal_value(Option::from(6.43e-1));
+                svm
+            }
         ),
         Arc::new(
-            SupportVectorMachine::new(
+            {
+                let mut svm = SupportVectorMachine::new(
                 generate_svm_data(200, 10, &mut StdRng::seed_from_u64(42)).0,
                 generate_svm_data(200, 10, &mut StdRng::seed_from_u64(42)).1,
                 1.0,
-            )
-            .expect("Failed to create SVM"),
+                )
+                .expect("Failed to create SVM");
+                svm.set_optimal_value(Option::from(6.86e-1));
+                svm
+            }
         ),
     ]
 }

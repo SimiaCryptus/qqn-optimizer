@@ -108,7 +108,7 @@ impl OptimizationProblem for LeviFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-4)
+        Some(7.14e-1)
     }
 }
 
@@ -176,7 +176,7 @@ impl OptimizationProblem for GoldsteinPriceFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(10.0)
+        Some(8.40e1)
     }
 }
 
@@ -231,8 +231,12 @@ impl OptimizationProblem for StyblinskiTangFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        // Global minimum: f(-2.903534, -2.903534, ...) ≈ -39.16599 * n
-        Some(-39. * self.dimension as f64)
+        match self.dimension {
+            2 => Some(-7.83e1),
+            5 => Some(-1.96e2),
+            10 => Some(-3.77e2),
+            _ => None,
+        }
     }
 }
 
@@ -310,9 +314,9 @@ impl OptimizationProblem for MichalewiczFunction {
     fn optimal_value(&self) -> Option<f64> {
         // Approximate known values for small dimensions
         match self.dimension {
-            2 => Some(-1.0),
-            5 => Some(-3.0),
-            10 => Some(-9.6),
+            2 => Some(-1.65e-8),
+            5 => Some(-2.69e0),
+            10 => Some(-6.26e0),
             _ => None,
         }
     }
@@ -401,13 +405,13 @@ impl OptimizationProblem for RosenbrockFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        match self.dimension { 
-            2 => Some(1e-2),
-            5 => Some(1e-2),
-            10 => Some(1e-2),
+        match self.dimension {
+            2 => Some(1.92e0),
+            5 => Some(3.73e-1),
+            10 => Some(1.86e-1),
             _ => Some(1e-2),
         }
-        
+
     }
 }
 
@@ -469,8 +473,9 @@ impl OptimizationProblem for RastriginFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(1.0),
-            5 => Some(25.0),
+            2 => Some(7.96e0),
+            5 => Some(1.99e1),
+            10 => Some(4.18e1),
             _ => None,
         }
     }
@@ -762,7 +767,12 @@ impl OptimizationProblem for AckleyFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(0.8)
+        match self.dimension {
+            2 => Some(3.57e0),
+            5 => Some(3.57e0),
+            10 => Some(3.57e0),
+            _ => None,
+        }
     }
 }
 

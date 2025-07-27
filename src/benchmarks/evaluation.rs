@@ -72,7 +72,7 @@ impl Default for BenchmarkConfig {
             min_improvement_percent: 1e-7, // 0.01% minimum improvement
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             num_runs: 10,
-            initial_point_noise: 1e-1,
+            initial_point_noise: 2e-1,
         }
     }
 }
