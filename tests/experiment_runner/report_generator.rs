@@ -61,12 +61,13 @@ impl ReportGenerator {
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         _problems: &Vec<Arc<dyn OptimizationProblem>>,
+        use_optimizer_families: bool,
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)
             .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
         println!("Generating report in directory: {}", self.output_dir);
         // Generate detailed optimizer-problem reports first
-        self.generate_detailed_reports(all_results).await?;
+        self.generate_detailed_reports(all_results, use_optimizer_families).await?;
 
         let mut html_content = self.generate_header();
 html_content.push_str(&self.generate_header());
@@ -81,6 +82,7 @@ html_content.push_str(&self.generate_header());
                 all_results,
                 &self.config,
                 &self.output_dir,
+                use_optimizer_families,
             )?);
         }
 
@@ -959,6 +961,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         self.generate_summary_statistics_latex_table(all_results, &latex_dir)?;
         // Generate comparison matrix table
         self.generate_comparison_matrix_latex_table(all_results, &latex_dir)?;
+        // Generate family comparison matrix table
+        self.generate_family_comparison_matrix_latex_table(all_results, &latex_dir)?;
+        
         Ok(())
     }
     /// Generate main performance LaTeX table
@@ -1464,6 +1469,139 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         println!("Generated comparison matrix LaTeX table: {}", latex_path.display());
         Ok(())
     }
+    /// Generate family comparison matrix LaTeX table
+    fn generate_family_comparison_matrix_latex_table(
+        &self,
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        latex_dir: &Path,
+    ) -> anyhow::Result<()> {
+        // Collect all optimizer families
+        let mut all_families = std::collections::HashSet::new();
+        for (_, results) in all_results {
+            for result in &results.results {
+                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_families.insert(family);
+            }
+        }
+        let mut qqn_families = Vec::new();
+        let mut non_qqn_families = Vec::new();
+        for family in all_families {
+            if family == "QQN" {
+                qqn_families.push(family);
+            } else {
+                non_qqn_families.push(family);
+            }
+        }
+        if qqn_families.is_empty() || non_qqn_families.is_empty() {
+            return Ok(());
+        }
+        qqn_families.sort();
+        non_qqn_families.sort();
+        let mut latex_content = String::from(
+            r#"\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\begin{document}
+"#,
+        );
+        latex_content.push_str(&format!(
+            r#"\begin{{table}}[htbp]
+\centering
+\caption{{Optimizer Family Comparison Matrix}}
+\label{{tab:family_comparison_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{QQN Family}} {}\\ 
+\midrule
+"#,
+            "c".repeat(non_qqn_families.len()),
+            non_qqn_families.iter().map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam))).collect::<Vec<_>>().join(" ")
+        ));
+        // Group results by problem and family for comparison
+        let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        for (problem, results) in all_results {
+            let problem_name = problem.name();
+            for result in &results.results {
+                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                problem_family_results
+                    .entry(problem_name.to_string())
+                    .or_insert_with(HashMap::new)
+                    .entry(family)
+                    .or_insert_with(Vec::new)
+                    .push(result);
+            }
+        }
+        for qqn_fam in &qqn_families {
+            latex_content.push_str(&format!("\\textbf{{{}}} ", Self::escape_latex(qqn_fam)));
+            for non_qqn_fam in &non_qqn_families {
+                let mut wins = 0;
+                let mut losses = 0;
+                let mut ties = 0;
+                for (_, families) in &problem_family_results {
+                    if let (Some(qqn_results), Some(non_qqn_results)) = 
+                        (families.get(qqn_fam), families.get(non_qqn_fam)) {
+                        if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
+                            let qqn_final_values: Vec<f64> = qqn_results
+                                .iter()
+                                .map(|r| r.final_value)
+                                .filter(|&v| v.is_finite())
+                                .collect();
+                            let non_qqn_final_values: Vec<f64> = non_qqn_results
+                                .iter()
+                                .map(|r| r.final_value)
+                                .filter(|&v| v.is_finite())
+                                .collect();
+                            if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
+                                let qqn_mean = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
+                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
+                                if let Ok((_, p_value)) = self.statistical_analysis.welch_t_test_public(&qqn_final_values, &non_qqn_final_values) {
+                                    if p_value < 0.05 {
+                                        if qqn_mean < non_qqn_mean {
+                                            wins += 1;
+                                        } else {
+                                            losses += 1;
+                                        }
+                                    } else {
+                                        ties += 1;
+                                    }
+                                } else {
+                                    ties += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                let cell_content = if wins > losses {
+                    format!("\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                } else if losses > wins {
+                    format!("\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                } else {
+                    format!("{}W-{}L-{}T", wins, losses, ties)
+                };
+                latex_content.push_str(&format!("& {} ", cell_content));
+            }
+            latex_content.push_str("\\\\\n");
+        }
+        latex_content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN family dominance, red indicates non-QQN family dominance.
+\end{document}
+"#,
+        );
+        let latex_path = latex_dir.join("family_comparison_matrix.tex");
+        fs::write(&latex_path, latex_content)
+            .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
+        println!("Generated family comparison matrix LaTeX table: {}", latex_path.display());
+        Ok(())
+    }
+    
     /// Generate comprehensive LaTeX document with all tables
     fn generate_comprehensive_latex_document(
         &self,
@@ -1532,6 +1670,14 @@ The following sections present detailed performance comparisons across all teste
         );
         // Include comparison matrix content
         latex_content.push_str(&self.generate_comparison_matrix_table_content(all_results)?);
+        latex_content.push_str(
+            r#"
+\subsection{Optimizer Family Comparison Matrix}
+"#,
+        );
+        // Include family comparison matrix content
+        latex_content.push_str(&self.generate_family_comparison_matrix_table_content(all_results)?);
+        
         latex_content.push_str(
             r#"
 \section{Individual Problem Results}
@@ -1906,6 +2052,123 @@ All raw experimental data, convergence plots, and additional analysis files are 
         );
         Ok(content)
     }
+    /// Generate family comparison matrix table content (without document wrapper)
+    fn generate_family_comparison_matrix_table_content(
+        &self,
+        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
+        // Collect all optimizer families
+        let mut all_families = std::collections::HashSet::new();
+        for (_, results) in all_results {
+            for result in &results.results {
+                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_families.insert(family);
+            }
+        }
+        let mut qqn_families = Vec::new();
+        let mut non_qqn_families = Vec::new();
+        for family in all_families {
+            if family == "QQN" {
+                qqn_families.push(family);
+            } else {
+                non_qqn_families.push(family);
+            }
+        }
+        if qqn_families.is_empty() || non_qqn_families.is_empty() {
+            return Ok(String::new());
+        }
+        qqn_families.sort();
+        non_qqn_families.sort();
+        let mut content = format!(
+            r#"\begin{{table}}[H]
+\centering
+\caption{{Optimizer Family Comparison Matrix}}
+\label{{tab:family_comparison_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{QQN Family}} {}\\ 
+\midrule
+"#,
+            "c".repeat(non_qqn_families.len()),
+            non_qqn_families.iter().map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam))).collect::<Vec<_>>().join(" ")
+        );
+        // Group results by problem and family for comparison
+        let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        for (problem, results) in all_results {
+            let problem_name = problem.name();
+            for result in &results.results {
+                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                problem_family_results
+                    .entry(problem_name.to_string())
+                    .or_insert_with(HashMap::new)
+                    .entry(family)
+                    .or_insert_with(Vec::new)
+                    .push(result);
+            }
+        }
+        for qqn_fam in &qqn_families {
+            content.push_str(&format!("\\textbf{{{}}} ", Self::escape_latex(qqn_fam)));
+            for non_qqn_fam in &non_qqn_families {
+                let mut wins = 0;
+                let mut losses = 0;
+                let mut ties = 0;
+                for (_, families) in &problem_family_results {
+                    if let (Some(qqn_results), Some(non_qqn_results)) = 
+                        (families.get(qqn_fam), families.get(non_qqn_fam)) {
+                        if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
+                            let qqn_final_values: Vec<f64> = qqn_results
+                                .iter()
+                                .map(|r| r.final_value)
+                                .filter(|&v| v.is_finite())
+                                .collect();
+                            let non_qqn_final_values: Vec<f64> = non_qqn_results
+                                .iter()
+                                .map(|r| r.final_value)
+                                .filter(|&v| v.is_finite())
+                                .collect();
+                            if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
+                                let qqn_mean = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
+                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
+                                if let Ok((_, p_value)) = self.statistical_analysis.welch_t_test_public(&qqn_final_values, &non_qqn_final_values) {
+                                    if p_value < 0.05 {
+                                        if qqn_mean < non_qqn_mean {
+                                            wins += 1;
+                                        } else {
+                                            losses += 1;
+                                        }
+                                    } else {
+                                        ties += 1;
+                                    }
+                                } else {
+                                    ties += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                let cell_content = if wins > losses {
+                    format!("\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                } else if losses > wins {
+                    format!("\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                } else {
+                    format!("{}W-{}L-{}T", wins, losses, ties)
+                };
+                content.push_str(&format!("& {} ", cell_content));
+            }
+            content.push_str("\\\\\n");
+        }
+        content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN family dominance, red indicates non-QQN family dominance.
+"#,
+        );
+        Ok(content)
+    }
+    
     /// Generate problem table content (without document wrapper)
     fn generate_problem_table_content(
         &self,
@@ -2036,13 +2299,19 @@ All raw experimental data, convergence plots, and additional analysis files are 
     async fn generate_detailed_reports(
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        use_optimizer_families: bool,
     ) -> anyhow::Result<()> {
         for (problem, results) in all_results {
             let mut optimizer_results = std::collections::HashMap::new();
             // Group results by optimizer
             for result in &results.results {
+                let optimizer_key = if use_optimizer_families {
+                    super::experiment_runner::get_optimizer_family(&result.optimizer_name)
+                } else {
+                    result.optimizer_name.clone()
+                };
                 let optimizer_results_vec = optimizer_results
-                    .entry(result.optimizer_name.clone())
+                    .entry(optimizer_key)
                     .or_insert(Vec::new());
                 optimizer_results_vec.push(result);
             }

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use super::experiment_runner::get_optimizer_family;
 
 /// Handles statistical analysis and significance testing
 pub struct StatisticalAnalysis;
@@ -18,6 +19,7 @@ impl StatisticalAnalysis {
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
         _config: &BenchmarkConfig,
         output_dir: &str,
+        use_optimizer_families: bool,
     ) -> anyhow::Result<String> {
         let mut section = String::new();
 
@@ -32,9 +34,14 @@ impl StatisticalAnalysis {
             let problem_name = problem.name();
             for result in &results.results {
                 let cost = (result.function_evaluations.max(result.gradient_evaluations)) as f64;
+                let optimizer_key = if use_optimizer_families {
+                    get_optimizer_family(&result.optimizer_name)
+                } else {
+                    result.optimizer_name.clone()
+                };
 
                 optimizer_results
-                    .entry(result.optimizer_name.clone())
+                    .entry(optimizer_key)
                     .or_insert_with(Vec::new)
                     .push((result.final_value, cost, problem_name.to_string()));
             }
@@ -48,7 +55,7 @@ impl StatisticalAnalysis {
         let mut qqn_optimizers = Vec::new();
         let mut non_qqn_optimizers = Vec::new();
         for optimizer_name in optimizer_results.keys() {
-            if optimizer_name.contains("QQN") {
+            if optimizer_name == "QQN" || optimizer_name.contains("QQN") {
                 qqn_optimizers.push(optimizer_name.clone());
             } else {
                 non_qqn_optimizers.push(optimizer_name.clone());
@@ -70,11 +77,16 @@ impl StatisticalAnalysis {
             HashMap::new();
         for (optimizer, results) in &optimizer_results {
             for (final_value, cost, problem) in results {
+                let optimizer_key = if use_optimizer_families {
+                    get_optimizer_family(optimizer)
+                } else {
+                    optimizer.clone()
+                };
                 grouped_optimizer_results
                     //.entry(get_family(problem))
                     .entry(problem.to_string())
                     .or_insert_with(HashMap::new)
-                    .entry(optimizer.clone())
+                    .entry(optimizer_key)
                     .or_insert_with(Vec::new)
                     .push((*final_value, *cost));
             }
@@ -202,7 +214,7 @@ impl StatisticalAnalysis {
         }
 
         if !win_matrix.is_empty() {
-            section.push_str(&self.generate_comparison_matrix(&grouped_optimizer_results)?);
+            section.push_str(&self.generate_comparison_matrix(&grouped_optimizer_results, use_optimizer_families)?);
         }
 
 
@@ -336,16 +348,20 @@ impl StatisticalAnalysis {
     fn generate_comparison_matrix(
         &self,
         grouped_results: &HashMap<String, HashMap<String, Vec<(f64, f64)>>>,
+        use_optimizer_families: bool,
     ) -> anyhow::Result<String> {
         let mut matrix_section = String::from(
             r#"
 
-# QQN vs Non-QQN Comparison Matrix
+# Optimizer Comparison Matrix
 
-Matrix showing all comparisons. Green indicates QQN variant won (statistically significant), red indicates non-QQN optimizer won (statistically significant), gray indicates no significant difference.
+Matrix showing all comparisons. Green indicates QQN won (statistically significant), red indicates non-QQN optimizer won (statistically significant), gray indicates no significant difference.
 
 "#,
         );
+        if use_optimizer_families {
+            matrix_section.push_str("**Note:** Comparisons are based on optimizer families (e.g., all QQN variants grouped together).\n\n");
+        }
         // Collect all QQN and non-QQN optimizers
         let mut all_qqn_optimizers = std::collections::HashSet::new();
         let mut all_non_qqn_optimizers = std::collections::HashSet::new();

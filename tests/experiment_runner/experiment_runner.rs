@@ -24,6 +24,7 @@ impl ExperimentRunner {
             plotting_manager: PlottingManager::new(output_dir),
         }
     }
+    
     /// Run benchmarks with problem-specific optimizer sets
     pub async fn run_championship_benchmarks(
         &self, 
@@ -41,7 +42,6 @@ impl ExperimentRunner {
         }
         Ok(())
     }
-    
     
     /// Run comprehensive comparative benchmarks
     pub async fn run_comparative_benchmarks(&self, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> anyhow::Result<()> {
@@ -74,7 +74,7 @@ impl ExperimentRunner {
            .collect();
        
        self.plotting_manager.generate_all_plots(&results_refs).await?;
-       self.report_generator.generate_main_report(&results_refs, &problems).await?;
+       self.report_generator.generate_main_report(&results_refs, &problems, false).await?;
 
         info!(
             "Benchmark experiments completed. Results saved to: {}",
@@ -167,21 +167,21 @@ impl ExperimentRunner {
 
                 if let Some(optimal_value) = problem.optimal_value() {
                     let success_threshold = optimal_value;
-                    result.convergence_achieved &= result.final_value.is_finite() && result.final_value < success_threshold;
+                    result.convergence_achieved &= result.best_value.is_finite() && result.best_value < success_threshold;
                 } else {
                     result.convergence_achieved = false;
                 }
-                // Additional check for non-finite final values
-                if !result.final_value.is_finite() {
+                // Additional check for non-finite best values
+                if !result.best_value.is_finite() {
                     warn!(
-                        "Non-finite final value for {} with {}: {}",
+                        "Non-finite best value for {} with {}: {}",
                         problem.name(),
                         opt_name,
-                        result.final_value
+                        result.best_value
                     );
                     result.convergence_achieved = false;
                     if result.error_message.is_none() {
-                        result.error_message = Some(format!("Non-finite final value: {}", result.final_value));
+                        result.error_message = Some(format!("Non-finite best value: {}", result.best_value));
                     }
                 }
                 
@@ -191,7 +191,9 @@ impl ExperimentRunner {
 
         Ok(results)
     }
+    
 }
+
 pub async fn run_championship_benchmark(
     report_path_prefix: &str,
     max_evals: usize,
@@ -249,12 +251,12 @@ pub async fn run_championship_benchmark(
                             // Apply convergence criteria
                             if let Some(optimal_value) = problem.optimal_value() {
                                 let success_threshold = optimal_value + 1e-6;
-                                result.convergence_achieved &= result.final_value.is_finite() && result.final_value < success_threshold;
+                                result.convergence_achieved &= result.best_value.is_finite() && result.best_value < success_threshold;
                             }
-                            if !result.final_value.is_finite() {
+                            if !result.best_value.is_finite() {
                                 result.convergence_achieved = false;
                                 if result.error_message.is_none() {
-                                    result.error_message = Some(format!("Non-finite final value: {}", result.final_value));
+                                    result.error_message = Some(format!("Non-finite best value: {}", result.best_value));
                                 }
                             }
                             result
@@ -264,6 +266,7 @@ pub async fn run_championship_benchmark(
                             let mut failed_result = SingleResult::new(opt_name.clone(), run_id);
                             failed_result.convergence_achieved = false;
                             failed_result.final_value = f64::INFINITY;
+                            failed_result.best_value = f64::INFINITY;
                             failed_result.error_message = Some(format!("Evaluation error: {}", e));
                             failed_result
                         }
@@ -288,11 +291,11 @@ pub async fn run_championship_benchmark(
            .collect();
        
        plotting_manager.generate_all_plots(&results_refs).await?;
-       report_generator.generate_main_report(&results_refs, &problems).await?;
+       // Use optimizer families for championship benchmarks
+       report_generator.generate_main_report(&results_refs, &problems, true).await?;
     println!("Championship benchmark completed successfully");
     Ok(())
 }
-
 
 pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs: usize, time_limit: Duration, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
@@ -339,4 +342,22 @@ pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs:
     );
 
     Ok(())
+}
+
+/// Extract optimizer family name from full optimizer name
+pub fn get_optimizer_family(optimizer_name: &str) -> String {
+    if optimizer_name.starts_with("QQN") {
+        "QQN".to_string()
+    } else if optimizer_name.starts_with("L-BFGS") {
+        "L-BFGS".to_string()
+    } else if optimizer_name.starts_with("Trust Region") {
+        "Trust Region".to_string()
+    } else if optimizer_name.starts_with("GD") {
+        "GD".to_string()
+    } else if optimizer_name.starts_with("Adam") {
+        "Adam".to_string()
+    } else {
+        warn!("Unknown optimizer family for '{}', using full name", optimizer_name);
+        optimizer_name.to_string()
+    }
 }

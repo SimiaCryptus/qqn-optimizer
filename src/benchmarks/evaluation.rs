@@ -130,6 +130,7 @@ pub struct SingleResult {
     pub optimizer_name: String,
     pub run_id: usize,
     pub final_value: f64,
+    pub best_value: f64,
     pub final_gradient_norm: f64,
     pub iterations: usize,
     pub function_evaluations: usize,
@@ -149,6 +150,7 @@ impl SingleResult {
             optimizer_name,
             run_id,
             final_value: f64::INFINITY,
+            best_value: f64::INFINITY,
             final_gradient_norm: f64::INFINITY,
             iterations: 0,
             function_evaluations: 0,
@@ -362,16 +364,17 @@ impl BenchmarkRunner {
         )
         .await;
 
-        let (convergence_achieved, convergence_reason) = match optimization_result {
+        let (convergence_achieved, convergence_reason, best_value) = match optimization_result {
             Ok(Ok(reason)) => (
                 matches!(
                     reason,
                     ConvergenceReason::GradientTolerance | ConvergenceReason::FunctionTolerance
                 ),
                 reason,
+                trace.iterations.iter().map(|iter| iter.function_value).fold(f64::INFINITY, f64::min),
             ),
-            Ok(Err(_)) => (false, ConvergenceReason::NumericalError),
-            Err(_) => (false, ConvergenceReason::TimeLimit),
+            Ok(Err(_)) => (false, ConvergenceReason::NumericalError, f64::INFINITY),
+            Err(_) => (false, ConvergenceReason::TimeLimit, trace.iterations.iter().map(|iter| iter.function_value).fold(f64::INFINITY, f64::min)),
         };
 
         // Final evaluation
@@ -429,6 +432,7 @@ impl BenchmarkRunner {
                 optimizer_name: opt_name.clone(),
                 run_id,
                 final_value,
+                best_value: if best_value.is_finite() { best_value } else { final_value },
                 final_gradient_norm,
                 iterations: iteration,
                 function_evaluations: trace.total_function_evaluations,
@@ -834,7 +838,7 @@ impl BenchmarkResults {
 
                 if !results.is_empty() {
                     let avg =
-                        results.iter().map(|r| r.final_value).sum::<f64>() / results.len() as f64;
+                        results.iter().map(|r| r.best_value).sum::<f64>() / results.len() as f64;
                     averages.insert((problem_name.clone(), optimizer_name.clone()), avg);
                 }
             }
@@ -963,6 +967,7 @@ mod tests {
             problem_name: "sphere".to_string(),
             run_id: 0,
             final_value: 1e-8,
+            best_value: 0.0,
             final_gradient_norm: 1e-6,
             iterations: 50,
             function_evaluations: 100,

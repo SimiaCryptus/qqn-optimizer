@@ -100,17 +100,17 @@ println!("Optimal value: {}", result.f);
 Run the full benchmark suite:
 
 ```bash
-# Quick benchmark (subset of problems)
-cargo test test_comprehensive_benchmarks --release
 
-# Full analytic function benchmarks
-cargo test benchmark_analytic_experiments --release
 
-# Machine learning benchmarks
-cargo test benchmark_ml_experiments --release
 
-# Neural network benchmarks (including MNIST)
-cargo test benchmark_mnist_experiments --release
+# Cross-optimizer benchmarks (analytic + ML problems)
+cargo test test_benchmarks --release
+
+# MNIST neural network benchmarks
+cargo test test_mnist --release
+
+# Championship benchmarks (best variants compete)
+cargo test test_championship_benchmarks --release
 ```
 
 Results are automatically generated in `results/` with:
@@ -141,14 +141,26 @@ let config = QQNConfig {
 let optimizer = QQNOptimizer::new(config);
 ```
 
-## 🧪 Available Optimizers
+## 🧪 Benchmark System
 
-The framework includes implementations of standard optimizers for comparison:
+The new modular benchmark system includes:
 
-- **QQN variants**: Bisection, Golden Section, Backtracking, Brent's method
-- **L-BFGS variants**: Standard, Aggressive, Conservative line search
-- **First-order methods**: Gradient Descent, Momentum, Adam
-- **Specialized**: Neural network optimizers with adaptive learning rates
+### Optimizer Families
+- **QQN variants**: Multiple line search methods (Backtracking, Golden Section, More-Thuente, etc.)
+- **L-BFGS variants**: Standard, Aggressive, Conservative configurations
+- **Trust Region methods**: Various trust region strategies
+- **First-order methods**: Gradient Descent with momentum, weight decay, Nesterov acceleration
+- **Adam variants**: Standard Adam, AMSGrad, with weight decay options
+
+### Problem Sets
+- **Analytic functions**: 18 classic optimization benchmarks across dimensions
+- **Machine Learning**: Logistic/Linear regression, SVM, Neural networks
+- **MNIST**: Large-scale neural network training (configurable sample sizes)
+
+### Benchmark Types
+- **Cross-set benchmarks**: All optimizers vs all problems
+- **Championship mode**: Best variant from each family competes
+- **Family-specific**: Deep dive into optimizer variants within families
 
 ## 📊 Statistical Analysis
 
@@ -168,9 +180,13 @@ QQN Optimizer
 │   ├── Quadratic path construction
 │   ├── 1D optimization (multiple solvers)
 │   └── L-BFGS memory management
-├── Benchmark Suite
-│   ├── 21 analytic functions
-│   ├── 5 ML optimization problems
+├── Modular Benchmark System
+│   ├── experiment_runner/
+│   │   ├── optimizer_sets.rs (optimizer families)
+│   │   ├── problem_sets.rs (problem collections)
+│   │   └── experiment_runner.rs (execution engine)
+│   ├── 18+ analytic functions
+│   ├── ML optimization problems
 │   └── Statistical analysis framework
 └── Evaluation Tools
     ├── Automated report generation
@@ -180,20 +196,16 @@ QQN Optimizer
 
 ## 📚 Documentation
 
-- **Algorithm Theory**: See `docs/paper/` for detailed mathematical analysis
-- **API Documentation**: Run `cargo doc --open`
-- **Examples**: Check `examples/` directory
-- **Benchmarks**: Detailed results in `docs/benchmarks/`
+- **Benchmarks**: Results automatically generated in `results/` directory
+- **Championship Analysis**: Family-level performance comparisons
 
 ## 🤝 Contributing
 
 We welcome contributions! Areas of particular interest:
 
-- **New benchmark problems** from specific domains
-- **Algorithm variants** and improvements
-- **Performance optimizations** and parallelization
-- **Visualization enhancements** for results analysis
-- **Documentation** and examples
+- **New benchmark problems** (add to `problem_sets.rs`)
+- **Optimizer variants** (add to `optimizer_sets.rs`)
+- **Championship configurations** for new problem domains
 
 See `CONTRIBUTING.md` for guidelines.
 
