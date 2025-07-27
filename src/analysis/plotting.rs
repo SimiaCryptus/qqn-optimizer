@@ -105,7 +105,7 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
             evaluation_counts: trace
                 .iterations
                 .iter()
-                .map(|iter| iter.total_function_evaluations.max(iter.total_gradient_evaluations))
+                .map(|iter| iter.total_evaluations())
                 .collect(),
         };
         result.sanitize();

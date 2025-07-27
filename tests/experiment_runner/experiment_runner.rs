@@ -2,6 +2,7 @@ use super::{PlottingManager, ReportGenerator};
 use log::{info, warn, error};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult};
 use qqn_optimizer::{ OptimizationProblem, Optimizer};
+use qqn_optimizer::benchmarks::evaluation::{enable_no_threshold_mode, disable_no_threshold_mode};
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
@@ -203,6 +204,9 @@ pub async fn run_championship_benchmark(
     championship_config: std::collections::HashMap<String, Vec<String>>,
     all_optimizers: Vec<(String, Arc<dyn Optimizer>)>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Enable no threshold mode for championship benchmarks
+    enable_no_threshold_mode();
+    
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);
@@ -298,6 +302,9 @@ pub async fn run_championship_benchmark(
 }
 
 pub async fn run_benchmark(report_path_prefix: &str, max_evals: usize, num_runs: usize, time_limit: Duration, problems: Vec<Arc<dyn OptimizationProblem>>, optimizers: Vec<(String, Arc<dyn Optimizer>)>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Enable no threshold mode for benchmarks
+    enable_no_threshold_mode();
+    
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
     let output_dir = std::path::PathBuf::from(&output_dir_name);

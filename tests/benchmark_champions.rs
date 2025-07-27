@@ -25,17 +25,17 @@ fn get_championship_config() -> HashMap<String, Vec<String>> {
     ]);
     
     champions.insert("Sphere_10D".to_string(), vec![
-        "QQN-Backtracking".to_string(),
-        "L-BFGS".to_string(),
-        "Trust Region".to_string(), 
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS-Aggressive".to_string(),
+        "Trust Region-Conservative".to_string(),
         "GD-WeightDecay".to_string(),
         "Adam".to_string(),
     ]);
     
     champions.insert("Rosenbrock_2D".to_string(), vec![
-        "QQN-StrongWolfe".to_string(),
-        "L-BFGS-Conservative".to_string(),
-        "Trust Region-Conservative".to_string(),
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS".to_string(),
+        "Trust Region-Aggressive".to_string(),
         "GD".to_string(),
         "Adam-Fast".to_string(),
     ]);
@@ -49,7 +49,7 @@ fn get_championship_config() -> HashMap<String, Vec<String>> {
     ]);
     
     champions.insert("Rosenbrock_10D".to_string(), vec![
-        "QQN-StrongWolfe".to_string(),
+        "QQN-Backtracking".to_string(),
         "L-BFGS-Conservative".to_string(),
         "Trust Region-Aggressive".to_string(),
         "GD-WeightDecay".to_string(),
@@ -57,75 +57,75 @@ fn get_championship_config() -> HashMap<String, Vec<String>> {
     ]);
     
     champions.insert("Michalewicz_2D_m10".to_string(), vec![
-        "QQN-GoldenSection".to_string(),
+        "QQN-StrongWolfe".to_string(),
         "L-BFGS-Conservative".to_string(),
         "Trust Region-Conservative".to_string(),
-        "GD-Momentum".to_string(),
-        "Adam".to_string(),
-    ]);
-    
-    champions.insert("Michalewicz_5D_m10".to_string(), vec![
-        "QQN-MoreThuente".to_string(),
-        "L-BFGS-Conservative".to_string(),
-        "Trust Region-Conservative".to_string(),
-        "GD".to_string(),
+        "GD-WeightDecay".to_string(),
         "Adam-Fast".to_string(),
     ]);
     
+    champions.insert("Michalewicz_5D_m10".to_string(), vec![
+        "QQN-Backtracking".to_string(),
+        "L-BFGS-Conservative".to_string(),
+        "Trust Region-Conservative".to_string(),
+        "GD".to_string(),
+        "Adam".to_string(),
+    ]);
+    
     champions.insert("Michalewicz_10D_m10".to_string(), vec![
-        "QQN-MoreThuente".to_string(),
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS-Conservative".to_string(),
+        "Trust Region-Conservative".to_string(),
+        "GD-Nesterov".to_string(),
+        "Adam-AMSGrad".to_string(),
+    ]);
+    
+    champions.insert("Rastrigin_2D".to_string(), vec![
+        "QQN-Backtracking".to_string(),
         "L-BFGS-Conservative".to_string(),
         "Trust Region".to_string(),
         "GD-WeightDecay".to_string(),
         "Adam-WeightDecay".to_string(),
-    ]);
-    
-    champions.insert("Rastrigin_2D".to_string(), vec![
-        "QQN-GoldenSection".to_string(),
-        "L-BFGS-Conservative".to_string(),
-        "Trust Region".to_string(),
-        "GD-WeightDecay".to_string(),
-        "Adam-AMSGrad".to_string(),
     ]);
     
     champions.insert("Rastrigin_5D".to_string(), vec![
         "QQN-GoldenSection".to_string(),
         "L-BFGS-Conservative".to_string(),
         "Trust Region".to_string(),
-        "GD-WeightDecay".to_string(),
+        "GD".to_string(),
         "Adam-WeightDecay".to_string(),
     ]);
     
     champions.insert("Rastrigin_10D".to_string(), vec![
-        "QQN-StrongWolfe".to_string(),
+        "QQN-GoldenSection".to_string(),
         "L-BFGS-Conservative".to_string(),
         "Trust Region".to_string(),
-        "GD".to_string(),
-        "Adam-AMSGrad".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam-Fast".to_string(),
     ]);
     
     champions.insert("Ackley_2D_a20_b0.2_c6.28e0".to_string(), vec![
-        "QQN-CubicQuadraticInterpolation".to_string(),
-        "L-BFGS-Aggressive".to_string(),
-        "Trust Region-Conservative".to_string(),
-        "GD-Nesterov".to_string(),
-        "Adam-WeightDecay".to_string(),
+        "QQN-GoldenSection".to_string(),
+        "L-BFGS".to_string(),
+        "Trust Region".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam".to_string(),
     ]);
     
     champions.insert("Ackley_5D_a20_b0.2_c6.28e0".to_string(), vec![
-        "QQN-Backtracking".to_string(),
+        "QQN-StrongWolfe".to_string(),
         "L-BFGS".to_string(),
-        "Trust Region".to_string(),
+        "Trust Region-Conservative".to_string(),
         "GD-Nesterov".to_string(),
-        "Adam-Fast".to_string(),
+        "Adam-WeightDecay".to_string(),
     ]);
     
     champions.insert("Ackley_10D_a20_b0.2_c6.28e0".to_string(), vec![
         "QQN-GoldenSection".to_string(),
         "L-BFGS".to_string(),
         "Trust Region-Conservative".to_string(),
-        "GD".to_string(),
-        "Adam-AMSGrad".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam".to_string(),
     ]);
     
     champions.insert("StyblinskiTang_2D".to_string(), vec![
@@ -138,115 +138,115 @@ fn get_championship_config() -> HashMap<String, Vec<String>> {
     
     champions.insert("StyblinskiTang_5D".to_string(), vec![
         "QQN-Bisection-2".to_string(),
-        "L-BFGS-Conservative".to_string(),
+        "L-BFGS".to_string(),
         "Trust Region".to_string(),
-        "GD-WeightDecay".to_string(),
-        "Adam-Fast".to_string(),
-    ]);
-    
-    champions.insert("StyblinskiTang_10D".to_string(), vec![
-        "QQN-Bisection-1".to_string(),
-        "L-BFGS-Conservative".to_string(),
-        "Trust Region".to_string(),
-        "GD-WeightDecay".to_string(),
+        "GD".to_string(),
         "Adam".to_string(),
     ]);
     
-    champions.insert("Beale_2D".to_string(), vec![
-        "QQN-Bisection-1".to_string(),
-        "L-BFGS-Conservative".to_string(),
+    champions.insert("StyblinskiTang_10D".to_string(), vec![
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS-Aggressive".to_string(),
         "Trust Region".to_string(),
-        "GD-WeightDecay".to_string(),
+        "GD".to_string(),
+        "Adam-Fast".to_string(),
+    ]);
+    
+    champions.insert("Beale_2D".to_string(), vec![
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS".to_string(),
+        "Trust Region".to_string(),
+        "GD-Nesterov".to_string(),
         "Adam".to_string(),
     ]);
     
     champions.insert("Levi_2D".to_string(), vec![
-        "QQN-Bisection-2".to_string(),
-        "L-BFGS-Aggressive".to_string(),
-        "Trust Region-Conservative".to_string(),
-        "GD-Momentum".to_string(),
-        "Adam-WeightDecay".to_string(),
+        "QQN-Backtracking".to_string(),
+        "L-BFGS-Conservative".to_string(),
+        "Trust Region".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam-AMSGrad".to_string(),
     ]);
     
     champions.insert("GoldsteinPrice_2D".to_string(), vec![
-        "QQN-GoldenSection".to_string(),
+        "QQN-Bisection-1".to_string(),
         "L-BFGS".to_string(),
-        "Trust Region".to_string(),
+        "Trust Region-Aggressive".to_string(),
         "GD-Nesterov".to_string(),
-        "Adam-Fast".to_string(),
+        "Adam".to_string(),
     ]);
     
     champions.insert("Matyas_2D".to_string(), vec![
-        "QQN-Backtracking".to_string(),
+        "QQN-StrongWolfe".to_string(),
         "L-BFGS-Conservative".to_string(),
         "Trust Region-Conservative".to_string(),
-        "GD-WeightDecay".to_string(),
+        "GD-Nesterov".to_string(),
         "Adam".to_string(),
     ]);
     
     // ML problem champions
     champions.insert("LogisticRegression_100samples_5features_reg0.01".to_string(), vec![
-        "QQN-MoreThuente".to_string(),
-        "L-BFGS-Aggressive".to_string(),
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS".to_string(),
         "Trust Region-Conservative".to_string(),
-        "GD-Nesterov".to_string(),
+        "GD-Momentum".to_string(),
         "Adam-Fast".to_string(),
     ]);
     
     champions.insert("LogisticRegression_200samples_10features_reg0.01".to_string(), vec![
-        "QQN-GoldenSection".to_string(),
-        "L-BFGS".to_string(),
+        "QQN-StrongWolfe".to_string(),
+        "L-BFGS-Conservative".to_string(),
         "Trust Region-Conservative".to_string(),
         "GD-Momentum".to_string(),
         "Adam-Fast".to_string(),
     ]);
     
     champions.insert("LinearRegression_100samples_5features_reg0.01".to_string(), vec![
-        "QQN-StrongWolfe".to_string(),
-        "L-BFGS-Conservative".to_string(),
+        "QQN-MoreThuente".to_string(),
+        "L-BFGS-Aggressive".to_string(),
         "Trust Region".to_string(),
         "GD-WeightDecay".to_string(),
-        "Adam-WeightDecay".to_string(),
+        "Adam-Fast".to_string(),
     ]);
     
     champions.insert("LinearRegression_200samples_10features_reg0.01".to_string(), vec![
-        "QQN-Bisection-1".to_string(),
+        "QQN-GoldenSection".to_string(),
         "L-BFGS-Aggressive".to_string(),
-        "Trust Region-Aggressive".to_string(),
-        "GD-Nesterov".to_string(),
-        "Adam".to_string(),
+        "Trust Region".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam-Fast".to_string(),
     ]);
     
     champions.insert("NeuralNetwork_100samples_layers_5_10_3".to_string(), vec![
-        "QQN-CubicQuadraticInterpolation".to_string(),
-        "L-BFGS-Conservative".to_string(),
-        "Trust Region".to_string(),
-        "GD".to_string(),
-        "Adam".to_string(),
-    ]);
-    
-    champions.insert("NeuralNetwork_100samples_layers_10_20_5".to_string(), vec![
         "QQN-Bisection-2".to_string(),
         "L-BFGS".to_string(),
         "Trust Region".to_string(),
         "GD-Momentum".to_string(),
-        "Adam".to_string(),
+        "Adam-Fast".to_string(),
     ]);
     
-    champions.insert("SVM_100samples_5features_C1".to_string(), vec![
-        "QQN-GoldenSection".to_string(),
-        "L-BFGS".to_string(),
+    champions.insert("NeuralNetwork_100samples_layers_10_20_5".to_string(), vec![
+        "QQN-Bisection-2".to_string(),
+        "L-BFGS-Conservative".to_string(),
         "Trust Region".to_string(),
         "GD-Momentum".to_string(),
         "Adam-Fast".to_string(),
+    ]);
+    
+    champions.insert("SVM_100samples_5features_C1".to_string(), vec![
+        "QQN-Backtracking".to_string(),
+        "L-BFGS-Conservative".to_string(),
+        "Trust Region".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam-Fast-Fast".to_string(),
     ]);
     
     champions.insert("SVM_200samples_10features_C1".to_string(), vec![
         "QQN-GoldenSection".to_string(),
-        "L-BFGS".to_string(),
+        "L-BFGS-Aggressive".to_string(),
         "Trust Region".to_string(),
-        "GD-Momentum".to_string(),
-        "Adam-Fast".to_string(),
+        "GD-WeightDecay".to_string(),
+        "Adam".to_string(),
     ]);
     
     if enable_mnist {

@@ -12,6 +12,22 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use candle_core::{Result as CandleResult};
+use statrs::statistics::Statistics;
+use std::sync::atomic::AtomicBool;
+/// Global flag to disable optimal value thresholds for all problems
+static NO_THRESHOLD_MODE: AtomicBool = AtomicBool::new(false);
+/// Enable "no threshold" mode where all problems have -inf optimal values
+pub fn enable_no_threshold_mode() {
+    NO_THRESHOLD_MODE.store(true, Ordering::Relaxed);
+}
+/// Disable "no threshold" mode (default behavior)
+pub fn disable_no_threshold_mode() {
+    NO_THRESHOLD_MODE.store(false, Ordering::Relaxed);
+}
+/// Check if "no threshold" mode is enabled
+pub fn is_no_threshold_mode() -> bool {
+    NO_THRESHOLD_MODE.load(Ordering::Relaxed)
+}
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +95,12 @@ pub struct IterationData {
     pub total_gradient_evaluations: usize,
 }
 
+impl IterationData {
+    pub fn total_evaluations(&self) -> usize {
+        self.total_function_evaluations + self.total_gradient_evaluations
+    }
+}
+
 impl OptimizationTrace {
     pub fn new() -> Self {
         Self {
@@ -100,12 +122,10 @@ impl OptimizationTrace {
         total_function_evaluations: usize,
         total_gradient_evaluations: usize,
     ) {
-        let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-
         self.iterations.push(IterationData {
             iteration,
             function_value,
-            gradient_norm,
+            gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
             step_size,
             parameters: parameters.to_vec(),
             timestamp: timestamp.into(),
@@ -115,7 +135,11 @@ impl OptimizationTrace {
     }
 
     pub fn final_value(&self) -> Option<f64> {
-        self.iterations.last().map(|data| data.function_value)
+        if self.iterations.is_empty() {
+            None
+        } else {
+            Some(Statistics::min(self.iterations.iter().map(|data| data.function_value)))
+        }
     }
 
     pub fn final_gradient_norm(&self) -> Option<f64> {
@@ -606,22 +630,24 @@ impl BenchmarkRunner {
             );
             // Use the more lenient of the two tolerances to ensure convergence is achievable
             // Check function value convergence if optimal value is known
-            if let Some(optimal_value) = problem.optimal_value() {
-                if f_val < optimal_value {
-                    info!("Converged by function tolerance at iteration {}", iteration);
-                   // Record final iteration data before returning
-                   trace.check_convergence_with_optimizer(
-                       *iteration,
-                       f_val,
-                       optimizer,
-                       input_floats,
-                       &gradient,
-                       0.0,
-                       start_time.elapsed(),
-                       *function_evaluations,
-                       *gradient_evaluations,
-                   );
-                    return Ok(ConvergenceReason::FunctionTolerance);
+            if !is_no_threshold_mode() {
+                if let Some(optimal_value) = problem.optimal_value() {
+                    if f_val < optimal_value {
+                        info!("Converged by function tolerance at iteration {}", iteration);
+                       // Record final iteration data before returning
+                       trace.check_convergence_with_optimizer(
+                           *iteration,
+                           f_val,
+                           optimizer,
+                           input_floats,
+                           &gradient,
+                           0.0,
+                           start_time.elapsed(),
+                           *function_evaluations,
+                           *gradient_evaluations,
+                       );
+                        return Ok(ConvergenceReason::FunctionTolerance);
+                    }
                 }
             }
             // Check for stagnation
@@ -641,9 +667,9 @@ impl BenchmarkRunner {
             *function_evaluations += problem_wrapper.get_function_evaluations() - func_evals_before;
             *gradient_evaluations += problem_wrapper.get_gradient_evaluations() - grad_evals_before;
             // Check again after step in case the optimizer made multiple function calls
-            if *function_evaluations >= self.config.maximum_function_calls {
+            if (*function_evaluations + *gradient_evaluations) >= self.config.maximum_function_calls {
                 info!(
-                    "Maximum function evaluations reached after step: {}",
+                    "Maximum evaluations reached after step: {}",
                     self.config.maximum_function_calls
                 );
                // Record final iteration data before returning

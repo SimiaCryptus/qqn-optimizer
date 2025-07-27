@@ -1,6 +1,14 @@
 # Abstract
 
-We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and quasi-Newton directions through quadratic interpolation. QQN constructs a parametric path $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}$ and performs univariate optimization along this path, creating an adaptive interpolation that requires no problem-specific hyperparameters. Using a novel tournament-style benchmarking methodology that ensures fair comparison across optimizer families, we conducted 7,800 optimization runs across 30 benchmark problems. QQN variants achieved the highest win rate with 33.3% of first-place finishes, compared to 23.3% for L-BFGS variants and 16.7% for gradient descent variants. On ill-conditioned problems like Rosenbrock, QQN achieves 100% convergence while L-BFGS fails completely. We provide both theoretical convergence guarantees and a comprehensive tournament-based benchmarking framework for reproducible optimization research. Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
+We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and quasi-Newton directions through quadratic interpolation. 
+QQN constructs a parametric path $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}$ and performs univariate optimization along this path, creating an adaptive interpolation that requires no additional hyperparameters. 
+
+Using a multi-stage benchmarking tournament methodology to ensure fair comparison across optimizer families, we conducted X optimization runs across Y benchmark problems.
+
+TODO: Summarize results here.
+
+We provide both theoretical convergence guarantees and a comprehensive benchmarking and reporting framework for reproducible optimization research. 
+Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
 
 **Keywords:** optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation, benchmarking, statistical analysis
 
@@ -16,47 +24,36 @@ This tension intensifies in modern applications with high dimensions, heterogene
 
 Researchers have developed various approaches to combine gradient and quasi-Newton directions:
 
-**Trust Region Methods**: These methods constrain the step size within a region where the quadratic model is trusted to approximate the objective function. While effective, they require solving a constrained optimization subproblem at each iteration.
+* **Trust Region Methods**: These methods constrain the step size within a region where the quadratic model is trusted to approximate the objective function. While effective, they require solving a constrained optimization subproblem at each iteration.
 
-**Line Search with Switching**: Some methods alternate between gradient and quasi-Newton directions based on heuristic criteria, but this can lead to discontinuous behavior and convergence issues.
+* **Line Search with Switching**: Some methods alternate between gradient and quasi-Newton directions based on heuristic criteria, but this can lead to discontinuous behavior and convergence issues.
 
-**Weighted Combinations**: Linear combinations of gradient and quasi-Newton directions have been explored, but selecting appropriate weights remains challenging and often problem-dependent.
+* **Weighted Combinations**: Linear combinations of gradient and quasi-Newton directions have been explored, but selecting appropriate weights remains challenging and often problem-dependent.
 
-**Adaptive Learning Rates**: Methods like Adam use adaptive learning rates but don't directly address the combination of first and second-order information.
+* **Adaptive Learning Rates**: Methods like Adam use adaptive learning rates but don't directly address the combination of first and second-order information.
 
 We propose quadratic interpolation as a simple geometric solution to this direction combination problem.
-
 This approach provides several key advantages:
 
-1. **Hyperparameter-Free Operation**: Unlike methods requiring learning rates, momentum coefficients, or trust region radii, QQN adapts automatically to problem characteristics without problem-specific tuning parameters. 
-   While implementation details such as 1D solver tolerances exist, these are standard numerical parameters rather than algorithm-specific hyperparameters requiring problem-dependent tuning.
+1. **Hyperparameter-Free Operation**: While the sub-strategies for the quasinewton estimator and the line search still have hyperparameters, QQN combines these in a principled way that does not require additional hyperparameters.
 
-2. **Guaranteed Descent**: The path construction ensures descent from any starting point, eliminating convergence failures common in quasi-Newton methods.
+2. **Guaranteed Descent**: The path construction ensures descent from any starting point, eliminating convergence failures common in quasi-Newton methods and providing robustness to poor curvature approximations.
+   Descent is guaranteed by the initial tangent condition, which ensures that the path begins in the direction of steepest descent.
 
-3. **Simplified Implementation**: By reducing to one-dimensional optimization, we avoid complex line search procedures while maintaining theoretical guarantees.
-
-Equally important, we address a critical gap in optimization research: the lack of rigorous empirical evaluation standards. Many published results suffer from:
-
-We demonstrate the importance of rigorous empirical evaluation in optimization research by providing a comprehensive benchmarking framework. Our framework establishes new standards for meaningful algorithm comparison through:
-
-* Function evaluations as the primary metric, providing hardware-independent algorithmic characterization
-* Statistical significance testing across multiple independent runs
-* Diverse problem sets covering different optimization challenges
-* Fair comparison with properly tuned baseline methods
+3. **Simplified Implementation**: By reducing to one-dimensional optimization, we can solve the final landscape in a highly adaptive way while inheriting theoretical guarantees from existing line-search methods.
 
 ## Contributions
 
 This paper makes three primary contributions:
 
-1. **The QQN Algorithm**: A novel optimization method that adaptively interpolates between gradient descent and L-BFGS through quadratic paths, achieving robust performance without problem-specific tuning parameters.
+1. **The QQN Algorithm**: A novel optimization method that adaptively interpolates between gradient descent and L-BFGS through quadratic paths, achieving robust performance with minimal parameters.
 
 2. **Rigorous Empirical Validation**: Comprehensive evaluation across 26 benchmark problems with statistical analysis, demonstrating QQN's superior robustness and practical utility.
 
 3. **Benchmarking Framework**: A reusable tournament-style framework for optimization algorithm evaluation that promotes reproducible research and meaningful comparisons.
 
-Our theoretical analysis provides convergence guarantees while maintaining accessibility. 
-We present proof sketches that capture key insights, with detailed derivations available in the supplementary material. 
-Convergence rates remain problem-dependent, as is standard in quasi-Newton theory.
+Optimal configurations remain problem-dependent, but QQN's adaptive nature minimizes the need for extensive hyperparameter tuning.
+Scaling and convergence properties are theoretically justified, largely inherited from the choice of sub-strategies for the quasi-Newton estimator and the line search method.
 
 ## Paper Organization
 
@@ -77,7 +74,7 @@ Adaptive methods like Adam [@kingma2015adam] have become popular in deep learnin
 
 **Quasi-Newton Methods**: BFGS [@broyden1970convergence; @fletcher1970new; @goldfarb1970family; @shanno1970conditioning] approximates the Hessian using gradient information, achieving superlinear convergence near optima. 
 L-BFGS [@liu1989limited] reduces memory requirements to O(mn), making it practical for high dimensions.
-However, these methods require complex line search procedures and can fail on non-convex problems.
+However, these methods can fail on non-convex problems and require complex logic to handle edge cases like non-descent directions or indefinite curvature.
 
 **Hybrid Approaches**: Trust region methods [@more1983computing] interpolate between gradient and Newton directions but require expensive subproblem solutions. 
 Unlike QQN's direct path optimization, trust region methods solve a constrained quadratic programming problem at each iteration, fundamentally differing in both computational approach and theoretical framework. 
@@ -87,8 +84,7 @@ Our approach is motivated by practical optimization challenges encountered in pr
 ## Benchmarking and Evaluation
 
 **Benchmark Suites**: @dejong1975analysis introduced systematic test functions, while @jamil2013literature cataloged 175 benchmarks. 
-The CEC competitions provide increasingly complex problems [@liang2013problem]. 
-However, many evaluations lack statistical rigor or use limited problem sets.
+The CEC competitions provide increasingly complex problems [@liang2013problem].
 
 **Evaluation Frameworks**: COCO [@hansen2016coco] established standards for optimization benchmarking including multiple runs and statistical analysis.
 Recent work emphasizes reproducibility [@beiranvand2017best] and fair comparison [@schmidt2021descending], though implementation quality and hyperparameter selection remain challenges.
@@ -98,7 +94,7 @@ Recent work emphasizes reproducibility [@beiranvand2017best] and fair comparison
 ## Motivation and Intuition
 
 Consider the fundamental question: given gradient and quasi-Newton directions, how should we combine them? 
-Linear interpolation lacks a principled basis for choosing weights.
+Linear interpolation might seem natural, but it fails to guarantee descent properties.
 Trust region methods solve expensive subproblems. 
 We propose a different approach: construct a smooth path that begins with the gradient direction and curves toward the quasi-Newton direction.
 
@@ -129,18 +125,6 @@ $$\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$$
 
 This creates a parabolic arc in optimization space that starts tangent to the gradient descent direction and curves smoothly toward the quasi-Newton direction.
 
-### Why This Matters: The Geometric Paradigm
-
-Traditional approaches to combining optimization methods include:
-
-* **Algebraic**: Matrix updates, weighted sums, switching rules
-* **Constrained**: Trust regions, feasible directions
-* **Stochastic**: Random combinations, probabilistic selection
-
-QQN proposes that the optimal combination lies along a smooth geometric path—specifically, a quadratic curve that begins tangent to the gradient and curves toward the quasi-Newton direction.
-
-This suggests quadratic interpolation provides a natural geometry for combining first and second-order information.
-
 ### Geometric Principles of Optimization
 
 QQN is based on three geometric principles:
@@ -153,16 +137,6 @@ The simplest curve satisfying boundary conditions is preferred. QQN uses the low
 
 **Principle 3: Initial Tangent Determines Local Behavior**  
 By ensuring the path begins tangent to the negative gradient, we guarantee descent regardless of the quasi-Newton direction quality.
-
-**Justification for Quadratic Interpolation**: The choice of quadratic interpolation follows from fundamental principles:
-
-1. **Occam's Razor**: The quadratic path is the simplest polynomial satisfying our three constraints (start point, initial direction, end point)
-2. **Maximum Entropy**: Among all paths with specified boundary conditions, the quadratic minimizes assumptions about intermediate behavior
-3. **Computational Efficiency**: Quadratic paths enable efficient one-dimensional optimization while avoiding the complexity of higher-order polynomials
-4. **Theoretical Tractability**: The quadratic form preserves analytical properties needed for convergence proofs
-
-While cubic or higher-order interpolations could provide additional flexibility, they would require more constraints or arbitrary choices without clear benefits. 
-Linear interpolation fails to satisfy our initial direction constraint, making it unsuitable for ensuring descent properties.
 
 ## Algorithm Specification
 
@@ -190,38 +164,41 @@ for k = 0, 1, 2, ... do
 end for
 ```
 
-The one-dimensional optimization can use golden section search, Brent's method, or bisection on the derivative. Note that while the quadratic path is defined for t ∈ [0,1], the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality and the objective function has small curvature along the path.
+The one-dimensional optimization can use golden section search, Brent's method, or bisection on the derivative. 
+Note that while the quadratic path is defined for t ∈ [0,1], the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality and the objective function has small curvature along the path.
 
 ### The Straight-Path Multiplier
 
-A critical implementation detail that significantly impacts QQN's practical performance is the **straight-path multiplier** γ.
-This scaling factor addresses a fundamental issue in combining gradient and quasi-Newton directions: scale incompatibility.
+The **straight-path multiplier** γ is a critical implementation detail that ensures QQN functions effectively both with and without quasi-Newton information. Rather than being an additional hyperparameter requiring tuning, γ serves a specific structural role in the algorithm.
 
-**The Scale Mismatch Problem**: The L-BFGS direction incorporates second-order information and is scaled for unit steps: $\mathbf{d}_{\text{LBFGS}} = -H_k \nabla f$ where $H_k \approx [\nabla^2 f]^{-1}$.
-In contrast, the raw gradient $\nabla f$ has arbitrary scaling that depends on the function's units and local geometry.
+**Two Operational Modes**:
 
-Without proper scaling, the quadratic interpolation becomes ineffective:
+1. **With L-BFGS Direction Available**: When the quasi-Newton approximation is present, the L-BFGS direction $\mathbf{d}_{\text{LBFGS}} = -H_k \nabla f$ naturally incorporates curvature information and is scaled for unit steps. The parameter $t = 1$ in our quadratic path corresponds to taking the full quasi-Newton step, providing a natural scale for the line search.
 
-* If $\|\nabla f\| \ll \|\mathbf{d}_{\text{LBFGS}}\|$: The gradient component becomes negligible, losing the descent guarantee
-* If $\|\nabla f\| \gg \|\mathbf{d}_{\text{LBFGS}}\|$: The L-BFGS component is overwhelmed, negating the benefits of curvature information
+2. **Without L-BFGS Direction**: During initial iterations (before sufficient gradient history is accumulated) or when L-BFGS is reset, we fall back to gradient descent. Here, γ defines the scale of the search space. Without it, we would be biased toward a maximum step size of 1 along the gradient direction (dependent on line-search details), which would be prohibitively slow for most practical problems.
 
-**Solution**: Scale the gradient by a factor γ (typically 5-20) to ensure comparable magnitudes:
-$$\mathbf{d}(t) = t(1-t)(-\gamma \nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$$
+**Why γ is Not an Additional Hyperparameter**:
 
-This maintains the theoretical properties while ensuring practical effectiveness:
+The multiplier γ essentially defines the initial step size or learning rate for the gradient-only fallback case.
+Depending on line search behavior, the choice of γ can significantly affect convergence speed, but is generally robust across a wide range of problems.
 
-1. The descent property at $t=0$ is preserved: $\mathbf{d}'(0) = -\gamma \nabla f$
-2. The bounded search domain $t \in [0,1]$ remains valid
-3. Both components contribute meaningfully to the interpolation
+When L-BFGS information is available:
+$$\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$$
 
-**Empirical Validation**: Our experiments show that γ = 10 works well across diverse problems. Too small values (γ < 5) lead to ineffective gradient steps, while too large values (γ > 20) can cause overshooting. Future work could explore adaptive scaling strategies that adjust γ based on observed step characteristics.
+When falling back to gradient descent (early iterations):
+$$\mathbf{d}(t) = t(1-t)(-\gamma \nabla f) + t^2(-\gamma \nabla f) = -t\gamma \nabla f$$
+
+In this fallback case, the quadratic path simplifies to a straight line with maximum step size γ, allowing the line search to explore a reasonable range along the gradient direction.
+
+This design ensures QQN transitions smoothly from the gradient descent phase in early iterations to full quasi-Newton behavior once sufficient curvature information is available across iterations.
 
 ## Theoretical Properties
 
 **Robustness to Poor Curvature Approximations**: QQN remains robust when L-BFGS produces poor directions. 
 When L-BFGS fails—due to indefinite curvature, numerical instabilities, or other issues—the quadratic interpolation mechanism provides graceful degradation to gradient-based optimization:
 
-**Lemma 1** (Universal Descent Property): For any direction $\mathbf{d}_{\text{LBFGS}}$—even ascent directions or random vectors—the curve $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$ satisfies $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$. This guarantees a neighborhood $(0, \epsilon)$ where the objective function decreases along the path.
+**Lemma 1** (Universal Descent Property): For any direction $\mathbf{d}_{\text{LBFGS}}$—even ascent directions or random vectors—the curve $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$ satisfies $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$. 
+This guarantees a neighborhood $(0, \epsilon)$ where the objective function decreases along the path.
 
 This property enables interesting variations:
 
@@ -237,8 +214,7 @@ The framework naturally filters any proposed direction through the lens of guara
 $$\phi'(0) = \nabla f(\mathbf{x}_k)^T (-\nabla f(\mathbf{x}_k)) = -\|\nabla f(\mathbf{x}_k)\|^2 < 0$$
 By continuity of $\phi'$, there exists $\bar{t} > 0$ such that $\phi'(t) < 0$ for all $t \in (0, \bar{t}]$, which implies $\phi(t) < \phi(0)$ in this interval. □
 
-**Theorem 2** (Global Convergence): Under standard assumptions (f continuously differentiable, bounded below, Lipschitz
-gradient with constant $L > 0$), QQN generates iterates satisfying:
+**Theorem 2** (Global Convergence): Under standard assumptions (f continuously differentiable, bounded below, Lipschitz gradient with constant $L > 0$), QQN generates iterates satisfying:
 $$\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$$
 
 *Proof*: We establish global convergence through the following steps:
@@ -258,6 +234,7 @@ $$\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$$
 5. **Asymptotic Stationarity**: Since $\sum_{k=0}^{\infty} \Delta_k = f(\mathbf{x}_0) - f^* < \infty$ and 
    $\Delta_k \geq c\|\nabla f(\mathbf{x}_k)\|_2^2$, we have $\sum_{k=0}^{\infty} \|\nabla f(\mathbf{x}_k)\|_2^2 < \infty$, 
    implying $\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$. □
+
 The constant $c > 0$ in step 4 arises from the quadratic path construction, which ensures that for small $t$, the decrease is dominated by the gradient term, yielding $f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - ct\|\nabla f(\mathbf{x}_k)\|_2^2$ for some $c$ related to the Lipschitz constant and the straight-path multiplier γ.
 
 **Theorem 3** (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
@@ -308,7 +285,7 @@ Our benchmarking framework introduces a novel tournament-style methodology that 
 2. **Statistical Validity**: Multiple runs, hypothesis testing
 3. **Fair Comparison**: Consistent termination criteria, best-effort implementations
 4. **Comprehensive Coverage**: Diverse problem types and dimensions
-5. **Family-Based Competition**: Tournament structure that selects best variants from each optimizer family
+5. **Family-Based Competition**: Tournament structure that selects the best variants from each optimizer family
 
 ## Tournament-Style Evaluation
 
@@ -335,9 +312,9 @@ The tournament structure first identifies the best variant within each family fo
 
 All implementations use consistent convergence criteria:
 
-* Gradient tolerance: $\|\nabla f\| < 10^{-6}$
-* Function tolerance: relative change < $10^{-7}$
-* Maximum iterations: problem-dependent (1,000-10,000)
+* Function tolerance: problem-dependent, chosen based on median best value in preliminary tournament
+* Maximum function evaluations: configurable (1,000)
+* Optimizers may have additional criteria like gradient norm thresholds, but are generally set to allow sufficient exploration.
 
 ## Benchmark Problems
 
@@ -625,4 +602,3 @@ The authors declare no competing interests.
 # Data Availability
 
 All experimental data, including raw optimization trajectories and statistical analyses, are available at https://github.com/SimiaCryptus/qqn-optimizer/.
-
