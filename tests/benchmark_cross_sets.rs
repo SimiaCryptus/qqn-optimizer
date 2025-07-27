@@ -10,7 +10,7 @@ use qqn_optimizer::{init_logging, OptimizationProblem};
 use qqn_optimizer::benchmarks::evaluation::{disable_no_threshold_mode, enable_no_threshold_mode};
 
 #[tokio::test]
-async fn test_families() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn families() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
@@ -28,12 +28,12 @@ async fn test_families() -> Result<(), Box<dyn std::error::Error + Send + Sync>>
 }
 
 // #[tokio::test]
-async fn preliminary_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn calibration() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    test_all("results/preliminary_",{
+    test_all("results/calibration_",{
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems
@@ -46,12 +46,12 @@ async fn preliminary_test() -> Result<(), Box<dyn std::error::Error + Send + Syn
 }
 
 #[tokio::test]
-async fn threshold_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn full_test() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
     // Disable no threshold mode for this test
     disable_no_threshold_mode();
 
-    test_all("results/thresholds_",{
+    test_all("results/full_",{
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems

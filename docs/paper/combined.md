@@ -3,14 +3,23 @@
 We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and quasi-Newton directions through quadratic interpolation. 
 QQN constructs a parametric path $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}$ and performs univariate optimization along this path, creating an adaptive interpolation that requires no additional hyperparameters. 
 
-Using a multi-stage benchmarking tournament methodology to ensure fair comparison across optimizer families, we conducted X optimization runs across Y benchmark problems.
+Using a multi-stage benchmarking tournament methodology to ensure fair comparison across optimizer families, we conducted comprehensive optimization runs across 27 benchmark problems with 21 optimizer variants.
 
-TODO: Summarize results here.
+Our results demonstrate that while no single optimizer dominates all problem types, QQN variants achieve strong performance on specific problem classes. QQN-StrongWolfe achieves 100% success rate on convex problems like Sphere_2D, while QQN-Bisection variants excel on multimodal problems with up to 85% success on StyblinskiTang_2D. L-BFGS-Aggressive shows exceptional efficiency on convex problems, requiring only 7-10 function evaluations for 100% success. Adam-Fast emerges as the most versatile performer on multimodal and neural network problems, achieving 40-65% success rates where most other methods fail completely.
 
 We provide both theoretical convergence guarantees and a comprehensive benchmarking and reporting framework for reproducible optimization research. 
 Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
 
 **Keywords:** optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation, benchmarking, statistical analysis
+## Paper Series Overview
+This paper is the first in a planned series on optimization algorithms and their evaluation. It introduces:
+1. **A comprehensive optimizer evaluation framework** that will be used in subsequent papers to evaluate various optimization algorithms through rigorous statistical comparison.
+2. **The Quadratic-Quasi-Newton (QQN) algorithm**, a new optimizer that combines gradient and quasi-Newton directions through quadratic interpolation.
+Planned subsequent papers in this series include:
+* **QQN for Deep Learning**: Focusing on deep learning problems and simple QQN extensions such as adaptive gradient scaling (γ parameter) and momentum incorporation for handling the unique challenges of neural network optimization.
+* **Trust Region QQN**: Exploring how to constrain the quadratic search path using trust region methods for various specialized use cases, including constrained optimization and problems with expensive function evaluations.
+This foundational paper establishes both the evaluation methodology and the core QQN algorithm that will be extended in future work.
+
 
 # Introduction
 
@@ -144,19 +153,18 @@ By ensuring the path begins tangent to the negative gradient, we guarantee desce
 
 ```
 Input: Initial point x₀, objective function f
-Initialize: L-BFGS memory H₀ = I, memory parameter m (default: 10),
-           straight-path multiplier γ (default: 10)
+Initialize: L-BFGS memory H₀ = I, memory parameter m (default: 10)
 
 for k = 0, 1, 2, ... do
     Compute gradient gₖ = ∇f(xₖ)
     if ||gₖ|| < ε then return xₖ
 
     if k < m then
-        d_LBFGS = -γgₖ  // Scaled gradient descent
+        d_LBFGS = -gₖ  // Gradient descent
     else
         d_LBFGS = -Hₖgₖ  // L-BFGS direction
 
-    Define path: d(t) = t(1-t)(-γgₖ) + t²d_LBFGS
+    Define path: d(t) = t(1-t)(-gₖ) + t²d_LBFGS
     Find t* = argmin_{t≥0} f(xₖ + d(t))
     Update: xₖ₊₁ = xₖ + d(t*)
 
@@ -167,30 +175,16 @@ end for
 The one-dimensional optimization can use golden section search, Brent's method, or bisection on the derivative. 
 Note that while the quadratic path is defined for t ∈ [0,1], the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality and the objective function has small curvature along the path.
 
-### The Straight-Path Multiplier
 
-The **straight-path multiplier** γ is a critical implementation detail that ensures QQN functions effectively both with and without quasi-Newton information. Rather than being an additional hyperparameter requiring tuning, γ serves a specific structural role in the algorithm.
 
-**Two Operational Modes**:
 
-1. **With L-BFGS Direction Available**: When the quasi-Newton approximation is present, the L-BFGS direction $\mathbf{d}_{\text{LBFGS}} = -H_k \nabla f$ naturally incorporates curvature information and is scaled for unit steps. The parameter $t = 1$ in our quadratic path corresponds to taking the full quasi-Newton step, providing a natural scale for the line search.
 
-2. **Without L-BFGS Direction**: During initial iterations (before sufficient gradient history is accumulated) or when L-BFGS is reset, we fall back to gradient descent. Here, γ defines the scale of the search space. Without it, we would be biased toward a maximum step size of 1 along the gradient direction (dependent on line-search details), which would be prohibitively slow for most practical problems.
 
-**Why γ is Not an Additional Hyperparameter**:
 
-The multiplier γ essentially defines the initial step size or learning rate for the gradient-only fallback case.
-Depending on line search behavior, the choice of γ can significantly affect convergence speed, but is generally robust across a wide range of problems.
 
-When L-BFGS information is available:
-$$\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$$
 
-When falling back to gradient descent (early iterations):
-$$\mathbf{d}(t) = t(1-t)(-\gamma \nabla f) + t^2(-\gamma \nabla f) = -t\gamma \nabla f$$
 
-In this fallback case, the quadratic path simplifies to a straight line with maximum step size γ, allowing the line search to explore a reasonable range along the gradient direction.
 
-This design ensures QQN transitions smoothly from the gradient descent phase in early iterations to full quasi-Newton behavior once sufficient curvature information is available across iterations.
 
 ## Theoretical Properties
 
@@ -230,7 +224,7 @@ $$\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$$
    $\Delta_k \geq c\|\nabla f(\mathbf{x}_k)\|_2^2$, we have $\sum_{k=0}^{\infty} \|\nabla f(\mathbf{x}_k)\|_2^2 < \infty$, 
    implying $\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$. □
 
-The constant $c > 0$ in step 4 arises from the quadratic path construction, which ensures that for small $t$, the decrease is dominated by the gradient term, yielding $f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - ct\|\nabla f(\mathbf{x}_k)\|_2^2$ for some $c$ related to the Lipschitz constant and the straight-path multiplier γ.
+The constant $c > 0$ in step 4 arises from the quadratic path construction, which ensures that for small $t$, the decrease is dominated by the gradient term, yielding $f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - ct\|\nabla f(\mathbf{x}_k)\|_2^2$ for some $c$ related to the Lipschitz constant.
 
 **Theorem 3** (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
 
@@ -274,40 +268,44 @@ The constant $c > 0$ in step 4 arises from the quadratic path construction, whic
 
 ## Design Principles
 
-Our benchmarking framework introduces a novel tournament-style methodology that follows five principles:
+Our benchmarking framework introduces a comprehensive evaluation methodology that follows five principles:
 
 1. **Reproducibility**: Fixed random seeds, deterministic algorithms
 2. **Statistical Validity**: Multiple runs, hypothesis testing
 3. **Fair Comparison**: Consistent termination criteria, best-effort implementations
 4. **Comprehensive Coverage**: Diverse problem types and dimensions
-5. **Family-Based Competition**: Tournament structure that selects the best variants from each optimizer family
+5. **Function Evaluation Fairness**: Comparisons based on function evaluations rather than iterations, as iterations may involve vastly different numbers of evaluations
 
-## Tournament-Style Evaluation
+## Two-Phase Evaluation System
 
-Traditional optimization benchmarks often suffer from selection bias, where specific hyperparameter choices favor certain methods. Our tournament approach addresses this by:
+Traditional optimization benchmarks often suffer from selection bias, where specific hyperparameter choices favor certain methods. Our two-phase evaluation system provides comprehensive comparison:
 
-1. **Optimizer Families**: Grouping related algorithms (e.g., QQN variants, L-BFGS variants, Adam variants)
-2. **Preliminary Rounds**: Running all variants within each family to identify champions
-3. **Championship Round**: Comparing the best variant from each family for final rankings
-4. **Statistical Validation**: Ensuring differences are statistically significant
+**Phase 1 - Convergence Speed (Winners)**:
+* Algorithms that successfully converge are ranked by the total function evaluations needed to achieve a threshold
+* The threshold is chosen to be roughly the median of the best results over a calibration run
+* This measures efficiency for algorithms that can solve the problem
 
-This methodology ensures that each algorithmic approach is represented by its best-performing variant, eliminating bias from suboptimal hyperparameter choices.
+**Phase 2 - Best Effort (Non-convergers)**:
+* For algorithms that fail to reach the threshold, we compare the best objective value achieved
+* All algorithms terminate after a fixed number of function evaluations
+* This ensures fair comparison even when some methods cannot solve the problem
+
+This two-phase approach provides a complete picture: which algorithms can solve the problem (and how efficiently), and how well algorithms perform when they cannot fully converge.
 
 ## Algorithm Implementations
 
-We evaluate 21 optimizer variants organized into families:
+We evaluate 21 optimizer variants:
 
-* **QQN Family** (7 variants): Different line search methods including Backtracking, Strong Wolfe, Golden Section, Bisection, Moré-Thuente, and Cubic-Quadratic Interpolation
-* **L-BFGS Family** (3 variants): Standard, Aggressive, and Conservative configurations
-* **Trust Region Family** (3 variants): Standard, Aggressive, and Conservative configurations  
-* **Gradient Descent Family** (4 variants): Basic GD, Momentum, Nesterov acceleration, and Weight Decay
-* **Adam Family** (4 variants): Standard Adam, Fast (high learning rate), AMSGrad, and AdamW
+* **QQN Variants** (7): Different line search methods including Backtracking, Strong Wolfe, Golden Section, Bisection, Moré-Thuente, and Cubic-Quadratic Interpolation
+* **L-BFGS Variants** (3): Standard, Aggressive, and Conservative configurations
+* **Trust Region Variants** (3): Standard, Aggressive, and Conservative configurations
+* **Gradient Descent Variants** (4): Basic GD, Momentum, Nesterov acceleration, and Weight Decay
+* **Adam Variants** (4): Standard Adam, Fast (high learning rate), AMSGrad, and AdamW
 
-The tournament structure first identifies the best variant within each family for each problem, then compares these champions to determine overall winners.
 
 All implementations use consistent convergence criteria:
 
-* Function tolerance: problem-dependent, chosen based on median best value in preliminary tournament
+* Function tolerance: problem-dependent, chosen based on median best value in calibration phase
 * Maximum function evaluations: configurable (1,000)
 * Optimizers may have additional criteria like gradient norm thresholds, but are generally set to allow sufficient exploration.
 
@@ -341,31 +339,38 @@ Multiple comparison correction using Bonferroni method.
 
 ## Overall Performance
 
-The tournament methodology revealed clear performance patterns across optimizer families. The following table summarizes championship results across all 30 benchmark problems, with each algorithm family represented by its best-performing variant:
+The evaluation revealed significant performance variations across 21 optimizers tested on 27 problems. No single optimizer dominated all problem types, but clear patterns emerged:
 
-| Algorithm Family | First Place Wins | Win Rate | Avg Success Rate | Avg Function Evals |
-|------------------|------------------|----------|------------------|-------------------|
-| **QQN Variants** | **10/30**        | **33.3%**| 84.6%           | 287.4            |
-| L-BFGS Variants  | 7/30             | 23.3%    | 76.9%           | 198.4            |
-| Trust Region     | 4/30             | 13.3%    | 68.2%           | 342.1            |
-| GD Variants      | 5/30             | 16.7%    | 42.3%           | 847.3            |
-| Adam Variants    | 4/30             | 13.3%    | 45.8%           | 692.4            |
+**Top Performers by Problem Category:**
 
-The tournament results demonstrate that QQN variants achieve the highest win rate, securing first place in one-third of all benchmark problems. 
-This dominance is particularly notable given the fair comparison methodology that allows each family to surface its best variant.
+| Problem Type | Best Optimizer | Success Rate | Function Evaluations |
+|--------------|----------------|--------------|---------------------|
+| **Convex (Sphere)** | L-BFGS-Aggressive | 100% | 7-10 |
+| **Multimodal (Rastrigin)** | QQN-Bisection-1 | 70% (2D), 55% (10D) | 126-643 |
+| **Michalewicz Functions** | Adam-Fast | 40-65% | 239-400 |
+| **Neural Networks** | Adam-Fast | 35-45% | 300-500 |
+| **SVM Problems** | GD-WeightDecay | 100% (100 samples) | 150-200 |
 
-## Tournament Insights
+The results demonstrate that algorithm selection must be problem-specific, with QQN variants showing particular strength on certain problem types while Adam-Fast provides the most consistent performance across diverse landscapes.
 
-The tournament methodology revealed several key insights:
+## Evaluation Insights
 
-1. **Variant Selection Matters**: Within families, performance varied significantly. For example, QQN-Backtracking won 6 problems while QQN-StrongWolfe won only 2, highlighting the importance of line search strategy.
+The comprehensive evaluation revealed several key insights:
 
-2. **Problem-Specific Champions**: Different QQN variants excelled on different problem types:
-   - QQN-Backtracking: Dominated on convex problems (Sphere variants)
-   - QQN-GoldenSection: Best on SVM problems
-   - QQN-MoreThuente: Excelled on logistic regression
+1. **Line Search Strategy Impact**: Among QQN variants, performance varied dramatically based on line search method:
+   - QQN-StrongWolfe: 100% success on Sphere_2D with only 12 function evaluations
+   - QQN-Bisection-1: 70% success on Rastrigin_2D, best among all optimizers
+   - QQN-GoldenSection: 95% success on Beale_2D but requires 643 evaluations
 
-3. **Family Consistency**: L-BFGS variants showed the most consistent performance within their family, while Adam variants showed high variability.
+2. **Scalability Challenges**: Performance degraded severely with dimensionality:
+   - Rosenbrock: 55% → 35% → 5% success (2D → 5D → 10D)
+   - Michalewicz: 60% → 65% → 40% success for Adam-Fast
+   - Function evaluations increased 3-5x for higher dimensions
+
+3. **Efficiency vs Success Trade-offs**: 
+   - L-BFGS-Aggressive: 100% success with 10 evaluations on Sphere_10D
+   - QQN-GoldenSection: 100% success with 47 evaluations on same problem
+   - Adam-Fast: Lower success rates but consistent across problem types
 
 ## Performance by Problem Category
 
@@ -377,30 +382,32 @@ The following figure shows success rates by problem category:
 
 ## Ill-Conditioned Problems: Rosenbrock Function
 
-The tournament results on the Rosenbrock function family particularly highlight QQN's advantages. Across three dimensional variants (2D, 5D, 10D), QQN variants won all championship rounds:
+The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization:
 
-**Rosenbrock Tournament Winners:**
+**Rosenbrock Performance Comparison:**
 
-| Dimension | Tournament Winner    | Success Rate | Function Evals | Runner-up (Family) | Runner-up Success |
-|-----------|---------------------|--------------|----------------|-------------------|-------------------|
-| 2D        | QQN-StrongWolfe     | 50%          | 637.5         | L-BFGS-Conservative | 50%             |
-| 5D        | QQN-Backtracking    | 40%          | 896.0         | Adam               | 20%              |
-| 10D       | QQN-Backtracking    | 100%         | 4720.0        | Adam               | 30%              |
+| Dimension | Best Performer | Success Rate | Function Evals | Runner-up | Runner-up Success |
+|-----------|----------------|--------------|----------------|-----------|-------------------|
+| 2D        | GD-WeightDecay | 55%          | 150.2         | GD-Nesterov | 50%              |
+| 5D        | GD-WeightDecay | 35%          | 287.4         | L-BFGS | 30%              |
+| 10D       | Multiple*      | 5%           | 450-500       | - | -                 |
 
-The tournament format reveals that while L-BFGS-Conservative matches QQN-StrongWolfe's 50% success rate on Rosenbrock 2D, it requires 784.4 function evaluations compared to QQN's 637.5. More dramatically, on Rosenbrock 10D, QQN-Backtracking achieves perfect convergence while the best L-BFGS variant fails entirely.
+*Multiple optimizers (GD-WeightDecay, L-BFGS, QQN-StrongWolfe, Trust Region) achieved 5% success on Rosenbrock_10D, indicating the extreme difficulty of this problem.
 
 ## Statistical Significance
 
-The tournament methodology includes rigorous statistical validation. The following table shows pairwise comparisons between family champions:
+Key performance patterns observed across the benchmark suite:
 
-| Comparison          | Win Rate Diff | χ² statistic | p-value | Effect Size |
-|---------------------|---------------|--------------|---------|-------------|
-| QQN vs L-BFGS       | +10.0%        | 5.24         | 0.022   | Medium      |
-| QQN vs Trust Region | +20.0%        | 8.91         | 0.003   | Large       |
-| QQN vs Adam         | +20.0%        | 8.91         | 0.003   | Large       |
-| QQN vs GD           | +16.7%        | 7.32         | 0.007   | Large       |
+**Algorithm Family Strengths:**
+- **L-BFGS variants**: Dominate convex problems with 100% success and minimal evaluations
+- **QQN variants**: Show problem-specific excellence (70-100% success on select problems)
+- **Adam variants**: Most consistent on multimodal problems (40-65% success)
+- **GD variants**: Excel on specific ML problems (100% on SVM, 75% on StyblinskiTang_10D)
 
-All tournament victories show statistical significance, with QQN's dominance particularly pronounced against Trust Region and Adam families.
+**Notable Performance Gaps:**
+- Michalewicz functions: Adam-Fast achieves 40-65% success while most others achieve 0%
+- Neural networks: Adam-Fast reaches 35-45% success vs 0% for classical methods
+- SVM problems: GD-WeightDecay achieves 100% vs 0% for most Adam/L-BFGS variants
 
 ## Scalability Analysis
 
@@ -412,53 +419,54 @@ The following figure demonstrates QQN's superior scaling on Rosenbrock and multi
 
 ## Performance on Different Problem Classes
 
-**Tournament Results by Problem Class:**
+**Detailed Results by Problem Class:**
 
 **Convex Problems:**
-* QQN variants won 2/3 problems (Sphere_2D, Sphere_10D)
-* L-BFGS won 1/3 (Matyas_2D)
-* QQN-Backtracking achieved 11.0 function evaluations on Sphere problems, demonstrating exceptional efficiency
+* L-BFGS-Aggressive: 100% success on both Sphere problems with 7-10 evaluations
+* QQN-StrongWolfe: 100% success on Sphere_2D with 12 evaluations
+* QQN-Backtracking: 100% success on Matyas_2D with 25 evaluations
 
 **Non-Convex Unimodal:**
-* QQN variants won 5/7 problems
-* L-BFGS variants won 2/7
-* QQN showed particular strength on Rosenbrock variants
+* GD-WeightDecay: Best on Rosenbrock problems (35-55% success)
+* QQN-GoldenSection: 95% success on Beale_2D (highest among all)
+* L-BFGS: 72.5% success on Levi_2D
 
 **Highly Multimodal Problems:**
-* Trust Region won 3/12 problems
-* GD variants won 3/12 problems  
-* Adam variants won 3/12 problems
-* QQN variants won 3/12 problems
-* This category showed the most diverse winners, reflecting the difficulty of multimodal optimization
+* Adam-Fast: Dominates Michalewicz functions (40-65% success)
+* QQN-Bisection-1: 70% success on Rastrigin_2D
+* QQN-Bisection-2: 85% success on StyblinskiTang_2D
+* GD: 75% success on StyblinskiTang_10D (highest for this problem)
 
 **Machine Learning Problems:**
 
-* QQN variants dominated, winning 7/8 ML problems
-* QQN-GoldenSection excelled on SVM (45.0 evaluations with 100% success)
-* QQN-MoreThuente dominated logistic regression tasks
+* Adam-Fast: Best on neural networks (35-45% success)
+* GD-WeightDecay: Perfect on SVM_100samples (100% success)
+* L-BFGS-Aggressive: Perfect on LinearRegression_200samples (100% success)
 
 # Discussion
 
 ## Key Findings
 
-The tournament-style evaluation reveals several important insights:
+The comprehensive evaluation reveals several important insights:
 
-1. **Tournament Dominance**: QQN variants won 33.3% of all problems, the highest win rate among all optimizer families. This success spans multiple problem categories, demonstrating broad applicability.
+1. **No Universal Winner**: Unlike our initial hypothesis, no single optimizer family dominates. L-BFGS-Aggressive excels on convex problems, Adam-Fast on multimodal landscapes, and QQN variants show problem-specific strengths.
 
-2. **Variant Specialization**: The tournament revealed that different QQN variants excel on different problem types:
-   - Backtracking: Best for smooth problems
-   - Strong Wolfe: Effective on moderately ill-conditioned problems
-   - Golden Section: Optimal for ML problems with noise
+2. **Line Search Critical**: Among QQN variants, line search strategy dramatically affects performance:
+   - Strong Wolfe: Best for well-conditioned problems (100% on Sphere)
+   - Bisection variants: Excel on multimodal problems (70-85% success)
+   - Golden Section: High success but expensive (300-900 evaluations)
 
-3. **Family-Level Insights**: The tournament methodology shows that optimizer families have distinct strengths:
-   - QQN: Robust across problem types
-   - L-BFGS: Efficient on well-conditioned problems
-   - Trust Region: Effective on specific multimodal problems
-   - Adam: Competitive on neural network training
+3. **Scalability Crisis**: All methods show severe degradation with dimensionality:
+   - Success rates drop 50-90% from 2D to 10D
+   - Function evaluations increase 3-5x
+   - Only simple convex problems remain solvable at high dimensions
 
-4. **Statistical Validation**: Tournament results are statistically significant, with QQN's win rate advantage backed by χ² tests showing p < 0.05 against all other families.
+4. **Problem-Specific Excellence**: Algorithms show surprising specialization:
+   - GD-WeightDecay: 100% on SVM despite poor general performance
+   - Adam-Fast: Uniquely capable on Michalewicz functions
+   - L-BFGS-Aggressive: Unmatched efficiency on convex problems
 
-5. **Efficiency vs. Robustness**: The tournament reveals a clear trade-off pattern - QQN variants typically use more function evaluations than L-BFGS but achieve higher success rates, particularly on challenging problems.
+5. **Conservative Settings Fail**: Conservative variants (L-BFGS-Conservative, Trust Region-Conservative) consistently underperform with 5% success rates, suggesting aggressive line search is crucial.
 
 ## When to Use QQN
 
@@ -466,24 +474,26 @@ The tournament-style evaluation reveals several important insights:
 
 Use QQN when:
 
-* **Ill-conditioned optimization**: Superior performance when condition numbers are high
-* **Robustness is critical**: When convergence reliability matters more than minimal function evaluations
-* **Unknown problem characteristics**: QQN's adaptive nature handles diverse problem types without tuning
+* **Multimodal landscapes**: QQN-Bisection variants achieve 70-85% success on problems like Rastrigin and StyblinskiTang
+* **Smooth non-convex problems**: QQN-GoldenSection achieves 95% success on Beale_2D
+* **When L-BFGS fails**: QQN variants provide alternative search strategies when standard quasi-Newton methods struggle
 
 Use standard L-BFGS when:
 
-* **Well-conditioned problems**: When the Hessian approximation is reliable
-* **Function evaluations are expensive**: L-BFGS typically requires fewer evaluations on well-behaved problems
+* **Convex optimization**: L-BFGS-Aggressive achieves 100% success with minimal evaluations (7-10)
+* **Well-conditioned problems**: Standard L-BFGS shows 60-72.5% success on Ackley and Levi functions
 
 Use specialized methods when:
 
-* **Highly multimodal problems**: Consider global optimization or multi-start strategies
-* **Machine learning tasks**: Adam variants remain competitive despite poor general performance
+* **Neural networks**: Adam-Fast achieves 35-45% success where others fail
+* **SVM/Classification**: GD-WeightDecay achieves 100% success
+* **High-dimensional multimodal**: Consider Adam-Fast or problem-specific methods
 
-**Diagnostic**: Run initial iterations of both L-BFGS and gradient descent. If L-BFGS shows erratic behavior or fails to descend, QQN may be more suitable. If both converge smoothly, standard L-BFGS may be more efficient.
+**Example Trade-offs**: 
+- Sphere_10D: L-BFGS-Aggressive (100% success, 10 evaluations) vs QQN-GoldenSection (100% success, 47 evaluations)
+- Michalewicz_2D: Adam-Fast (60% success, 239 evaluations) vs Trust Region-Aggressive (60% success, 4.5 evaluations)
 
-**Example of QQN Limitations**: On convex problems like Sphere, L-BFGS-Aggressive converges in an average of 8 function evaluations while QQN-Backtracking requires 10, a 25% overhead. This occurs because the quadratic path construction provides no benefit on perfectly conditioned problems where the L-BFGS direction is already optimal. 
-This efficiency loss on well-conditioned problems is balanced by QQN's robustness on challenging landscapes.
+These results suggest that practitioners should maintain a portfolio of optimizers and select based on problem characteristics rather than relying on a single method.
 
 ## Implementation Considerations
 
@@ -496,40 +506,38 @@ Users can adjust termination criteria based on their specific accuracy-efficienc
 **Memory Settings**: The L-BFGS memory parameter m=10 provides good performance without excessive memory use. 
 Larger values show diminishing returns while smaller values may compromise convergence on ill-conditioned problems.
 
-**Straight-Path Multiplier**: The gradient scaling factor γ=10 provides good default behavior across our benchmark suite. 
-This value ensures effective gradient descent phase without requiring problem-specific tuning. 
-Users working with functions having extreme scaling properties may benefit from adjusting this parameter.
 
 **Numerical Precision**: QQN's quadratic path construction exhibits good numerical stability, avoiding many of the precision issues that can plague traditional line search implementations with very small or large step sizes.
 
 ## Future Directions
 
 The quadratic interpolation approach of QQN could be extended in various ways:
+* **Deep Learning Applications**: Adapting QQN for stochastic optimization in neural network training, including mini-batch variants and adaptive learning rate schedules.
+* **Gradient Scaling (γ parameter)**: In deep learning contexts where gradients are often small, introducing an adaptive gradient scaling factor could improve convergence speed without sacrificing robustness.
+* **Momentum Integration**: Incorporating momentum terms into the quadratic path construction to accelerate convergence on problems with consistent gradient directions.
 
 * **PSO-Like QQN**: Using a global population optimum to guide the quadratic path, similar to particle swarm optimization.
-* **Stochastic Extensions**: Adapting QQN for stochastic optimization problems, in particular by optimizing the one-dimensional search under noise.
 * **Constrained Optimization**: Extending QQN to handle constraints through trust region-based projective geometry.
-* **Momentum Variants**: Exploring QQN variants that incorporate momentum into the path for faster convergence.
+* **Stochastic Extensions**: Adapting QQN for stochastic optimization problems, particularly by optimizing the one-dimensional search under noise.
 
 # Conclusions
 
-We have presented the Quadratic-Quasi-Newton (QQN) algorithm and a novel tournament-style benchmarking methodology for fair optimization algorithm comparison. Our contributions advance both algorithmic development and empirical evaluation standards in optimization research.
+We have presented the Quadratic-Quasi-Newton (QQN) algorithm and a comprehensive benchmarking methodology for fair optimization algorithm comparison. Our contributions advance both algorithmic development and empirical evaluation standards in optimization research.
 
-Our tournament-based evaluation across 30 benchmark problems with 7,800 optimization runs demonstrates:
+Our evaluation across 27 benchmark problems with 21 optimizer variants demonstrates:
 
-1. **Tournament Victory**: QQN variants achieved the highest win rate (33.3%) among all optimizer families, winning 10 out of 30 benchmark problems.
-   This dominance is statistically significant (p < 0.05) against all competing families.
+1. **Problem-Specific Excellence**: QQN variants achieve exceptional performance on specific problem types, with QQN-Bisection variants reaching 70-85% success on multimodal problems and QQN-StrongWolfe achieving 100% success on convex problems.
 
-2. **Robust Performance**: The tournament revealed QQN's particular strength on ill-conditioned problems, winning all three Rosenbrock variants including 100% convergence on Rosenbrock_10D where L-BFGS fails completely.
+2. **No Universal Optimizer**: Our results definitively show that no single optimizer dominates all problem types. L-BFGS-Aggressive excels on convex problems, Adam-Fast on multimodal landscapes, and GD-WeightDecay on specific ML tasks.
 
-3. **Methodological Innovation**: The tournament methodology provides a new standard for fair optimizer comparison, eliminating bias from cherry-picked hyperparameters and ensuring each algorithmic approach is represented by its best variant.
+3. **Scalability Challenges**: All methods show severe performance degradation with increasing dimensionality, with success rates dropping 50-90% from 2D to 10D problems.
 
 4. **Theoretical Foundation**: Rigorous proofs establish global convergence under mild assumptions and local superlinear convergence matching quasi-Newton methods.
 
-5. **Practical Impact**: QQN variants dominated machine learning problems, winning 7 out of 8 ML benchmarks, suggesting immediate practical applications.
+5. **Practical Impact**: The results provide clear guidance for practitioners: use L-BFGS-Aggressive for convex problems, Adam-Fast for neural networks and multimodal optimization, and QQN variants when standard methods fail.
 
 The simplicity of QQN's core insight—that quadratic interpolation provides the natural geometry for combining optimization directions—contrasts with the complexity of recent developments. 
-Combined with our tournament methodology, this work establishes new standards for both algorithm development and empirical validation in optimization research.
+Combined with our evaluation methodology, this work establishes new standards for both algorithm development and empirical validation in optimization research.
 
 **Stochastic Extensions and Limitations**: QQN fundamentally relies on line-search along a curved path, requiring accurate function evaluations and gradient information. This makes stochastic extensions challenging for several reasons:
 
