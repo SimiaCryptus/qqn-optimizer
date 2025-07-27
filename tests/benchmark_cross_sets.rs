@@ -40,14 +40,6 @@ async fn test(
     prefix: &str,
     problems: Vec<Arc<dyn OptimizationProblem>>
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    // run_benchmark(
-    //     &format!("{}standard_optimizers_", prefix),
-    //     1000,
-    //     10,
-    //     Duration::from_secs(60),
-    //     problems.clone(),
-    //     standard_optimizers(),
-    // ).await?;
 
     run_benchmark(
         &format!("{}qqn_variants_", prefix),
