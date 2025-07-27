@@ -10,12 +10,30 @@ use qqn_optimizer::{init_logging, OptimizationProblem};
 use qqn_optimizer::benchmarks::evaluation::enable_no_threshold_mode;
 
 #[tokio::test]
-async fn test_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn test_individually() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
     test("results/tests_",{
+        let mut problems = analytic_problems();
+        problems.extend(ml_problems());
+        problems
+    }).await?;
+
+    // Explicitly flush any pending async operations
+    tokio::task::yield_now().await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_together() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    init_logging(false)?;
+    // Enable no threshold mode for this test
+    enable_no_threshold_mode();
+
+    test_all("results/omni_",{
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems
@@ -39,6 +57,30 @@ async fn test_mnist() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tokio::task::yield_now().await;
 
     Ok(())
+}
+
+async fn test_all(
+    prefix: &str,
+    problems: Vec<Arc<dyn OptimizationProblem>>
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let max_evals = 1000;
+    let num_runs = 10;
+    run_benchmark(
+        &format!("{}all_optimizers_", prefix),
+        max_evals,
+        num_runs,
+        Duration::from_secs(60),
+        problems.clone(),
+        {
+            let mut optimizers = standard_optimizers();
+            optimizers.extend(qqn_line_search_optimizers());
+            optimizers.extend(lbfgs_variants());
+            optimizers.extend(gd_variants());
+            optimizers.extend(adam_variants());
+            optimizers.extend(trust_region_variants());
+            optimizers
+        },
+    ).await
 }
 
 async fn test(

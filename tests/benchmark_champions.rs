@@ -8,6 +8,7 @@ use crate::experiment_runner::experiment_runner::run_benchmark;
 use crate::experiment_runner::optimizer_sets::standard_optimizers;
 use crate::experiment_runner::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 use qqn_optimizer::{init_logging, OptimizationProblem};
+use qqn_optimizer::benchmarks::evaluation::enable_no_threshold_mode;
 
 /// Championship configuration mapping problem names to their champion optimizers
 fn get_championship_config() -> HashMap<String, Vec<String>> {
@@ -312,6 +313,9 @@ fn create_champion_optimizers() -> Vec<(String, Arc<dyn qqn_optimizer::Optimizer
 #[tokio::test]
 async fn test_championship_benchmarks() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logging(false)?;
+    
+    // Enable no threshold mode for this test
+    enable_no_threshold_mode();
 
     let mut problems = analytic_problems();
     problems.extend(ml_problems());

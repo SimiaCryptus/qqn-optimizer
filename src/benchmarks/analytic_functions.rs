@@ -401,7 +401,13 @@ impl OptimizationProblem for RosenbrockFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-2)
+        match self.dimension { 
+            2 => Some(1e-2),
+            5 => Some(1e-2),
+            10 => Some(1e-2),
+            _ => Some(1e-2),
+        }
+        
     }
 }
 

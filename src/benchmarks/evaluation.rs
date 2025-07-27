@@ -61,6 +61,7 @@ pub struct BenchmarkConfig {
     pub min_improvement_percent: f64,
     pub time_limit: DurationWrapper,
     pub num_runs: usize,
+    pub initial_point_noise: f64, // Noise added to initial point for variability
 }
 
 impl Default for BenchmarkConfig {
@@ -71,6 +72,7 @@ impl Default for BenchmarkConfig {
             min_improvement_percent: 1e-7, // 0.01% minimum improvement
             time_limit: Duration::from_secs(600).into(), // 10 minutes
             num_runs: 10,
+            initial_point_noise: 1e-1,
         }
     }
 }
@@ -316,6 +318,7 @@ impl BenchmarkRunner {
                             optimizer,
                             run_id,
                             &optimizer.name().to_string(),
+                            self.config.initial_point_noise,
                         )
                         .await?;
 
@@ -334,6 +337,7 @@ impl BenchmarkRunner {
         optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
         opt_name: &String,
+        noise: f64,
     ) -> Result<SingleResult, BenchmarkError> {
         info!(
             "Starting benchmark: {} with {} (run {})",
@@ -355,7 +359,6 @@ impl BenchmarkRunner {
         }
         // Randomize initial point to ensure variability
         let mut rng = rand::rng();
-        let noise = 1.0;
         for xi in x.iter_mut() {
             *xi += rng.random_range(-noise..noise); // Random perturbation
         }

@@ -13,6 +13,32 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::sync::Arc;
 
+pub fn analytic_problems() -> Vec<Arc<dyn OptimizationProblem>> {
+    vec![
+        Arc::new(SphereFunction::new(2)),
+        Arc::new(SphereFunction::new(10)),
+        Arc::new(RosenbrockFunction::new(2)),
+        Arc::new(RosenbrockFunction::new(5)),
+        Arc::new(RosenbrockFunction::new(10)),
+        Arc::new(MichalewiczFunction::new(2)),
+        Arc::new(MichalewiczFunction::new(5)),
+        Arc::new(MichalewiczFunction::new(10)),
+        Arc::new(RastriginFunction::new(2)),
+        Arc::new(RastriginFunction::new(5)),
+        Arc::new(RastriginFunction::new(10)),
+        Arc::new(AckleyFunction::new(2)),
+        Arc::new(AckleyFunction::new(5)),
+        Arc::new(AckleyFunction::new(10)),
+        Arc::new(StyblinskiTangFunction::new(2)),
+        Arc::new(StyblinskiTangFunction::new(5)),
+        Arc::new(StyblinskiTangFunction::new(10)),
+        Arc::new(BealeFunction::new()),
+        Arc::new(LeviFunction::new()),
+        Arc::new(GoldsteinPriceFunction::new()),
+        Arc::new(MatyasFunction::new()),
+    ]
+}
+
 pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
     vec![
         Arc::new({
@@ -83,32 +109,6 @@ pub fn ml_problems() -> Vec<Arc<dyn OptimizationProblem>> {
             )
             .expect("Failed to create SVM"),
         ),
-    ]
-}
-
-pub fn analytic_problems() -> Vec<Arc<dyn OptimizationProblem>> {
-    vec![
-        Arc::new(SphereFunction::new(2)),
-        Arc::new(SphereFunction::new(10)),
-        Arc::new(RosenbrockFunction::new(2)),
-        Arc::new(RosenbrockFunction::new(5)),
-        Arc::new(RosenbrockFunction::new(10)),
-        Arc::new(MichalewiczFunction::new(2)),
-        Arc::new(MichalewiczFunction::new(5)),
-        Arc::new(MichalewiczFunction::new(10)),
-        Arc::new(RastriginFunction::new(2)),
-        Arc::new(RastriginFunction::new(5)),
-        Arc::new(RastriginFunction::new(10)),
-        Arc::new(AckleyFunction::new(2)),
-        Arc::new(AckleyFunction::new(5)),
-        Arc::new(AckleyFunction::new(10)),
-        Arc::new(StyblinskiTangFunction::new(2)),
-        Arc::new(StyblinskiTangFunction::new(5)),
-        Arc::new(StyblinskiTangFunction::new(10)),
-        Arc::new(BealeFunction::new()),
-        Arc::new(LeviFunction::new()),
-        Arc::new(GoldsteinPriceFunction::new()),
-        Arc::new(MatyasFunction::new()),
     ]
 }
 

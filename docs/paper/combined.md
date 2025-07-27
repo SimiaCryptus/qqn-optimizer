@@ -199,12 +199,7 @@ When L-BFGS fails—due to indefinite curvature, numerical instabilities, or oth
 
 **Lemma 1** (Universal Descent Property): For any direction $\mathbf{d}_{\text{LBFGS}}$—even ascent directions or random vectors—the curve $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$ satisfies $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$. 
 This guarantees a neighborhood $(0, \epsilon)$ where the objective function decreases along the path.
-
-This property enables interesting variations:
-
-* **QQN-Momentum**: Replace $\mathbf{d}_{\text{LBFGS}}$ with momentum-based directions
-* **QQN-Swarm**: Use particle swarm-inspired directions
-* **QQN-Random**: Even random directions can provide exploration benefits
+This property enables interesting variations; virtually any point guessing strategy can be used as $\mathbf{d}_{\text{LBFGS}}$.
 
 The framework naturally filters any proposed direction through the lens of guaranteed initial descent, making it exceptionally robust to direction quality.
 
@@ -318,9 +313,7 @@ All implementations use consistent convergence criteria:
 
 ## Benchmark Problems
 
-We selected 30 benchmark problems that comprehensively test different aspects of optimization algorithms. The tournament methodology ensures each problem contributes equally to the final rankings, preventing bias toward specific problem types.
-
-Our suite includes 30 problems across five categories:
+We selected 30 benchmark problems that comprehensively test different aspects of optimization algorithms across five categories:
 
 **Convex Functions** (3): Sphere (2D, 10D), Matyas - test basic convergence
 
@@ -330,7 +323,7 @@ Our suite includes 30 problems across five categories:
 
 **ML-Convex** (4): Linear regression, logistic regression (varying sample sizes) - test practical convex problems
 
-**ML-Non-Convex** (4): SVM, neural networks (varying architectures) - test real-world applications
+**ML-Non-Convex** (4): SVM, neural networks (varying architectures) - test small versions of real-world ML problems
 
 ## Statistical Analysis
 
@@ -358,7 +351,8 @@ The tournament methodology revealed clear performance patterns across optimizer 
 | GD Variants      | 5/30             | 16.7%    | 42.3%           | 847.3            |
 | Adam Variants    | 4/30             | 13.3%    | 45.8%           | 692.4            |
 
-The tournament results demonstrate that QQN variants achieve the highest win rate, securing first place in one-third of all benchmark problems. This dominance is particularly notable given the fair comparison methodology that allows each family to field its best variant.
+The tournament results demonstrate that QQN variants achieve the highest win rate, securing first place in one-third of all benchmark problems. 
+This dominance is particularly notable given the fair comparison methodology that allows each family to surface its best variant.
 
 ## Tournament Insights
 
@@ -493,58 +487,29 @@ This efficiency loss on well-conditioned problems is balanced by QQN's robustnes
 
 ## Implementation Considerations
 
-**Function Evaluation Behavior**: An important characteristic of QQN is its tendency to continue refining solutions after finding good local minima. While this inflates function evaluation counts compared to methods with aggressive termination, it also contributes to QQN's robustness by thoroughly exploring the local landscape. Users can adjust termination criteria based on their specific accuracy-efficiency trade-offs.
+**Function Evaluation Behavior**: An important characteristic of QQN is its tendency to continue refining solutions after finding good local minima. 
+While this inflates function evaluation counts compared to methods with aggressive termination, it also contributes to QQN's robustness by thoroughly exploring the local landscape. 
+Users can adjust termination criteria based on their specific accuracy-efficiency trade-offs.
 
 **1D Solver Choice**: Our experiments indicate that Brent's method offers the best balance of efficiency and robustness, combining the reliability of golden section search with the speed of parabolic interpolation when applicable.
 
-**Memory Settings**: The L-BFGS memory parameter m=10 provides good performance without excessive memory use. Larger values show diminishing returns while smaller values may compromise convergence on ill-conditioned problems.
+**Memory Settings**: The L-BFGS memory parameter m=10 provides good performance without excessive memory use. 
+Larger values show diminishing returns while smaller values may compromise convergence on ill-conditioned problems.
 
-**Straight-Path Multiplier**: The gradient scaling factor γ=10 provides good default behavior across our benchmark suite. This value ensures effective interpolation between gradient and L-BFGS directions without requiring problem-specific tuning. Users working with functions having extreme scaling properties may benefit from adjusting this parameter.
+**Straight-Path Multiplier**: The gradient scaling factor γ=10 provides good default behavior across our benchmark suite. 
+This value ensures effective gradient descent phase without requiring problem-specific tuning. 
+Users working with functions having extreme scaling properties may benefit from adjusting this parameter.
 
 **Numerical Precision**: QQN's quadratic path construction exhibits good numerical stability, avoiding many of the precision issues that can plague traditional line search implementations with very small or large step sizes.
-**Code Availability**: Complete implementations of all QQN variants and the tournament benchmarking framework are available at https://github.com/SimiaCryptus/qqn-optimizer/. The codebase includes examples for immediate use and extension, reflecting the practical origins of this work in production optimization systems.
-
-
-## Broader Implications for Optimization Research
-
-The tournament methodology and QQN's success have several implications for optimization research:
-
-1. **Fair Comparison Standards**: The tournament approach demonstrates the importance of comparing optimizer families rather than individual configurations. This methodology should become standard practice in optimization research.
-
-2. **Value of Geometric Thinking**: QQN's tournament success validates that quadratic interpolation provides an effective geometric framework for combining optimization directions.
-
-3. **Variant Diversity**: The tournament revealed that having multiple variants within a family is valuable - different problems benefit from different configurations.
-
-4. **Benchmarking Rigor**: The statistical validation in our tournament methodology sets a new standard for empirical evaluation in optimization research.
 
 ## Future Directions
 
-The quadratic interpolation approach of QQN could be extended to other optimization areas:
+The quadratic interpolation approach of QQN could be extended in various ways:
 
-* **Distributed Optimization**: Geometric consensus paths for multi-agent systems
-* **Quantum Optimization**: Geometric paths in quantum state space
-
-## Implementation as Theory
-
-The simplicity of QQN's implementation reflects its theoretical approach:
-
-**Trust Region** (conceptual):
-
-```
-Solve: min_d f(x) + ∇f^T d + 0.5 d^T B d
-       s.t. ||d|| ≤ Δ
-Update trust region radius based on model accuracy
-Handle various edge cases...
-```
-
-**QQN**:
-
-```
-d(t) = t(1-t)(-∇f) + t²d_LBFGS
-t* = argmin f(x + d(t))
-```
-
-The concise implementation suggests a natural formulation of the direction combination problem.
+* **PSO-Like QQN**: Using a global population optimum to guide the quadratic path, similar to particle swarm optimization.
+* **Stochastic Extensions**: Adapting QQN for stochastic optimization problems, in particular by optimizing the one-dimensional search under noise.
+* **Constrained Optimization**: Extending QQN to handle constraints through trust region-based projective geometry.
+* **Momentum Variants**: Exploring QQN variants that incorporate momentum into the path for faster convergence.
 
 # Conclusions
 
@@ -552,7 +517,8 @@ We have presented the Quadratic-Quasi-Newton (QQN) algorithm and a novel tournam
 
 Our tournament-based evaluation across 30 benchmark problems with 7,800 optimization runs demonstrates:
 
-1. **Tournament Victory**: QQN variants achieved the highest win rate (33.3%) among all optimizer families, winning 10 out of 30 benchmark problems. This dominance is statistically significant (p < 0.05) against all competing families.
+1. **Tournament Victory**: QQN variants achieved the highest win rate (33.3%) among all optimizer families, winning 10 out of 30 benchmark problems.
+   This dominance is statistically significant (p < 0.05) against all competing families.
 
 2. **Robust Performance**: The tournament revealed QQN's particular strength on ill-conditioned problems, winning all three Rosenbrock variants including 100% convergence on Rosenbrock_10D where L-BFGS fails completely.
 
@@ -565,13 +531,16 @@ Our tournament-based evaluation across 30 benchmark problems with 7,800 optimiza
 The simplicity of QQN's core insight—that quadratic interpolation provides the natural geometry for combining optimization directions—contrasts with the complexity of recent developments. 
 Combined with our tournament methodology, this work establishes new standards for both algorithm development and empirical validation in optimization research.
 
-**Stochastic Extensions and Limitations**: QQN fundamentally relies on line search along a curved path, requiring accurate function evaluations and gradient information. This makes stochastic extensions challenging for several reasons:
+**Stochastic Extensions and Limitations**: QQN fundamentally relies on line-search along a curved path, requiring accurate function evaluations and gradient information. This makes stochastic extensions challenging for several reasons:
 
-1. **Noisy Function Evaluations**: The one-dimensional optimization along the quadratic path requires comparing function values at different points. With stochastic noise, these comparisons become unreliable.
+1. **Noisy Function Evaluations**: The one-dimensional optimization along the quadratic path requires comparing function values at different points.
+   With stochastic noise, these comparisons become unreliable.
 
-2. **Curvature Information**: L-BFGS builds its Hessian approximation from consecutive gradient differences. Stochastic gradients would corrupt this curvature information, undermining the quasi-Newton component.
+2. **Curvature Information**: L-BFGS builds its Hessian approximation from consecutive gradient differences.
+   Stochastic gradients would corrupt this curvature information, undermining the quasi-Newton component.
 
-3. **Path Coherence**: The quadratic interpolation assumes a smooth underlying function where the path from gradient to quasi-Newton direction is meaningful. In stochastic settings, this geometric interpretation breaks down.
+3. **Path Coherence**: The quadratic interpolation assumes a smooth underlying function where the path from gradient to quasi-Newton direction is meaningful.
+   In stochastic settings, this geometric interpretation breaks down.
 
 QQN is therefore best suited for deterministic optimization problems where accurate function and gradient evaluations are available, such as scientific computing, engineering design, and full-batch machine learning applications. This paper focuses on deterministic optimization as the foundation of a planned series. Future work will address stochastic extensions with variance reduction techniques, constrained optimization through trust region variants, and large-scale deep learning applications.
 
@@ -580,20 +549,19 @@ Wall-clock time comparisons on our benchmark problems would primarily reflect im
 For problems where function evaluation dominates computation time, QQN's additional overhead is negligible. 
 The geometric insights provided by counting function evaluations offer more meaningful algorithm characterization than hardware-dependent timing measurements.
 
-All code, data, and results are available at https://github.com/SimiaCryptus/qqn-optimizer/ to ensure reproducibility and enable further research. 
-We encourage the community to build upon this work and explore the broader potential of interpolation-based optimization methods.
-
 The quadratic interpolation principle demonstrates how geometric approaches can provide effective solutions to optimization problems. 
 We hope this work encourages further exploration of geometric methods in optimization and establishes new standards for rigorous algorithm comparison through our tournament methodology.
 
 # Acknowledgments
 
 The QQN algorithm was originally developed and implemented by the author in 2017, with this paper representing its first formal academic documentation. 
-AI language models assisted in the preparation of documentation, implementation of the benchmarking framework, and drafting of the manuscript. This collaborative approach between human expertise and AI assistance facilitated the academic presentation of the method.
+AI language models assisted in the preparation of documentation, implementation of the benchmarking framework, and drafting of the manuscript. 
+This collaborative approach between human expertise and AI assistance facilitated the academic presentation of the method.
 
 # Supplementary Material
 
-Complete theorem proofs, additional experimental results, implementation details, and extended statistical analyses are available in the supplementary material at https://github.com/SimiaCryptus/qqn-optimizer/.
+All code, data, and results are available at https://github.com/SimiaCryptus/qqn-optimizer/ to ensure reproducibility and enable further research.
+We encourage the community to build upon this work and explore the broader potential of interpolation-based optimization methods.
 
 # Competing Interests
 

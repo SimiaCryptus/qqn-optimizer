@@ -1,7 +1,7 @@
 use super::StatisticalAnalysis;
 use anyhow::Context;
 use log::warn;
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, SingleResult};
+use qqn_optimizer::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, SingleResult};
 use qqn_optimizer::OptimizationProblem;
 use std::collections::HashMap;
 use std::fs;
@@ -60,17 +60,17 @@ impl ReportGenerator {
     pub async fn generate_main_report(
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
-        _problems: &Vec<Arc<dyn OptimizationProblem>>,
         use_optimizer_families: bool,
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)
             .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
         println!("Generating report in directory: {}", self.output_dir);
         // Generate detailed optimizer-problem reports first
-        self.generate_detailed_reports(all_results, use_optimizer_families).await?;
+        self.generate_detailed_reports(all_results, use_optimizer_families)
+            .await?;
 
         let mut html_content = self.generate_header();
-html_content.push_str(&self.generate_header());
+        html_content.push_str(&self.generate_header());
         html_content.push_str(&self.generate_winner_summary_table(all_results));
 
         for (problem, results) in all_results {
@@ -99,11 +99,14 @@ html_content.push_str(&self.generate_header());
         // Generate LaTeX tables
         self.generate_latex_tables(all_results).await?;
         // Generate comprehensive LaTeX document
-        self.generate_comprehensive_latex_document(all_results, &Path::new(&self.output_dir).join("latex"))?;
-
+        self.generate_comprehensive_latex_document(
+            all_results,
+            &Path::new(&self.output_dir).join("latex"),
+        )?;
 
         Ok(())
     }
+
     fn generate_winner_summary_table(
         &self,
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
@@ -117,6 +120,7 @@ html_content.push_str(&self.generate_header());
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Winner</th>
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Success Rate</th>
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Mean Final Value</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Median Best Value</th>
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Runner-up</th>
 </tr>
 "#,
@@ -138,13 +142,33 @@ html_content.push_str(&self.generate_header());
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
+                let best_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.best_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
                 if final_values.is_empty() {
                     continue;
                 }
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let success_rate = success_count as f64 / runs.len() as f64;
                 let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
-                perf_data.push((optimizer.clone(), success_rate, mean_final));
+                
+                // Calculate median best value
+                let median_best = if !best_values.is_empty() {
+                    let mut sorted_best = best_values.clone();
+                    sorted_best.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    let len = sorted_best.len();
+                    if len % 2 == 0 {
+                        (sorted_best[len / 2 - 1] + sorted_best[len / 2]) / 2.0
+                    } else {
+                        sorted_best[len / 2]
+                    }
+                } else {
+                    f64::INFINITY
+                };
+                
+                perf_data.push((optimizer.clone(), success_rate, mean_final, median_best));
             }
             // Sort by success rate first, then by mean final value
             perf_data.sort_by(|a, b| {
@@ -157,7 +181,11 @@ html_content.push_str(&self.generate_header());
             });
             if !perf_data.is_empty() {
                 let winner = &perf_data[0];
-                let runner_up = if perf_data.len() > 1 { &perf_data[1] } else { winner };
+                let runner_up = if perf_data.len() > 1 {
+                    &perf_data[1]
+                } else {
+                    winner
+                };
                 let winner_style = if winner.0.contains("QQN") {
                     "background-color: #d4edda; font-weight: bold;"
                 } else {
@@ -170,6 +198,7 @@ html_content.push_str(&self.generate_header());
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{:.1}%</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{:.2e}</td>
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{:.2e}</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 </tr>
 "#,
@@ -179,18 +208,23 @@ html_content.push_str(&self.generate_header());
                     winner.0,
                     winner.1 * 100.0,
                     winner.2,
-                    if perf_data.len() > 1 { &runner_up.0 } else { "-" }
+                    winner.3,
+                    if perf_data.len() > 1 {
+                        &runner_up.0
+                    } else {
+                        "-"
+                    }
                 ));
             }
         }
         summary.push_str(
             r#"</table>
-**Legend:** 🏆 Winner determined by success rate first, then by mean final value. QQN winners are highlighted in green.
+**Legend:** Winner determined by success rate first, then by mean final value. QQN winners are highlighted in green.
+
 "#,
         );
         summary
     }
-
 
     fn generate_header(&self) -> String {
         format!(
@@ -270,6 +304,7 @@ html_content.push_str(&self.generate_header());
         section.push_str(
             r#"<table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
 <tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Rank</th>
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Optimizer</th>
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Mean Final Value<br>(All/Success/Fail)</th>
 <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Std Dev</th>
@@ -287,7 +322,7 @@ html_content.push_str(&self.generate_header());
         for (optimizer, runs) in &optimizer_stats {
             let final_values: Vec<f64> = runs
                 .iter()
-                .map(|r| r.final_value)
+                .map(|r| r.best_value)
                 .filter(|&v| v.is_finite())
                 .collect();
             if final_values.is_empty() {
@@ -415,26 +450,32 @@ html_content.push_str(&self.generate_header());
 
         perf_data.sort_by(|a, b| {
             use std::cmp::Ordering;
-            match a.7.partial_cmp(&b.7) {
-                Some(ord) => {
-                    let result = ord.reverse();
-                    if result != Ordering::Equal {
-                        return result;
-                    }
-                }
-                None => match (a.7.is_nan(), b.7.is_nan()) {
-                    (true, true) => {}
-                    (true, false) => return Ordering::Greater,
-                    (false, true) => return Ordering::Less,
-                    (false, false) => unreachable!(),
-                },
-            }
-
-            let is_failed = a.7.is_nan() || a.7 == 0.0;
-            if is_failed {
-                a.1.total_cmp(&b.1)
+            if is_no_threshold_mode() {
+                a.3.total_cmp(&b.3) // In no-threshold mode, sort by best value
             } else {
-                a.1.total_cmp(&b.1)
+                match a.7.partial_cmp(&b.7) {
+                    Some(ord) => {
+                        let result = ord.reverse();
+                        if result == Ordering::Equal {
+                            a.1.total_cmp(&b.1) // If success rates are equal, compare mean_final
+                        } else {
+                            result // Sort by success rate first
+                        }
+                    }
+                    None => match (a.7.is_nan(), b.7.is_nan()) {
+                        
+                        (true, true) => { // If both are NaN, compare mean final
+                            // Use mean_final_success if available, otherwise mean_final
+                            let mean_final_a = if(a.9.is_finite()) { a.9 } else { a.1 };
+                            let mean_final_b = if(b.9.is_finite()) { b.9 } else { b.1 };
+                            mean_final_a.total_cmp(&mean_final_b)
+                        },
+                        (true, false) => return Ordering::Greater, // If a is NaN, b is better
+                        (false, true) => return Ordering::Less, // If b is NaN, a is better
+                        (false, false) => unreachable!(), // Both are finite, should not happen
+                    },
+                }
+
             }
         });
 
@@ -471,14 +512,15 @@ html_content.push_str(&self.generate_header());
             let optimizer_filename = optimizer.replace(" ", "_");
             let detailed_report_filename =
                 format!("detailed_{}_{}.md", problem_filename, optimizer_filename);
-            let optimizer_link = format!(r#"<a href="{}">{}</a>"#, detailed_report_filename, optimizer);
-            
+            let optimizer_link = format!(
+                r#"<a href="{}">{}</a>"#,
+                detailed_report_filename, optimizer
+            );
+
             // Format the separated statistics
             let final_value_str = format!(
                 "{:.2e} / {:.2e} / {:.2e}",
-                mean_final,
-               mean_final_success,
-               mean_final_fail
+                mean_final, mean_final_success, mean_final_fail
             );
             // Create formatted strings for success/fail values
             let success_str = if mean_final_success.is_nan() || !mean_final_success.is_finite() {
@@ -491,61 +533,53 @@ html_content.push_str(&self.generate_header());
             } else {
                 format!("{:.2e}", mean_final_fail)
             };
-            let final_value_str = format!(
-                "{:.2e} / {} / {}",
-                mean_final,
-                success_str,
-                fail_str
-            );
+            let final_value_str = format!("{:.2e} / {} / {}", mean_final, success_str, fail_str);
             let func_evals_str = format!(
                 "{:.1} / {:.1} / {:.1}",
-              mean_func_evals,
-               mean_func_evals_success,
-               mean_func_evals_fail
+                mean_func_evals, mean_func_evals_success, mean_func_evals_fail
             );
             // Create formatted strings for function evaluations
-            let func_success_str = if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{:.1}", mean_func_evals_success)
-            };
-            let func_fail_str = if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{:.1}", mean_func_evals_fail)
-            };
+            let func_success_str =
+                if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
+                    "-".to_string()
+                } else {
+                    format!("{:.1}", mean_func_evals_success)
+                };
+            let func_fail_str =
+                if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
+                    "-".to_string()
+                } else {
+                    format!("{:.1}", mean_func_evals_fail)
+                };
             let func_evals_str = format!(
                 "{:.1} / {} / {}",
-                mean_func_evals,
-                func_success_str,
-                func_fail_str
+                mean_func_evals, func_success_str, func_fail_str
             );
             let grad_evals_str = format!(
                 "{:.1} / {:.1} / {:.1}",
-              mean_grad_evals,
-               mean_grad_evals_success,
-               mean_grad_evals_fail
+                mean_grad_evals, mean_grad_evals_success, mean_grad_evals_fail
             );
             // Create formatted strings for gradient evaluations
-            let grad_success_str = if mean_grad_evals_success.is_nan() || !mean_grad_evals_success.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{:.1}", mean_grad_evals_success)
-            };
-            let grad_fail_str = if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{:.1}", mean_grad_evals_fail)
-            };
+            let grad_success_str =
+                if mean_grad_evals_success.is_nan() || !mean_grad_evals_success.is_finite() {
+                    "-".to_string()
+                } else {
+                    format!("{:.1}", mean_grad_evals_success)
+                };
+            let grad_fail_str =
+                if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
+                    "-".to_string()
+                } else {
+                    format!("{:.1}", mean_grad_evals_fail)
+                };
             let grad_evals_str = format!(
                 "{:.1} / {} / {}",
-                mean_grad_evals,
-                grad_success_str,
-                grad_fail_str
+                mean_grad_evals, grad_success_str, grad_fail_str
             );
 
             section.push_str(&format!(
                 r#"<tr style="{}">
+<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{:.2e}</td>
@@ -558,6 +592,7 @@ html_content.push_str(&self.generate_header());
 </tr>
 "#,
                 style,
+                i + 1, // Rank (1-based)
                 optimizer_link,
                 final_value_str,
                 std_final,
@@ -675,7 +710,8 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 ### Key Findings
 
 
-"#.to_string()
+"#
+        .to_string()
     }
 
     fn generate_html_footer(&self) -> String {
@@ -948,8 +984,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         let latex_dir = Path::new(&self.output_dir).join("latex");
-        fs::create_dir_all(&latex_dir)
-            .with_context(|| format!("Failed to create LaTeX directory: {}", latex_dir.display()))?;
+        fs::create_dir_all(&latex_dir).with_context(|| {
+            format!("Failed to create LaTeX directory: {}", latex_dir.display())
+        })?;
         println!("Generating LaTeX tables in: {}", latex_dir.display());
         // Generate main performance table
         self.generate_main_performance_latex_table(all_results, &latex_dir)?;
@@ -963,7 +1000,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         self.generate_comparison_matrix_latex_table(all_results, &latex_dir)?;
         // Generate family comparison matrix table
         self.generate_family_comparison_matrix_latex_table(all_results, &latex_dir)?;
-        
+
         Ok(())
     }
     /// Generate main performance LaTeX table
@@ -1067,9 +1104,26 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
                 }
             });
-            for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
+            for (
+                i,
+                (
+                    optimizer,
+                    mean_final,
+                    std_final,
+                    best_final,
+                    worst_final,
+                    mean_func_evals,
+                    success_rate,
+                    mean_time,
+                ),
+            ) in perf_data.iter().enumerate()
+            {
                 let problem_cell = if i == 0 {
-                    format!("\\multirow{{{}}}{{*}}{{{}}}", perf_data.len(), Self::escape_latex(problem_name))
+                    format!(
+                        "\\multirow{{{}}}{{*}}{{{}}}",
+                        perf_data.len(),
+                        Self::escape_latex(problem_name)
+                    )
                 } else {
                     String::new()
                 };
@@ -1104,7 +1158,10 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let latex_path = latex_dir.join("main_performance_table.tex");
         fs::write(&latex_path, latex_content)
             .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
-        println!("Generated main performance LaTeX table: {}", latex_path.display());
+        println!(
+            "Generated main performance LaTeX table: {}",
+            latex_path.display()
+        );
         Ok(())
     }
     /// Generate problem-specific LaTeX table
@@ -1203,7 +1260,20 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
             }
         });
-        for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
+        for (
+            i,
+            (
+                optimizer,
+                mean_final,
+                std_final,
+                best_final,
+                worst_final,
+                mean_func_evals,
+                success_rate,
+                mean_time,
+            ),
+        ) in perf_data.iter().enumerate()
+        {
             let optimizer_style = if i == 0 {
                 format!("\\textbf{{{}}}", Self::escape_latex(optimizer))
             } else {
@@ -1261,7 +1331,8 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 "#,
         );
         // Group by problem family
-        let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
+            HashMap::new();
         for (problem, results) in all_results {
             let family = get_family(&problem.name());
             for result in &results.results {
@@ -1291,16 +1362,44 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     } else {
                         f64::INFINITY
                     };
-                    let avg_func_evals = runs.iter().map(|r| r.function_evaluations as f64).sum::<f64>() / runs.len() as f64;
-                    let avg_grad_evals = runs.iter().map(|r| r.gradient_evaluations as f64).sum::<f64>() / runs.len() as f64;
-                    let avg_time = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum::<f64>() / runs.len() as f64;
-                    optimizer_data.push((optimizer.clone(), success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time));
+                    let avg_func_evals = runs
+                        .iter()
+                        .map(|r| r.function_evaluations as f64)
+                        .sum::<f64>()
+                        / runs.len() as f64;
+                    let avg_grad_evals = runs
+                        .iter()
+                        .map(|r| r.gradient_evaluations as f64)
+                        .sum::<f64>()
+                        / runs.len() as f64;
+                    let avg_time = runs
+                        .iter()
+                        .map(|r| r.execution_time.as_secs_f64())
+                        .sum::<f64>()
+                        / runs.len() as f64;
+                    optimizer_data.push((
+                        optimizer.clone(),
+                        success_rate,
+                        avg_final,
+                        avg_func_evals,
+                        avg_grad_evals,
+                        avg_time,
+                    ));
                 }
                 // Sort by success rate
-                optimizer_data.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-                for (i, (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time)) in optimizer_data.iter().enumerate() {
+                optimizer_data
+                    .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                for (
+                    i,
+                    (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),
+                ) in optimizer_data.iter().enumerate()
+                {
                     let family_cell = if i == 0 {
-                        format!("\\multirow{{{}}}{{*}}{{{}}}", optimizer_data.len(), Self::escape_latex(&family))
+                        format!(
+                            "\\multirow{{{}}}{{*}}{{{}}}",
+                            optimizer_data.len(),
+                            Self::escape_latex(&family)
+                        )
                     } else {
                         String::new()
                     };
@@ -1336,7 +1435,10 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let latex_path = latex_dir.join("summary_statistics.tex");
         fs::write(&latex_path, latex_content)
             .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
-        println!("Generated summary statistics LaTeX table: {}", latex_path.display());
+        println!(
+            "Generated summary statistics LaTeX table: {}",
+            latex_path.display()
+        );
         Ok(())
     }
     /// Generate comparison matrix LaTeX table
@@ -1388,10 +1490,15 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \midrule
 "#,
             "c".repeat(non_qqn_optimizers.len()),
-            non_qqn_optimizers.iter().map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex(opt))).collect::<Vec<_>>().join(" ")
+            non_qqn_optimizers
+                .iter()
+                .map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex(opt)))
+                .collect::<Vec<_>>()
+                .join(" ")
         ));
         // Group results by problem for comparison
-        let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
+            HashMap::new();
         for (problem, results) in all_results {
             let problem_name = problem.name();
             for result in &results.results {
@@ -1410,8 +1517,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 let mut losses = 0;
                 let mut ties = 0;
                 for (_, optimizers) in &problem_results {
-                    if let (Some(qqn_results), Some(non_qqn_results)) = 
-                        (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt)) {
+                    if let (Some(qqn_results), Some(non_qqn_results)) =
+                        (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
+                    {
                         if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
                             let qqn_final_values: Vec<f64> = qqn_results
                                 .iter()
@@ -1424,9 +1532,14 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                                 .filter(|&v| v.is_finite())
                                 .collect();
                             if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                                let qqn_mean = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
-                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
-                                if let Ok((_, p_value)) = self.statistical_analysis.welch_t_test_public(&qqn_final_values, &non_qqn_final_values) {
+                                let qqn_mean = qqn_final_values.iter().sum::<f64>()
+                                    / qqn_final_values.len() as f64;
+                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
+                                    / non_qqn_final_values.len() as f64;
+                                if let Ok((_, p_value)) = self
+                                    .statistical_analysis
+                                    .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
+                                {
                                     if p_value < 0.05 {
                                         if qqn_mean < non_qqn_mean {
                                             wins += 1;
@@ -1444,9 +1557,15 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     }
                 }
                 let cell_content = if wins > losses {
-                    format!("\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else if losses > wins {
-                    format!("\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else {
                     format!("{}W-{}L-{}T", wins, losses, ties)
                 };
@@ -1466,7 +1585,10 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let latex_path = latex_dir.join("comparison_matrix.tex");
         fs::write(&latex_path, latex_content)
             .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
-        println!("Generated comparison matrix LaTeX table: {}", latex_path.display());
+        println!(
+            "Generated comparison matrix LaTeX table: {}",
+            latex_path.display()
+        );
         Ok(())
     }
     /// Generate family comparison matrix LaTeX table
@@ -1519,10 +1641,15 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \midrule
 "#,
             "c".repeat(non_qqn_families.len()),
-            non_qqn_families.iter().map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam))).collect::<Vec<_>>().join(" ")
+            non_qqn_families
+                .iter()
+                .map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam)))
+                .collect::<Vec<_>>()
+                .join(" ")
         ));
         // Group results by problem and family for comparison
-        let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
+            HashMap::new();
         for (problem, results) in all_results {
             let problem_name = problem.name();
             for result in &results.results {
@@ -1542,8 +1669,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 let mut losses = 0;
                 let mut ties = 0;
                 for (_, families) in &problem_family_results {
-                    if let (Some(qqn_results), Some(non_qqn_results)) = 
-                        (families.get(qqn_fam), families.get(non_qqn_fam)) {
+                    if let (Some(qqn_results), Some(non_qqn_results)) =
+                        (families.get(qqn_fam), families.get(non_qqn_fam))
+                    {
                         if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
                             let qqn_final_values: Vec<f64> = qqn_results
                                 .iter()
@@ -1556,9 +1684,14 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                                 .filter(|&v| v.is_finite())
                                 .collect();
                             if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                                let qqn_mean = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
-                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
-                                if let Ok((_, p_value)) = self.statistical_analysis.welch_t_test_public(&qqn_final_values, &non_qqn_final_values) {
+                                let qqn_mean = qqn_final_values.iter().sum::<f64>()
+                                    / qqn_final_values.len() as f64;
+                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
+                                    / non_qqn_final_values.len() as f64;
+                                if let Ok((_, p_value)) = self
+                                    .statistical_analysis
+                                    .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
+                                {
                                     if p_value < 0.05 {
                                         if qqn_mean < non_qqn_mean {
                                             wins += 1;
@@ -1576,9 +1709,15 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     }
                 }
                 let cell_content = if wins > losses {
-                    format!("\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else if losses > wins {
-                    format!("\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else {
                     format!("{}W-{}L-{}T", wins, losses, ties)
                 };
@@ -1598,10 +1737,13 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let latex_path = latex_dir.join("family_comparison_matrix.tex");
         fs::write(&latex_path, latex_content)
             .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
-        println!("Generated family comparison matrix LaTeX table: {}", latex_path.display());
+        println!(
+            "Generated family comparison matrix LaTeX table: {}",
+            latex_path.display()
+        );
         Ok(())
     }
-    
+
     /// Generate comprehensive LaTeX document with all tables
     fn generate_comprehensive_latex_document(
         &self,
@@ -1677,7 +1819,7 @@ The following sections present detailed performance comparisons across all teste
         );
         // Include family comparison matrix content
         latex_content.push_str(&self.generate_family_comparison_matrix_table_content(all_results)?);
-        
+
         latex_content.push_str(
             r#"
 \section{Individual Problem Results}
@@ -1717,9 +1859,16 @@ All raw experimental data, convergence plots, and additional analysis files are 
 "#,
         );
         let latex_path = latex_dir.join("comprehensive_benchmark_report.tex");
-        fs::write(&latex_path, latex_content)
-            .with_context(|| format!("Failed to write comprehensive LaTeX document to: {}", latex_path.display()))?;
-        println!("Generated comprehensive LaTeX document: {}", latex_path.display());
+        fs::write(&latex_path, latex_content).with_context(|| {
+            format!(
+                "Failed to write comprehensive LaTeX document to: {}",
+                latex_path.display()
+            )
+        })?;
+        println!(
+            "Generated comprehensive LaTeX document: {}",
+            latex_path.display()
+        );
         Ok(())
     }
     /// Generate main performance table content (without document wrapper)
@@ -1815,9 +1964,26 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
                 }
             });
-            for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
+            for (
+                i,
+                (
+                    optimizer,
+                    mean_final,
+                    std_final,
+                    best_final,
+                    worst_final,
+                    mean_func_evals,
+                    success_rate,
+                    mean_time,
+                ),
+            ) in perf_data.iter().enumerate()
+            {
                 let problem_cell = if i == 0 {
-                    format!("\\multirow{{{}}}{{*}}{{{}}}", perf_data.len(), Self::escape_latex(problem_name))
+                    format!(
+                        "\\multirow{{{}}}{{*}}{{{}}}",
+                        perf_data.len(),
+                        Self::escape_latex(problem_name)
+                    )
                 } else {
                     String::new()
                 };
@@ -1866,7 +2032,8 @@ All raw experimental data, convergence plots, and additional analysis files are 
 "#,
         );
         // Group by problem family (same logic as before)
-        let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
+            HashMap::new();
         for (problem, results) in all_results {
             let family = get_family(&problem.name());
             for result in &results.results {
@@ -1896,15 +2063,43 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     } else {
                         f64::INFINITY
                     };
-                    let avg_func_evals = runs.iter().map(|r| r.function_evaluations as f64).sum::<f64>() / runs.len() as f64;
-                    let avg_grad_evals = runs.iter().map(|r| r.gradient_evaluations as f64).sum::<f64>() / runs.len() as f64;
-                    let avg_time = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum::<f64>() / runs.len() as f64;
-                    optimizer_data.push((optimizer.clone(), success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time));
+                    let avg_func_evals = runs
+                        .iter()
+                        .map(|r| r.function_evaluations as f64)
+                        .sum::<f64>()
+                        / runs.len() as f64;
+                    let avg_grad_evals = runs
+                        .iter()
+                        .map(|r| r.gradient_evaluations as f64)
+                        .sum::<f64>()
+                        / runs.len() as f64;
+                    let avg_time = runs
+                        .iter()
+                        .map(|r| r.execution_time.as_secs_f64())
+                        .sum::<f64>()
+                        / runs.len() as f64;
+                    optimizer_data.push((
+                        optimizer.clone(),
+                        success_rate,
+                        avg_final,
+                        avg_func_evals,
+                        avg_grad_evals,
+                        avg_time,
+                    ));
                 }
-                optimizer_data.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-                for (i, (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time)) in optimizer_data.iter().enumerate() {
+                optimizer_data
+                    .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                for (
+                    i,
+                    (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),
+                ) in optimizer_data.iter().enumerate()
+                {
                     let family_cell = if i == 0 {
-                        format!("\\multirow{{{}}}{{*}}{{{}}}", optimizer_data.len(), Self::escape_latex(&family))
+                        format!(
+                            "\\multirow{{{}}}{{*}}{{{}}}",
+                            optimizer_data.len(),
+                            Self::escape_latex(&family)
+                        )
                     } else {
                         String::new()
                     };
@@ -1976,10 +2171,15 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \midrule
 "#,
             "c".repeat(non_qqn_optimizers.len()),
-            non_qqn_optimizers.iter().map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex(opt))).collect::<Vec<_>>().join(" ")
+            non_qqn_optimizers
+                .iter()
+                .map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex(opt)))
+                .collect::<Vec<_>>()
+                .join(" ")
         );
         // Same comparison logic as before...
-        let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
+            HashMap::new();
         for (problem, results) in all_results {
             let problem_name = problem.name();
             for result in &results.results {
@@ -1998,8 +2198,9 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 let mut losses = 0;
                 let mut ties = 0;
                 for (_, optimizers) in &problem_results {
-                    if let (Some(qqn_results), Some(non_qqn_results)) = 
-                        (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt)) {
+                    if let (Some(qqn_results), Some(non_qqn_results)) =
+                        (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
+                    {
                         if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
                             let qqn_final_values: Vec<f64> = qqn_results
                                 .iter()
@@ -2012,9 +2213,14 @@ All raw experimental data, convergence plots, and additional analysis files are 
                                 .filter(|&v| v.is_finite())
                                 .collect();
                             if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                                let qqn_mean = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
-                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
-                                if let Ok((_, p_value)) = self.statistical_analysis.welch_t_test_public(&qqn_final_values, &non_qqn_final_values) {
+                                let qqn_mean = qqn_final_values.iter().sum::<f64>()
+                                    / qqn_final_values.len() as f64;
+                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
+                                    / non_qqn_final_values.len() as f64;
+                                if let Ok((_, p_value)) = self
+                                    .statistical_analysis
+                                    .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
+                                {
                                     if p_value < 0.05 {
                                         if qqn_mean < non_qqn_mean {
                                             wins += 1;
@@ -2032,9 +2238,15 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     }
                 }
                 let cell_content = if wins > losses {
-                    format!("\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else if losses > wins {
-                    format!("\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else {
                     format!("{}W-{}L-{}T", wins, losses, ties)
                 };
@@ -2091,10 +2303,15 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \midrule
 "#,
             "c".repeat(non_qqn_families.len()),
-            non_qqn_families.iter().map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam))).collect::<Vec<_>>().join(" ")
+            non_qqn_families
+                .iter()
+                .map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam)))
+                .collect::<Vec<_>>()
+                .join(" ")
         );
         // Group results by problem and family for comparison
-        let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+        let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
+            HashMap::new();
         for (problem, results) in all_results {
             let problem_name = problem.name();
             for result in &results.results {
@@ -2114,8 +2331,9 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 let mut losses = 0;
                 let mut ties = 0;
                 for (_, families) in &problem_family_results {
-                    if let (Some(qqn_results), Some(non_qqn_results)) = 
-                        (families.get(qqn_fam), families.get(non_qqn_fam)) {
+                    if let (Some(qqn_results), Some(non_qqn_results)) =
+                        (families.get(qqn_fam), families.get(non_qqn_fam))
+                    {
                         if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
                             let qqn_final_values: Vec<f64> = qqn_results
                                 .iter()
@@ -2128,9 +2346,14 @@ All raw experimental data, convergence plots, and additional analysis files are 
                                 .filter(|&v| v.is_finite())
                                 .collect();
                             if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                                let qqn_mean = qqn_final_values.iter().sum::<f64>() / qqn_final_values.len() as f64;
-                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>() / non_qqn_final_values.len() as f64;
-                                if let Ok((_, p_value)) = self.statistical_analysis.welch_t_test_public(&qqn_final_values, &non_qqn_final_values) {
+                                let qqn_mean = qqn_final_values.iter().sum::<f64>()
+                                    / qqn_final_values.len() as f64;
+                                let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
+                                    / non_qqn_final_values.len() as f64;
+                                if let Ok((_, p_value)) = self
+                                    .statistical_analysis
+                                    .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
+                                {
                                     if p_value < 0.05 {
                                         if qqn_mean < non_qqn_mean {
                                             wins += 1;
@@ -2148,9 +2371,15 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     }
                 }
                 let cell_content = if wins > losses {
-                    format!("\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else if losses > wins {
-                    format!("\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}", wins, losses, ties)
+                    format!(
+                        "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
+                        wins, losses, ties
+                    )
                 } else {
                     format!("{}W-{}L-{}T", wins, losses, ties)
                 };
@@ -2168,7 +2397,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         );
         Ok(content)
     }
-    
+
     /// Generate problem table content (without document wrapper)
     fn generate_problem_table_content(
         &self,
@@ -2254,7 +2483,20 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
             }
         });
-        for (i, (optimizer, mean_final, std_final, best_final, worst_final, mean_func_evals, success_rate, mean_time)) in perf_data.iter().enumerate() {
+        for (
+            i,
+            (
+                optimizer,
+                mean_final,
+                std_final,
+                best_final,
+                worst_final,
+                mean_func_evals,
+                success_rate,
+                mean_time,
+            ),
+        ) in perf_data.iter().enumerate()
+        {
             let optimizer_style = if i == 0 {
                 format!("\\textbf{{{}}}", Self::escape_latex(optimizer))
             } else {
@@ -2310,9 +2552,8 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 } else {
                     result.optimizer_name.clone()
                 };
-                let optimizer_results_vec = optimizer_results
-                    .entry(optimizer_key)
-                    .or_insert(Vec::new());
+                let optimizer_results_vec =
+                    optimizer_results.entry(optimizer_key).or_insert(Vec::new());
                 optimizer_results_vec.push(result);
             }
             // Generate detailed report for each optimizer on this problem
@@ -2567,8 +2808,10 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 content.push_str("\n#### Parameter Evolution (Selected Iterations)\n\n");
                 content.push_str(r#"<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
 "#);
-                content.push_str(r#"<tr style="background-color: #f2f2f2;">
-"#);
+                content.push_str(
+                    r#"<tr style="background-color: #f2f2f2;">
+"#,
+                );
                 content.push_str(
                     r#"<th style="border: 1px solid #ddd; padding: 4px;">Iteration</th>
 "#,
@@ -2585,8 +2828,10 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     r#"<th style="border: 1px solid #ddd; padding: 4px;">Step Size</th>
 "#,
                 );
-                content.push_str(r#"<th style="border: 1px solid #ddd; padding: 4px;">Parameters (first 5)</th>
-"#);
+                content.push_str(
+                    r#"<th style="border: 1px solid #ddd; padding: 4px;">Parameters (first 5)</th>
+"#,
+                );
                 content.push_str("</tr>\n");
                 let iterations_to_show = if best_run.trace.iterations.len() <= 10 {
                     best_run.trace.iterations.iter().collect::<Vec<_>>()

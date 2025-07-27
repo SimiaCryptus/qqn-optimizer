@@ -39,6 +39,7 @@ pub struct QQNConfig {
     pub min_step_size: f64,
     /// Scaling factor for gradient descent direction in steepest descent
     /// This allows line search to explore larger step sizes while operating in [0,1]
+    /// Particularly useful for deep learning where gradients can be very small
     pub gradient_scale_factor: f64,
 }
 

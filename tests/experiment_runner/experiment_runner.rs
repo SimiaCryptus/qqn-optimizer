@@ -2,7 +2,7 @@ use super::{PlottingManager, ReportGenerator};
 use log::{info, warn, error};
 use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult};
 use qqn_optimizer::{ OptimizationProblem, Optimizer};
-use qqn_optimizer::benchmarks::evaluation::{enable_no_threshold_mode, disable_no_threshold_mode};
+use qqn_optimizer::benchmarks::evaluation::{enable_no_threshold_mode};
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
@@ -75,7 +75,7 @@ impl ExperimentRunner {
            .collect();
        
        self.plotting_manager.generate_all_plots(&results_refs).await?;
-       self.report_generator.generate_main_report(&results_refs, &problems, false).await?;
+       self.report_generator.generate_main_report(&results_refs, false).await?;
 
         info!(
             "Benchmark experiments completed. Results saved to: {}",
@@ -145,7 +145,7 @@ impl ExperimentRunner {
         for (opt_name, ref optimizer) in optimizers.iter() {
             for run_id in 0..self.config.num_runs {
                 let mut result = match runner
-                    .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name)
+                    .run_single_benchmark(problem, &mut optimizer.clone_box(), run_id, &opt_name, self.config.initial_point_noise)
                     .await
                 {
                     Ok(result) => result,
@@ -248,7 +248,13 @@ pub async fn run_championship_benchmark(
             for (opt_name, optimizer) in &problem_optimizers {
                 for run_id in 0..config.num_runs {
                     let result = match runner
-                        .run_single_benchmark(problem.as_ref(), &mut optimizer.clone_box(), run_id, opt_name)
+                        .run_single_benchmark(
+                            problem.as_ref(),
+                            &mut optimizer.clone_box(),
+                            run_id,
+                            opt_name,
+                            config.initial_point_noise
+                        )
                         .await
                     {
                         Ok(mut result) => {
@@ -296,7 +302,7 @@ pub async fn run_championship_benchmark(
        
        plotting_manager.generate_all_plots(&results_refs).await?;
        // Use optimizer families for championship benchmarks
-       report_generator.generate_main_report(&results_refs, &problems, true).await?;
+       report_generator.generate_main_report(&results_refs, true).await?;
     println!("Championship benchmark completed successfully");
     Ok(())
 }
