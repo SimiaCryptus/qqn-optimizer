@@ -14,29 +14,29 @@ pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;
 /// Default L-BFGS history size
 pub const DEFAULT_LBFGS_HISTORY: usize = 10;
 
-pub mod line_search_cubic_quadratic;
-pub mod line_search_golden_section;
-pub mod line_search_more_thuente;
-pub mod line_search_bisection;
-pub mod line_search_backtracking;
-pub mod line_search_strong_wolfe;
+pub mod cubic_quadratic;
+pub mod golden_section;
+pub mod more_thuente;
+pub mod bisection;
+pub mod backtracking;
+pub mod strong_wolfe;
 
-pub use line_search_backtracking::{
+pub use backtracking::{
     BacktrackingConfig, BacktrackingLineSearch,
 };
-pub use line_search_strong_wolfe::{
+pub use strong_wolfe::{
     StrongWolfeConfig, StrongWolfeLineSearch,
 };
-pub use line_search_bisection::{
+pub use bisection::{
     BisectionConfig,BisectionLineSearch,
 };
-pub use line_search_cubic_quadratic::{
+pub use cubic_quadratic::{
     CubicQuadraticConfig, CubicQuadraticLineSearch,
 };
-pub use line_search_golden_section::{
+pub use golden_section::{
     GoldenSectionConfig, GoldenSectionLineSearch,
 };
-pub use line_search_more_thuente::{
+pub use more_thuente::{
     MoreThuenteConfig, MoreThuenteLineSearch,
 };
 
