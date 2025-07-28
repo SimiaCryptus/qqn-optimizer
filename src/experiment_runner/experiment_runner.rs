@@ -1,14 +1,11 @@
 use super::{PlottingManager, ReportGenerator};
 use log::{error, info, warn};
-use qqn_optimizer::benchmarks::evaluation::enable_no_threshold_mode;
-use qqn_optimizer::benchmarks::evaluation::{
-    BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, SingleResult,
-};
-use qqn_optimizer::{OptimizationProblem, Optimizer};
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::Arc;
 use std::time::Duration;
+use crate::benchmarks::evaluation::{enable_no_threshold_mode, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper, ProblemSpec, SingleResult};
+use crate::Optimizer;
 
 /// Core experiment runner focused on benchmark execution
 pub struct ExperimentRunner {
@@ -37,7 +34,7 @@ impl ExperimentRunner {
         // Ensure output directory exists
         fs::create_dir_all(&self.output_dir)?;
         // Run benchmarks for each problem with its specific optimizers
-        let mut all_results: Vec<(Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
+        let mut all_results: Vec<(ProblemSpec, BenchmarkResults)> = Vec::new();
         for (problem_name, optimizers) in &problem_optimizer_map {
             // Find the problem by name (we'll need to pass problems separately or store them)
             info!(
@@ -52,7 +49,7 @@ impl ExperimentRunner {
     /// Run comprehensive comparative benchmarks
     pub async fn run_comparative_benchmarks(
         &self,
-        problems: Vec<Arc<dyn OptimizationProblem>>,
+        problems: Vec<ProblemSpec>,
         optimizers: Vec<(String, Arc<dyn Optimizer>)>,
     ) -> anyhow::Result<()> {
         info!("Starting comprehensive comparative benchmarks");
@@ -64,12 +61,12 @@ impl ExperimentRunner {
         self.validate_problems(&problems).await?;
 
         // Run benchmarks for each problem
-        let mut all_results: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
+        let mut all_results: Vec<(&ProblemSpec, BenchmarkResults)> = Vec::new();
 
         for problem in &problems {
-            info!("Running benchmarks for problem: {}", problem.name());
+            info!("Running benchmarks for problem: {}", problem.get_name());
             let results = self
-                .run_problem_benchmarks(problem.as_ref(), &optimizers)
+                .run_problem_benchmarks(problem, &optimizers)
                 .await?;
             all_results.push((problem, results));
             tokio::task::yield_now().await;
@@ -78,7 +75,7 @@ impl ExperimentRunner {
         // Generate comprehensive analysis and reports
 
         // Convert to the expected format with references
-        let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
+        let results_refs: Vec<(&ProblemSpec, BenchmarkResults)> = all_results
             .iter()
             .map(|(problem, results)| (*problem, results.clone()))
             .collect();
@@ -101,10 +98,10 @@ impl ExperimentRunner {
 
     pub async fn validate_problems(
         &self,
-        problems: &[Arc<dyn OptimizationProblem>],
+        problems: &[ProblemSpec],
     ) -> anyhow::Result<()> {
         for problem in problems {
-            let initial_params = problem.initial_point();
+            let initial_params = problem.problem.initial_point();
             let mut rng = rand::rngs::StdRng::try_from_os_rng()
                 .expect("Failed to create random number generator");
             let initial_params: Vec<f64> = initial_params
@@ -113,12 +110,12 @@ impl ExperimentRunner {
                 .collect();
 
             // Try to evaluate with error handling for non-finite values
-            let initial_value = match problem.evaluate_f64(&initial_params) {
+            let initial_value = match problem.problem.evaluate_f64(&initial_params) {
                 Ok(val) if val.is_finite() => val,
                 Ok(val) => {
                     warn!(
                         "Problem {} returned non-finite initial value: {}",
-                        problem.name(),
+                        problem.get_name(),
                         val
                     );
                     continue;
@@ -126,7 +123,7 @@ impl ExperimentRunner {
                 Err(e) => {
                     warn!(
                         "Problem {} failed initial evaluation: {}",
-                        problem.name(),
+                        problem.get_name(),
                         e
                     );
                     continue;
@@ -135,14 +132,14 @@ impl ExperimentRunner {
 
             info!(
                 "Problem {}: initial_value = {:.6e}, dimensions = {}",
-                problem.name(),
+                problem.get_name(),
                 initial_value,
                 initial_params.len()
             );
             if initial_value < 1e-10 {
                 warn!(
                     "Problem {} may be starting too close to optimum (initial_value = {:.6e})",
-                    problem.name(),
+                    problem.get_name(),
                     initial_value
                 );
             }
@@ -152,7 +149,7 @@ impl ExperimentRunner {
 
     async fn run_problem_benchmarks(
         &self,
-        problem: &dyn OptimizationProblem,
+        problem: &ProblemSpec,
         optimizers: &[(String, Arc<dyn Optimizer>)],
     ) -> anyhow::Result<BenchmarkResults> {
         let runner = BenchmarkRunner::new(self.config.clone());
@@ -174,7 +171,7 @@ impl ExperimentRunner {
                     Err(e) => {
                         error!(
                             "Benchmark failed for {} with {}: {}",
-                            problem.name(),
+                            problem.get_name(),
                             opt_name,
                             e
                         );
@@ -188,7 +185,7 @@ impl ExperimentRunner {
                     }
                 };
 
-                if let Some(optimal_value) = problem.optimal_value() {
+                if let Some(optimal_value) = problem.problem.optimal_value() {
                     let success_threshold = optimal_value;
                     result.convergence_achieved &=
                         result.best_value.is_finite() && result.best_value < success_threshold;
@@ -199,7 +196,7 @@ impl ExperimentRunner {
                 if !result.best_value.is_finite() {
                     warn!(
                         "Non-finite best value for {} with {}: {}",
-                        problem.name(),
+                        problem.get_name(),
                         opt_name,
                         result.best_value
                     );
@@ -223,7 +220,7 @@ pub async fn run_championship_benchmark(
     max_evals: usize,
     num_runs: usize,
     time_limit: Duration,
-    problems: Vec<Arc<dyn OptimizationProblem>>,
+    problems: Vec<ProblemSpec>,
     championship_config: std::collections::HashMap<String, Vec<String>>,
     all_optimizers: Vec<(String, Arc<dyn Optimizer>)>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -249,11 +246,11 @@ pub async fn run_championship_benchmark(
         ..BenchmarkConfig::default()
     };
     let runner = BenchmarkRunner::new(config.clone());
-    let mut all_results: Vec<(Arc<dyn OptimizationProblem>, BenchmarkResults)> = Vec::new();
+    let mut all_results: Vec<(ProblemSpec, BenchmarkResults)> = Vec::new();
     // Run each problem with only its champion optimizers
     for problem in &problems {
-        let problem_name = problem.name();
-        if let Some(champion_names) = championship_config.get(problem_name) {
+        let problem_name = problem.get_name().to_string();
+        if let Some(champion_names) = championship_config.get(&problem_name) {
             info!(
                 "Running championship benchmarks for problem: {}",
                 problem_name
@@ -283,7 +280,7 @@ pub async fn run_championship_benchmark(
                 for run_id in 0..config.num_runs {
                     let result = match runner
                         .run_single_benchmark(
-                            problem.as_ref(),
+                            problem,
                             &mut optimizer.clone_box(),
                             run_id,
                             opt_name,
@@ -293,7 +290,7 @@ pub async fn run_championship_benchmark(
                     {
                         Ok(mut result) => {
                             // Apply convergence criteria
-                            if let Some(optimal_value) = problem.optimal_value() {
+                            if let Some(optimal_value) = problem.problem.optimal_value() {
                                 let success_threshold = optimal_value + 1e-6;
                                 result.convergence_achieved &= result.best_value.is_finite()
                                     && result.best_value < success_threshold;
@@ -340,7 +337,7 @@ pub async fn run_championship_benchmark(
     let plotting_manager = PlottingManager::new(output_dir.to_string_lossy().to_string());
 
     // Convert to the expected format with references
-    let results_refs: Vec<(&Arc<dyn OptimizationProblem>, BenchmarkResults)> = all_results
+    let results_refs: Vec<(&ProblemSpec, BenchmarkResults)> = all_results
         .iter()
         .map(|(problem, results)| (problem, results.clone()))
         .collect();
@@ -359,7 +356,7 @@ pub async fn run_benchmark(
     max_evals: usize,
     num_runs: usize,
     time_limit: Duration,
-    problems: Vec<Arc<dyn OptimizationProblem>>,
+    problems: Vec<ProblemSpec>,
     optimizers: Vec<(String, Arc<dyn Optimizer>)>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Enable no threshold mode for benchmarks
@@ -436,3 +433,4 @@ pub fn get_optimizer_family(optimizer_name: &str) -> String {
         optimizer_name.to_string()
     }
 }
+

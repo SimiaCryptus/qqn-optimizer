@@ -1,12 +1,12 @@
 use super::StatisticalAnalysis;
 use anyhow::Context;
 use log::warn;
-use qqn_optimizer::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, SingleResult};
-use qqn_optimizer::OptimizationProblem;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec, SingleResult};
+use crate::OptimizationProblem;
 
 /// Handles HTML report generation and CSV exports
 pub struct ReportGenerator {
@@ -59,7 +59,7 @@ impl ReportGenerator {
 
     pub async fn generate_main_report(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         use_optimizer_families: bool,
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)
@@ -109,7 +109,7 @@ impl ReportGenerator {
 
     fn generate_winner_summary_table(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> String {
         let mut summary = String::from(
             r#"## Quick Summary: Winners by Problem
@@ -126,9 +126,10 @@ impl ReportGenerator {
 "#,
         );
         for (problem, results) in all_results {
-            let problem_name = problem.name();
-            let problem_family = get_family(problem_name);
+            let problem_name = problem.get_name();
+            let problem_family = get_family(&problem_name);
             let mut optimizer_stats = HashMap::new();
+            let problem_name = problem.get_name();
             for result in &results.results {
                 let stats = optimizer_stats
                     .entry(result.optimizer_name.clone())
@@ -241,12 +242,12 @@ impl ReportGenerator {
 
     fn generate_problem_section(
         &self,
-        problem: &Arc<dyn OptimizationProblem>,
+        problem: &ProblemSpec,
         results: &BenchmarkResults,
     ) -> anyhow::Result<String> {
-        let problem_name = problem.name();
-        let optimal_value = problem.optimal_value().unwrap_or(f64::NEG_INFINITY);
-        let dimension = problem.dimension();
+        let problem_name = problem.get_name();
+        let dimension = problem.dimensions;
+        let optimal_value = problem.problem.optimal_value().unwrap_or(f64::NEG_INFINITY);
 
         let mut section = format!(
             r#"## Problem: {}
@@ -259,8 +260,8 @@ impl ReportGenerator {
 ### Performance Summary
 "#,
             problem_name,
-            get_family(problem_name),
-            dimension,
+            problem.family,
+            dimension.or(Some(0)).unwrap(),
             optimal_value,
             results.results.len()
         );
@@ -520,11 +521,6 @@ impl ReportGenerator {
                 detailed_report_filename, optimizer
             );
 
-            // Format the separated statistics
-            let final_value_str = format!(
-                "{:.2e} / {:.2e} / {:.2e}",
-                mean_final, mean_final_success, mean_final_fail
-            );
             // Create formatted strings for success/fail values
             let success_str = if mean_final_success.is_nan() || !mean_final_success.is_finite() {
                 "-".to_string()
@@ -537,10 +533,6 @@ impl ReportGenerator {
                 format!("{:.2e}", mean_final_fail)
             };
             let final_value_str = format!("{:.2e} / {} / {}", mean_final, success_str, fail_str);
-            let func_evals_str = format!(
-                "{:.1} / {:.1} / {:.1}",
-                mean_func_evals, mean_func_evals_success, mean_func_evals_fail
-            );
             // Create formatted strings for function evaluations
             let func_success_str =
                 if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
@@ -557,10 +549,6 @@ impl ReportGenerator {
             let func_evals_str = format!(
                 "{:.1} / {} / {}",
                 mean_func_evals, func_success_str, func_fail_str
-            );
-            let grad_evals_str = format!(
-                "{:.1} / {:.1} / {:.1}",
-                mean_grad_evals, mean_grad_evals_success, mean_grad_evals_fail
             );
             // Create formatted strings for gradient evaluations
             let grad_success_str =
@@ -657,7 +645,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 
     fn generate_conclusions(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> String {
         let mut optimizer_scores = HashMap::new();
         let mut ml_optimizer_scores = HashMap::new();
@@ -685,7 +673,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         }
 
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             let is_ml_problem = problem_name.contains("Regression")
                 || problem_name.contains("Neural")
                 || problem_name.contains("SVM");
@@ -746,7 +734,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 
     fn generate_csv_exports(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)
             .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
@@ -756,16 +744,16 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let mut csv_content = String::from("Problem,ProblemFamily,Dimension,Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged,ConvergenceReason\n");
 
         for (problem, results) in all_results {
-            let problem_name = problem.name();
-            let problem_family = get_family(problem_name);
-            let dimension = problem.dimension();
+            let problem_name = problem.get_name();
+            let problem_family = get_family(&problem_name);
+            let dimension = problem.dimensions;
 
             for result in &results.results {
                 csv_content.push_str(&format!(
                     "{},{},{},{},{},{:.6e},{:.6e},{},{},{},{:.3},{},\"{:?}\"\n",
                     problem_name,
                     problem_family,
-                    dimension,
+                    dimension.unwrap_or(0),
                     result.optimizer_name,
                     result.run_id,
                     result.final_value,
@@ -902,15 +890,15 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
                 let success_rate = success_count as f64 / runs.len() as f64;
 
-                let problem_name = problem.name();
-                let problem_family = get_family(problem_name);
-                let dimension = problem.dimension();
+                let problem_name = problem.get_name();
+                let problem_family = get_family(&problem_name);
+                let dimension = problem.dimensions;
 
                 summary_csv.push_str(&format!(
                     "{},{},{},{},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.1},{:.3},{:.3},{}\n",
                     problem_name,
                     problem_family,
-                    dimension,
+                    dimension.unwrap_or(0),
                     optimizer,
                     mean_final,
                    if successful_runs.is_empty() { f64::NAN } else { mean_final_success },
@@ -945,7 +933,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     }
     fn generate_problem_specific_csvs(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         let problems_dir = Path::new(&self.output_dir).join("problems");
         fs::create_dir_all(&problems_dir).with_context(|| {
@@ -955,7 +943,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             )
         })?;
         for (problem, results) in all_results {
-            let problem_name = problem.name().replace(" ", "_");
+            let problem_name = problem.get_name().replace(" ", "_");
             let csv_path = problems_dir.join(format!("{}_results.csv", problem_name));
             let mut csv_content = String::from("Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
             for result in &results.results {
@@ -984,7 +972,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate LaTeX tables for all results
     async fn generate_latex_tables(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         let latex_dir = Path::new(&self.output_dir).join("latex");
         fs::create_dir_all(&latex_dir).with_context(|| {
@@ -1009,7 +997,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate main performance LaTeX table
     fn generate_main_performance_latex_table(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
@@ -1044,7 +1032,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 "#,
         );
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -1125,7 +1113,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     format!(
                         "\\multirow{{{}}}{{*}}{{{}}}",
                         perf_data.len(),
-                        Self::escape_latex(problem_name)
+                        Self::escape_latex(&problem_name)
                     )
                 } else {
                     String::new()
@@ -1170,11 +1158,11 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate problem-specific LaTeX table
     fn generate_problem_latex_table(
         &self,
-        problem: &Arc<dyn OptimizationProblem>,
+        problem: &ProblemSpec,
         results: &BenchmarkResults,
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
-        let problem_name = problem.name();
+        let problem_name = problem.get_name();
         let problem_filename = problem_name.replace(" ", "_");
         let mut latex_content = String::from(
             r#"\documentclass{article}
@@ -1198,7 +1186,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
  & \textbf{{Value}} & & \textbf{{Value}} & \textbf{{Value}} & \textbf{{Evals}} & \textbf{{Rate (\%)}} & \textbf{{(s)}} \\
 \midrule
 "#,
-            Self::escape_latex(problem_name),
+            Self::escape_latex(&problem_name),
             problem_filename.to_lowercase()
         ));
         let mut optimizer_stats = HashMap::new();
@@ -1310,7 +1298,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate summary statistics LaTeX table
     fn generate_summary_statistics_latex_table(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
@@ -1337,7 +1325,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
             HashMap::new();
         for (problem, results) in all_results {
-            let family = get_family(&problem.name());
+            let family = get_family(&problem.get_name());
             for result in &results.results {
                 family_results
                     .entry(family.clone())
@@ -1447,7 +1435,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate comparison matrix LaTeX table
     fn generate_comparison_matrix_latex_table(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
         // Collect all optimizers
@@ -1503,7 +1491,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
             HashMap::new();
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             for result in &results.results {
                 problem_results
                     .entry(problem_name.to_string())
@@ -1597,7 +1585,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate family comparison matrix LaTeX table
     fn generate_family_comparison_matrix_latex_table(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
         // Collect all optimizer families
@@ -1654,7 +1642,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
             HashMap::new();
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             for result in &results.results {
                 let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
                 problem_family_results
@@ -1750,7 +1738,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate comprehensive LaTeX document with all tables
     fn generate_comprehensive_latex_document(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
@@ -1831,12 +1819,11 @@ The following subsections present detailed results for each individual problem.
         );
         // Add individual problem tables
         for (problem, results) in all_results {
-            let problem_name = problem.name();
-            let problem_filename = problem_name.replace(" ", "_");
+            let problem_name = problem.get_name();
             latex_content.push_str(&format!(
                 r#"\subsection{{{}}}
 "#,
-                Self::escape_latex(problem_name)
+                Self::escape_latex(&*problem_name)
             ));
             latex_content.push_str(&self.generate_problem_table_content(problem, results)?);
         }
@@ -1877,7 +1864,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate main performance table content (without document wrapper)
     fn generate_main_performance_table_content(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         let mut content = String::from(
             r#"\adjustbox{width=\textwidth,center}{
@@ -1904,7 +1891,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         // Add the same table generation logic as in generate_main_performance_latex_table
         // but without the document wrapper
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -1985,7 +1972,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     format!(
                         "\\multirow{{{}}}{{*}}{{{}}}",
                         perf_data.len(),
-                        Self::escape_latex(problem_name)
+                        Self::escape_latex(&problem_name)
                     )
                 } else {
                     String::new()
@@ -2018,7 +2005,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate summary statistics table content (without document wrapper)
     fn generate_summary_statistics_table_content(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         // Similar implementation as generate_summary_statistics_latex_table but return just the table content
         let mut content = String::from(
@@ -2038,7 +2025,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
             HashMap::new();
         for (problem, results) in all_results {
-            let family = get_family(&problem.name());
+            let family = get_family(&problem.get_name());
             for result in &results.results {
                 family_results
                     .entry(family.clone())
@@ -2139,7 +2126,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate comparison matrix table content (without document wrapper)
     fn generate_comparison_matrix_table_content(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         // Similar logic as generate_comparison_matrix_latex_table but return just the table content
         let mut all_optimizers = std::collections::HashSet::new();
@@ -2184,7 +2171,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
             HashMap::new();
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             for result in &results.results {
                 problem_results
                     .entry(problem_name.to_string())
@@ -2270,7 +2257,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate family comparison matrix table content (without document wrapper)
     fn generate_family_comparison_matrix_table_content(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         // Collect all optimizer families
         let mut all_families = std::collections::HashSet::new();
@@ -2316,7 +2303,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
             HashMap::new();
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             for result in &results.results {
                 let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
                 problem_family_results
@@ -2404,10 +2391,10 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate problem table content (without document wrapper)
     fn generate_problem_table_content(
         &self,
-        problem: &Arc<dyn OptimizationProblem>,
+        problem: &ProblemSpec,
         results: &BenchmarkResults,
     ) -> anyhow::Result<String> {
-        let problem_name = problem.name();
+        let problem_name = problem.get_name();
         let problem_filename = problem_name.replace(" ", "_");
         let mut content = format!(
             r#"\begin{{table}}[H]
@@ -2421,7 +2408,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
  & \textbf{{Value}} & & \textbf{{Value}} & \textbf{{Value}} & \textbf{{Evals}} & \textbf{{Rate (\%)}} & \textbf{{(s)}} \\
 \midrule
 "#,
-            Self::escape_latex(problem_name),
+            Self::escape_latex(&problem_name),
             problem_filename.to_lowercase()
         );
         let mut optimizer_stats = HashMap::new();
@@ -2543,7 +2530,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate detailed reports for each optimizer-problem combination
     async fn generate_detailed_reports(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         use_optimizer_families: bool,
     ) -> anyhow::Result<()> {
         for (problem, results) in all_results {
@@ -2562,7 +2549,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
             // Generate detailed report for each optimizer on this problem
             for (optimizer_name, optimizer_runs) in optimizer_results {
                 self.generate_optimizer_problem_report(
-                    problem.as_ref(),
+                    problem.problem.as_ref(),
                     &optimizer_name,
                     &optimizer_runs,
                 )
@@ -2940,7 +2927,6 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut numerical_failures = 0;
         let mut max_iter_failures = 0;
         for run in &failed_runs {
-            use qqn_optimizer::benchmarks::evaluation::ConvergenceReason;
             match &run.convergence_reason {
                 ConvergenceReason::TimeLimit => timeout_failures += 1,
                 ConvergenceReason::NumericalError => numerical_failures += 1,

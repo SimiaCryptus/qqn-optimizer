@@ -2,6 +2,7 @@ pub mod analysis;
 pub mod benchmarks;
 pub mod core;
 pub mod utils;
+pub mod experiment_runner;
 
 // Re-export commonly used types
 pub use core::{

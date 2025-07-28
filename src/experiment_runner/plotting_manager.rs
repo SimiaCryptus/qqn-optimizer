@@ -1,8 +1,8 @@
 use log::{info, warn};
-use qqn_optimizer::benchmarks::evaluation::BenchmarkResults;
-use qqn_optimizer::{ExtendedOptimizationTrace, OptimizationProblem, PlotConfig, PlottingEngine};
 use std::fs;
 use std::sync::Arc;
+use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
+use crate::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 
 /// Manages plot generation with error handling
 pub struct PlottingManager {
@@ -31,7 +31,7 @@ impl PlottingManager {
 
     pub async fn generate_all_plots(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)?;
         info!("Generating plots for {} benchmark results", all_results.len());
@@ -39,7 +39,7 @@ impl PlottingManager {
 
         // Generate convergence plots for each problem
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             let traces: Vec<ExtendedOptimizationTrace> = results
                 .results
                 .iter()

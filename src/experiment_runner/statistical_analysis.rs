@@ -1,9 +1,8 @@
-use qqn_optimizer::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults};
-use qqn_optimizer::OptimizationProblem;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use crate::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, ProblemSpec};
 use super::experiment_runner::get_optimizer_family;
 
 /// Handles statistical analysis and significance testing
@@ -16,7 +15,7 @@ impl StatisticalAnalysis {
 
     pub fn generate_statistical_analysis(
         &self,
-        all_results: &[(&Arc<dyn OptimizationProblem>, BenchmarkResults)],
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
         _config: &BenchmarkConfig,
         output_dir: &str,
         use_optimizer_families: bool,
@@ -31,7 +30,7 @@ impl StatisticalAnalysis {
 
         let mut optimizer_results: HashMap<String, Vec<(f64, f64, String)>> = HashMap::new(); // (final_value, cost, problem)
         for (problem, results) in all_results {
-            let problem_name = problem.name();
+            let problem_name = problem.get_name();
             for result in &results.results {
                 let cost = (result.function_evaluations.max(result.gradient_evaluations)) as f64;
                 let optimizer_key = if use_optimizer_families {

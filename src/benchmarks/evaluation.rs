@@ -304,7 +304,7 @@ impl BenchmarkRunner {
     /// Run benchmarks for all combinations of problems and optimizers
     pub async fn run_benchmarks(
         &self,
-        problems: Vec<Box<dyn OptimizationProblem>>,
+        problems: Vec<Box<ProblemSpec>>,
         mut optimizers: Vec<Box<dyn Optimizer>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
@@ -314,7 +314,7 @@ impl BenchmarkRunner {
                 for run_id in 0..self.config.num_runs {
                     let result = self
                         .run_single_benchmark(
-                            problem.as_ref(),
+                            problem,
                             optimizer,
                             run_id,
                             &optimizer.name().to_string(),
@@ -333,7 +333,7 @@ impl BenchmarkRunner {
     /// Run a single benchmark with one problem and one optimizer
     pub async fn run_single_benchmark(
         &self,
-        problem: &dyn OptimizationProblem,
+        problem: &ProblemSpec,
         optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
         opt_name: &String,
@@ -341,7 +341,7 @@ impl BenchmarkRunner {
     ) -> Result<SingleResult, BenchmarkError> {
         info!(
             "Starting benchmark: {} with {} (run {})",
-            problem.name(),
+            problem.get_name(),
             optimizer.name(),
             run_id
         );
@@ -350,7 +350,7 @@ impl BenchmarkRunner {
         optimizer.reset();
 
         // Initialize parameters
-        let mut x = problem.initial_point();
+        let mut x = problem.problem.initial_point();
         // Validate initial point
         if x.iter().any(|&xi| !xi.is_finite()) {
             return Err(BenchmarkError::ProblemError(format!(
@@ -371,8 +371,8 @@ impl BenchmarkRunner {
         let mut trace = OptimizationTrace::new();
         // Create a single problem wrapper that will track evaluations across the entire run
         // Clone the problem to create an owned version
-        let problem_clone: Box<dyn OptimizationProblem> = problem.clone_problem();
-        let problem_wrapper = Arc::new(ProblemWrapper::new(problem_clone));
+        let problem_clone: ProblemSpec = problem.clone();
+        let problem_wrapper = Arc::new(ProblemWrapper::new(problem));
         // Main optimization loop with timeout
         let time_limit: Duration = self.config.time_limit.clone().into();
         let optimization_result = timeout(
@@ -405,7 +405,7 @@ impl BenchmarkRunner {
         };
 
         // Final evaluation
-        let final_value = problem
+        let final_value = problem.problem
             .evaluate_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         if !final_value.is_finite() {
@@ -414,7 +414,7 @@ impl BenchmarkRunner {
                 final_value
             )));
         }
-        let final_gradient = problem
+        let final_gradient = problem.problem
             .gradient_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
@@ -423,7 +423,7 @@ impl BenchmarkRunner {
         trace.total_gradient_evaluations = gradient_evaluations + 1; // +1 for final gradient
 
         info!("Benchmark complete: {} with {} (run {}): final_value={:.6e}, grad_norm={:.6e}, iterations={}", 
-              problem.name(), optimizer.name(), run_id, final_value, final_gradient_norm, iteration);
+              problem.get_name(), optimizer.name(), run_id, final_value, final_gradient_norm, iteration);
         let execution_time = start_time.elapsed();
         // Calculate performance metrics
         let performance_metrics = PerformanceMetrics {
@@ -455,7 +455,7 @@ impl BenchmarkRunner {
             ))
         } else {
             Ok(SingleResult {
-                problem_name: problem.name().to_string(),
+                problem_name: problem.get_name().to_string(),
                 optimizer_name: opt_name.clone(),
                 run_id,
                 final_value,
@@ -477,7 +477,7 @@ impl BenchmarkRunner {
 
     async fn optimization_loop(
         &self,
-        problem: &dyn OptimizationProblem,
+        problem: &ProblemSpec,
         optimizer: &mut dyn Optimizer,
         input_floats: &mut [f64],
         iteration: &mut usize,
@@ -491,7 +491,7 @@ impl BenchmarkRunner {
         let mut best_f_val: f64 = f64::INFINITY;
         let mut no_improvement_count = 0;
         // Record initial evaluation (t0) before optimization starts
-        let initial_f_val = match problem.evaluate_f64(input_floats) {
+        let initial_f_val = match problem.problem.evaluate_f64(input_floats) {
             Ok(val) => val,
             Err(e) => {
                 return Err(BenchmarkError::ProblemError(format!(
@@ -500,7 +500,7 @@ impl BenchmarkRunner {
             }
         };
         *function_evaluations += 1;
-        let initial_gradient = match problem.gradient_f64(input_floats) {
+        let initial_gradient = match problem.problem.gradient_f64(input_floats) {
             Ok(grad) => grad,
             Err(e) => {
                 return Err(BenchmarkError::ProblemError(format!(
@@ -535,7 +535,7 @@ impl BenchmarkRunner {
             }
 
             // Evaluate function and gradient
-            let f_val = match problem.evaluate_f64(input_floats) {
+            let f_val = match problem.problem.evaluate_f64(input_floats) {
                 Ok(val) => val,
                 Err(e) => {
                     warn!(
@@ -597,7 +597,7 @@ impl BenchmarkRunner {
                 }
             }
 
-            let gradient = match problem.gradient_f64(input_floats) {
+            let gradient = match problem.problem.gradient_f64(input_floats) {
                 Ok(grad) => grad,
                 Err(e) => {
                     warn!(
@@ -634,7 +634,7 @@ impl BenchmarkRunner {
             // Use the more lenient of the two tolerances to ensure convergence is achievable
             // Check function value convergence if optimal value is known
             if !is_no_threshold_mode() {
-                if let Some(optimal_value) = problem.optimal_value() {
+                if let Some(optimal_value) = problem.problem.optimal_value() {
                     if f_val < optimal_value {
                         info!("Converged by function tolerance at iteration {}", iteration);
                        // Record final iteration data before returning
@@ -769,15 +769,15 @@ fn create_1d_tensor(values: &[f64], device: &Device) -> CandleResult<Tensor> {
 
 /// Wrapper to convert OptimizationProblem to DifferentiableFunction
 pub struct ProblemWrapper {
-    problem: Box<dyn OptimizationProblem>,
+    problem: Arc<dyn OptimizationProblem>,
     function_evaluations: Arc<AtomicUsize>,
     gradient_evaluations: Arc<AtomicUsize>,
 }
 
 impl ProblemWrapper {
-    pub fn new(problem: Box<dyn OptimizationProblem>) -> Self {
+    pub fn new(problem: &ProblemSpec) -> Self {
         Self {
-            problem,
+            problem: problem.problem.clone(),
             function_evaluations: Arc::new(AtomicUsize::new(0)),
             gradient_evaluations: Arc::new(AtomicUsize::new(0)),
         }
@@ -794,7 +794,7 @@ impl ProblemWrapper {
     }
 }
 
-impl<'a> DifferentiableFunction for ProblemWrapper {
+impl DifferentiableFunction for ProblemWrapper {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         self.function_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
@@ -806,8 +806,7 @@ impl<'a> DifferentiableFunction for ProblemWrapper {
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         self.gradient_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
-        let grad_vec = self
-            .problem
+        let grad_vec = self.problem
             .gradient_f64(&x_vec)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
         let device = &Device::Cpu;
@@ -925,7 +924,14 @@ mod tests {
 
         let runner = BenchmarkRunner::new(config);
 
-        let problems: Vec<Box<dyn OptimizationProblem>> = vec![Box::new(SphereFunction::new(2))];
+        let sphere_function = Arc::new(SphereFunction::new(2));
+        let problem_spec = ProblemSpec::new(
+            sphere_function,
+            "sphere".to_string(),
+            Some(2),
+            42,
+        );
+        let problems: Vec<Box<ProblemSpec>> = vec![Box::new(problem_spec)];
 
         // Use a more conservative L-BFGS configuration for testing
         let mut lbfgs_config = LBFGSConfig::default();
@@ -1024,5 +1030,37 @@ mod tests {
             avg_values.get(&("sphere".to_string(), "lbfgs".to_string())),
             Some(&1e-8)
         );
+    }
+}
+
+#[derive(Clone)]
+pub struct ProblemSpec {
+    pub name: Option<String>,
+    pub family: String,
+    pub dimensions: Option<usize>,
+    pub seed: u64,
+    pub problem: Arc<dyn OptimizationProblem>,
+}
+impl ProblemSpec {
+    pub fn new(
+        problem: Arc<dyn OptimizationProblem>,
+        family: String,
+        dimensions: Option<usize>,
+        seed: u64,
+    ) -> Self {
+        Self {
+            name: None,
+            family,
+            dimensions,
+            seed,
+            problem,
+        }
+    }
+    pub fn with_name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
+    }
+    pub fn get_name(&self) -> String {
+        self.name.clone().unwrap_or_else(|| self.problem.name().to_string())
     }
 }
