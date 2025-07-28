@@ -1,244 +1,452 @@
 # QQN Optimizer: Quadratic-Quasi-Newton Optimization Algorithm
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://github.com/SimiaCryptus/qqn-optimizer/workflows/Rust/badge.svg)](https://github.com/SimiaCryptus/qqn-optimizer/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 
-A novel optimization algorithm that combines the robustness of gradient descent with the efficiency of quasi-Newton methods through quadratic interpolation. QQN automatically adapts between conservative gradient steps and aggressive quasi-Newton updates without requiring problem-specific hyperparameters.
+A comprehensive optimization library implementing the Quadratic-Quasi-Newton (QQN) algorithm alongside a rigorous benchmarking framework for optimization algorithm evaluation.
 
-## 🚀 Key Features
+## Table of Contents
 
-- **Parameter-Free**: No learning rates, momentum coefficients, or trust region radii to tune
-- **Adaptive**: Automatically balances between gradient descent and L-BFGS based on local function geometry
-- **Robust**: Guaranteed descent properties with graceful fallback when quasi-Newton directions fail
-- **Efficient**: Competitive performance with simplified implementation
-- **Well-Tested**: Comprehensive benchmarking across 26 diverse optimization problems
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [The QQN Algorithm](#the-qqn-algorithm)
+- [Benchmarking Framework](#benchmarking-framework)
+- [Usage Examples](#usage-examples)
+- [Benchmark Results](#benchmark-results)
+- [API Documentation](#api-documentation)
+- [Contributing](#contributing)
+- [Academic Paper](#academic-paper)
+- [License](#license)
 
-## 📊 Performance Highlights
+## Overview
 
-- **84.6% success rate** across diverse benchmarks vs 76.9% for L-BFGS and 42.3% for gradient descent
-- **100% convergence** on ill-conditioned problems like Rosenbrock where L-BFGS achieves only 60%
-- **Statistically significant improvements** confirmed through rigorous testing (p < 0.001)
+The QQN Optimizer introduces a novel optimization algorithm that combines gradient descent and L-BFGS directions through quadratic interpolation. Unlike traditional approaches that choose between optimization directions or solve expensive subproblems, QQN constructs a smooth parametric path that guarantees descent while adaptively balancing first-order and second-order information.
 
-## 🔬 How It Works
+**Key Innovation**: QQN constructs a quadratic path `d(t) = t(1-t)(-∇f) + t²d_LBFGS` that starts tangent to the gradient direction and curves toward the quasi-Newton direction, then performs univariate optimization along this path.
 
-QQN constructs a quadratic interpolation path between the gradient descent direction and the L-BFGS quasi-Newton direction:
+## Key Features
 
+### Algorithm Capabilities
+- **Robust Convergence**: Guaranteed descent property regardless of L-BFGS direction quality
+- **No Additional Hyperparameters**: Combines existing methods without introducing new tuning parameters
+- **Superlinear Local Convergence**: Inherits L-BFGS convergence properties near optima
+- **Multiple Line Search Methods**: Supports Backtracking, Strong Wolfe, Golden Section, Bisection, and more
+
+### Comprehensive Benchmarking
+- **62 Benchmark Problems**: Covering convex, non-convex, multimodal, and ML problems
+- **21 Optimizer Variants**: QQN, L-BFGS, Trust Region, Gradient Descent, and Adam variants
+- **Statistical Rigor**: Automated statistical testing with Welch's t-test and effect size analysis
+- **Reproducible Results**: Fixed seeds and deterministic algorithms ensure reproducibility
+
+### Reporting and Analysis
+- **Multi-Format Output**: Generates Markdown, LaTeX, CSV, and HTML reports
+- **Convergence Visualization**: Automatic generation of convergence plots and performance profiles
+- **Statistical Comparison**: Win/loss/tie matrices with significance testing
+- **Performance Metrics**: Success rates, function evaluations, and convergence analysis
+
+## Installation
+
+### Prerequisites
+- Rust 1.75 or later
+- For report generation: `pandoc` and LaTeX distribution (optional)
+
+### From Source
+```bash
+git clone https://github.com/SimiaCryptus/qqn-optimizer.git
+cd qqn-optimizer
+cargo build --release
+```
+
+### Using Docker
+```bash
+docker build -t qqn-optimizer .
+docker run -v $(pwd)/results:/app/results qqn-optimizer benchmark
+```
+
+### As a Library
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+qqn-optimizer = { git = "https://github.com/SimiaCryptus/qqn-optimizer.git" }
+```
+
+## Quick Start
+
+### Running Benchmarks
+```bash
+# Run full benchmark suite (may take hours)
+cargo run --release -- benchmark
+
+# Run calibration benchmarks (faster, for testing)
+cargo run --release -- calibration
+
+# Run specific problem sets
+cargo run --release -- benchmark --problems analytic
+cargo run --release -- benchmark --problems ml
+```
+
+### Using QQN in Your Code
+```rust
+use qqn_optimizer::optimizers::qqn::QQNOptimizer;
+use qqn_optimizer::line_search::strong_wolfe::StrongWolfeLineSearch;
+
+// Define your objective function
+fn rosenbrock(x: &[f64]) -> f64 {
+    let mut sum = 0.0;
+    for i in 0..x.len()-1 {
+        let a = 1.0 - x[i];
+        let b = x[i+1] - x[i] * x[i];
+        sum += a * a + 100.0 * b * b;
+    }
+    sum
+}
+
+// Define gradient function
+fn rosenbrock_grad(x: &[f64]) -> Vec<f64> {
+    let mut grad = vec![0.0; x.len()];
+    for i in 0..x.len()-1 {
+        grad[i] += -2.0 * (1.0 - x[i]) - 400.0 * x[i] * (x[i+1] - x[i] * x[i]);
+        if i > 0 {
+            grad[i] += 200.0 * (x[i] - x[i-1] * x[i-1]);
+        }
+    }
+    if x.len() > 1 {
+        let last = x.len() - 1;
+        grad[last] = 200.0 * (x[last] - x[last-1] * x[last-1]);
+    }
+    grad
+}
+
+// Create and run optimizer
+let line_search = StrongWolfeLineSearch::new();
+let mut optimizer = QQNOptimizer::new(line_search);
+
+let initial_point = vec![-1.0, 1.0]; // Starting point
+let result = optimizer.optimize(
+    &rosenbrock,
+    &rosenbrock_grad,
+    initial_point,
+    1000, // max function evaluations
+    1e-8  // gradient tolerance
+);
+
+println!("Optimum found at: {:?}", result.x);
+println!("Function value: {}", result.fx);
+println!("Function evaluations: {}", result.num_f_evals);
+```
+
+## The QQN Algorithm
+
+### Mathematical Foundation
+
+QQN addresses the fundamental question: given gradient and quasi-Newton directions, how should we combine them? The algorithm constructs a quadratic path satisfying three constraints:
+
+1. **Initial Position**: `d(0) = 0` (starts at current point)
+2. **Initial Tangent**: `d'(0) = -∇f(x)` (begins with steepest descent)
+3. **Terminal Position**: `d(1) = d_LBFGS` (ends at L-BFGS direction)
+
+This yields the canonical form:
 ```
 d(t) = t(1-t)(-∇f) + t²d_LBFGS
 ```
 
-The algorithm then performs one-dimensional optimization along this path to find the optimal step. This approach:
+### Key Properties
 
-1. **Guarantees descent** by starting tangent to the negative gradient
-2. **Adapts automatically** between conservative and aggressive steps
-3. **Handles failures gracefully** when quasi-Newton approximations are poor
-4. **Simplifies implementation** by reducing to 1D optimization
+- **Guaranteed Descent**: The initial tangent condition ensures descent regardless of L-BFGS quality
+- **Adaptive Interpolation**: Automatically balances first-order and second-order information
+- **Robust to Failures**: Gracefully degrades to gradient descent when L-BFGS fails
+- **No Additional Parameters**: Uses existing L-BFGS and line search parameters
 
-## 🛠️ Installation
+### Convergence Guarantees
 
-Add this to your `Cargo.toml`:
+- **Global Convergence**: Under standard assumptions, converges to stationary points
+- **Superlinear Local Convergence**: Near optima with positive definite Hessian, achieves superlinear convergence matching L-BFGS
 
-```toml
-[dependencies]
-qqn-optimizer = "0.1.0"
-```
+## Benchmarking Framework
 
-## 📖 Quick Start
+### Problem Suite
+
+The benchmark suite includes 62 carefully selected problems across five categories:
+
+- **Convex Functions** (6): Sphere, Matyas, Zakharov variants
+- **Non-Convex Unimodal** (12): Rosenbrock, Beale, Levy variants
+- **Highly Multimodal** (24): Rastrigin, Ackley, Michalewicz, StyblinskiTang
+- **ML-Convex** (8): Linear regression, logistic regression, SVM
+- **ML-Non-Convex** (9): Neural networks with varying architectures
+
+### Statistical Analysis
+
+The framework employs rigorous statistical methods:
+
+- **Multiple Runs**: 50 runs per problem-optimizer pair for statistical validity
+- **Welch's t-test**: For comparing means with unequal variances
+- **Cohen's d**: For measuring effect sizes
+- **Bonferroni Correction**: For multiple comparison adjustment
+- **Win/Loss/Tie Analysis**: Comprehensive pairwise comparisons
+
+### Evaluation Methodology
+
+1. **Calibration Phase**: Determines problem-specific convergence thresholds
+2. **Benchmarking Phase**: Evaluates all optimizers with consistent criteria
+3. **Statistical Analysis**: Automated significance testing and effect size calculation
+4. **Report Generation**: Multi-format output with visualizations
+
+## Usage Examples
+
+### Custom Optimizer Implementation
 
 ```rust
-use qqn_optimizer::{QQNOptimizer, QQNConfig, OptimizationProblem};
+use qqn_optimizer::optimizers::traits::Optimizer;
+use qqn_optimizer::line_search::backtracking::BacktrackingLineSearch;
 
-// Create your optimization problem
-struct Rosenbrock;
-impl OptimizationProblem for Rosenbrock {
-    fn evaluate_f64(&self, x: &[f64]) -> Result<f64, Box<dyn std::error::Error>> {
-        let mut sum = 0.0;
-        for i in 0..x.len()-1 {
-            sum += 100.0 * (x[i+1] - x[i]*x[i]).powi(2) + (1.0 - x[i]).powi(2);
-        }
-        Ok(sum)
-    }
-
-    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>, Box<dyn std::error::Error>> {
-        let mut grad = vec![0.0; x.len()];
-        for i in 0..x.len()-1 {
-            grad[i] += -400.0 * x[i] * (x[i+1] - x[i]*x[i]) - 2.0 * (1.0 - x[i]);
-            grad[i+1] += 200.0 * (x[i+1] - x[i]*x[i]);
-        }
-        Ok(grad)
-    }
-
-    fn dimension(&self) -> usize { 2 }
-    fn initial_point(&self) -> Vec<f64> { vec![-1.2, 1.0] }
+struct MyCustomOptimizer {
+    line_search: BacktrackingLineSearch,
 }
 
-// Optimize with QQN
-let mut optimizer = QQNOptimizer::new(QQNConfig::default());
-let problem = Rosenbrock;
-let result = optimizer.minimize(&problem)?;
-
-println!("Optimal point: {:?}", result.x);
-println!("Optimal value: {}", result.f);
+impl Optimizer for MyCustomOptimizer {
+    fn optimize<F, G>(
+        &mut self,
+        f: &F,
+        grad: &G,
+        x0: Vec<f64>,
+        max_f_evals: usize,
+        grad_tol: f64,
+    ) -> OptimizationResult
+    where
+        F: Fn(&[f64]) -> f64,
+        G: Fn(&[f64]) -> Vec<f64>,
+    {
+        // Your optimization logic here
+        todo!()
+    }
+}
 ```
 
-## 🎯 Benchmark Problems Supported
-
-### Analytic Functions
-- **Convex**: Sphere, Matyas
-- **Non-convex Unimodal**: Rosenbrock, Beale, Levi, Goldstein-Price
-- **Highly Multimodal**: Rastrigin, Ackley, Michalewicz, Styblinski-Tang
-
-### Machine Learning
-- **Linear Regression** with L2 regularization
-- **Logistic Regression** for binary classification
-- **Support Vector Machines** with hinge loss
-- **Neural Networks** (MLPs with various architectures)
-
-## 📈 Comprehensive Benchmarking
-
-Run the full benchmark suite:
-
-```bash
-
-
-
-# Cross-optimizer benchmarks (analytic + ML problems)
-cargo test test_benchmarks --release
-
-# MNIST neural network benchmarks
-cargo test test_mnist --release
-
-# Championship benchmarks (best variants compete)
-cargo test test_championship_benchmarks --release
-```
-
-Results are automatically generated in `results/` with:
-- Detailed performance metrics (CSV)
-- Statistical analysis with significance tests
-- Publication-ready visualizations
-- Comprehensive markdown reports
-
-## 🔧 Configuration Options
+### Running Specific Benchmarks
 
 ```rust
-use qqn_optimizer::{QQNConfig, LineSearchMethod, LineSearchConfig};
+use qqn_optimizer::benchmarks::evaluation::run_benchmark;
+use qqn_optimizer::problem_sets::analytic_problems;
+use qqn_optimizer::optimizer_sets::qqn_variants;
+use std::time::Duration;
 
-let config = QQNConfig {
-    line_search: LineSearchConfig {
-        method: LineSearchMethod::Backtracking,
-        c1: 1e-3,           // Armijo condition parameter
-        c2: 0.9,            // Curvature condition parameter
-        max_iterations: 75,  // Max line search iterations
-        ..Default::default()
-    },
-    lbfgs_history: 15,      // L-BFGS memory size
-    max_iterations: 10000,   // Maximum optimizer iterations
-    gradient_tolerance: 1e-6, // Convergence tolerance
-    ..Default::default()
-};
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let problems = analytic_problems();
+    let optimizers = qqn_variants();
 
-let optimizer = QQNOptimizer::new(config);
+    run_benchmark(
+        "my_benchmark_",
+        1000,  // max function evaluations
+        10,    // number of runs
+        Duration::from_secs(60), // timeout
+        problems,
+        optimizers,
+    ).await?;
+
+    Ok(())
+}
 ```
 
-## 🧪 Benchmark System
+### Custom Problem Definition
 
-The new modular benchmark system includes:
+```rust
+use qqn_optimizer::benchmarks::evaluation::ProblemSpec;
 
-### Optimizer Families
-- **QQN variants**: Multiple line search methods (Backtracking, Golden Section, More-Thuente, etc.)
-- **L-BFGS variants**: Standard, Aggressive, Conservative configurations
-- **Trust Region methods**: Various trust region strategies
-- **First-order methods**: Gradient Descent with momentum, weight decay, Nesterov acceleration
-- **Adam variants**: Standard Adam, AMSGrad, with weight decay options
-
-### Problem Sets
-- **Analytic functions**: 18 classic optimization benchmarks across dimensions
-- **Machine Learning**: Logistic/Linear regression, SVM, Neural networks
-- **MNIST**: Large-scale neural network training (configurable sample sizes)
-
-### Benchmark Types
-- **Cross-set benchmarks**: All optimizers vs all problems
-- **Championship mode**: Best variant from each family competes
-- **Family-specific**: Deep dive into optimizer variants within families
-
-## 📊 Statistical Analysis
-
-The benchmarking framework provides rigorous statistical analysis:
-
-- **Welch's t-tests** for unequal variances
-- **Cohen's d effect sizes** for practical significance
-- **Multiple comparison corrections** (Bonferroni)
-- **Confidence intervals** and error bars
-- **Success rate analysis** across problem categories
-
-## 🏗️ Architecture
-
-```
-QQN Optimizer
-├── Core Algorithm
-│   ├── Quadratic path construction
-│   ├── 1D optimization (multiple solvers)
-│   └── L-BFGS memory management
-├── Modular Benchmark System
-│   ├── experiment_runner/
-│   │   ├── optimizer_sets.rs (optimizer families)
-│   │   ├── problem_sets.rs (problem collections)
-│   │   └── experiment_runner.rs (execution engine)
-│   ├── 18+ analytic functions
-│   ├── ML optimization problems
-│   └── Statistical analysis framework
-└── Evaluation Tools
-    ├── Automated report generation
-    ├── Performance visualization
-    └── Reproducibility infrastructure
+fn my_custom_problem() -> ProblemSpec {
+    ProblemSpec {
+        name: "MyProblem".to_string(),
+        function: Box::new(|x: &[f64]| {
+            // Your objective function
+            x.iter().map(|xi| xi * xi).sum()
+        }),
+        gradient: Box::new(|x: &[f64]| {
+            // Your gradient function
+            x.iter().map(|xi| 2.0 * xi).collect()
+        }),
+        initial_point: vec![1.0, 1.0, 1.0],
+        bounds: None, // Optional bounds
+        global_minimum: Some(0.0), // Known global minimum
+    }
+}
 ```
 
-## 📚 Documentation
+## Benchmark Results
 
-- **Benchmarks**: Results automatically generated in `results/` directory
-- **Championship Analysis**: Family-level performance comparisons
+### Overall Performance
 
-## 🤝 Contributing
+Based on comprehensive evaluation across 62 problems with over 31,000 optimization runs:
 
-We welcome contributions! Areas of particular interest:
+- **QQN Dominance**: QQN variants won 36 out of 62 problems (58%)
+- **Top Performers**:
+    - QQN-Bisection-1: 8 wins
+    - QQN-StrongWolfe: 7 wins
+    - L-BFGS: 6 wins
+    - QQN-GoldenSection: 6 wins
 
-- **New benchmark problems** (add to `problem_sets.rs`)
-- **Optimizer variants** (add to `optimizer_sets.rs`)
-- **Championship configurations** for new problem domains
+### Performance by Problem Type
 
-See `CONTRIBUTING.md` for guidelines.
+**Convex Problems**:
+- QQN-Bisection: 100% success on Sphere problems with 12-16 evaluations
+- L-BFGS: 100% success on Sphere_10D with only 15 evaluations
 
-## 📄 License
+**Non-Convex Problems**:
+- QQN-StrongWolfe: 35% success on Rosenbrock_5D (best among all)
+- QQN-GoldenSection: 100% success on Beale_2D
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Multimodal Problems**:
+- QQN-StrongWolfe: 90% success on StyblinskiTang_2D
+- Adam-Fast: Best on Michalewicz functions (45-60% success)
 
-## 📖 Citation
+**Machine Learning Problems**:
+- Adam-Fast: Best on neural networks (32.5-60% success)
+- L-BFGS variants: 100% success on SVM problems
 
-If you use QQN in your research, please cite:
+### Key Insights
+
+1. **Robustness**: QQN maintains consistent performance across problem types
+2. **Efficiency**: Competitive function evaluation counts with high success rates
+3. **Scalability**: Performance degrades gracefully with dimensionality
+4. **Specialization**: Some algorithms excel on specific problem classes
+
+## API Documentation
+
+### Core Traits
+
+```rust
+pub trait Optimizer {
+    fn optimize<F, G>(
+        &mut self,
+        f: &F,
+        grad: &G,
+        x0: Vec<f64>,
+        max_f_evals: usize,
+        grad_tol: f64,
+    ) -> OptimizationResult;
+}
+
+pub trait LineSearch {
+    fn search<F, G>(
+        &mut self,
+        f: &F,
+        grad: &G,
+        x: &[f64],
+        fx: f64,
+        gx: &[f64],
+        direction: &[f64],
+    ) -> LineSearchResult;
+}
+```
+
+### QQN Optimizer Variants
+
+- `QQNOptimizer<BacktrackingLineSearch>`: Basic backtracking line search
+- `QQNOptimizer<StrongWolfeLineSearch>`: Strong Wolfe conditions
+- `QQNOptimizer<GoldenSectionLineSearch>`: Golden section search
+- `QQNOptimizer<BisectionLineSearch>`: Bisection on derivative
+- `QQNOptimizer<MoreThuenteLineSearch>`: Moré-Thuente line search
+
+### Benchmarking API
+
+```rust
+// Run benchmark with custom configuration
+pub async fn run_benchmark(
+    prefix: &str,
+    max_evals: usize,
+    num_runs: usize,
+    timeout: Duration,
+    problems: Vec<ProblemSpec>,
+    optimizers: Vec<OptimizerSpec>,
+) -> Result<(), Box<dyn Error + Send + Sync>>;
+
+// Generate reports from benchmark results
+pub fn generate_reports(
+    results_dir: &str,
+    output_formats: &[ReportFormat],
+) -> Result<(), Box<dyn Error>>;
+```
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+git clone https://github.com/SimiaCryptus/qqn-optimizer.git
+cd qqn-optimizer
+cargo build
+cargo test
+```
+
+### Running Tests
+
+```bash
+# Unit tests
+cargo test
+
+# Integration tests
+cargo test --test benchmark_reports
+
+# Benchmark tests (slow)
+cargo test --release calibration
+```
+
+### Code Style
+
+We use `rustfmt` and `clippy` for code formatting and linting:
+
+```bash
+cargo fmt
+cargo clippy -- -D warnings
+```
+
+## Academic Paper
+
+This work is documented in our academic paper:
+
+**"Quadratic-Quasi-Newton Optimization: Combining Gradient and Quasi-Newton Directions Through Quadratic Interpolation"**
+
+The paper provides:
+- Theoretical analysis and convergence proofs
+- Comprehensive experimental evaluation
+- Statistical comparison with existing methods
+- Detailed algorithmic descriptions
+
+Paper and supplementary materials available at: [https://github.com/SimiaCryptus/qqn-optimizer/](https://github.com/SimiaCryptus/qqn-optimizer/)
+
+## Citing This Work
+
+If you use QQN Optimizer in your research, please cite:
 
 ```bibtex
 @article{qqn2024,
-  title={QQN: Revealing the Natural Geometry of Optimization Through Quadratic Interpolation},
+  title={Quadratic-Quasi-Newton Optimization: Combining Gradient and Quasi-Newton Directions Through Quadratic Interpolation},
   author={[Author Name]},
   journal={[Journal Name]},
   year={2024},
-  note={Available at: https://github.com/SimiaCryptus/qqn-optimizer}
+  url={https://github.com/SimiaCryptus/qqn-optimizer/}
 }
 ```
 
-## 🔗 Related Work
+## License
 
-- **L-BFGS**: Liu, D. C., & Nocedal, J. (1989). Limited memory BFGS method
-- **Trust Regions**: Moré, J. J., & Sorensen, D. C. (1983). Computing a trust region step
-- **Benchmarking**: Hansen, N., et al. (2016). COCO: A platform for comparing continuous optimizers
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 Support
+## Acknowledgments
 
-- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/SimiaCryptus/qqn-optimizer/issues)
-- **Discussions**: Join conversations on [GitHub Discussions](https://github.com/SimiaCryptus/qqn-optimizer/discussions)
-- **Email**: [Contact information]
+- The QQN algorithm was originally developed in 2017
+- AI language models assisted in documentation and benchmarking framework development
+- Thanks to the Rust optimization community for inspiration and feedback
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/SimiaCryptus/qqn-optimizer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/SimiaCryptus/qqn-optimizer/discussions)
+- **Documentation**: [API Docs](https://docs.rs/qqn-optimizer)
 
 ---
 
-**QQN Optimizer** - *Bridging the gap between robustness and efficiency in continuous optimization*
+**Note**: This is research software. While we strive for correctness and performance, please validate results for your specific use case. The benchmarking framework is designed to facilitate fair comparison and reproducible research in optimization algorithms.
