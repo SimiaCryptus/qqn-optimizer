@@ -12,13 +12,31 @@ We provide both theoretical convergence guarantees and a comprehensive benchmark
 Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
 
 \textbf{Keywords:} optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation, benchmarking, statistical analysis
-\#\# Paper Series Overview
+
+\hypertarget{paper-series-overview}{%
+\subsection{Paper Series Overview}\label{paper-series-overview}}
+
 This paper is the first in a planned series on optimization algorithms and their evaluation. It introduces:
-1. \textbf{A comprehensive optimizer evaluation framework} that will be used in subsequent papers to evaluate various optimization algorithms through rigorous statistical comparison.
-2. \textbf{The Quadratic-Quasi-Newton (QQN) algorithm}, a new optimizer that combines gradient and quasi-Newton directions through quadratic interpolation.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{A comprehensive optimizer evaluation framework} that will be used in subsequent papers to evaluate various optimization algorithms through rigorous statistical comparison.
+\item
+  \textbf{The Quadratic-Quasi-Newton (QQN) algorithm}, a new optimizer that combines gradient and quasi-Newton directions through quadratic interpolation.
+\end{enumerate}
+
 Planned subsequent papers in this series include:
-* \textbf{QQN for Deep Learning}: Focusing on deep learning problems and simple QQN extensions such as adaptive gradient scaling (γ parameter) and momentum incorporation for handling the unique challenges of neural network optimization.
-* \textbf{Trust Region QQN}: Exploring how to constrain the quadratic search path using trust region methods for various specialized use cases, including constrained optimization and problems with expensive function evaluations.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{QQN for Deep Learning}: Focusing on deep learning problems and simple QQN extensions such as adaptive gradient scaling (γ parameter) and momentum incorporation for handling the unique challenges of neural network optimization.
+\item
+  \textbf{Trust Region QQN}: Exploring how to constrain the quadratic search path using trust region methods for various specialized use cases, including constrained optimization and problems with expensive function evaluations.
+\end{itemize}
+
 This foundational paper establishes both the evaluation methodology and the core QQN algorithm that will be extended in future work.
 
 \hypertarget{introduction}{%
@@ -324,14 +342,28 @@ Our benchmarking framework introduces a comprehensive evaluation methodology tha
 Traditional optimization benchmarks often suffer from selection bias, where specific hyperparameter choices favor certain methods. Our two-phase evaluation system provides comprehensive comparison:
 
 \textbf{Phase 1 - Convergence Speed (Winners)}:
-* Algorithms that successfully converge are ranked by the total function evaluations needed to achieve a threshold
-* The threshold is chosen to be roughly the median of the best results over a calibration run
-* This measures efficiency for algorithms that can solve the problem
+
+\begin{itemize}
+\tightlist
+\item
+  Algorithms that successfully converge are ranked by the total function evaluations needed to achieve a threshold
+\item
+  The threshold is chosen to be roughly the median of the best results over a calibration run
+\item
+  This measures efficiency for algorithms that can solve the problem
+\end{itemize}
 
 \textbf{Phase 2 - Best Effort (Non-convergers)}:
-* For algorithms that fail to reach the threshold, we compare the best objective value achieved
-* All algorithms terminate after a fixed number of function evaluations
-* This ensures fair comparison even when some methods cannot solve the problem
+
+\begin{itemize}
+\tightlist
+\item
+  For algorithms that fail to reach the threshold, we compare the best objective value achieved
+\item
+  All algorithms terminate after a fixed number of function evaluations
+\item
+  This ensures fair comparison even when some methods cannot solve the problem
+\end{itemize}
 
 This two-phase approach provides a complete picture: which algorithms can solve the problem (and how efficiently), and how well algorithms perform when they cannot fully converge.
 
@@ -550,19 +582,40 @@ Runner-up Success
 Statistical analysis reveals QQN's dominance across the benchmark suite:
 
 \textbf{Head-to-Head Statistical Comparisons:}
-- \textbf{QQN variants vs non-QQN methods}: Win-loss ratios range from 14W-6L-9T to 17W-6L-6T
-- \textbf{L-BFGS variants vs QQN}: Suffer 0W-19L-9T to 0W-26L-3T losses despite efficiency on convex problems
-- \textbf{Adam variants vs QQN}: Record 2W-22L-5T to 5W-19L-5T against QQN variants
-- \textbf{Gradient Descent vs QQN}: Show 0W-23L-6T to 6W-21L-5T performance
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{QQN variants vs non-QQN methods}: Win-loss ratios range from 14W-6L-9T to 17W-6L-6T
+\item
+  \textbf{L-BFGS variants vs QQN}: Suffer 0W-19L-9T to 0W-26L-3T losses despite efficiency on convex problems
+\item
+  \textbf{Adam variants vs QQN}: Record 2W-22L-5T to 5W-19L-5T against QQN variants
+\item
+  \textbf{Gradient Descent vs QQN}: Show 0W-23L-6T to 6W-21L-5T performance
+\end{itemize}
 
 \textbf{Algorithm Family Strengths:}
-- \textbf{QQN variants}: Statistical dominance with consistent positive win-loss ratios
-- \textbf{L-BFGS variants}: Efficiency on convex problems with 100\% success and minimal evaluations
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{QQN variants}: Statistical dominance with consistent positive win-loss ratios
+\item
+  \textbf{L-BFGS variants}: Efficiency on convex problems with 100\% success and minimal evaluations
+\end{itemize}
 
 \textbf{Notable Performance Gaps:}
-- Michalewicz functions: Adam-Fast achieves 40-65\% success while most others achieve 0\%
-- Neural networks: Adam-Fast reaches 35-45\% success vs 0\% for classical methods
-- SVM problems: GD-WeightDecay achieves 100\% vs 0\% for most Adam/L-BFGS variants
+
+\begin{itemize}
+\tightlist
+\item
+  Michalewicz functions: Adam-Fast achieves 40-65\% success while most others achieve 0\%
+\item
+  Neural networks: Adam-Fast reaches 35-45\% success vs 0\% for classical methods
+\item
+  SVM problems: GD-WeightDecay achieves 100\% vs 0\% for most Adam/L-BFGS variants
+\end{itemize}
 
 \hypertarget{scalability-analysis}{%
 \subsection{Scalability Analysis}\label{scalability-analysis}}
@@ -583,20 +636,42 @@ The following figure demonstrates QQN's superior scaling on Rosenbrock and multi
 \textbf{Detailed Results by Problem Class:}
 
 \textbf{Convex Problems:}
-* L-BFGS-Aggressive: 100\% success on both Sphere problems with 7-10 evaluations
-* QQN-StrongWolfe: 100\% success on Sphere\_2D with 12 evaluations
-* QQN-Backtracking: 100\% success on Matyas\_2D with 25 evaluations
+
+\begin{itemize}
+\tightlist
+\item
+  L-BFGS-Aggressive: 100\% success on both Sphere problems with 7-10 evaluations
+\item
+  QQN-StrongWolfe: 100\% success on Sphere\_2D with 12 evaluations
+\item
+  QQN-Backtracking: 100\% success on Matyas\_2D with 25 evaluations
+\end{itemize}
 
 \textbf{Non-Convex Unimodal:}
-* GD-WeightDecay: Best on Rosenbrock problems (35-55\% success)
-* QQN-GoldenSection: 95\% success on Beale\_2D (highest among all)
-* L-BFGS: 72.5\% success on Levi\_2D
+
+\begin{itemize}
+\tightlist
+\item
+  GD-WeightDecay: Best on Rosenbrock problems (35-55\% success)
+\item
+  QQN-GoldenSection: 95\% success on Beale\_2D (highest among all)
+\item
+  L-BFGS: 72.5\% success on Levi\_2D
+\end{itemize}
 
 \textbf{Highly Multimodal Problems:}
-* Adam-Fast: Dominates Michalewicz functions (40-65\% success)
-* QQN-Bisection-1: 70\% success on Rastrigin\_2D
-* QQN-Bisection-2: 85\% success on StyblinskiTang\_2D
-* GD: 75\% success on StyblinskiTang\_10D (highest for this problem)
+
+\begin{itemize}
+\tightlist
+\item
+  Adam-Fast: Dominates Michalewicz functions (40-65\% success)
+\item
+  QQN-Bisection-1: 70\% success on Rastrigin\_2D
+\item
+  QQN-Bisection-2: 85\% success on StyblinskiTang\_2D
+\item
+  GD: 75\% success on StyblinskiTang\_10D (highest for this problem)
+\end{itemize}
 
 \textbf{Machine Learning Problems:}
 
@@ -662,6 +737,112 @@ The comprehensive evaluation reveals several important insights:
   \textbf{Conservative Settings Fail}: Conservative variants (L-BFGS-Conservative, Trust Region-Conservative) consistently underperform with 5\% success rates, suggesting aggressive line search is crucial.
 \end{enumerate}
 
+\hypertarget{the-benchmarking-and-reporting-framework}{%
+\subsection{The Benchmarking and Reporting Framework}\label{the-benchmarking-and-reporting-framework}}
+
+\hypertarget{methodological-contributions}{%
+\subsubsection{Methodological Contributions}\label{methodological-contributions}}
+
+Our benchmarking framework represents a significant methodological advance in optimization algorithm evaluation:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  \textbf{Tournament-Style Evaluation}: The two-phase system separates efficiency measurement (for convergers) from best-effort comparison (for non-convergers), providing a complete performance picture that traditional single-metric approaches miss.
+\item
+  \textbf{Statistical Rigor}: Automated statistical testing with Welch's t-test, Cohen's d effect size, and Bonferroni correction ensures results are not artifacts of random variation. The framework generates comprehensive statistical comparison matrices that reveal true performance relationships.
+\item
+  \textbf{Reproducibility Infrastructure}: Fixed seeds, deterministic algorithms, and automated report generation eliminate common sources of irreproducibility in optimization research. All results can be regenerated with a single command.
+\item
+  \textbf{Multi-Format Reporting}: The system generates:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \textbf{Markdown reports} with embedded visualizations for web viewing
+  \item
+    \textbf{LaTeX documents} ready for academic publication
+  \item
+    \textbf{CSV files} for further statistical analysis
+  \item
+    \textbf{Detailed per-run logs} for debugging and deep analysis
+  \end{itemize}
+\end{enumerate}
+
+\hypertarget{insights-enabled-by-the-framework}{%
+\subsubsection{Insights Enabled by the Framework}\label{insights-enabled-by-the-framework}}
+
+The comprehensive reporting revealed patterns invisible to traditional evaluation:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Failure Mode Analysis}: Detailed per-run reporting exposed that L-BFGS variants often fail due to line search failures on non-convex problems, while Adam variants typically stagnate in poor local minima.
+\item
+  \textbf{Convergence Behavior Patterns}: Visualization of all runs revealed that QQN variants exhibit more consistent convergence trajectories, while gradient descent methods show high variance across runs.
+\item
+  \textbf{Problem Family Effects}: Automatic problem classification and family-wise analysis revealed that optimizer performance clusters strongly by problem type, challenging the notion of universal optimizers.
+\item
+  \textbf{Statistical vs Practical Significance}: The framework's dual reporting of p-values and effect sizes revealed cases where statistically significant differences have negligible practical impact (e.g., 10 vs 12 function evaluations on Sphere).
+\end{enumerate}
+
+\hypertarget{framework-design-decisions}{%
+\subsubsection{Framework Design Decisions}\label{framework-design-decisions}}
+
+Several design choices proved crucial for meaningful evaluation:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Function Evaluation Fairness}: Counting function evaluations rather than iterations ensures fair comparison across algorithms with different evaluation patterns (e.g., line search vs trust region).
+\item
+  \textbf{Problem-Specific Thresholds}: Using calibration runs to set convergence thresholds ensures each problem is neither trivially easy nor impossibly hard for the optimizer set.
+\item
+  \textbf{Championship Mode}: This innovation allows focused comparison of best performers per problem, reducing computational cost while maintaining statistical validity.
+\item
+  \textbf{Hierarchical Reporting}: The multi-level report structure (summary → problem-specific → detailed per-run) allows both quick overview and deep investigation.
+\end{enumerate}
+
+\hypertarget{limitations-and-extensions}{%
+\subsubsection{Limitations and Extensions}\label{limitations-and-extensions}}
+
+While comprehensive, the framework has limitations that suggest future extensions:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Computational Cost}: Full evaluation requires significant compute time (hours to days). Future work could incorporate adaptive sampling to reduce cost while maintaining statistical power.
+\item
+  \textbf{Problem Selection Bias}: Our 27-problem suite, while diverse, may not represent all optimization landscapes. The framework's extensibility allows easy addition of new problems.
+\item
+  \textbf{Hyperparameter Sensitivity}: We evaluated fixed configurations; the framework could be extended to include hyperparameter search with appropriate multiple comparison corrections.
+\item
+  \textbf{Performance Profiles}: Future versions could incorporate performance and data profiles for more nuanced algorithm comparison across problem scales.
+\end{enumerate}
+
+\hypertarget{impact-on-optimization-research}{%
+\subsubsection{Impact on Optimization Research}\label{impact-on-optimization-research}}
+
+This benchmarking framework addresses several chronic issues in optimization research:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Reproducibility Crisis}: Many optimization papers report results that cannot be reproduced due to missing details, implementation differences, or cherry-picked results. Our framework ensures complete reproducibility.
+\item
+  \textbf{Fair Comparison}: Different papers use different problem sets, termination criteria, and metrics. Our standardized framework enables meaningful cross-paper comparisons.
+\item
+  \textbf{Statistical Validity}: Most optimization papers report mean performance without statistical testing. Our automated statistical analysis ensures reported differences are meaningful.
+\item
+  \textbf{Implementation Quality}: By providing reference implementations of multiple optimizers with consistent interfaces, we eliminate implementation quality as a confounding factor.
+\end{enumerate}
+
+The framework's modular design encourages extension: researchers can easily add new optimizers, problems, or analysis methods while maintaining compatibility with the existing infrastructure. We envision this becoming a standard tool for optimization algorithm development and evaluation.
+
 \hypertarget{when-to-use-qqn}{%
 \subsection{When to Use QQN}\label{when-to-use-qqn}}
 
@@ -715,12 +896,15 @@ Larger values show diminishing returns while smaller values may compromise conve
 \subsection{Future Directions}\label{future-directions}}
 
 The quadratic interpolation approach of QQN could be extended in various ways:
-* \textbf{Deep Learning Applications}: Adapting QQN for stochastic optimization in neural network training, including mini-batch variants and adaptive learning rate schedules.
-* \textbf{Gradient Scaling (γ parameter)}: In deep learning contexts where gradients are often small, introducing an adaptive gradient scaling factor could improve convergence speed without sacrificing robustness.
-* \textbf{Momentum Integration}: Incorporating momentum terms into the quadratic path construction to accelerate convergence on problems with consistent gradient directions.
 
 \begin{itemize}
 \tightlist
+\item
+  \textbf{Deep Learning Applications}: Adapting QQN for stochastic optimization in neural network training, including mini-batch variants and adaptive learning rate schedules.
+\item
+  \textbf{Gradient Scaling (γ parameter)}: In deep learning contexts where gradients are often small, introducing an adaptive gradient scaling factor could improve convergence speed without sacrificing robustness.
+\item
+  \textbf{Momentum Integration}: Incorporating momentum terms into the quadratic path construction to accelerate convergence on problems with consistent gradient directions.
 \item
   \textbf{PSO-Like QQN}: Using a global population optimum to guide the quadratic path, similar to particle swarm optimization.
 \item

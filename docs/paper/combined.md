@@ -11,15 +11,20 @@ We provide both theoretical convergence guarantees and a comprehensive benchmark
 Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
 
 **Keywords:** optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation, benchmarking, statistical analysis
+
 ## Paper Series Overview
+
 This paper is the first in a planned series on optimization algorithms and their evaluation. It introduces:
+
 1. **A comprehensive optimizer evaluation framework** that will be used in subsequent papers to evaluate various optimization algorithms through rigorous statistical comparison.
 2. **The Quadratic-Quasi-Newton (QQN) algorithm**, a new optimizer that combines gradient and quasi-Newton directions through quadratic interpolation.
+
 Planned subsequent papers in this series include:
+
 * **QQN for Deep Learning**: Focusing on deep learning problems and simple QQN extensions such as adaptive gradient scaling (γ parameter) and momentum incorporation for handling the unique challenges of neural network optimization.
 * **Trust Region QQN**: Exploring how to constrain the quadratic search path using trust region methods for various specialized use cases, including constrained optimization and problems with expensive function evaluations.
-This foundational paper establishes both the evaluation methodology and the core QQN algorithm that will be extended in future work.
 
+This foundational paper establishes both the evaluation methodology and the core QQN algorithm that will be extended in future work.
 
 # Introduction
 
@@ -175,17 +180,6 @@ end for
 The one-dimensional optimization can use golden section search, Brent's method, or bisection on the derivative. 
 Note that while the quadratic path is defined for t ∈ [0,1], the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality and the objective function has small curvature along the path.
 
-
-
-
-
-
-
-
-
-
-
-
 ## Theoretical Properties
 
 **Robustness to Poor Curvature Approximations**: QQN remains robust when L-BFGS produces poor directions. 
@@ -281,11 +275,13 @@ Our benchmarking framework introduces a comprehensive evaluation methodology tha
 Traditional optimization benchmarks often suffer from selection bias, where specific hyperparameter choices favor certain methods. Our two-phase evaluation system provides comprehensive comparison:
 
 **Phase 1 - Convergence Speed (Winners)**:
+
 * Algorithms that successfully converge are ranked by the total function evaluations needed to achieve a threshold
 * The threshold is chosen to be roughly the median of the best results over a calibration run
 * This measures efficiency for algorithms that can solve the problem
 
 **Phase 2 - Best Effort (Non-convergers)**:
+
 * For algorithms that fail to reach the threshold, we compare the best objective value achieved
 * All algorithms terminate after a fixed number of function evaluations
 * This ensures fair comparison even when some methods cannot solve the problem
@@ -405,16 +401,19 @@ The results on the Rosenbrock function family reveal the challenges of ill-condi
 Statistical analysis reveals QQN's dominance across the benchmark suite:
 
 **Head-to-Head Statistical Comparisons:**
+
 - **QQN variants vs non-QQN methods**: Win-loss ratios range from 14W-6L-9T to 17W-6L-6T
 - **L-BFGS variants vs QQN**: Suffer 0W-19L-9T to 0W-26L-3T losses despite efficiency on convex problems
 - **Adam variants vs QQN**: Record 2W-22L-5T to 5W-19L-5T against QQN variants
 - **Gradient Descent vs QQN**: Show 0W-23L-6T to 6W-21L-5T performance
 
 **Algorithm Family Strengths:**
+
 - **QQN variants**: Statistical dominance with consistent positive win-loss ratios
 - **L-BFGS variants**: Efficiency on convex problems with 100% success and minimal evaluations
 
 **Notable Performance Gaps:**
+
 - Michalewicz functions: Adam-Fast achieves 40-65% success while most others achieve 0%
 - Neural networks: Adam-Fast reaches 35-45% success vs 0% for classical methods
 - SVM problems: GD-WeightDecay achieves 100% vs 0% for most Adam/L-BFGS variants
@@ -432,16 +431,19 @@ The following figure demonstrates QQN's superior scaling on Rosenbrock and multi
 **Detailed Results by Problem Class:**
 
 **Convex Problems:**
+
 * L-BFGS-Aggressive: 100% success on both Sphere problems with 7-10 evaluations
 * QQN-StrongWolfe: 100% success on Sphere_2D with 12 evaluations
 * QQN-Backtracking: 100% success on Matyas_2D with 25 evaluations
 
 **Non-Convex Unimodal:**
+
 * GD-WeightDecay: Best on Rosenbrock problems (35-55% success)
 * QQN-GoldenSection: 95% success on Beale_2D (highest among all)
 * L-BFGS: 72.5% success on Levi_2D
 
 **Highly Multimodal Problems:**
+
 * Adam-Fast: Dominates Michalewicz functions (40-65% success)
 * QQN-Bisection-1: 70% success on Rastrigin_2D
 * QQN-Bisection-2: 85% success on StyblinskiTang_2D
@@ -477,6 +479,60 @@ The comprehensive evaluation reveals several important insights:
    - L-BFGS-Aggressive: Unmatched efficiency on convex problems
 
 5. **Conservative Settings Fail**: Conservative variants (L-BFGS-Conservative, Trust Region-Conservative) consistently underperform with 5% success rates, suggesting aggressive line search is crucial.
+
+## The Benchmarking and Reporting Framework
+
+### Methodological Contributions
+
+Our benchmarking framework represents a significant methodological advance in optimization algorithm evaluation:
+
+1. **Tournament-Style Evaluation**: The two-phase system separates efficiency measurement (for convergers) from best-effort comparison (for non-convergers), providing a complete performance picture that traditional single-metric approaches miss.
+
+2. **Statistical Rigor**: Automated statistical testing with Welch's t-test, Cohen's d effect size, and Bonferroni correction ensures results are not artifacts of random variation. The framework generates comprehensive statistical comparison matrices that reveal true performance relationships.
+
+3. **Reproducibility Infrastructure**: Fixed seeds, deterministic algorithms, and automated report generation eliminate common sources of irreproducibility in optimization research. All results can be regenerated with a single command.
+
+4. **Multi-Format Reporting**: The system generates:
+   - **Markdown reports** with embedded visualizations for web viewing
+   - **LaTeX documents** ready for academic publication
+   - **CSV files** for further statistical analysis
+   - **Detailed per-run logs** for debugging and deep analysis
+
+
+### Insights Enabled by the Framework
+The comprehensive reporting revealed patterns invisible to traditional evaluation:
+
+1. **Failure Mode Analysis**: Detailed per-run reporting exposed that L-BFGS variants often fail due to line search failures on non-convex problems, while Adam variants typically stagnate in poor local minima.
+2. **Convergence Behavior Patterns**: Visualization of all runs revealed that QQN variants exhibit more consistent convergence trajectories, while gradient descent methods show high variance across runs.
+3. **Problem Family Effects**: Automatic problem classification and family-wise analysis revealed that optimizer performance clusters strongly by problem type, challenging the notion of universal optimizers.
+4. **Statistical vs Practical Significance**: The framework's dual reporting of p-values and effect sizes revealed cases where statistically significant differences have negligible practical impact (e.g., 10 vs 12 function evaluations on Sphere).
+
+### Framework Design Decisions
+Several design choices proved crucial for meaningful evaluation:
+
+1. **Function Evaluation Fairness**: Counting function evaluations rather than iterations ensures fair comparison across algorithms with different evaluation patterns (e.g., line search vs trust region).
+2. **Problem-Specific Thresholds**: Using calibration runs to set convergence thresholds ensures each problem is neither trivially easy nor impossibly hard for the optimizer set.
+3. **Championship Mode**: This innovation allows focused comparison of best performers per problem, reducing computational cost while maintaining statistical validity.
+4. **Hierarchical Reporting**: The multi-level report structure (summary → problem-specific → detailed per-run) allows both quick overview and deep investigation.
+
+### Limitations and Extensions
+While comprehensive, the framework has limitations that suggest future extensions:
+
+1. **Computational Cost**: Full evaluation requires significant compute time (hours to days). Future work could incorporate adaptive sampling to reduce cost while maintaining statistical power.
+2. **Problem Selection Bias**: Our 27-problem suite, while diverse, may not represent all optimization landscapes. The framework's extensibility allows easy addition of new problems.
+3. **Hyperparameter Sensitivity**: We evaluated fixed configurations; the framework could be extended to include hyperparameter search with appropriate multiple comparison corrections.
+4. **Performance Profiles**: Future versions could incorporate performance and data profiles for more nuanced algorithm comparison across problem scales.
+
+### Impact on Optimization Research
+This benchmarking framework addresses several chronic issues in optimization research:
+
+1. **Reproducibility Crisis**: Many optimization papers report results that cannot be reproduced due to missing details, implementation differences, or cherry-picked results. Our framework ensures complete reproducibility.
+2. **Fair Comparison**: Different papers use different problem sets, termination criteria, and metrics. Our standardized framework enables meaningful cross-paper comparisons.
+3. **Statistical Validity**: Most optimization papers report mean performance without statistical testing. Our automated statistical analysis ensures reported differences are meaningful.
+4. **Implementation Quality**: By providing reference implementations of multiple optimizers with consistent interfaces, we eliminate implementation quality as a confounding factor.
+
+The framework's modular design encourages extension: researchers can easily add new optimizers, problems, or analysis methods while maintaining compatibility with the existing infrastructure. We envision this becoming a standard tool for optimization algorithm development and evaluation.
+
 
 ## When to Use QQN
 
@@ -518,10 +574,10 @@ Larger values show diminishing returns while smaller values may compromise conve
 ## Future Directions
 
 The quadratic interpolation approach of QQN could be extended in various ways:
+
 * **Deep Learning Applications**: Adapting QQN for stochastic optimization in neural network training, including mini-batch variants and adaptive learning rate schedules.
 * **Gradient Scaling (γ parameter)**: In deep learning contexts where gradients are often small, introducing an adaptive gradient scaling factor could improve convergence speed without sacrificing robustness.
 * **Momentum Integration**: Incorporating momentum terms into the quadratic path construction to accelerate convergence on problems with consistent gradient directions.
-
 * **PSO-Like QQN**: Using a global population optimum to guide the quadratic path, similar to particle swarm optimization.
 * **Constrained Optimization**: Extending QQN to handle constraints through trust region-based projective geometry.
 * **Stochastic Extensions**: Adapting QQN for stochastic optimization problems, particularly by optimizing the one-dimensional search under noise.
