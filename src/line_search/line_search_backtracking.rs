@@ -1,7 +1,6 @@
-use crate::core::line_search::OneDimensionalProblem;
-use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
-
+use crate::line_search::line_search::OneDimensionalProblem;
+use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 
 /// Configuration parameters for the backtracking line search algorithm.
 ///
@@ -361,10 +360,11 @@ impl LineSearch for BacktrackingLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use log::debug;
     use std::sync::Arc;
+    use crate::line_search::line_search::create_1d_problem_linear;
+
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
         Ok(0.5 * x.iter().map(|xi| xi * xi).sum::<f64>())

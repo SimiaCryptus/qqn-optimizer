@@ -10,11 +10,12 @@ use anyhow::Result;
 use candle_core::{Device, Tensor};
 use qqn_optimizer::utils::math::SeparateFunctions;
 use qqn_optimizer::{
-    LineSearchConfig, LineSearchMethod, OptimizationProblem, Optimizer, QQNConfig,
+    OptimizationProblem, Optimizer, QQNConfig,
     QQNOptimizer,
 };
 use std::sync::Arc;
 use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
+use qqn_optimizer::line_search::{LineSearchConfig, LineSearchMethod};
 
 fn main() -> Result<()> {
     // Configure the QQN optimizer

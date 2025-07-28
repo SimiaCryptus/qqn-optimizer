@@ -1,17 +1,10 @@
 use crate::core::lbfgs::LBFGSState;
-use crate::core::line_search::{
-    create_1d_problem, create_1d_problem_linear, create_line_search, LineSearch, LineSearchResult,
-    ParametricCurve,
-};
-use crate::core::line_search_bisection::BisectionLineSearch;
 use crate::core::optimizer::OptimizationMetadata;
 use crate::core::Optimizer;
 use crate::core::StepResult;
-use crate::core::{ConvergenceInfo, TerminationReason};
 use crate::utils::math::{compute_magnitude, log_tensor,
                          DifferentiableFunction,
 };
-use crate::LineSearchConfig;
 use anyhow::{anyhow, Result as AnyhowResult};
 use candle_core::{Device, Error, Result as CandleResult, Tensor};
 use log::{debug, error, info, trace, warn};
@@ -20,6 +13,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use crate::ConvergenceInfo;
+use crate::line_search::line_search::{create_1d_problem, create_1d_problem_linear, create_line_search, ParametricCurve};
+use crate::line_search::{BacktrackingLineSearch, BisectionLineSearch, CubicQuadraticLineSearch, GoldenSectionLineSearch, LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, MoreThuenteLineSearch, StrongWolfeLineSearch, TerminationReason};
+use crate::line_search::LineSearchMethod::Bisection;
 use crate::utils::{vector_add, vector_scale};
 
 /// Configuration for the QQN optimizer
@@ -49,7 +46,7 @@ impl Default for QQNConfig {
             lbfgs_history: 10,
             min_lbfgs_iterations: 1,
             line_search: LineSearchConfig {
-                method: crate::core::line_search::LineSearchMethod::Bisection,
+                method: Bisection,
                 ..LineSearchConfig::default()
             },
             epsilon: 1e-6,
@@ -71,7 +68,7 @@ impl QQNConfig {
             lbfgs_history: 20,
             min_lbfgs_iterations: 5, // More steepest descent iterations
             line_search: LineSearchConfig {
-                method: crate::core::line_search::LineSearchMethod::Bisection,
+                method: LineSearchMethod::Bisection,
                 max_iterations: 50,
                 c1: 1e-4,
                 c2: 0.9,
@@ -94,7 +91,7 @@ impl QQNConfig {
             lbfgs_history: 5,
             min_lbfgs_iterations: 1,
             line_search: LineSearchConfig {
-                method: crate::core::line_search::LineSearchMethod::Bisection,
+                method: LineSearchMethod::Bisection,
                 max_iterations: 20,
                 ..LineSearchConfig::default()
             },
@@ -624,15 +621,15 @@ impl QQNOptimizer {
         let line_search_any = self.line_search.as_any_mut();
         if let Some(bisection) = line_search_any.downcast_mut::<BisectionLineSearch>() {
             bisection.set_initial_step(prev_step);
-        } else if let Some(strong_wolfe) = line_search_any.downcast_mut::<crate::core::line_search_strong_wolfe::StrongWolfeLineSearch>() {
+        } else if let Some(strong_wolfe) = line_search_any.downcast_mut::<StrongWolfeLineSearch>() {
             strong_wolfe.set_initial_step(prev_step);
-        } else if let Some(backtracking) = line_search_any.downcast_mut::<crate::core::line_search_backtracking::BacktrackingLineSearch>() {
+        } else if let Some(backtracking) = line_search_any.downcast_mut::<BacktrackingLineSearch>() {
             backtracking.set_initial_step(prev_step);
-        } else if let Some(golden) = line_search_any.downcast_mut::<crate::core::line_search_golden_section::GoldenSectionLineSearch>() {
+        } else if let Some(golden) = line_search_any.downcast_mut::<GoldenSectionLineSearch>() {
             golden.set_initial_step(prev_step);
-        } else if let Some(more_thuente) = line_search_any.downcast_mut::<crate::core::line_search_more_thuente::MoreThuenteLineSearch>() {
+        } else if let Some(more_thuente) = line_search_any.downcast_mut::<MoreThuenteLineSearch>() {
             more_thuente.set_initial_step(prev_step);
-        } else if let Some(cubic_quad) = line_search_any.downcast_mut::<crate::core::line_search_cubic_quadratic::CubicQuadraticLineSearch>() {
+        } else if let Some(cubic_quad) = line_search_any.downcast_mut::<CubicQuadraticLineSearch>() {
             cubic_quad.set_initial_step(prev_step);
         }
     }

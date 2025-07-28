@@ -1,7 +1,7 @@
-use crate::core::line_search::OneDimensionalProblem;
-use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::{anyhow, Error};
 use log::debug;
+use crate::line_search::line_search::OneDimensionalProblem;
+use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 
 /// Configuration for bisection line search algorithm.
 ///
@@ -496,10 +496,10 @@ pub(crate) fn find_far_point_2(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use approx::assert_relative_eq;
     use std::sync::Arc;
+    use crate::line_search::line_search::create_1d_problem_linear;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)

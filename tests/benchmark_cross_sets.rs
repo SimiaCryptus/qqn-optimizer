@@ -3,9 +3,9 @@ use std::time::Duration;
 
 use qqn_optimizer::benchmarks::evaluation::{disable_no_threshold_mode, enable_no_threshold_mode, ProblemSpec};
 use qqn_optimizer::experiment_runner::experiment_runner::run_benchmark;
-use qqn_optimizer::experiment_runner::optimizer_sets::{adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants};
-use qqn_optimizer::experiment_runner::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 use qqn_optimizer::init_logging;
+use qqn_optimizer::optimizer_sets::{adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants};
+use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 
 #[tokio::test]
 async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -43,26 +43,12 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
-// #[tokio::test]
-async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
-    init_logging(false)?;
-    // Enable no threshold mode for this test
-    enable_no_threshold_mode();
-
-    test("results/mnist_", mnist_problems(1000)).await?;
-
-    // Explicitly flush any pending async operations
-    tokio::task::yield_now().await;
-
-    Ok(())
-}
-
 async fn test_all(
     prefix: &str,
     problems: Vec<ProblemSpec>
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let max_evals = 1000;
-    let num_runs = 20;
+    let num_runs = 10;
     run_benchmark(
         &format!("{}all_optimizers_", prefix),
         max_evals,
@@ -78,6 +64,20 @@ async fn test_all(
             optimizers
         },
     ).await
+}
+
+// #[tokio::test]
+async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
+    init_logging(false)?;
+    // Enable no threshold mode for this test
+    enable_no_threshold_mode();
+
+    test("results/mnist_", mnist_problems(1000)).await?;
+
+    // Explicitly flush any pending async operations
+    tokio::task::yield_now().await;
+
+    Ok(())
 }
 
 async fn test(

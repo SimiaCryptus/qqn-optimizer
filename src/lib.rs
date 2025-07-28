@@ -2,14 +2,22 @@ pub mod analysis;
 pub mod benchmarks;
 pub mod core;
 pub mod utils;
+pub mod line_search;
 pub mod experiment_runner;
 
 // Re-export commonly used types
 pub use core::{
     lbfgs::{LBFGSConfig, LBFGSOptimizer},
-    line_search::{LineSearchConfig, LineSearchMethod},
     optimizer::{ConvergenceInfo, Optimizer, StepResult},
     qqn::{QQNConfig, QQNOptimizer},
+};
+
+pub use line_search::{
+    LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, TerminationReason,
+};
+
+pub use experiment_runner::{
+    problem_sets, optimizer_sets
 };
 
 pub use benchmarks::functions::OptimizationProblem;
@@ -27,7 +35,6 @@ pub use crate::benchmarks::ml_problems::{
 };
 
 // Re-export commonly used types
-pub use self::core::line_search_strong_wolfe::StrongWolfeConfig;
 pub use crate::core::adam::{AdamConfig, AdamOptimizer, AdamState};
 // Error types
 pub use anyhow::{Error, Result};

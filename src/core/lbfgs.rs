@@ -39,8 +39,6 @@
 //! - **Lax**: Aggressive settings for well-conditioned problems requiring fast convergence
 //! - **QQN**: Specialized settings when used as a component within QQN
 
-use crate::core::line_search::create_line_search;
-use crate::core::line_search::{LineSearch, LineSearchConfig};
 use crate::core::optimizer::OptimizationMetadata;
 use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
 use crate::utils::math::{compute_magnitude, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
@@ -50,10 +48,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
-
-// Convert to 1D problem for line search
-use crate::core::line_search::create_1d_problem_linear;
-use crate::LineSearchMethod;
+use crate::line_search::line_search::{create_1d_problem_linear, create_line_search};
+use crate::line_search::{LineSearch, LineSearchConfig, LineSearchMethod};
 
 /// Configuration parameters for the L-BFGS optimizer.
 ///

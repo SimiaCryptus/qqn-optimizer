@@ -1,8 +1,9 @@
-use crate::core::line_search::OneDimensionalProblem;
-use crate::core::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 use serde::{Deserialize, Serialize};
+use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
+use crate::line_search::line_search::OneDimensionalProblem;
+
 /// Strong Wolfe line search implementation following Nocedal & Wright Algorithm 3.5.
 ///
 /// The Strong Wolfe conditions ensure both sufficient decrease (Armijo condition) and
@@ -500,10 +501,10 @@ impl LineSearch for StrongWolfeLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use approx::assert_relative_eq;
     use std::sync::Arc;
+    use crate::line_search::line_search::create_1d_problem_linear;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)

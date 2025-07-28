@@ -1,10 +1,10 @@
-use crate::core::line_search_bisection::BisectionLineSearch;
 use crate::utils::math::dot_product_f64;
 use anyhow::{anyhow, Error, Result};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::Arc;
+use crate::line_search::{BacktrackingConfig, BacktrackingLineSearch, BisectionConfig, BisectionLineSearch, CubicQuadraticConfig, CubicQuadraticLineSearch, GoldenSectionConfig, GoldenSectionLineSearch, MoreThuenteConfig, MoreThuenteLineSearch, StrongWolfeConfig, StrongWolfeLineSearch};
 
 /// Trait for 1-D differentiable parametric curves
 pub trait ParametricCurve: Send + Sync {
@@ -244,14 +244,6 @@ impl Default for LineSearchConfig {
 }
 /// Create a line search algorithm from configuration
 pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
-    use crate::core::line_search_backtracking::{
-        BacktrackingConfig, BacktrackingLineSearch,
-    };
-    use crate::core::line_search_bisection::BisectionConfig;
-    use crate::core::line_search_cubic_quadratic::{CubicQuadraticConfig, CubicQuadraticLineSearch};
-    use crate::core::line_search_golden_section::{GoldenSectionConfig, GoldenSectionLineSearch};
-    use crate::core::line_search_more_thuente::{MoreThuenteConfig, MoreThuenteLineSearch};
-    use crate::core::line_search_strong_wolfe::{StrongWolfeConfig, StrongWolfeLineSearch};
     match config.method {
         LineSearchMethod::StrongWolfe => Box::new(StrongWolfeLineSearch::new(StrongWolfeConfig {
             c1: config.c1,

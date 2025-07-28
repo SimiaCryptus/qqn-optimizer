@@ -24,14 +24,9 @@ pub enum OptError {
 }
 
 pub mod lbfgs;
-pub mod line_search;
 pub mod optimizer;
 pub mod qqn;
 pub use lbfgs::{LBFGSConfig, LBFGSOptimizer, LBFGSState};
-pub use line_search::{
-    LineSearch, LineSearchConfig, LineSearchMethod,
-    LineSearchResult, TerminationReason,
-};
 pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
 
@@ -46,33 +41,9 @@ pub const DEFAULT_LBFGS_HISTORY: usize = 10;
 
 pub mod adam;
 pub mod gd;
-pub mod line_search_cubic_quadratic;
-pub mod line_search_golden_section;
-pub mod line_search_more_thuente;
-pub mod line_search_bisection;
-pub mod line_search_backtracking;
-pub mod line_search_strong_wolfe;
 pub mod trust_region;
 
 pub use gd::{GDConfig, GDOptimizer, GDState};
-pub use line_search_backtracking::{
-    BacktrackingConfig, BacktrackingLineSearch,
-};
-pub use line_search_strong_wolfe::{
-    StrongWolfeConfig, StrongWolfeLineSearch,
-};
-pub use line_search_bisection::{
-    BisectionConfig,BisectionLineSearch,
-};
-pub use line_search_cubic_quadratic::{
-    CubicQuadraticConfig, CubicQuadraticLineSearch,
-};
-pub use line_search_golden_section::{
-    GoldenSectionConfig, GoldenSectionLineSearch,
-};
-pub use line_search_more_thuente::{
-    MoreThuenteConfig, MoreThuenteLineSearch,
-};
 pub use trust_region::{
     TrustRegionConfig, TrustRegionOptimizer, TrustRegionState
 };
