@@ -1,4 +1,4 @@
-\begin{thebibliography}{17}
+\begin{thebibliography}{19}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -12,6 +12,13 @@ Vahid Beiranvand, Warren Hare, and Yves Lucet.
 \newblock \emph{Optimization and Engineering}, 18\penalty0 (4):\penalty0
   815--848, 2017.
 \newblock \doi{10.1007/s11081-017-9366-1}.
+
+\bibitem[Biggs(1973)]{biggs1973minimization}
+Michael~C Biggs.
+\newblock Minimization algorithms making use of non-quadratic properties of the
+  objective function.
+\newblock \emph{IMA Journal of Applied Mathematics}, 12\penalty0 (3):\penalty0
+  337--357, 1973.
 
 \bibitem[Broyden(1970)]{broyden1970convergence}
 Charles~George Broyden.
@@ -27,6 +34,11 @@ Augustin Cauchy.
   d'{\'e}quations simultan{\'e}es.
 \newblock \emph{Comptes Rendus de l'Acad{\'e}mie des Sciences}, 25:\penalty0
   536--538, 1847.
+
+\bibitem[Conn et~al.(2000)Conn, Gould, and Toint]{conn2000trust}
+Andrew~R Conn, Nicholas~IM Gould, and Philippe~L Toint.
+\newblock \emph{Trust region methods}.
+\newblock SIAM, 2000.
 
 \bibitem[De~Jong(1975)]{dejong1975analysis}
 Kenneth~Alan De~Jong.
