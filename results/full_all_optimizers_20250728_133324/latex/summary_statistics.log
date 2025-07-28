@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.7.24)  28 JUL 2025 10:16
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.7.24)  28 JUL 2025 11:53
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -216,7 +216,7 @@ File: l3backend-pdftex.def 2024-01-04 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count284
 \l__pdf_internal_box=\box63
 )
-No file summary_statistics.aux.
+(./summary_statistics.aux)
 \openout1 = `summary_statistics.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 7.
@@ -1908,10 +1908,10 @@ l.54  & Trust Region-Conservative &
                                     0.0 & 7.19e1 & 602.0 & 402.0 & 0.004 \\
 (That makes 100 errors; please try again.) 
 Here is how much of TeX's memory you used:
- 7026 strings out of 474222
- 172146 string characters out of 5748733
+ 7029 strings out of 474222
+ 172227 string characters out of 5748733
  1959975 words of memory out of 5000000
- 29241 multiletter control sequences out of 15000+600000
+ 29242 multiletter control sequences out of 15000+600000
  558377 words of font info for 37 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  86i,13n,93p,287b,530s stack positions out of 10000i,1000n,20000p,200000b,200000s

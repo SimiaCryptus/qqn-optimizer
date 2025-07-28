@@ -9,6 +9,7 @@ if [ ! -f content.tex ]; then
     --citeproc \
     --wrap=preserve \
     --top-level-division=section \
+   --resource-path=.. \
     --natbib
 else
   echo "content.tex already exists, skipping pandoc generation"

@@ -1,35 +1,3 @@
-\documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
-\usepackage{booktabs}
-\usepackage{array}
-\usepackage{multirow}
-\usepackage{longtable}
-\usepackage{xcolor}
-\usepackage{siunitx}
-\usepackage{amsmath}
-\usepackage{graphicx}
-\usepackage{float}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{adjustbox}
-\title{Quadratic Quasi-Newton (QQN) Optimizer: Comprehensive Benchmark Results}
-\author{QQN Benchmark Suite}
-\date{\today}
-\begin{document}
-\maketitle
-\begin{abstract}
-This document presents comprehensive benchmark results for the Quadratic Quasi-Newton (QQN) optimizer compared against established optimization algorithms. The evaluation covers multiple problem families including convex unimodal, non-convex unimodal, and highly multimodal optimization problems.
-\end{abstract}
-\section{Introduction}
-This report presents the results of comprehensive benchmarking experiments comparing the QQN optimizer against established optimization algorithms. The experiments were conducted using standardized test problems from various families to evaluate performance across different optimization landscapes.
-\subsection{Experimental Setup}
-\begin{itemize}
-\item \textbf{Runs per configuration:} 20 independent runs with different random seeds
-\item \textbf{Success criteria:} Minimum 1.00e-7\\% improvement per iteration OR optimizer-specific convergence within 1000 iterations or 1000 objective evaluations
-\item \textbf{Time limit:} DurationWrapper { nanos: 60000000000 } per run
-\item \textbf{Hardware:} Standard CPU implementation
-\item \textbf{Implementation:} Rust-based optimization framework
-\end{itemize}
 \section{Performance Results}
 The following sections present detailed performance comparisons across all tested problems and optimizers.
 \subsection{Overall Performance Summary}
@@ -4022,4 +3990,3 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \item Statistical analysis results
 \item Problem-specific detailed reports
 \end{itemize}
-\end{document}
