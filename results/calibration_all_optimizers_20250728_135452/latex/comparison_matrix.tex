@@ -1,0 +1,29 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{QQN vs Non-QQN Optimizer Comparison Matrix}
+\label{tab:comparison_matrix}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{lcccccccccccccc}
+\toprule
+\textbf{QQN Optimizer} & \textbf{Adam} & \textbf{Adam-AMSGrad} & \textbf{Adam-Fast} & \textbf{Adam-WeightDecay} & \textbf{GD} & \textbf{GD-Momentum} & \textbf{GD-Nesterov} & \textbf{GD-WeightDecay} & \textbf{L-BFGS} & \textbf{L-BFGS-Aggressive} & \textbf{L-BFGS-Conservative} & \textbf{Trust Region-Adaptive} & \textbf{Trust Region-Conservative} & \textbf{Trust Region-Standard}\\ 
+\midrule
+\textbf{QQN-Backtracking} & \textcolor{green!70!black}{51W-1L-7T} & \textcolor{green!70!black}{52W-1L-6T} & \textcolor{green!70!black}{40W-6L-13T} & \textcolor{green!70!black}{45W-3L-11T} & \textcolor{green!70!black}{38W-3L-18T} & \textcolor{green!70!black}{47W-0L-12T} & \textcolor{green!70!black}{36W-4L-19T} & \textcolor{green!70!black}{27W-5L-27T} & \textcolor{green!70!black}{30W-1L-28T} & \textcolor{green!70!black}{40W-0L-19T} & \textcolor{green!70!black}{23W-5L-31T} & \textcolor{green!70!black}{47W-0L-12T} & \textcolor{green!70!black}{52W-0L-7T} & \textcolor{green!70!black}{45W-1L-13T} \\
+\textbf{QQN-Bisection-1} & \textcolor{green!70!black}{55W-2L-2T} & \textcolor{green!70!black}{55W-2L-2T} & \textcolor{green!70!black}{41W-6L-12T} & \textcolor{green!70!black}{48W-3L-8T} & \textcolor{green!70!black}{39W-1L-19T} & \textcolor{green!70!black}{49W-0L-10T} & \textcolor{green!70!black}{36W-3L-20T} & \textcolor{green!70!black}{31W-6L-22T} & \textcolor{green!70!black}{29W-0L-30T} & \textcolor{green!70!black}{43W-0L-16T} & \textcolor{green!70!black}{26W-3L-30T} & \textcolor{green!70!black}{49W-0L-10T} & \textcolor{green!70!black}{54W-0L-5T} & \textcolor{green!70!black}{48W-1L-10T} \\
+\textbf{QQN-Bisection-2} & \textcolor{green!70!black}{49W-1L-7T} & \textcolor{green!70!black}{49W-1L-7T} & \textcolor{green!70!black}{40W-7L-10T} & \textcolor{green!70!black}{42W-3L-12T} & \textcolor{green!70!black}{39W-3L-15T} & \textcolor{green!70!black}{46W-0L-11T} & \textcolor{green!70!black}{36W-4L-17T} & \textcolor{green!70!black}{32W-6L-19T} & \textcolor{green!70!black}{27W-1L-29T} & \textcolor{green!70!black}{40W-0L-17T} & \textcolor{green!70!black}{28W-2L-27T} & \textcolor{green!70!black}{45W-0L-12T} & \textcolor{green!70!black}{50W-0L-7T} & \textcolor{green!70!black}{44W-1L-12T} \\
+\textbf{QQN-CubicQuadraticInterpolation} & \textcolor{green!70!black}{49W-2L-8T} & \textcolor{green!70!black}{49W-2L-8T} & \textcolor{green!70!black}{38W-9L-12T} & \textcolor{green!70!black}{41W-7L-11T} & \textcolor{green!70!black}{34W-8L-17T} & \textcolor{green!70!black}{44W-0L-15T} & \textcolor{green!70!black}{34W-6L-19T} & \textcolor{green!70!black}{24W-12L-23T} & \textcolor{green!70!black}{29W-1L-29T} & \textcolor{green!70!black}{38W-2L-19T} & \textcolor{green!70!black}{17W-14L-28T} & \textcolor{green!70!black}{45W-0L-14T} & \textcolor{green!70!black}{51W-0L-8T} & \textcolor{green!70!black}{45W-1L-13T} \\
+\textbf{QQN-GoldenSection} & \textcolor{green!70!black}{53W-2L-4T} & \textcolor{green!70!black}{52W-2L-5T} & \textcolor{green!70!black}{41W-7L-11T} & \textcolor{green!70!black}{43W-2L-14T} & \textcolor{green!70!black}{38W-2L-19T} & \textcolor{green!70!black}{50W-1L-8T} & \textcolor{green!70!black}{35W-4L-20T} & \textcolor{green!70!black}{30W-9L-20T} & \textcolor{green!70!black}{26W-3L-30T} & \textcolor{green!70!black}{38W-2L-19T} & \textcolor{green!70!black}{22W-6L-31T} & \textcolor{green!70!black}{49W-0L-10T} & \textcolor{green!70!black}{53W-0L-6T} & \textcolor{green!70!black}{45W-0L-14T} \\
+\textbf{QQN-MoreThuente} & \textcolor{green!70!black}{38W-9L-12T} & \textcolor{green!70!black}{38W-9L-12T} & \textcolor{green!70!black}{23W-21L-15T} & \textcolor{green!70!black}{26W-16L-17T} & \textcolor{green!70!black}{27W-17L-15T} & \textcolor{green!70!black}{28W-12L-19T} & \textcolor{green!70!black}{24W-17L-18T} & \textcolor{green!70!black}{22W-18L-19T} & \textcolor{green!70!black}{16W-5L-38T} & \textcolor{green!70!black}{34W-0L-25T} & \textcolor{red!70!black}{14W-18L-27T} & \textcolor{green!70!black}{37W-2L-20T} & \textcolor{green!70!black}{48W-1L-10T} & \textcolor{green!70!black}{36W-5L-18T} \\
+\textbf{QQN-StrongWolfe} & \textcolor{green!70!black}{52W-2L-5T} & \textcolor{green!70!black}{52W-2L-5T} & \textcolor{green!70!black}{41W-4L-14T} & \textcolor{green!70!black}{44W-2L-13T} & \textcolor{green!70!black}{38W-3L-18T} & \textcolor{green!70!black}{48W-0L-11T} & \textcolor{green!70!black}{36W-3L-20T} & \textcolor{green!70!black}{29W-5L-25T} & \textcolor{green!70!black}{30W-0L-29T} & \textcolor{green!70!black}{41W-0L-18T} & \textcolor{green!70!black}{24W-6L-29T} & \textcolor{green!70!black}{46W-0L-13T} & \textcolor{green!70!black}{52W-0L-7T} & \textcolor{green!70!black}{46W-0L-13T} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
+\end{document}

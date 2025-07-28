@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Sphere\textbackslash{}_2D Problem}
+\label{tab:sphere_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-MoreThuente} & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 13.0 & 100.0 & 0.000 \\
+QQN-Bisection-2 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 14.0 & 100.0 & 0.000 \\
+QQN-Backtracking & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 12.0 & 100.0 & 0.000 \\
+QQN-CubicQuadraticInterpolation & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 13.0 & 100.0 & 0.000 \\
+QQN-Bisection-1 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 16.0 & 100.0 & 0.000 \\
+L-BFGS & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 14.1 & 100.0 & 0.000 \\
+QQN-StrongWolfe & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 12.0 & 100.0 & 0.000 \\
+L-BFGS-Aggressive & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 12.6 & 100.0 & 0.000 \\
+QQN-GoldenSection & 3.16e-14 & 5.52e-15 & 2.25e-14 & 4.41e-14 & 47.0 & 100.0 & 0.000 \\
+GD-WeightDecay & 3.67e-10 & 1.54e-11 & 3.44e-10 & 3.96e-10 & 160.2 & 100.0 & 0.005 \\
+L-BFGS-Conservative & 1.65e-7 & 4.21e-7 & 2.42e-13 & 1.86e-6 & 550.3 & 10.0 & 0.015 \\
+GD & 3.06e-6 & 5.27e-7 & 2.06e-6 & 3.95e-6 & 335.0 & 0.0 & 0.008 \\
+GD-Nesterov & 9.93e-2 & 1.35e-2 & 7.20e-2 & 1.24e-1 & 23.0 & 0.0 & 0.001 \\
+Adam-Fast & 1.26e-1 & 6.68e-3 & 1.10e-1 & 1.38e-1 & 37.4 & 0.0 & 0.001 \\
+GD-Momentum & 1.54e-1 & 2.80e-2 & 1.09e-1 & 1.99e-1 & 23.0 & 0.0 & 0.001 \\
+Adam-WeightDecay & 2.23e-1 & 5.13e-2 & 1.20e-1 & 3.13e-1 & 502.0 & 0.0 & 0.010 \\
+Adam & 1.21e0 & 2.12e-1 & 7.82e-1 & 1.59e0 & 502.0 & 0.0 & 0.010 \\
+Adam-AMSGrad & 1.24e0 & 2.50e-1 & 7.07e-1 & 1.69e0 & 502.0 & 0.0 & 0.011 \\
+Trust Region-Conservative & 3.06e0 & 3.99e0 & 5.03e-2 & 1.79e1 & 578.6 & 0.0 & 0.004 \\
+Trust Region-Standard & 1.02e3 & 1.67e3 & 4.40e2 & 6.05e3 & 28.9 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 1.03e3 & 4.34e2 & 3.80e-1 & 1.22e3 & 47.7 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

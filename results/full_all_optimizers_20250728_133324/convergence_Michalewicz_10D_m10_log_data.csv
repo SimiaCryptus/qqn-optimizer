@@ -1,0 +1,4 @@
+Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue
+L-BFGS-Aggressive,37,6.722251e-1,-1.724853e-1
+L-BFGS-Aggressive,61,4.616331e-1,-3.357030e-1
+L-BFGS-Aggressive,76,8.730526e-1,-5.895957e-2

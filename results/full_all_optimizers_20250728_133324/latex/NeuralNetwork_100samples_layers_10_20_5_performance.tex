@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for NeuralNetwork\textbackslash{}_100samples\textbackslash{}_layers\textbackslash{}_10\textbackslash{}_20\textbackslash{}_5 Problem}
+\label{tab:neuralnetwork_100samples_layers_10_20_5}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{Adam-Fast} & 4.29e-2 & 8.16e-3 & 2.29e-2 & 6.36e-2 & 191.6 & 32.5 & 0.301 \\
+QQN-StrongWolfe & 4.97e-2 & 1.02e-2 & 3.93e-2 & 7.47e-2 & 473.8 & 0.0 & 0.864 \\
+QQN-MoreThuente & 5.09e-2 & 1.87e-2 & 3.77e-2 & 1.12e-1 & 502.4 & 0.0 & 0.841 \\
+QQN-Bisection-2 & 5.30e-2 & 4.85e-3 & 4.22e-2 & 6.21e-2 & 535.1 & 0.0 & 0.800 \\
+QQN-Bisection-1 & 5.57e-2 & 4.63e-3 & 4.61e-2 & 6.64e-2 & 503.9 & 0.0 & 0.821 \\
+QQN-Backtracking & 6.13e-2 & 4.84e-3 & 5.30e-2 & 7.08e-2 & 544.4 & 0.0 & 0.835 \\
+L-BFGS-Conservative & 6.45e-2 & 7.56e-3 & 5.34e-2 & 8.43e-2 & 568.8 & 0.0 & 0.757 \\
+Adam-WeightDecay & 6.97e-2 & 3.85e-3 & 6.36e-2 & 7.64e-2 & 502.0 & 0.0 & 0.790 \\
+L-BFGS-Aggressive & 8.54e-2 & 3.38e-3 & 7.82e-2 & 9.21e-2 & 705.8 & 0.0 & 0.660 \\
+QQN-GoldenSection & 8.69e-2 & 4.51e-3 & 7.81e-2 & 9.57e-2 & 893.4 & 0.0 & 0.567 \\
+L-BFGS & 1.13e-1 & 6.79e-2 & 7.41e-2 & 3.68e-1 & 517.2 & 0.0 & 0.610 \\
+Adam & 1.15e-1 & 6.62e-3 & 9.72e-2 & 1.23e-1 & 502.0 & 0.0 & 0.789 \\
+Adam-AMSGrad & 1.17e-1 & 5.91e-3 & 1.08e-1 & 1.27e-1 & 502.0 & 0.0 & 0.796 \\
+QQN-CubicQuadraticInterpolation & 1.18e-1 & 3.82e-3 & 1.08e-1 & 1.28e-1 & 394.8 & 0.0 & 0.938 \\
+GD-WeightDecay & 1.42e-1 & 2.52e-3 & 1.38e-1 & 1.46e-1 & 335.0 & 0.0 & 0.900 \\
+Trust Region-Conservative & 1.49e-1 & 3.40e-3 & 1.42e-1 & 1.55e-1 & 128.0 & 0.0 & 0.150 \\
+GD & 1.52e-1 & 1.28e-3 & 1.49e-1 & 1.54e-1 & 335.0 & 0.0 & 0.889 \\
+GD-Nesterov & 1.62e-1 & 1.20e-2 & 1.10e-1 & 1.68e-1 & 36.1 & 0.0 & 0.094 \\
+GD-Momentum & 1.65e-1 & 1.51e-2 & 1.02e-1 & 1.83e-1 & 36.1 & 0.0 & 0.094 \\
+Trust Region-Adaptive & 1.93e-1 & 5.63e-2 & 1.48e-1 & 3.46e-1 & 26.7 & 0.0 & 0.032 \\
+Trust Region-Standard & 2.52e-1 & 3.10e-2 & 2.04e-1 & 3.08e-1 & 5.6 & 0.0 & 0.007 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

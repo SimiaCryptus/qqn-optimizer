@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Beale\textbackslash{}_2D Problem}
+\label{tab:beale_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-GoldenSection} & 4.60e-3 & 2.61e-2 & 2.38e-19 & 1.83e-1 & 638.8 & 95.0 & 0.010 \\
+QQN-Bisection-1 & 2.45e-1 & 1.51e0 & 1.92e-20 & 9.68e0 & 258.6 & 92.5 & 0.004 \\
+QQN-CubicQuadraticInterpolation & 2.49e-1 & 1.38e0 & 2.19e-20 & 8.79e0 & 316.0 & 82.5 & 0.010 \\
+QQN-Bisection-2 & 1.39e0 & 3.30e0 & 1.45e-20 & 9.40e0 & 169.2 & 80.0 & 0.003 \\
+QQN-MoreThuente & 4.94e0 & 4.79e0 & 6.71e-19 & 1.49e1 & 401.8 & 35.0 & 0.007 \\
+QQN-Backtracking & 7.35e-3 & 2.05e-2 & 9.38e-22 & 9.01e-2 & 582.2 & 5.0 & 0.018 \\
+GD-Momentum & 9.74e-1 & 9.36e-1 & 5.67e-6 & 2.72e0 & 31.1 & 5.0 & 0.001 \\
+L-BFGS & 1.02e0 & 2.25e0 & 1.47e-7 & 8.06e0 & 283.7 & 5.0 & 0.004 \\
+L-BFGS-Conservative & 1.86e-6 & 7.32e-6 & 1.66e-11 & 3.36e-5 & 571.1 & 0.0 & 0.013 \\
+GD-WeightDecay & 1.21e-4 & 2.62e-6 & 1.16e-4 & 1.25e-4 & 335.0 & 0.0 & 0.010 \\
+GD-Nesterov & 1.93e-3 & 5.63e-4 & 1.16e-3 & 3.31e-3 & 38.8 & 0.0 & 0.001 \\
+GD & 5.41e-3 & 1.26e-4 & 5.16e-3 & 5.63e-3 & 335.0 & 0.0 & 0.008 \\
+QQN-StrongWolfe & 2.80e-2 & 3.56e-2 & 4.98e-4 & 1.72e-1 & 525.2 & 0.0 & 0.014 \\
+Trust Region-Adaptive & 1.04e-1 & 4.41e-2 & 2.72e-2 & 1.87e-1 & 175.8 & 0.0 & 0.001 \\
+Adam-WeightDecay & 1.35e0 & 9.62e-1 & 2.52e-1 & 3.16e0 & 502.0 & 0.0 & 0.010 \\
+Adam-Fast & 1.66e0 & 1.45e-1 & 1.41e0 & 1.88e0 & 39.6 & 0.0 & 0.001 \\
+Adam-AMSGrad & 8.63e0 & 2.67e0 & 4.59e0 & 1.30e1 & 502.0 & 0.0 & 0.011 \\
+Adam & 8.73e0 & 2.44e0 & 4.69e0 & 1.29e1 & 502.0 & 0.0 & 0.010 \\
+Trust Region-Conservative & 1.19e1 & 3.24e0 & 8.34e0 & 1.90e1 & 602.0 & 0.0 & 0.003 \\
+L-BFGS-Aggressive & 1.38e1 & 4.97e0 & 4.40e-1 & 2.19e1 & 772.4 & 0.0 & 0.005 \\
+Trust Region-Standard & 1.38e2 & 5.98e2 & 2.14e-1 & 2.75e3 & 54.6 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

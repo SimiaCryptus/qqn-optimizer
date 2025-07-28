@@ -1,0 +1,22 @@
+Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate
+Sphere_2D,L-BFGS,0.000000e0,0.000000e0,2.9,14.1,11.4,1.000
+Sphere_2D,QQN-StrongWolfe,0.000000e0,0.000000e0,2.0,12.0,10.0,1.000
+Sphere_2D,Adam,1.212001e0,2.118832e-1,249.0,502.0,502.0,0.000
+Sphere_2D,L-BFGS-Aggressive,0.000000e0,0.000000e0,2.4,12.6,8.1,1.000
+Sphere_2D,L-BFGS-Conservative,1.654063e-7,4.213950e-7,108.8,550.3,440.6,0.100
+Sphere_2D,Trust Region-Adaptive,1.032435e3,4.335493e2,14.9,47.7,31.8,0.000
+Sphere_2D,QQN-CubicQuadraticInterpolation,0.000000e0,0.000000e0,2.0,13.0,11.0,1.000
+Sphere_2D,Trust Region-Conservative,3.058861e0,3.993493e0,191.6,578.6,386.1,0.000
+Sphere_2D,Adam-Fast,1.264118e-1,6.676620e-3,17.2,37.4,36.4,0.000
+Sphere_2D,QQN-Backtracking,0.000000e0,0.000000e0,2.0,12.0,9.0,1.000
+Sphere_2D,QQN-MoreThuente,0.000000e0,0.000000e0,2.0,13.0,11.0,1.000
+Sphere_2D,GD-WeightDecay,3.669296e-10,1.540387e-11,158.2,160.2,318.4,1.000
+Sphere_2D,GD,3.055369e-6,5.273331e-7,332.0,335.0,668.0,0.000
+Sphere_2D,Trust Region-Standard,1.021671e3,1.671254e3,8.7,28.9,19.3,0.000
+Sphere_2D,GD-Nesterov,9.932829e-2,1.349703e-2,20.0,23.0,42.0,0.000
+Sphere_2D,Adam-AMSGrad,1.242242e0,2.501484e-1,249.0,502.0,502.0,0.000
+Sphere_2D,Adam-WeightDecay,2.229164e-1,5.130157e-2,249.0,502.0,502.0,0.000
+Sphere_2D,QQN-Bisection-1,0.000000e0,0.000000e0,2.0,16.0,13.0,1.000
+Sphere_2D,GD-Momentum,1.541409e-1,2.796040e-2,20.0,23.0,42.0,0.000
+Sphere_2D,QQN-Bisection-2,0.000000e0,0.000000e0,2.0,14.0,16.0,1.000
+Sphere_2D,QQN-GoldenSection,3.156775e-14,5.524654e-15,2.0,47.0,9.0,1.000

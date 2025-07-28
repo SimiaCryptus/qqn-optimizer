@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Levy\textbackslash{}_5D Problem}
+\label{tab:levy_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Bisection-2} & 8.35e-14 & 1.69e-13 & 1.33e-17 & 6.96e-13 & 141.9 & 100.0 & 0.003 \\
+QQN-Bisection-1 & 9.69e-14 & 1.32e-13 & 4.92e-19 & 6.77e-13 & 144.3 & 100.0 & 0.003 \\
+QQN-StrongWolfe & 6.92e-13 & 1.05e-12 & 2.28e-16 & 2.80e-12 & 125.2 & 100.0 & 0.004 \\
+QQN-Backtracking & 1.17e-12 & 1.41e-12 & 6.15e-16 & 3.98e-12 & 156.7 & 100.0 & 0.005 \\
+QQN-CubicQuadraticInterpolation & 1.27e-13 & 2.30e-13 & 1.74e-17 & 1.24e-12 & 252.2 & 97.5 & 0.008 \\
+QQN-GoldenSection & 1.26e-13 & 3.23e-13 & 2.25e-17 & 2.36e-12 & 522.8 & 96.7 & 0.008 \\
+QQN-MoreThuente & 3.04e-13 & 9.13e-13 & 1.54e-16 & 4.27e-12 & 233.6 & 95.0 & 0.005 \\
+L-BFGS & 6.23e-4 & 2.11e-3 & 7.16e-13 & 9.56e-3 & 493.8 & 25.0 & 0.011 \\
+L-BFGS-Aggressive & 5.51e-2 & 2.27e-1 & 5.16e-13 & 1.43e0 & 698.9 & 22.5 & 0.011 \\
+L-BFGS-Conservative & 1.98e-8 & 2.17e-8 & 6.10e-10 & 7.38e-8 & 557.2 & 0.0 & 0.014 \\
+GD-WeightDecay & 2.21e-3 & 3.19e-4 & 1.68e-3 & 2.70e-3 & 335.0 & 0.0 & 0.011 \\
+GD & 1.76e-2 & 4.83e-3 & 1.12e-2 & 2.60e-2 & 335.0 & 0.0 & 0.009 \\
+GD-Nesterov & 6.14e-2 & 6.30e-2 & 7.31e-7 & 1.56e-1 & 180.9 & 0.0 & 0.006 \\
+GD-Momentum & 1.59e-1 & 5.57e-2 & 6.51e-7 & 2.08e-1 & 57.8 & 0.0 & 0.002 \\
+Adam-Fast & 1.68e-1 & 7.48e-3 & 1.56e-1 & 1.83e-1 & 37.2 & 0.0 & 0.001 \\
+Adam-WeightDecay & 3.46e-1 & 8.91e-2 & 2.13e-1 & 5.65e-1 & 502.0 & 0.0 & 0.011 \\
+Trust Region-Conservative & 1.20e0 & 2.73e-1 & 7.44e-1 & 1.76e0 & 602.0 & 0.0 & 0.004 \\
+Adam & 1.92e0 & 2.91e-1 & 1.34e0 & 2.40e0 & 502.0 & 0.0 & 0.011 \\
+Adam-AMSGrad & 1.96e0 & 2.87e-1 & 1.49e0 & 2.64e0 & 502.0 & 0.0 & 0.012 \\
+Trust Region-Adaptive & 3.49e0 & 1.37e1 & 4.04e-2 & 6.29e1 & 47.9 & 0.0 & 0.000 \\
+Trust Region-Standard & 4.89e0 & 8.84e0 & 7.56e-2 & 2.58e1 & 22.8 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

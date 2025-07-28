@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Zakharov\textbackslash{}_10D Problem}
+\label{tab:zakharov_10d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-GoldenSection} & 1.95e-16 & 5.55e-16 & 5.98e-28 & 2.82e-15 & 278.8 & 100.0 & 0.004 \\
+QQN-StrongWolfe & 5.99e-16 & 7.94e-16 & 3.81e-19 & 2.85e-15 & 153.0 & 100.0 & 0.004 \\
+QQN-Bisection-2 & 2.28e-15 & 8.26e-15 & 3.07e-19 & 3.82e-14 & 180.6 & 100.0 & 0.004 \\
+QQN-Backtracking & 3.82e-15 & 1.09e-14 & 2.69e-19 & 3.94e-14 & 157.6 & 100.0 & 0.004 \\
+QQN-Bisection-1 & 8.30e-2 & 1.70e-1 & 9.63e-23 & 5.27e-1 & 243.7 & 80.0 & 0.004 \\
+GD-WeightDecay & 1.97e1 & 2.03e1 & 3.49e-10 & 5.26e1 & 89.8 & 40.0 & 0.003 \\
+GD & 2.38e-1 & 1.54e-1 & 7.65e-6 & 7.56e-1 & 328.4 & 0.0 & 0.009 \\
+QQN-CubicQuadraticInterpolation & 2.95e0 & 7.06e-1 & 2.12e0 & 5.56e0 & 401.9 & 0.0 & 0.015 \\
+GD-Nesterov & 8.16e2 & 6.27e2 & 5.07e1 & 1.91e3 & 20.2 & 0.0 & 0.001 \\
+Adam-Fast & 9.69e2 & 5.52e2 & 2.21e2 & 2.14e3 & 34.9 & 0.0 & 0.001 \\
+Adam-WeightDecay & 2.82e3 & 1.25e3 & 8.38e2 & 5.25e3 & 502.0 & 0.0 & 0.012 \\
+GD-Momentum & 6.35e3 & 3.26e3 & 1.93e3 & 1.10e4 & 21.2 & 0.0 & 0.001 \\
+L-BFGS & 1.83e4 & 8.03e3 & 8.46e3 & 4.11e4 & 737.5 & 0.0 & 0.011 \\
+QQN-MoreThuente & 2.88e4 & 1.99e4 & 2.68e3 & 7.00e4 & 483.4 & 0.0 & 0.009 \\
+Adam-AMSGrad & 1.87e5 & 3.19e4 & 1.21e5 & 2.49e5 & 502.0 & 0.0 & 0.012 \\
+Adam & 1.89e5 & 4.42e4 & 1.15e5 & 2.57e5 & 502.0 & 0.0 & 0.011 \\
+L-BFGS-Aggressive & 2.95e5 & 3.01e5 & 4.15e-2 & 7.39e5 & 762.8 & 0.0 & 0.008 \\
+Trust Region-Conservative & 5.75e5 & 8.96e4 & 4.04e5 & 7.53e5 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Adaptive & 5.97e5 & 9.18e4 & 4.70e5 & 7.61e5 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Standard & 6.04e5 & 9.48e4 & 4.13e5 & 7.66e5 & 602.0 & 0.0 & 0.004 \\
+L-BFGS-Conservative & 3.45e24 & 7.72e24 & 9.96e-9 & 3.21e25 & 124.3 & 0.0 & 0.003 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

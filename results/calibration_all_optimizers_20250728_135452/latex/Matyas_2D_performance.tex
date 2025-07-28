@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Matyas\textbackslash{}_2D Problem}
+\label{tab:matyas_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-StrongWolfe} & 7.82e-29 & 2.23e-28 & 3.16e-32 & 1.04e-27 & 25.0 & 100.0 & 0.000 \\
+QQN-Backtracking & 2.40e-28 & 8.84e-28 & 1.23e-32 & 4.09e-27 & 25.0 & 100.0 & 0.000 \\
+QQN-Bisection-2 & 3.41e-14 & 8.26e-14 & 5.44e-17 & 3.41e-13 & 95.7 & 100.0 & 0.002 \\
+QQN-CubicQuadraticInterpolation & 6.82e-14 & 1.64e-13 & 4.93e-34 & 6.69e-13 & 115.6 & 100.0 & 0.003 \\
+QQN-MoreThuente & 1.61e-13 & 2.21e-13 & 4.15e-31 & 6.21e-13 & 122.5 & 100.0 & 0.002 \\
+QQN-GoldenSection & 1.96e-13 & 3.10e-13 & 2.39e-24 & 1.34e-12 & 348.1 & 100.0 & 0.005 \\
+QQN-Bisection-1 & 1.96e-13 & 4.50e-13 & 5.38e-21 & 2.80e-12 & 100.5 & 100.0 & 0.002 \\
+L-BFGS & 1.19e-2 & 3.34e-2 & 1.01e-11 & 1.34e-1 & 365.4 & 10.0 & 0.008 \\
+Adam-Fast & 1.22e-3 & 7.55e-4 & 2.15e-4 & 2.67e-3 & 55.1 & 2.5 & 0.001 \\
+L-BFGS-Conservative & 3.12e-6 & 9.97e-6 & 5.75e-12 & 4.45e-5 & 558.5 & 0.0 & 0.013 \\
+L-BFGS-Aggressive & 2.19e-3 & 7.23e-3 & 7.54e-7 & 3.66e-2 & 728.6 & 0.0 & 0.010 \\
+GD-Momentum & 2.79e-3 & 4.25e-4 & 2.06e-3 & 3.47e-3 & 335.0 & 0.0 & 0.009 \\
+GD-Nesterov & 2.81e-3 & 3.47e-4 & 2.31e-3 & 3.51e-3 & 335.0 & 0.0 & 0.009 \\
+Adam-WeightDecay & 1.05e-2 & 4.47e-3 & 2.97e-3 & 1.90e-2 & 502.0 & 0.0 & 0.010 \\
+GD-WeightDecay & 2.17e-2 & 3.15e-3 & 1.60e-2 & 2.74e-2 & 335.0 & 0.0 & 0.010 \\
+Adam & 2.77e-2 & 5.76e-3 & 1.87e-2 & 3.88e-2 & 502.0 & 0.0 & 0.009 \\
+Adam-AMSGrad & 2.90e-2 & 6.92e-3 & 1.87e-2 & 3.87e-2 & 502.0 & 0.0 & 0.011 \\
+GD & 3.10e-2 & 4.61e-3 & 2.29e-2 & 4.05e-2 & 335.0 & 0.0 & 0.008 \\
+Trust Region-Conservative & 4.02e-2 & 6.25e-3 & 2.95e-2 & 5.19e-2 & 7.4 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 5.58e-2 & 2.10e-2 & 2.63e-2 & 8.77e-2 & 5.9 & 0.0 & 0.000 \\
+Trust Region-Standard & 2.26e-1 & 1.25e-1 & 2.67e-2 & 3.32e-1 & 7.1 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

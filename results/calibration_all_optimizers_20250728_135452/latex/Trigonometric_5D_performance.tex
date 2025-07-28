@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Trigonometric\textbackslash{}_5D Problem}
+\label{tab:trigonometric_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Backtracking} & 6.01e-7 & 2.22e-6 & 7.27e-17 & 1.02e-5 & 304.8 & 65.0 & 0.010 \\
+QQN-Bisection-2 & 1.61e-3 & 6.43e-3 & 1.05e-16 & 2.73e-2 & 333.1 & 65.0 & 0.007 \\
+QQN-Bisection-1 & 6.99e-3 & 1.47e-2 & 1.39e-18 & 5.20e-2 & 350.6 & 62.5 & 0.007 \\
+QQN-MoreThuente & 1.36e-1 & 3.60e-1 & 3.09e-18 & 1.50e0 & 401.9 & 60.0 & 0.010 \\
+GD-WeightDecay & 2.08e-2 & 2.73e-2 & 3.61e-10 & 6.71e-2 & 128.7 & 55.0 & 0.004 \\
+QQN-StrongWolfe & 6.94e-3 & 1.31e-2 & 2.75e-18 & 5.39e-2 & 369.3 & 40.0 & 0.011 \\
+QQN-GoldenSection & 5.55e-3 & 1.35e-2 & 2.90e-18 & 5.44e-2 & 814.4 & 38.3 & 0.013 \\
+Adam-WeightDecay & 3.16e-2 & 3.28e-2 & 4.40e-7 & 8.61e-2 & 404.3 & 25.0 & 0.009 \\
+QQN-CubicQuadraticInterpolation & 1.36e-2 & 2.15e-2 & 7.51e-16 & 9.15e-2 & 386.1 & 10.0 & 0.014 \\
+GD & 3.84e-3 & 1.19e-2 & 2.45e-9 & 5.33e-2 & 334.0 & 2.5 & 0.009 \\
+L-BFGS-Conservative & 1.73e-3 & 6.60e-3 & 3.45e-11 & 3.04e-2 & 646.0 & 0.0 & 0.012 \\
+GD-Nesterov & 7.27e-3 & 1.29e-2 & 2.51e-4 & 4.23e-2 & 36.5 & 0.0 & 0.001 \\
+Adam-Fast & 4.35e-2 & 4.86e-2 & 1.39e-4 & 1.93e-1 & 60.0 & 0.0 & 0.001 \\
+Adam & 9.61e-2 & 9.88e-2 & 5.75e-3 & 4.32e-1 & 502.0 & 0.0 & 0.011 \\
+Trust Region-Conservative & 1.18e-1 & 1.87e-1 & 1.20e-3 & 6.16e-1 & 361.7 & 0.0 & 0.003 \\
+Trust Region-Adaptive & 1.20e-1 & 7.28e-2 & 3.24e-2 & 3.24e-1 & 25.9 & 0.0 & 0.000 \\
+GD-Momentum & 1.26e-1 & 1.53e-1 & 1.80e-3 & 7.06e-1 & 27.8 & 0.0 & 0.001 \\
+Adam-AMSGrad & 1.99e-1 & 1.23e-1 & 3.43e-3 & 4.90e-1 & 502.0 & 0.0 & 0.012 \\
+Trust Region-Standard & 3.76e-1 & 1.46e-1 & 1.18e-1 & 7.03e-1 & 8.8 & 0.0 & 0.000 \\
+L-BFGS & 1.11e0 & 2.00e0 & 1.08e-13 & 8.04e0 & 328.8 & 0.0 & 0.005 \\
+L-BFGS-Aggressive & 1.51e0 & 6.60e-1 & 2.92e-1 & 2.68e0 & 772.0 & 0.0 & 0.006 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

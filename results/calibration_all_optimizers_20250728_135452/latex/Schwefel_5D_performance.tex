@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Schwefel\textbackslash{}_5D Problem}
+\label{tab:schwefel_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-StrongWolfe} & -2.63e4 & 7.28e4 & -3.08e5 & 1.48e3 & 465.5 & 5.0 & 0.016 \\
+QQN-Backtracking & 3.76e2 & 2.23e3 & -6.68e3 & 1.48e3 & 531.3 & 0.0 & 0.020 \\
+QQN-CubicQuadraticInterpolation & 1.55e3 & 6.13e2 & 5.92e2 & 2.21e3 & 166.2 & 0.0 & 0.005 \\
+L-BFGS-Aggressive & 1.77e3 & 4.63e1 & 1.48e3 & 1.78e3 & 206.0 & 0.0 & 0.004 \\
+QQN-Bisection-2 & 1.78e3 & 4.69e-13 & 1.78e3 & 1.78e3 & 52.0 & 0.0 & 0.001 \\
+QQN-Bisection-1 & 1.78e3 & 4.55e-13 & 1.78e3 & 1.78e3 & 53.5 & 0.0 & 0.001 \\
+QQN-MoreThuente & 1.78e3 & 4.55e-13 & 1.78e3 & 1.78e3 & 67.6 & 0.0 & 0.001 \\
+QQN-GoldenSection & 1.78e3 & 6.95e-13 & 1.78e3 & 1.78e3 & 152.0 & 0.0 & 0.002 \\
+GD-Momentum & 1.78e3 & 2.68e-7 & 1.78e3 & 1.78e3 & 323.6 & 0.0 & 0.009 \\
+GD-Nesterov & 1.78e3 & 4.29e-8 & 1.78e3 & 1.78e3 & 335.0 & 0.0 & 0.010 \\
+L-BFGS & 1.78e3 & 2.13e-5 & 1.78e3 & 1.78e3 & 307.9 & 0.0 & 0.007 \\
+GD-WeightDecay & 1.80e3 & 1.23e-1 & 1.80e3 & 1.80e3 & 335.0 & 0.0 & 0.010 \\
+Adam-Fast & 1.86e3 & 5.41e-1 & 1.85e3 & 1.86e3 & 502.0 & 0.0 & 0.010 \\
+GD & 2.01e3 & 9.87e-1 & 2.01e3 & 2.01e3 & 335.0 & 0.0 & 0.008 \\
+L-BFGS-Conservative & 2.12e3 & 1.68e0 & 2.12e3 & 2.12e3 & 558.6 & 0.0 & 0.014 \\
+Trust Region-Standard & 2.17e3 & 1.12e0 & 2.17e3 & 2.17e3 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Adaptive & 2.32e3 & 1.17e0 & 2.31e3 & 2.32e3 & 602.0 & 0.0 & 0.004 \\
+Adam-WeightDecay & 2.35e3 & 1.16e0 & 2.35e3 & 2.35e3 & 502.0 & 0.0 & 0.011 \\
+Adam-AMSGrad & 2.36e3 & 1.05e0 & 2.36e3 & 2.36e3 & 502.0 & 0.0 & 0.012 \\
+Adam & 2.36e3 & 9.42e-1 & 2.36e3 & 2.36e3 & 502.0 & 0.0 & 0.010 \\
+Trust Region-Conservative & 2.37e3 & 1.03e0 & 2.36e3 & 2.37e3 & 602.0 & 0.0 & 0.004 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

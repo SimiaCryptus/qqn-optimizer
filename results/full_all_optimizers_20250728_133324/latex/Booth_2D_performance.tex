@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Booth\textbackslash{}_2D Problem}
+\label{tab:booth_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-GoldenSection} & 7.26e-26 & 1.07e-25 & 1.58e-28 & 4.40e-25 & 229.7 & 100.0 & 0.003 \\
+QQN-CubicQuadraticInterpolation & 3.29e-15 & 7.04e-15 & 1.84e-21 & 2.59e-14 & 132.8 & 100.0 & 0.004 \\
+QQN-Bisection-1 & 9.80e-15 & 1.10e-14 & 1.53e-17 & 2.80e-14 & 200.5 & 100.0 & 0.004 \\
+QQN-MoreThuente & 1.00e-14 & 4.36e-14 & 9.19e-23 & 2.00e-13 & 135.3 & 100.0 & 0.004 \\
+QQN-Bisection-2 & 1.11e-14 & 1.06e-14 & 1.26e-17 & 2.68e-14 & 135.0 & 100.0 & 0.003 \\
+L-BFGS & 4.56e-2 & 1.20e-1 & 6.19e-15 & 4.80e-1 & 374.1 & 55.0 & 0.006 \\
+QQN-Backtracking & 9.03e-2 & 8.23e-2 & 2.24e-25 & 1.94e-1 & 323.2 & 45.0 & 0.014 \\
+L-BFGS-Conservative & 5.98e-8 & 5.59e-8 & 1.81e-10 & 1.61e-7 & 557.0 & 0.0 & 0.013 \\
+GD & 5.39e-6 & 7.68e-7 & 3.66e-6 & 7.10e-6 & 335.0 & 0.0 & 0.008 \\
+QQN-StrongWolfe & 1.31e-5 & 1.08e-6 & 1.14e-5 & 1.47e-5 & 482.0 & 0.0 & 0.019 \\
+Trust Region-Standard & 4.77e-1 & 1.86e-1 & 1.05e-1 & 7.86e-1 & 233.2 & 0.0 & 0.001 \\
+GD-WeightDecay & 1.24e0 & 6.32e-1 & 1.03e-8 & 1.74e0 & 53.4 & 0.0 & 0.002 \\
+GD-Nesterov & 2.63e0 & 2.64e-1 & 2.27e0 & 3.11e0 & 20.6 & 0.0 & 0.001 \\
+Adam-Fast & 3.02e0 & 2.13e-1 & 2.71e0 & 3.51e0 & 55.8 & 0.0 & 0.001 \\
+GD-Momentum & 7.36e0 & 3.68e-1 & 6.88e0 & 8.00e0 & 21.5 & 0.0 & 0.001 \\
+Trust Region-Adaptive & 2.25e1 & 6.10e0 & 1.28e1 & 3.36e1 & 602.0 & 0.0 & 0.004 \\
+Adam-WeightDecay & 2.93e1 & 2.97e0 & 2.44e1 & 3.58e1 & 502.0 & 0.0 & 0.010 \\
+Adam-AMSGrad & 5.62e1 & 5.28e0 & 4.78e1 & 6.67e1 & 502.0 & 0.0 & 0.011 \\
+Adam & 5.75e1 & 5.00e0 & 4.66e1 & 6.80e1 & 502.0 & 0.0 & 0.010 \\
+Trust Region-Conservative & 7.19e1 & 4.55e0 & 6.37e1 & 7.94e1 & 602.0 & 0.0 & 0.004 \\
+L-BFGS-Aggressive & 7.44e1 & 4.67e0 & 6.51e1 & 8.35e1 & 772.0 & 0.0 & 0.005 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

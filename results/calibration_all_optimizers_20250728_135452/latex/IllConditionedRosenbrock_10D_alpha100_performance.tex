@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for IllConditionedRosenbrock\textbackslash{}_10D\textbackslash{}_alpha100 Problem}
+\label{tab:illconditionedrosenbrock_10d_alpha100}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{GD-Nesterov} & 1.21e0 & 2.34e-2 & 1.16e0 & 1.25e0 & 335.0 & 0.0 & 0.011 \\
+GD-WeightDecay & 1.35e0 & 1.62e0 & 1.84e-1 & 5.39e0 & 268.9 & 0.0 & 0.009 \\
+QQN-StrongWolfe & 4.71e0 & 2.60e0 & 8.59e-1 & 9.52e0 & 568.1 & 0.0 & 0.016 \\
+QQN-Backtracking & 4.76e0 & 2.20e0 & 2.29e-2 & 7.94e0 & 691.9 & 0.0 & 0.019 \\
+QQN-Bisection-1 & 5.28e0 & 2.45e0 & 1.07e0 & 9.59e0 & 475.3 & 0.0 & 0.012 \\
+QQN-Bisection-2 & 7.27e0 & 1.35e0 & 2.20e0 & 8.77e0 & 611.2 & 0.0 & 0.013 \\
+QQN-GoldenSection & 8.17e0 & 9.27e-1 & 3.54e0 & 9.55e0 & 910.4 & 0.0 & 0.015 \\
+QQN-CubicQuadraticInterpolation & 8.49e0 & 6.44e-1 & 6.72e0 & 9.74e0 & 396.0 & 0.0 & 0.014 \\
+L-BFGS-Conservative & 8.83e0 & 8.60e-1 & 7.14e0 & 1.03e1 & 702.1 & 0.0 & 0.011 \\
+GD & 1.01e1 & 2.27e-1 & 9.70e0 & 1.06e1 & 46.8 & 0.0 & 0.001 \\
+GD-Momentum & 1.08e1 & 2.38e1 & 5.08e-1 & 7.75e1 & 235.3 & 0.0 & 0.007 \\
+Adam-Fast & 1.21e1 & 1.59e1 & 1.74e-1 & 4.50e1 & 217.8 & 0.0 & 0.005 \\
+L-BFGS & 1.00e2 & 1.64e2 & 2.22e1 & 7.89e2 & 150.1 & 0.0 & 0.002 \\
+Adam-WeightDecay & 1.45e2 & 3.25e1 & 8.36e1 & 2.05e2 & 502.0 & 0.0 & 0.011 \\
+QQN-MoreThuente & 3.35e2 & 7.79e1 & 2.25e2 & 4.99e2 & 484.2 & 0.0 & 0.009 \\
+Adam & 9.87e2 & 1.31e2 & 8.05e2 & 1.17e3 & 502.0 & 0.0 & 0.011 \\
+Adam-AMSGrad & 1.01e3 & 9.09e1 & 8.81e2 & 1.21e3 & 502.0 & 0.0 & 0.012 \\
+L-BFGS-Aggressive & 1.14e3 & 1.08e3 & 4.94e1 & 2.86e3 & 773.3 & 0.0 & 0.008 \\
+Trust Region-Standard & 1.93e3 & 1.96e2 & 1.64e3 & 2.27e3 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Conservative & 2.04e3 & 2.94e2 & 1.77e3 & 2.75e3 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Adaptive & 2.11e3 & 3.28e2 & 1.50e3 & 2.82e3 & 602.0 & 0.0 & 0.004 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

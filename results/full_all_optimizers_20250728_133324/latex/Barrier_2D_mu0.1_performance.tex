@@ -1,0 +1,34 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Barrier\textbackslash{}_2D\textbackslash{}_mu0.1 Problem}
+\label{tab:barrier_2d_mu0.1}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{GD} & 4.00e-1 & 3.08e-11 & 4.00e-1 & 4.00e-1 & 290.8 & 0.0 & 0.007 \\
+L-BFGS-Conservative & 4.00e-1 & 1.99e-8 & 4.00e-1 & 4.00e-1 & 450.9 & 0.0 & 0.011 \\
+GD-WeightDecay & 4.00e-1 & 8.56e-6 & 4.00e-1 & 4.00e-1 & 48.9 & 0.0 & 0.002 \\
+Trust Region-Conservative & 4.33e-1 & 4.99e-2 & 4.00e-1 & 5.78e-1 & 497.4 & 0.0 & 0.003 \\
+GD-Nesterov & 5.00e-1 & 1.33e-2 & 4.83e-1 & 5.26e-1 & 20.4 & 0.0 & 0.001 \\
+GD-Momentum & 5.00e-1 & 1.99e-2 & 4.83e-1 & 5.77e-1 & 20.9 & 0.0 & 0.001 \\
+Adam-Fast & 5.11e-1 & 3.37e-2 & 4.33e-1 & 5.69e-1 & 32.8 & 0.0 & 0.001 \\
+Adam-WeightDecay & 5.12e-1 & 4.27e-2 & 4.35e-1 & 5.90e-1 & 502.0 & 0.0 & 0.011 \\
+Trust Region-Adaptive & 5.21e-1 & 1.31e-1 & 4.00e-1 & 7.47e-1 & 27.6 & 0.0 & 0.000 \\
+Trust Region-Standard & 5.92e-1 & 2.35e-1 & 4.01e-1 & 1.51e0 & 9.8 & 0.0 & 0.000 \\
+Adam-AMSGrad & 1.17e0 & 2.32e-1 & 8.45e-1 & 1.64e0 & 502.0 & 0.0 & 0.011 \\
+Adam & 1.22e0 & 2.27e-1 & 8.46e-1 & 1.71e0 & 502.0 & 0.0 & 0.010 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

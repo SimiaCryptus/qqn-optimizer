@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Michalewicz\textbackslash{}_5D\textbackslash{}_m10 Problem}
+\label{tab:michalewicz_5d_m10}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{Adam-Fast} & -2.81e0 & 7.34e-1 & -3.69e0 & -1.36e0 & 87.0 & 60.0 & 0.002 \\
+Adam-AMSGrad & -2.51e0 & 5.61e-1 & -3.45e0 & -1.73e0 & 474.4 & 10.0 & 0.011 \\
+Adam-WeightDecay & -1.85e0 & 5.68e-1 & -2.68e0 & -8.44e-1 & 163.5 & 10.0 & 0.004 \\
+QQN-Backtracking & -1.34e0 & 6.05e-1 & -2.69e0 & -8.39e-1 & 538.2 & 10.0 & 0.019 \\
+GD & -1.33e0 & 7.28e-1 & -2.69e0 & -3.25e-5 & 208.8 & 10.0 & 0.005 \\
+GD-WeightDecay & -1.23e0 & 7.25e-1 & -2.69e0 & -3.48e-4 & 77.3 & 10.0 & 0.002 \\
+QQN-GoldenSection & -1.48e0 & 6.14e-1 & -2.73e0 & -4.92e-1 & 611.7 & 6.7 & 0.011 \\
+Adam & -1.85e0 & 7.84e-1 & -3.13e0 & -8.37e-1 & 409.9 & 5.0 & 0.009 \\
+L-BFGS-Conservative & -1.69e0 & 8.13e-1 & -3.66e0 & -2.19e-4 & 520.2 & 5.0 & 0.009 \\
+QQN-Bisection-2 & -1.60e0 & 4.88e-1 & -2.74e0 & -8.39e-1 & 358.8 & 5.0 & 0.011 \\
+QQN-Bisection-1 & -1.54e0 & 6.36e-1 & -3.39e0 & -7.54e-1 & 418.0 & 0.0 & 0.010 \\
+QQN-StrongWolfe & -1.46e0 & 6.22e-1 & -2.69e0 & -4.92e-1 & 547.0 & 0.0 & 0.017 \\
+QQN-MoreThuente & -1.28e0 & 4.26e-1 & -1.89e0 & -8.39e-1 & 385.9 & 0.0 & 0.011 \\
+QQN-CubicQuadraticInterpolation & -1.20e0 & 5.12e-1 & -2.44e0 & -8.82e-5 & 348.3 & 0.0 & 0.013 \\
+GD-Nesterov & -1.13e0 & 6.01e-1 & -2.60e0 & -6.95e-1 & 20.7 & 0.0 & 0.001 \\
+Trust Region-Conservative & -8.45e-1 & 3.97e-1 & -1.74e0 & -2.13e-3 & 221.2 & 0.0 & 0.002 \\
+GD-Momentum & -7.30e-1 & 6.46e-1 & -2.37e0 & -6.76e-6 & 54.2 & 0.0 & 0.002 \\
+L-BFGS-Aggressive & -6.92e-1 & 3.94e-1 & -1.73e0 & -1.66e-1 & 716.7 & 0.0 & 0.006 \\
+Trust Region-Adaptive & -6.10e-1 & 5.30e-1 & -1.78e0 & -1.23e-5 & 9.2 & 0.0 & 0.000 \\
+Trust Region-Standard & -2.21e-1 & 2.32e-1 & -7.43e-1 & -1.12e-5 & 5.3 & 0.0 & 0.000 \\
+L-BFGS & -5.99e-2 & 1.53e-1 & -6.73e-1 & -8.22e-8 & 108.0 & 0.0 & 0.002 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

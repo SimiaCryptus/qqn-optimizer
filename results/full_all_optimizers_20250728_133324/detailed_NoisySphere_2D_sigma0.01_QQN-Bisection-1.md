@@ -1,0 +1,544 @@
+# Detailed Analysis: QQN-Bisection-1 on NoisySphere_2D_sigma0.01
+[← Back to Main Report](benchmark_report.md)
+## Executive Summary
+**Problem:** NoisySphere_2D_sigma0.01
+**Optimizer:** QQN-Bisection-1
+**Problem Family:** NoisySphere
+**Dimension:** 2
+**Success Threshold:** 1.370e0
+**Total Runs:** 40
+**Successful Runs:** 0 (0.0%)
+
+### Quick Statistics
+* **Best Final Value:** 3.907995e-3
+* **Worst Final Value:** 2.365721e0
+* **Mean Final Value:** 1.187628e0
+* **Success Rate:** 0.0%
+
+
+## Run-by-Run Analysis
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 12px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Run</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Final Value</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Gradient Norm</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Iterations</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Func Evals</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Grad Evals</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Time (s)</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Converged</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Reason</th>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.465e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.391e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">8</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">261</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">300</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.021</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.160e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.647e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">39</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">30</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.004</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.186e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4.300e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">71</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">80</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.007</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.383e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4.363e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">67</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">80</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.007</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.186e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4.910e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">107</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">120</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.010</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.716e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.726e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">111</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">130</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.010</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.495e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.351e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">77</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">80</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.007</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">8</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.164e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.892e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">62</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">102</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.008</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">9</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.786e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3.520e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">43</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">30</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.004</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">10</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.066e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.319e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">43</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">30</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.004</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">11</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.416e-2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3.799e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">146</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">238</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.016</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">12</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.087e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">9.015e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">71</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">80</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.007</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">13</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.366e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.595e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">65</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">97</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.008</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">14</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.733e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.062e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">31</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">47</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.005</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">15</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.653e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.607e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">118</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">159</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.012</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">16</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.629e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.890e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">111</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">121</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.010</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">17</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.774e-2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.519e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">71</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">77</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.007</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">18</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">19</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3.908e-3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.057e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">10</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">348</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">460</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.031</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">20</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.682e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.445e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">167</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">217</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.015</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">21</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.680e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.362e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">8</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">238</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">294</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.021</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">22</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">23</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.738e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3.237e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">144</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">215</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.015</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">24</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.882e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.653e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">12</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">389</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">526</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.035</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">25</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.375e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.457e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">12</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">430</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">577</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.035</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Max Func</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">26</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.711e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">5.936e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">87</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">96</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.008</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">27</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3.620e-2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.911e1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">237</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">306</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.021</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">28</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">29</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.234e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.023e4</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">62</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">113</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.009</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">30</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">31</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.017e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4.187e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">113</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">121</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.010</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">32</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">33</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.353e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">9.468e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">238</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">316</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.021</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">34</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.299e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.024e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">185</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">266</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.018</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">35</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.241e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">7.891e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">11</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">340</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">468</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.031</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">36</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">37</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.046e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">6.115e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">24</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">65</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.006</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">38</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">9.142e-1</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">4.881e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">62</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">113</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.009</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">39</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">1.973e0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2.622e3</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">2</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">70</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">113</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.009</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">40</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">inf</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">0.000</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">✗</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">Num Err</td>
+</tr>
+</table>
+
+## Convergence Analysis
+
+### Failed Runs (40 out of 40)
+
+**Failure Reasons:**
+- NumericalError: 39 runs
+- MaxFunctionEvaluations: 1 runs
+
+## Parameter Evolution Analysis
+
+### Best Run Analysis (Run 19)
+**Final Value:** 3.907995e-3
+**Final Gradient Norm:** 6.056837e3
+**Iterations:** 10
+**Convergence Reason:** NumericalError
+
+#### Parameter Evolution (Selected Iterations)
+
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 4px;">Iteration</th>
+<th style="border: 1px solid #ddd; padding: 4px;">Function Value</th>
+<th style="border: 1px solid #ddd; padding: 4px;">Gradient Norm</th>
+<th style="border: 1px solid #ddd; padding: 4px;">Step Size</th>
+<th style="border: 1px solid #ddd; padding: 4px;">Parameters (first 5)</th>
+</tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">0</td><td style="border: 1px solid #ddd; padding: 4px;">1.914e0</td><td style="border: 1px solid #ddd; padding: 4px;">4.983e3</td><td style="border: 1px solid #ddd; padding: 4px;">0.000e0</td><td style="border: 1px solid #ddd; padding: 4px;">[9.715e-1, 9.816e-1]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">0</td><td style="border: 1px solid #ddd; padding: 4px;">1.914e0</td><td style="border: 1px solid #ddd; padding: 4px;">4.983e3</td><td style="border: 1px solid #ddd; padding: 4px;">2.105e-6</td><td style="border: 1px solid #ddd; padding: 4px;">[9.797e-1, 9.751e-1]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">1</td><td style="border: 1px solid #ddd; padding: 4px;">1.912e0</td><td style="border: 1px solid #ddd; padding: 4px;">6.001e3</td><td style="border: 1px solid #ddd; padding: 4px;">2.441e-4</td><td style="border: 1px solid #ddd; padding: 4px;">[5.229e-1, -4.169e-1]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">2</td><td style="border: 1px solid #ddd; padding: 4px;">4.477e-1</td><td style="border: 1px solid #ddd; padding: 4px;">7.879e3</td><td style="border: 1px solid #ddd; padding: 4px;">1.526e-5</td><td style="border: 1px solid #ddd; padding: 4px;">[4.396e-1, -5.036e-1]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">3</td><td style="border: 1px solid #ddd; padding: 4px;">4.470e-1</td><td style="border: 1px solid #ddd; padding: 4px;">3.222e3</td><td style="border: 1px solid #ddd; padding: 4px;">1.000e2</td><td style="border: 1px solid #ddd; padding: 4px;">[1.815e-1, 7.389e-2]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">5</td><td style="border: 1px solid #ddd; padding: 4px;">3.130e-2</td><td style="border: 1px solid #ddd; padding: 4px;">3.740e3</td><td style="border: 1px solid #ddd; padding: 4px;">9.537e-6</td><td style="border: 1px solid #ddd; padding: 4px;">[1.786e-1, 3.857e-2]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">6</td><td style="border: 1px solid #ddd; padding: 4px;">2.896e-2</td><td style="border: 1px solid #ddd; padding: 4px;">9.968e3</td><td style="border: 1px solid #ddd; padding: 4px;">7.451e-8</td><td style="border: 1px solid #ddd; padding: 4px;">[1.791e-1, 3.798e-2]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">7</td><td style="border: 1px solid #ddd; padding: 4px;">2.766e-2</td><td style="border: 1px solid #ddd; padding: 4px;">8.199e3</td><td style="border: 1px solid #ddd; padding: 4px;">4.768e-6</td><td style="border: 1px solid #ddd; padding: 4px;">[1.400e-1, 3.869e-2]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">8</td><td style="border: 1px solid #ddd; padding: 4px;">1.574e-2</td><td style="border: 1px solid #ddd; padding: 4px;">2.832e3</td><td style="border: 1px solid #ddd; padding: 4px;">4.768e-6</td><td style="border: 1px solid #ddd; padding: 4px;">[1.308e-1, 4.863e-2]</td></tr>
+<tr><td style="border: 1px solid #ddd; padding: 4px;">9</td><td style="border: 1px solid #ddd; padding: 4px;">9.499e-3</td><td style="border: 1px solid #ddd; padding: 4px;">5.884e3</td><td style="border: 1px solid #ddd; padding: 4px;">9.537e-6</td><td style="border: 1px solid #ddd; padding: 4px;">[1.140e-1, -4.915e-3]</td></tr>
+</table>
+
+## Performance Analysis
+
+### Computational Efficiency
+- **Average Function Evaluations per Run:** 115.7
+- **Average Gradient Evaluations per Run:** 151.7
+- **Average Iterations per Run:** 3.5
+- **Average Time per Run:** 0.011s
+- **Function Evaluations per Second:** 10510.5
+- **Iterations per Second:** 315.7
+### Resource Utilization
+- **Total Function Evaluations:** 4628
+- **Total Gradient Evaluations:** 6067
+- **Total Computation Time:** 0.4s
+- **Function/Gradient Ratio:** 0.76
+## Failure Analysis
+
+### Failure Patterns
+- **Early Failures (< 10 iterations):** 0
+- **Timeout Failures:** 0
+- **Numerical Errors:** 39
+- **Maximum Iterations Reached:** 0
+
+
+## Data Files
+* [Raw CSV Data](problems/NoisySphere_2D_sigma0.01_results.csv)
+* [Convergence Plot](convergence_NoisySphere_2D_sigma0.01.png)
+* [Log Scale Convergence Plot](convergence_NoisySphere_2D_sigma0.01_log.png)
+
+
+---
+*Detailed report for QQN-Bisection-1 on NoisySphere_2D_sigma0.01*
+*Generated on: 2025-07-28 13:54:24 UTC*
+*[← Back to Main Report](benchmark_report.md)*

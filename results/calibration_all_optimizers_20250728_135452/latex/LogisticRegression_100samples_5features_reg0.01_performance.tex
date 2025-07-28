@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for LogisticRegression\textbackslash{}_100samples\textbackslash{}_5features\textbackslash{}_reg0.01 Problem}
+\label{tab:logisticregression_100samples_5features_reg0.01}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Backtracking} & 3.15e-1 & 3.11e-12 & 3.15e-1 & 3.15e-1 & 80.7 & 0.0 & 0.027 \\
+QQN-StrongWolfe & 3.15e-1 & 3.28e-12 & 3.15e-1 & 3.15e-1 & 74.0 & 0.0 & 0.029 \\
+QQN-GoldenSection & 3.15e-1 & 2.56e-12 & 3.15e-1 & 3.15e-1 & 317.9 & 0.0 & 0.068 \\
+QQN-Bisection-1 & 3.15e-1 & 3.04e-12 & 3.15e-1 & 3.15e-1 & 101.3 & 0.0 & 0.039 \\
+QQN-Bisection-2 & 3.15e-1 & 2.48e-12 & 3.15e-1 & 3.15e-1 & 98.0 & 0.0 & 0.031 \\
+QQN-MoreThuente & 3.15e-1 & 2.58e-12 & 3.15e-1 & 3.15e-1 & 124.6 & 0.0 & 0.044 \\
+L-BFGS-Conservative & 3.15e-1 & 8.61e-11 & 3.15e-1 & 3.15e-1 & 555.8 & 0.0 & 0.183 \\
+QQN-CubicQuadraticInterpolation & 3.15e-1 & 7.41e-9 & 3.15e-1 & 3.15e-1 & 155.0 & 0.0 & 0.068 \\
+L-BFGS-Aggressive & 3.15e-1 & 4.77e-4 & 3.15e-1 & 3.18e-1 & 561.9 & 0.0 & 0.150 \\
+L-BFGS & 3.16e-1 & 1.21e-3 & 3.15e-1 & 3.21e-1 & 450.1 & 0.0 & 0.135 \\
+Adam-Fast & 3.16e-1 & 1.09e-4 & 3.16e-1 & 3.16e-1 & 89.3 & 0.0 & 0.032 \\
+GD-Momentum & 3.33e-1 & 5.94e-4 & 3.32e-1 & 3.35e-1 & 335.0 & 0.0 & 0.182 \\
+GD-Nesterov & 3.34e-1 & 5.50e-4 & 3.33e-1 & 3.34e-1 & 335.0 & 0.0 & 0.182 \\
+Trust Region-Conservative & 4.24e-1 & 2.45e-3 & 4.19e-1 & 4.27e-1 & 87.2 & 0.0 & 0.026 \\
+GD-WeightDecay & 4.49e-1 & 6.87e-3 & 4.35e-1 & 4.60e-1 & 335.0 & 0.0 & 0.183 \\
+Adam-WeightDecay & 4.66e-1 & 1.45e-2 & 4.48e-1 & 4.95e-1 & 502.0 & 0.0 & 0.181 \\
+GD & 5.55e-1 & 1.32e-2 & 5.27e-1 & 5.78e-1 & 335.0 & 0.0 & 0.181 \\
+Adam & 5.95e-1 & 2.74e-2 & 5.45e-1 & 6.40e-1 & 502.0 & 0.0 & 0.180 \\
+Adam-AMSGrad & 5.98e-1 & 2.59e-2 & 5.59e-1 & 6.48e-1 & 502.0 & 0.0 & 0.181 \\
+Trust Region-Adaptive & 6.96e-1 & 2.25e-2 & 6.48e-1 & 7.31e-1 & 5.0 & 0.0 & 0.002 \\
+Trust Region-Standard & 6.97e-1 & 2.76e-2 & 6.40e-1 & 7.52e-1 & 5.0 & 0.0 & 0.002 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for SparseQuadratic\textbackslash{}_5D\textbackslash{}_pattern[1, 3] Problem}
+\label{tab:sparsequadratic_5d_pattern[1,_3]}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-MoreThuente} & 2.41e-14 & 3.35e-14 & 1.11e-17 & 1.43e-13 & 69.2 & 100.0 & 0.001 \\
+QQN-Bisection-2 & 3.14e-14 & 4.06e-14 & 7.96e-16 & 1.41e-13 & 69.3 & 100.0 & 0.001 \\
+QQN-GoldenSection & 3.62e-14 & 5.62e-14 & 1.30e-20 & 2.65e-13 & 253.9 & 100.0 & 0.003 \\
+QQN-StrongWolfe & 3.63e-14 & 4.49e-14 & 3.37e-18 & 2.25e-13 & 52.5 & 100.0 & 0.001 \\
+QQN-Bisection-1 & 4.15e-14 & 5.00e-14 & 3.17e-19 & 2.20e-13 & 70.9 & 100.0 & 0.001 \\
+QQN-CubicQuadraticInterpolation & 6.51e-14 & 7.95e-14 & 2.04e-15 & 2.80e-13 & 116.6 & 100.0 & 0.003 \\
+QQN-Backtracking & 1.13e-13 & 8.33e-14 & 3.65e-14 & 2.77e-13 & 78.8 & 100.0 & 0.002 \\
+GD-WeightDecay & 4.28e-10 & 2.53e-11 & 3.46e-10 & 4.55e-10 & 161.9 & 100.0 & 0.005 \\
+L-BFGS & 4.64e-4 & 2.02e-3 & 9.42e-15 & 9.27e-3 & 215.8 & 80.0 & 0.004 \\
+L-BFGS-Aggressive & 4.75e-4 & 9.16e-4 & 7.17e-15 & 5.65e-3 & 415.8 & 50.0 & 0.005 \\
+L-BFGS-Conservative & 7.23e-8 & 1.64e-7 & 8.08e-14 & 5.44e-7 & 540.0 & 10.0 & 0.013 \\
+GD & 2.17e-6 & 3.75e-7 & 1.59e-6 & 3.22e-6 & 335.0 & 0.0 & 0.008 \\
+GD-Nesterov & 3.30e-1 & 3.89e-2 & 2.33e-1 & 3.99e-1 & 22.0 & 0.0 & 0.001 \\
+Adam-Fast & 3.53e-1 & 1.12e-2 & 3.23e-1 & 3.71e-1 & 37.5 & 0.0 & 0.001 \\
+Adam-WeightDecay & 4.82e-1 & 1.34e-1 & 2.64e-1 & 7.95e-1 & 502.0 & 0.0 & 0.011 \\
+GD-Momentum & 4.88e-1 & 4.38e-2 & 4.05e-1 & 5.77e-1 & 22.0 & 0.0 & 0.001 \\
+Adam & 3.02e0 & 4.87e-1 & 2.11e0 & 3.92e0 & 502.0 & 0.0 & 0.010 \\
+Adam-AMSGrad & 3.30e0 & 3.92e-1 & 2.47e0 & 3.81e0 & 502.0 & 0.0 & 0.011 \\
+Trust Region-Conservative & 3.72e0 & 5.90e-1 & 2.76e0 & 4.86e0 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Standard & 1.64e2 & 8.66e1 & 2.31e-1 & 4.18e2 & 38.2 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 1.15e3 & 4.85e2 & 5.58e-2 & 1.37e3 & 88.7 & 0.0 & 0.001 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

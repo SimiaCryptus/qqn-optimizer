@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for SparseRosenbrock\textbackslash{}_10D Problem}
+\label{tab:sparserosenbrock_10d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{GD-Nesterov} & 1.68e0 & 4.69e0 & 4.04e-2 & 2.20e1 & 122.8 & 0.0 & 0.004 \\
+Adam-Fast & 1.97e0 & 6.11e0 & 2.69e-2 & 2.93e1 & 202.6 & 0.0 & 0.004 \\
+QQN-StrongWolfe & 3.53e0 & 2.20e0 & 1.98e-1 & 8.58e0 & 576.2 & 0.0 & 0.015 \\
+GD & 3.98e0 & 6.46e0 & 1.37e0 & 2.18e1 & 292.9 & 0.0 & 0.008 \\
+GD-WeightDecay & 4.86e0 & 9.01e0 & 1.10e-1 & 2.45e1 & 130.1 & 0.0 & 0.004 \\
+QQN-Backtracking & 7.87e0 & 5.09e0 & 2.19e-1 & 1.64e1 & 709.5 & 0.0 & 0.019 \\
+QQN-Bisection-2 & 1.17e1 & 4.36e0 & 2.98e0 & 1.68e1 & 231.2 & 0.0 & 0.005 \\
+QQN-GoldenSection & 1.18e1 & 5.49e0 & 3.66e-1 & 1.83e1 & 918.1 & 0.0 & 0.015 \\
+Adam-WeightDecay & 1.27e1 & 9.35e-1 & 1.12e1 & 1.41e1 & 502.0 & 0.0 & 0.011 \\
+QQN-CubicQuadraticInterpolation & 1.36e1 & 3.72e0 & 5.03e0 & 1.90e1 & 391.0 & 0.0 & 0.014 \\
+QQN-Bisection-1 & 1.54e1 & 3.58e0 & 4.26e0 & 1.93e1 & 451.9 & 0.0 & 0.011 \\
+L-BFGS-Conservative & 1.63e1 & 5.44e0 & 1.62e0 & 2.10e1 & 732.1 & 0.0 & 0.008 \\
+Adam & 2.04e1 & 8.04e-1 & 1.89e1 & 2.21e1 & 502.0 & 0.0 & 0.011 \\
+Adam-AMSGrad & 2.12e1 & 1.63e0 & 1.89e1 & 2.49e1 & 502.0 & 0.0 & 0.012 \\
+Trust Region-Standard & 2.67e1 & 2.16e1 & 1.96e1 & 1.19e2 & 373.6 & 0.0 & 0.002 \\
+GD-Momentum & 2.71e1 & 1.67e1 & 1.78e-1 & 4.71e1 & 33.9 & 0.0 & 0.001 \\
+QQN-MoreThuente & 5.67e1 & 5.79e1 & 2.07e1 & 1.87e2 & 485.2 & 0.0 & 0.008 \\
+L-BFGS-Aggressive & 1.18e2 & 7.70e1 & 3.90e1 & 3.65e2 & 774.4 & 0.0 & 0.007 \\
+Trust Region-Adaptive & 1.27e2 & 5.90e1 & 2.01e1 & 2.32e2 & 580.2 & 0.0 & 0.004 \\
+Trust Region-Conservative & 2.03e2 & 5.26e1 & 9.29e1 & 2.98e2 & 602.0 & 0.0 & 0.004 \\
+L-BFGS & 4.48e2 & 5.28e2 & 2.95e1 & 1.82e3 & 140.7 & 0.0 & 0.002 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

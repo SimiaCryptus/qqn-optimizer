@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Rastrigin\textbackslash{}_2D Problem}
+\label{tab:rastrigin_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS-Conservative} & 9.45e0 & 2.28e0 & 7.96e0 & 1.29e1 & 283.6 & 70.0 & 0.005 \\
+QQN-StrongWolfe & 8.11e0 & 5.91e0 & 0.00e0 & 2.49e1 & 113.8 & 65.0 & 0.003 \\
+Adam-WeightDecay & 8.97e0 & 1.99e0 & 7.98e0 & 1.30e1 & 258.3 & 65.0 & 0.005 \\
+QQN-GoldenSection & 7.98e0 & 5.34e0 & 0.00e0 & 1.99e1 & 244.9 & 60.0 & 0.004 \\
+QQN-Bisection-1 & 8.26e0 & 4.48e0 & 0.00e0 & 1.79e1 & 131.2 & 60.0 & 0.003 \\
+QQN-MoreThuente & 7.96e0 & 4.66e0 & 0.00e0 & 1.79e1 & 126.5 & 55.0 & 0.003 \\
+QQN-CubicQuadraticInterpolation & 1.05e1 & 6.16e0 & 0.00e0 & 2.49e1 & 114.6 & 47.5 & 0.003 \\
+QQN-Backtracking & 1.07e1 & 5.50e0 & 9.95e-1 & 1.99e1 & 120.0 & 40.0 & 0.003 \\
+QQN-Bisection-2 & 7.53e0 & 5.99e0 & 9.95e-1 & 1.59e1 & 30.6 & 20.0 & 0.001 \\
+GD-WeightDecay & 1.00e1 & 2.24e0 & 7.96e0 & 1.32e1 & 26.0 & 10.0 & 0.001 \\
+GD-Nesterov & 1.01e1 & 2.49e0 & 8.07e0 & 1.48e1 & 20.1 & 10.0 & 0.001 \\
+Trust Region-Adaptive & 1.14e1 & 6.06e0 & 7.97e0 & 3.03e1 & 242.9 & 10.0 & 0.002 \\
+L-BFGS & 5.74e1 & 2.12e1 & 1.66e1 & 1.05e2 & 81.0 & 10.0 & 0.001 \\
+Adam & 1.36e1 & 3.70e0 & 7.96e0 & 1.99e1 & 500.2 & 5.0 & 0.010 \\
+Adam-Fast & 9.02e0 & 1.90e0 & 7.97e0 & 1.59e1 & 45.0 & 0.0 & 0.001 \\
+Trust Region-Standard & 1.01e1 & 2.44e0 & 7.97e0 & 1.32e1 & 62.6 & 0.0 & 0.000 \\
+GD & 1.03e1 & 2.46e0 & 8.09e0 & 1.39e1 & 13.4 & 0.0 & 0.000 \\
+GD-Momentum & 1.16e1 & 2.84e0 & 8.07e0 & 1.91e1 & 24.6 & 0.0 & 0.001 \\
+Adam-AMSGrad & 1.29e1 & 3.21e0 & 7.96e0 & 1.81e1 & 502.0 & 0.0 & 0.012 \\
+Trust Region-Conservative & 2.54e1 & 5.23e0 & 1.59e1 & 3.39e1 & 602.0 & 0.0 & 0.004 \\
+L-BFGS-Aggressive & 2.84e1 & 5.91e0 & 6.90e0 & 3.97e1 & 717.8 & 0.0 & 0.005 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Griewank\textbackslash{}_5D Problem}
+\label{tab:griewank_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-StrongWolfe} & 1.07e1 & 2.95e0 & 1.30e0 & 1.28e1 & 481.5 & 0.0 & 0.017 \\
+QQN-Backtracking & 1.16e1 & 1.66e0 & 5.65e0 & 1.23e1 & 557.4 & 0.0 & 0.021 \\
+QQN-CubicQuadraticInterpolation & 1.17e1 & 1.91e0 & 9.52e-1 & 1.32e1 & 349.6 & 0.0 & 0.012 \\
+QQN-Bisection-2 & 1.19e1 & 1.87e0 & 4.18e0 & 1.30e1 & 330.3 & 0.0 & 0.007 \\
+QQN-Bisection-1 & 1.21e1 & 1.00e0 & 7.29e0 & 1.32e1 & 318.7 & 0.0 & 0.006 \\
+L-BFGS-Aggressive & 1.21e1 & 4.40e-1 & 1.01e1 & 1.23e1 & 263.2 & 0.0 & 0.004 \\
+QQN-GoldenSection & 1.22e1 & 1.03e0 & 7.12e0 & 1.32e1 & 697.5 & 0.0 & 0.011 \\
+GD-Momentum & 1.22e1 & 2.29e-7 & 1.22e1 & 1.22e1 & 335.0 & 0.0 & 0.009 \\
+GD-Nesterov & 1.22e1 & 4.00e-7 & 1.22e1 & 1.22e1 & 335.0 & 0.0 & 0.010 \\
+L-BFGS-Conservative & 1.22e1 & 1.24e-5 & 1.22e1 & 1.22e1 & 558.2 & 0.0 & 0.014 \\
+L-BFGS & 1.22e1 & 9.67e-4 & 1.22e1 & 1.22e1 & 302.9 & 0.0 & 0.007 \\
+Trust Region-Conservative & 1.23e1 & 2.45e-3 & 1.23e1 & 1.23e1 & 379.6 & 0.0 & 0.003 \\
+QQN-MoreThuente & 1.23e1 & 2.05e-1 & 1.22e1 & 1.32e1 & 341.3 & 0.0 & 0.010 \\
+Adam-Fast & 1.23e1 & 1.59e-2 & 1.22e1 & 1.23e1 & 67.5 & 0.0 & 0.001 \\
+GD-WeightDecay & 1.24e1 & 6.71e-2 & 1.23e1 & 1.26e1 & 335.0 & 0.0 & 0.010 \\
+Adam-WeightDecay & 1.32e1 & 6.07e-2 & 1.30e1 & 1.33e1 & 502.0 & 0.0 & 0.011 \\
+GD & 1.33e1 & 8.22e-2 & 1.30e1 & 1.34e1 & 335.0 & 0.0 & 0.008 \\
+Adam-AMSGrad & 1.34e1 & 2.76e-2 & 1.33e1 & 1.34e1 & 502.0 & 0.0 & 0.012 \\
+Adam & 1.34e1 & 2.95e-2 & 1.33e1 & 1.34e1 & 502.0 & 0.0 & 0.010 \\
+Trust Region-Standard & 1.35e1 & 2.24e-2 & 1.35e1 & 1.36e1 & 5.0 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 1.35e1 & 2.45e-2 & 1.35e1 & 1.35e1 & 5.0 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

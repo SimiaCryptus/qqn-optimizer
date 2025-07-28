@@ -1,0 +1,737 @@
+Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue
+QQN-GoldenSection,2,7.827714e-2,-1.106365e0
+QQN-GoldenSection,50,7.827714e-2,-1.106365e0
+QQN-GoldenSection,2,3.338913e-1,-4.763948e-1
+QQN-GoldenSection,49,3.338913e-1,-4.763948e-1
+QQN-GoldenSection,2,4.475197e-1,-3.491878e-1
+QQN-GoldenSection,49,4.475197e-1,-3.491878e-1
+QQN-GoldenSection,2,2.387882e-2,-1.621987e0
+QQN-GoldenSection,49,2.387882e-2,-1.621987e0
+QQN-GoldenSection,2,3.858783e-2,-1.413550e0
+QQN-GoldenSection,49,3.858783e-2,-1.413550e0
+QQN-GoldenSection,2,3.559877e-1,-4.485650e-1
+QQN-GoldenSection,49,3.559877e-1,-4.485650e-1
+QQN-Bisection-1,2,1.888966e-1,-7.237758e-1
+QQN-Bisection-1,61,1.888966e-1,-7.237758e-1
+QQN-Bisection-1,2,6.276861e-1,-2.022575e-1
+QQN-Bisection-1,59,6.276861e-1,-2.022575e-1
+QQN-Bisection-1,2,9.941718e-2,-1.002539e0
+QQN-Bisection-1,61,9.941718e-2,-1.002539e0
+QQN-Bisection-1,2,2.164657e-1,-6.646110e-1
+QQN-Bisection-1,61,2.164657e-1,-6.646110e-1
+QQN-Bisection-1,2,5.574777e-1,-2.537725e-1
+QQN-Bisection-1,59,5.574777e-1,-2.537725e-1
+QQN-Bisection-1,2,3.116296e-1,-5.063613e-1
+QQN-Bisection-1,59,3.116296e-1,-5.063613e-1
+QQN-CubicQuadraticInterpolation,2,6.500686e-1,-1.870408e-1
+QQN-CubicQuadraticInterpolation,64,6.500686e-1,-1.870408e-1
+QQN-CubicQuadraticInterpolation,2,2.819460e-1,-5.498340e-1
+QQN-CubicQuadraticInterpolation,64,2.819460e-1,-5.498340e-1
+QQN-CubicQuadraticInterpolation,2,8.989129e-2,-1.046282e0
+QQN-CubicQuadraticInterpolation,64,8.989129e-2,-1.046282e0
+QQN-CubicQuadraticInterpolation,2,1.686386e-1,-7.730431e-1
+QQN-CubicQuadraticInterpolation,64,1.686386e-1,-7.730431e-1
+QQN-CubicQuadraticInterpolation,2,3.832323e-1,-4.165379e-1
+QQN-CubicQuadraticInterpolation,64,3.832323e-1,-4.165379e-1
+L-BFGS-Aggressive,2,5.389386e-2,-1.268461e0
+L-BFGS-Aggressive,11,5.389386e-2,-1.268461e0
+L-BFGS-Aggressive,2,3.820798e-1,-4.178459e-1
+L-BFGS-Aggressive,11,3.820798e-1,-4.178459e-1
+L-BFGS-Aggressive,2,3.362082e-1,-4.733917e-1
+L-BFGS-Aggressive,11,3.362082e-1,-4.733917e-1
+L-BFGS-Aggressive,2,3.170608e-1,-4.988574e-1
+L-BFGS-Aggressive,11,3.170608e-1,-4.988574e-1
+L-BFGS-Aggressive,2,7.588329e-1,-1.198538e-1
+L-BFGS-Aggressive,10,7.588329e-1,-1.198538e-1
+L-BFGS-Aggressive,2,3.245600e-1,-4.887049e-1
+L-BFGS-Aggressive,11,3.245600e-1,-4.887049e-1
+L-BFGS-Aggressive,2,6.786172e-2,-1.168375e0
+L-BFGS-Aggressive,11,6.786172e-2,-1.168375e0
+L-BFGS-Aggressive,2,6.885805e-1,-1.620453e-1
+L-BFGS-Aggressive,10,6.885805e-1,-1.620453e-1
+L-BFGS-Aggressive,2,6.166079e-1,-2.099909e-1
+L-BFGS-Aggressive,11,6.166079e-1,-2.099909e-1
+Adam-Fast,2,5.561590e-1,-2.548010e-1
+Adam-Fast,6,5.561590e-1,-2.548010e-1
+Adam-Fast,2,1.373285e-2,-1.862239e0
+Adam-Fast,6,1.373285e-2,-1.862239e0
+Adam-Fast,2,7.108689e-1,-1.482105e-1
+Adam-Fast,6,7.108689e-1,-1.482105e-1
+GD,2,3.641234e-1,-4.387514e-1
+GD,5,3.641234e-1,-4.387514e-1
+GD,8,1.523145e-1,-8.172589e-1
+GD,2,3.928757e-1,-4.057448e-1
+GD,5,3.928757e-1,-4.057448e-1
+GD,8,1.910525e-1,-7.188473e-1
+GD,2,4.527253e-1,-3.441652e-1
+GD,5,4.527253e-1,-3.441652e-1
+GD,8,2.715477e-1,-5.661538e-1
+GD,11,2.816754e-2,-1.550251e0
+GD,2,6.157650e-1,-2.105850e-1
+GD,5,6.157650e-1,-2.105850e-1
+GD,8,4.909317e-1,-3.089789e-1
+GD,11,3.229907e-1,-4.908099e-1
+GD,14,9.704411e-2,-1.013031e0
+GD,2,1.609116e-1,-7.934125e-1
+GD,5,1.609116e-1,-7.934125e-1
+QQN-GoldenSection,2,7.355449e-1,-1.333908e-1
+QQN-GoldenSection,50,7.355449e-1,-1.333908e-1
+QQN-GoldenSection,2,5.143839e-1,-2.887126e-1
+QQN-GoldenSection,49,5.143839e-1,-2.887126e-1
+QQN-GoldenSection,2,2.125032e-2,-1.672635e0
+QQN-GoldenSection,49,2.125032e-2,-1.672635e0
+QQN-GoldenSection,2,8.188668e-1,-8.678672e-2
+QQN-GoldenSection,49,8.188668e-1,-8.678672e-2
+QQN-GoldenSection,2,9.299728e-1,-3.152976e-2
+QQN-GoldenSection,52,9.299728e-1,-3.152976e-2
+QQN-GoldenSection,2,1.765784e-1,-7.530624e-1
+QQN-GoldenSection,49,1.765784e-1,-7.530624e-1
+QQN-GoldenSection,2,3.865443e-1,-4.128007e-1
+QQN-GoldenSection,49,3.865443e-1,-4.128007e-1
+QQN-GoldenSection,2,1.510130e-1,-8.209857e-1
+QQN-GoldenSection,49,1.510130e-1,-8.209857e-1
+QQN-Bisection-1,2,3.943631e-1,-4.041037e-1
+QQN-Bisection-1,59,3.943631e-1,-4.041037e-1
+QQN-Bisection-1,2,3.772162e-1,-4.234097e-1
+QQN-Bisection-1,61,3.772162e-1,-4.234097e-1
+QQN-Bisection-1,2,1.622837e-1,-7.897250e-1
+QQN-Bisection-1,61,1.622837e-1,-7.897250e-1
+QQN-Bisection-1,2,5.843025e-1,-2.333623e-1
+QQN-Bisection-1,59,5.843025e-1,-2.333623e-1
+QQN-Bisection-1,2,4.066847e-1,-3.907422e-1
+QQN-Bisection-1,59,4.066847e-1,-3.907422e-1
+QQN-Bisection-1,2,1.900486e-1,-7.211354e-1
+QQN-Bisection-1,61,1.900486e-1,-7.211354e-1
+QQN-Bisection-2,2,7.617273e-1,-1.182005e-1
+QQN-Bisection-2,62,7.617273e-1,-1.182005e-1
+QQN-Bisection-2,2,1.770769e-1,-7.518380e-1
+QQN-Bisection-2,61,1.770769e-1,-7.518380e-1
+QQN-Bisection-2,2,3.372761e-1,-4.720144e-1
+QQN-Bisection-2,61,3.372761e-1,-4.720144e-1
+QQN-Bisection-2,2,1.422952e-1,-8.468097e-1
+QQN-Bisection-2,61,1.422952e-1,-8.468097e-1
+QQN-StrongWolfe,2,8.722979e-2,-1.059335e0
+QQN-StrongWolfe,26,8.722979e-2,-1.059335e0
+QQN-StrongWolfe,2,4.163553e-2,-1.380536e0
+QQN-StrongWolfe,25,4.163553e-2,-1.380536e0
+QQN-StrongWolfe,2,1.917916e-1,-7.171704e-1
+QQN-StrongWolfe,31,1.917916e-1,-7.171704e-1
+QQN-StrongWolfe,2,2.701829e-1,-5.683421e-1
+QQN-StrongWolfe,32,2.701829e-1,-5.683421e-1
+QQN-StrongWolfe,2,1.862178e-1,-7.299788e-1
+QQN-StrongWolfe,23,1.862178e-1,-7.299788e-1
+QQN-Backtracking,2,4.875924e-1,-3.119431e-1
+QQN-Backtracking,14,4.875924e-1,-3.119431e-1
+QQN-Backtracking,2,1.732947e-1,-7.612148e-1
+QQN-Backtracking,14,1.732947e-1,-7.612148e-1
+QQN-Backtracking,2,5.354130e-1,-2.713111e-1
+QQN-Backtracking,14,5.354130e-1,-2.713111e-1
+QQN-Backtracking,2,1.542187e-2,-1.811863e0
+QQN-Backtracking,14,1.542187e-2,-1.811863e0
+QQN-Backtracking,2,2.148350e-2,-1.667895e0
+QQN-Backtracking,14,2.148350e-2,-1.667895e0
+QQN-Backtracking,2,7.664646e-1,-1.155079e-1
+QQN-Backtracking,14,7.664646e-1,-1.155079e-1
+QQN-Backtracking,2,8.642860e-1,-6.334253e-2
+QQN-Backtracking,14,8.642860e-1,-6.334253e-2
+QQN-GoldenSection,2,3.591219e-1,-4.447582e-1
+QQN-GoldenSection,49,3.591219e-1,-4.447582e-1
+QQN-GoldenSection,2,1.581970e-1,-8.008017e-1
+QQN-GoldenSection,49,1.581970e-1,-8.008017e-1
+QQN-MoreThuente,2,6.956168e-1,-1.576299e-1
+QQN-MoreThuente,20,6.956168e-1,-1.576299e-1
+QQN-MoreThuente,2,7.075399e-1,-1.502490e-1
+QQN-MoreThuente,24,7.075399e-1,-1.502490e-1
+QQN-CubicQuadraticInterpolation,2,4.239630e-1,-3.726721e-1
+QQN-CubicQuadraticInterpolation,64,4.239630e-1,-3.726721e-1
+QQN-CubicQuadraticInterpolation,2,5.819480e-1,-2.351158e-1
+QQN-CubicQuadraticInterpolation,64,5.819480e-1,-2.351158e-1
+QQN-CubicQuadraticInterpolation,2,2.681110e-1,-5.716854e-1
+QQN-CubicQuadraticInterpolation,64,2.681110e-1,-5.716854e-1
+QQN-CubicQuadraticInterpolation,2,7.182348e-2,-1.143734e0
+QQN-CubicQuadraticInterpolation,64,7.182348e-2,-1.143734e0
+QQN-CubicQuadraticInterpolation,2,8.108537e-2,-1.091058e0
+QQN-CubicQuadraticInterpolation,64,8.108537e-2,-1.091058e0
+QQN-CubicQuadraticInterpolation,2,2.284214e-1,-6.412633e-1
+QQN-CubicQuadraticInterpolation,64,2.284214e-1,-6.412633e-1
+L-BFGS-Aggressive,2,5.998649e-2,-1.221947e0
+L-BFGS-Aggressive,12,5.998649e-2,-1.221947e0
+L-BFGS-Aggressive,2,3.349392e-1,-4.750340e-1
+L-BFGS-Aggressive,11,3.349392e-1,-4.750340e-1
+L-BFGS-Aggressive,2,2.063143e-1,-6.854707e-1
+L-BFGS-Aggressive,11,2.063143e-1,-6.854707e-1
+L-BFGS-Aggressive,2,2.733395e-1,-5.632976e-1
+L-BFGS-Aggressive,11,2.733395e-1,-5.632976e-1
+L-BFGS-Aggressive,2,7.069704e-1,-1.505988e-1
+L-BFGS-Aggressive,11,7.069704e-1,-1.505988e-1
+L-BFGS,2,6.848963e-1,-1.643752e-1
+L-BFGS,11,6.848963e-1,-1.643752e-1
+L-BFGS,2,1.143646e-1,-9.417082e-1
+L-BFGS,21,1.143646e-1,-9.417082e-1
+L-BFGS,2,4.174080e-1,-3.794392e-1
+L-BFGS,11,4.174080e-1,-3.794392e-1
+L-BFGS-Conservative,2,2.114421e-2,-1.674809e0
+L-BFGS-Conservative,11,2.114421e-2,-1.674809e0
+L-BFGS-Conservative,2,4.432979e-1,-3.533043e-1
+L-BFGS-Conservative,11,4.432979e-1,-3.533043e-1
+L-BFGS-Conservative,2,3.959506e-1,-4.023589e-1
+L-BFGS-Conservative,11,3.959506e-1,-4.023589e-1
+L-BFGS-Conservative,2,2.165900e-2,-1.664362e0
+L-BFGS-Conservative,11,2.165900e-2,-1.664362e0
+L-BFGS-Conservative,2,6.491120e-2,-1.187680e0
+L-BFGS-Conservative,11,6.491120e-2,-1.187680e0
+L-BFGS-Conservative,2,8.807133e-2,-1.055165e0
+L-BFGS-Conservative,11,8.807133e-2,-1.055165e0
+GD,2,3.968491e-1,-4.013747e-1
+GD,5,3.968491e-1,-4.013747e-1
+GD,8,1.964016e-1,-7.068550e-1
+GD,2,5.315583e-1,-2.744491e-1
+GD,5,5.315583e-1,-2.744491e-1
+GD,8,3.776349e-1,-4.229279e-1
+GD,11,1.705398e-1,-7.681743e-1
+GD,2,7.810772e-1,-1.073060e-1
+GD,5,7.810772e-1,-1.073060e-1
+GD,8,7.131945e-1,-1.467920e-1
+GD,11,6.218835e-1,-2.062910e-1
+GD,14,4.990697e-1,-3.018388e-1
+GD,17,3.339276e-1,-4.763477e-1
+GD,20,1.119816e-1,-9.508535e-1
+GD,2,3.698377e-1,-4.319889e-1
+GD,5,3.698377e-1,-4.319889e-1
+GD,8,1.599462e-1,-7.960261e-1
+GD,2,3.735210e-1,-4.276849e-1
+GD,5,3.735210e-1,-4.276849e-1
+GD,8,1.649611e-1,-7.826185e-1
+GD-Momentum,2,4.239058e-2,-1.372731e0
+GD-Momentum,5,4.239058e-2,-1.372731e0
+GD-Momentum,2,8.903986e-1,-5.041552e-2
+GD-Momentum,5,8.903986e-1,-5.041552e-2
+GD-Momentum,8,8.602879e-1,-6.535620e-2
+GD-Momentum,11,7.842780e-1,-1.055299e-1
+GD-Momentum,14,6.208336e-1,-2.070248e-1
+GD-Momentum,17,2.812791e-1,-5.508626e-1
+GD-Momentum,2,6.070096e-3,-2.216804e0
+GD-Momentum,5,6.070096e-3,-2.216804e0
+GD-Momentum,2,1.144463e-1,-9.413984e-1
+GD-Momentum,5,1.144463e-1,-9.413984e-1
+GD-Momentum,2,5.697034e-2,-1.244351e0
+GD-Momentum,5,5.697034e-2,-1.244351e0
+GD-Momentum,2,2.524881e-1,-5.977590e-1
+GD-Momentum,5,2.524881e-1,-5.977590e-1
+GD-Momentum,8,2.379193e-3,-2.623570e0
+GD-Nesterov,2,5.328310e-1,-2.734105e-1
+GD-Nesterov,5,5.328310e-1,-2.734105e-1
+GD-Nesterov,8,3.792519e-1,-4.210723e-1
+GD-Nesterov,2,7.402179e-1,-1.306404e-1
+GD-Nesterov,5,7.402179e-1,-1.306404e-1
+GD-Nesterov,8,6.583459e-1,-1.815459e-1
+GD-Nesterov,11,3.384079e-1,-4.705595e-1
+GD-Nesterov,2,5.510206e-1,-2.588322e-1
+GD-Nesterov,5,5.510206e-1,-2.588322e-1
+GD-Nesterov,8,4.037628e-1,-3.938737e-1
+GD-Nesterov,2,6.523458e-1,-1.855221e-1
+GD-Nesterov,5,6.523458e-1,-1.855221e-1
+GD-Nesterov,8,5.400236e-1,-2.675873e-1
+GD-Nesterov,11,1.009109e-1,-9.960621e-1
+GD-Nesterov,2,2.941628e-1,-5.314122e-1
+GD-Nesterov,5,2.941628e-1,-5.314122e-1
+GD-Nesterov,8,5.828133e-2,-1.234471e0
+GD-Nesterov,2,2.072216e-1,-6.835651e-1
+GD-Nesterov,5,2.072216e-1,-6.835651e-1
+GD-WeightDecay,2,4.096155e-1,-3.876236e-1
+GD-WeightDecay,5,4.096155e-1,-3.876236e-1
+GD-WeightDecay,8,3.152268e-1,-5.013768e-1
+GD-WeightDecay,11,1.181611e-1,-9.275253e-1
+GD-WeightDecay,2,3.126687e-1,-5.049155e-1
+GD-WeightDecay,5,3.126687e-1,-5.049155e-1
+GD-WeightDecay,8,2.021169e-1,-6.943974e-1
+GD-WeightDecay,2,1.047678e-1,-9.797722e-1
+GD-WeightDecay,5,1.047678e-1,-9.797722e-1
+GD-WeightDecay,2,8.965942e-3,-2.047404e0
+GD-WeightDecay,5,8.965942e-3,-2.047404e0
+GD-WeightDecay,2,6.432181e-1,-1.916417e-1
+GD-WeightDecay,5,6.432181e-1,-1.916417e-1
+GD-WeightDecay,8,5.876127e-1,-2.309088e-1
+GD-WeightDecay,11,4.715166e-1,-3.265030e-1
+GD-WeightDecay,14,2.757606e-1,-5.594677e-1
+GD-WeightDecay,2,4.003600e-1,-3.975493e-1
+GD-WeightDecay,5,4.003600e-1,-3.975493e-1
+GD-WeightDecay,8,3.044082e-1,-5.165437e-1
+GD-WeightDecay,11,1.041546e-1,-9.823214e-1
+GD-WeightDecay,2,8.122780e-1,-9.029532e-2
+GD-WeightDecay,5,8.122780e-1,-9.029532e-2
+GD-WeightDecay,8,7.848037e-1,-1.052389e-1
+GD-WeightDecay,11,7.274480e-1,-1.381980e-1
+GD-WeightDecay,14,6.307339e-1,-2.001538e-1
+GD-WeightDecay,17,4.777075e-1,-3.208379e-1
+GD-WeightDecay,20,2.415406e-1,-6.170099e-1
+Adam-Fast,2,6.696447e-3,-2.174156e0
+Adam-Fast,6,6.696447e-3,-2.174156e0
+Adam-Fast,2,1.906690e-1,-7.197199e-1
+Adam-Fast,6,1.906690e-1,-7.197199e-1
+Adam-Fast,2,2.056862e-1,-6.867948e-1
+Adam-Fast,6,2.056862e-1,-6.867948e-1
+Adam-Fast,2,3.503401e-1,-4.555102e-1
+Adam-Fast,6,3.503401e-1,-4.555102e-1
+Adam,2,3.765926e-1,-4.241282e-1
+Adam,6,3.765926e-1,-4.241282e-1
+Adam,10,3.684776e-1,-4.335889e-1
+Adam,14,3.602824e-1,-4.433570e-1
+Adam,18,3.520064e-1,-4.534494e-1
+Adam,22,3.436492e-1,-4.638847e-1
+Adam,26,3.352103e-1,-4.746827e-1
+Adam,30,3.266891e-1,-4.858653e-1
+Adam,34,3.180852e-1,-4.974565e-1
+Adam,38,3.093979e-1,-5.094826e-1
+Adam,42,3.006266e-1,-5.219725e-1
+Adam,46,2.917708e-1,-5.349581e-1
+Adam,50,2.828299e-1,-5.484747e-1
+Adam,54,2.738031e-1,-5.625616e-1
+Adam,58,2.646900e-1,-5.772625e-1
+Adam,62,2.554898e-1,-5.926264e-1
+Adam,66,2.462020e-1,-6.087084e-1
+Adam,70,2.368259e-1,-6.255707e-1
+Adam,74,2.273610e-1,-6.432840e-1
+Adam,78,2.178066e-1,-6.619290e-1
+Adam,82,2.081621e-1,-6.815984e-1
+Adam,86,1.984269e-1,-7.023994e-1
+Adam,90,1.886005e-1,-7.244572e-1
+Adam,94,1.786823e-1,-7.479185e-1
+Adam,98,1.686717e-1,-7.729578e-1
+Adam,102,1.585682e-1,-7.997839e-1
+Adam,106,1.483713e-1,-8.286502e-1
+Adam,110,1.380804e-1,-8.598680e-1
+Adam,114,1.276951e-1,-8.938258e-1
+Adam,118,1.172149e-1,-9.310172e-1
+Adam,122,1.066393e-1,-9.720827e-1
+Adam,126,9.596791e-2,-1.017874e0
+Adam,130,8.520027e-2,-1.069559e0
+Adam,134,7.433598e-2,-1.128801e0
+Adam,138,6.337464e-2,-1.198084e0
+Adam,142,5.231589e-2,-1.281366e0
+Adam,146,4.115935e-2,-1.385531e0
+Adam,150,2.990470e-2,-1.524261e0
+Adam,154,1.855161e-2,-1.731618e0
+Adam,158,7.099764e-3,-2.148756e0
+Adam,2,5.848878e-1,-2.329274e-1
+Adam,6,5.848878e-1,-2.329274e-1
+Adam,10,5.781034e-1,-2.379945e-1
+Adam,14,5.712390e-1,-2.431822e-1
+Adam,18,5.642941e-1,-2.484945e-1
+Adam,22,5.572685e-1,-2.539355e-1
+Adam,26,5.501617e-1,-2.595096e-1
+Adam,30,5.429733e-1,-2.652215e-1
+Adam,34,5.357029e-1,-2.710760e-1
+Adam,38,5.283500e-1,-2.770783e-1
+Adam,42,5.209141e-1,-2.832339e-1
+Adam,46,5.133949e-1,-2.895484e-1
+Adam,50,5.057920e-1,-2.960281e-1
+Adam,54,4.981047e-1,-3.026794e-1
+Adam,58,4.903327e-1,-3.095091e-1
+Adam,62,4.824756e-1,-3.165247e-1
+Adam,66,4.745329e-1,-3.237337e-1
+Adam,70,4.665041e-1,-3.311445e-1
+Adam,74,4.583888e-1,-3.387660e-1
+Adam,78,4.501867e-1,-3.466073e-1
+Adam,82,4.418973e-1,-3.546787e-1
+Adam,86,4.335201e-1,-3.629908e-1
+Adam,90,4.250548e-1,-3.715551e-1
+Adam,94,4.165010e-1,-3.803839e-1
+Adam,98,4.078584e-1,-3.894906e-1
+Adam,102,3.991265e-1,-3.988894e-1
+Adam,106,3.903051e-1,-4.085958e-1
+Adam,110,3.813937e-1,-4.186264e-1
+Adam,114,3.723921e-1,-4.289995e-1
+Adam,118,3.633000e-1,-4.397346e-1
+Adam,122,3.541170e-1,-4.508532e-1
+Adam,126,3.448429e-1,-4.623787e-1
+Adam,130,3.354774e-1,-4.743368e-1
+Adam,134,3.260202e-1,-4.867555e-1
+Adam,138,3.164711e-1,-4.996659e-1
+Adam,142,3.068299e-1,-5.131023e-1
+Adam,146,2.970963e-1,-5.271027e-1
+Adam,150,2.872702e-1,-5.417094e-1
+Adam,154,2.773514e-1,-5.569697e-1
+Adam,158,2.673396e-1,-5.729368e-1
+Adam,162,2.572347e-1,-5.896705e-1
+Adam,166,2.470365e-1,-6.072389e-1
+Adam,170,2.367450e-1,-6.257193e-1
+Adam,174,2.263599e-1,-6.452006e-1
+Adam,178,2.158811e-1,-6.657854e-1
+Adam,182,2.053085e-1,-6.875930e-1
+Adam,186,1.946421e-1,-7.107632e-1
+Adam,190,1.838817e-1,-7.354615e-1
+Adam,194,1.730272e-1,-7.618855e-1
+Adam,198,1.620786e-1,-7.902742e-1
+Adam,202,1.510358e-1,-8.209200e-1
+Adam,206,1.398987e-1,-8.541862e-1
+Adam,210,1.286674e-1,-8.905316e-1
+Adam,214,1.173416e-1,-9.305480e-1
+Adam,218,1.059215e-1,-9.750160e-1
+Adam,222,9.440691e-2,-1.024996e0
+Adam,226,8.279791e-2,-1.081981e0
+Adam,230,7.109446e-2,-1.148164e0
+Adam,234,5.929654e-2,-1.226971e0
+Adam,238,4.740416e-2,-1.324184e0
+Adam,242,3.541732e-2,-1.450784e0
+Adam,246,2.333602e-2,-1.631973e0
+Adam,250,1.116029e-2,-1.952324e0
+Adam,2,1.487127e-1,-8.276519e-1
+Adam,6,1.487127e-1,-8.276519e-1
+Adam,10,1.395006e-1,-8.554239e-1
+Adam,14,1.302084e-1,-8.853611e-1
+Adam,18,1.208356e-1,-9.178051e-1
+Adam,22,1.113818e-1,-9.531858e-1
+Adam,26,1.018464e-1,-9.920541e-1
+Adam,30,9.222892e-2,-1.035133e0
+Adam,34,8.252857e-2,-1.083396e0
+Adam,38,7.274471e-2,-1.138199e0
+Adam,42,6.287665e-2,-1.201511e0
+Adam,46,5.292366e-2,-1.276350e0
+Adam,50,4.288501e-2,-1.367694e0
+Adam,54,3.275997e-2,-1.484657e0
+Adam,58,2.254778e-2,-1.646896e0
+Adam,62,1.224772e-2,-1.911945e0
+Adam,66,1.859037e-3,-2.730712e0
+Adam,2,1.714554e-1,-7.658489e-1
+Adam,6,1.714554e-1,-7.658489e-1
+Adam,10,1.620799e-1,-7.902709e-1
+Adam,14,1.526240e-1,-8.163772e-1
+Adam,18,1.430873e-1,-8.443990e-1
+Adam,22,1.334693e-1,-8.746186e-1
+Adam,26,1.237696e-1,-9.073860e-1
+Adam,30,1.139876e-1,-9.431423e-1
+Adam,34,1.041229e-1,-9.824539e-1
+Adam,38,9.417477e-2,-1.026065e0
+Adam,42,8.414283e-2,-1.074983e0
+Adam,46,7.402649e-2,-1.130613e0
+Adam,50,6.382519e-2,-1.195008e0
+Adam,54,5.353837e-2,-1.271335e0
+Adam,58,4.316548e-2,-1.364863e0
+Adam,62,3.270595e-2,-1.485373e0
+Adam,66,2.215924e-2,-1.654445e0
+Adam,70,1.152479e-2,-1.938367e0
+Adam,74,8.020448e-4,-3.095801e0
+Adam-AMSGrad,2,6.651890e-1,-1.770549e-1
+Adam-AMSGrad,6,6.651890e-1,-1.770549e-1
+Adam-AMSGrad,10,6.586008e-1,-1.813778e-1
+Adam-AMSGrad,14,6.519309e-1,-1.857984e-1
+Adam-AMSGrad,18,6.451780e-1,-1.903204e-1
+Adam-AMSGrad,22,6.383407e-1,-1.949475e-1
+Adam-AMSGrad,26,6.314175e-1,-1.996834e-1
+Adam-AMSGrad,30,6.244069e-1,-2.045323e-1
+Adam-AMSGrad,34,6.173074e-1,-2.094985e-1
+Adam-AMSGrad,38,6.101174e-1,-2.145866e-1
+Adam-AMSGrad,42,6.028355e-1,-2.198012e-1
+Adam-AMSGrad,46,5.954601e-1,-2.251474e-1
+Adam-AMSGrad,50,5.879894e-1,-2.306305e-1
+Adam-AMSGrad,54,5.804221e-1,-2.362561e-1
+Adam-AMSGrad,58,5.727564e-1,-2.420300e-1
+Adam-AMSGrad,62,5.649909e-1,-2.479586e-1
+Adam-AMSGrad,66,5.571237e-1,-2.540483e-1
+Adam-AMSGrad,70,5.491535e-1,-2.603062e-1
+Adam-AMSGrad,74,5.410786e-1,-2.667396e-1
+Adam-AMSGrad,78,5.328974e-1,-2.733564e-1
+Adam-AMSGrad,82,5.246083e-1,-2.801648e-1
+Adam-AMSGrad,86,5.162099e-1,-2.871737e-1
+Adam-AMSGrad,90,5.077005e-1,-2.943924e-1
+Adam-AMSGrad,94,4.990786e-1,-3.018310e-1
+Adam-AMSGrad,98,4.903428e-1,-3.095002e-1
+Adam-AMSGrad,102,4.814915e-1,-3.174113e-1
+Adam-AMSGrad,106,4.725233e-1,-3.255767e-1
+Adam-AMSGrad,110,4.634368e-1,-3.340095e-1
+Adam-AMSGrad,114,4.542304e-1,-3.427238e-1
+Adam-AMSGrad,118,4.449029e-1,-3.517348e-1
+Adam-AMSGrad,122,4.354527e-1,-3.610590e-1
+Adam-AMSGrad,126,4.258787e-1,-3.707141e-1
+Adam-AMSGrad,130,4.161793e-1,-3.807195e-1
+Adam-AMSGrad,134,4.063534e-1,-3.910961e-1
+Adam-AMSGrad,138,3.963996e-1,-4.018668e-1
+Adam-AMSGrad,142,3.863167e-1,-4.130565e-1
+Adam-AMSGrad,146,3.761035e-1,-4.246927e-1
+Adam-AMSGrad,150,3.657586e-1,-4.368055e-1
+Adam-AMSGrad,154,3.552809e-1,-4.494281e-1
+Adam-AMSGrad,158,3.446693e-1,-4.625974e-1
+Adam-AMSGrad,162,3.339226e-1,-4.763542e-1
+Adam-AMSGrad,166,3.230396e-1,-4.907442e-1
+Adam-AMSGrad,170,3.120193e-1,-5.058185e-1
+Adam-AMSGrad,174,3.008606e-1,-5.216347e-1
+Adam-AMSGrad,178,2.895623e-1,-5.382580e-1
+Adam-AMSGrad,182,2.781235e-1,-5.557623e-1
+Adam-AMSGrad,186,2.665431e-1,-5.742326e-1
+Adam-AMSGrad,190,2.548201e-1,-5.937663e-1
+Adam-AMSGrad,194,2.429535e-1,-6.144768e-1
+Adam-AMSGrad,198,2.309424e-1,-6.364964e-1
+Adam-AMSGrad,202,2.187857e-1,-6.599810e-1
+Adam-AMSGrad,206,2.064826e-1,-6.851165e-1
+Adam-AMSGrad,210,1.940321e-1,-7.121263e-1
+Adam-AMSGrad,214,1.814337e-1,-7.412821e-1
+Adam-AMSGrad,218,1.686942e-1,-7.728998e-1
+Adam-AMSGrad,222,1.558200e-1,-8.073767e-1
+Adam-AMSGrad,226,1.428167e-1,-8.452211e-1
+Adam-AMSGrad,230,1.296892e-1,-8.870963e-1
+Adam-AMSGrad,234,1.164420e-1,-9.338904e-1
+Adam-AMSGrad,238,1.030791e-1,-9.868296e-1
+Adam-AMSGrad,242,8.960398e-2,-1.047673e0
+Adam-AMSGrad,246,7.601996e-2,-1.119072e0
+Adam-AMSGrad,250,6.232984e-2,-1.205304e0
+Adam-AMSGrad,254,4.853616e-2,-1.313935e0
+Adam-AMSGrad,258,3.464122e-2,-1.460407e0
+Adam-AMSGrad,262,2.064704e-2,-1.685142e0
+Adam-AMSGrad,266,6.555464e-3,-2.183397e0
+Adam-AMSGrad,2,2.871508e-1,-5.418900e-1
+Adam-AMSGrad,6,2.871508e-1,-5.418900e-1
+Adam-AMSGrad,10,2.785605e-1,-5.550804e-1
+Adam-AMSGrad,14,2.698887e-1,-5.688153e-1
+Adam-AMSGrad,18,2.611339e-1,-5.831368e-1
+Adam-AMSGrad,22,2.522947e-1,-5.980918e-1
+Adam-AMSGrad,26,2.433697e-1,-6.137335e-1
+Adam-AMSGrad,30,2.343574e-1,-6.301213e-1
+Adam-AMSGrad,34,2.252563e-1,-6.473231e-1
+Adam-AMSGrad,38,2.160649e-1,-6.654158e-1
+Adam-AMSGrad,42,2.067816e-1,-6.844881e-1
+Adam-AMSGrad,46,1.974049e-1,-7.046421e-1
+Adam-AMSGrad,50,1.879332e-1,-7.259964e-1
+Adam-AMSGrad,54,1.783673e-1,-7.486847e-1
+Adam-AMSGrad,58,1.687083e-1,-7.728635e-1
+Adam-AMSGrad,62,1.589570e-1,-7.987204e-1
+Adam-AMSGrad,66,1.491139e-1,-8.264819e-1
+Adam-AMSGrad,70,1.391793e-1,-8.564252e-1
+Adam-AMSGrad,74,1.291536e-1,-8.888936e-1
+Adam-AMSGrad,78,1.190367e-1,-9.243193e-1
+Adam-AMSGrad,82,1.088286e-1,-9.632569e-1
+Adam-AMSGrad,86,9.852938e-2,-1.006434e0
+Adam-AMSGrad,90,8.813885e-2,-1.054833e0
+Adam-AMSGrad,94,7.765686e-2,-1.109820e0
+Adam-AMSGrad,98,6.708325e-2,-1.173386e0
+Adam-AMSGrad,102,5.641781e-2,-1.248584e0
+Adam-AMSGrad,106,4.566033e-2,-1.340461e0
+Adam-AMSGrad,110,3.481057e-2,-1.458289e0
+Adam-AMSGrad,114,2.386830e-2,-1.622179e0
+Adam-AMSGrad,118,1.283327e-2,-1.891663e0
+Adam-AMSGrad,122,1.705245e-3,-2.768213e0
+Adam-AMSGrad,2,1.213787e-1,-9.158575e-1
+Adam-AMSGrad,6,1.213787e-1,-9.158575e-1
+Adam-AMSGrad,10,1.116398e-1,-9.521808e-1
+Adam-AMSGrad,14,1.018208e-1,-9.921637e-1
+Adam-AMSGrad,18,9.192105e-2,-1.036585e0
+Adam-AMSGrad,22,8.194027e-2,-1.086503e0
+Adam-AMSGrad,26,7.187797e-2,-1.143404e0
+Adam-AMSGrad,30,6.173362e-2,-1.209478e0
+Adam-AMSGrad,34,5.150671e-2,-1.288136e0
+Adam-AMSGrad,38,4.119669e-2,-1.385138e0
+Adam-AMSGrad,42,3.080301e-2,-1.511407e0
+Adam-AMSGrad,46,2.032508e-2,-1.691968e0
+Adam-AMSGrad,50,9.762341e-3,-2.010446e0
+Adam-AMSGrad,2,4.894647e-1,-3.102786e-1
+Adam-AMSGrad,6,4.894647e-1,-3.102786e-1
+Adam-AMSGrad,10,4.815771e-1,-3.173342e-1
+Adam-AMSGrad,14,4.736079e-1,-3.245811e-1
+Adam-AMSGrad,18,4.655556e-1,-3.320284e-1
+Adam-AMSGrad,22,4.574189e-1,-3.396859e-1
+Adam-AMSGrad,26,4.491963e-1,-3.475638e-1
+Adam-AMSGrad,30,4.408864e-1,-3.556733e-1
+Adam-AMSGrad,34,4.324876e-1,-3.640263e-1
+Adam-AMSGrad,38,4.239984e-1,-3.726357e-1
+Adam-AMSGrad,42,4.154174e-1,-3.815153e-1
+Adam-AMSGrad,46,4.067429e-1,-3.906800e-1
+Adam-AMSGrad,50,3.979734e-1,-4.001460e-1
+Adam-AMSGrad,54,3.891074e-1,-4.099306e-1
+Adam-AMSGrad,58,3.801432e-1,-4.200528e-1
+Adam-AMSGrad,62,3.710794e-1,-4.305332e-1
+Adam-AMSGrad,66,3.619143e-1,-4.413942e-1
+Adam-AMSGrad,70,3.526465e-1,-4.526604e-1
+Adam-AMSGrad,74,3.432744e-1,-4.643586e-1
+Adam-AMSGrad,78,3.337964e-1,-4.765183e-1
+Adam-AMSGrad,82,3.242111e-1,-4.891721e-1
+Adam-AMSGrad,86,3.145169e-1,-5.023560e-1
+Adam-AMSGrad,90,3.047123e-1,-5.161100e-1
+Adam-AMSGrad,94,2.947960e-1,-5.304785e-1
+Adam-AMSGrad,98,2.847663e-1,-5.455114e-1
+Adam-AMSGrad,102,2.746220e-1,-5.612647e-1
+Adam-AMSGrad,106,2.643615e-1,-5.778017e-1
+Adam-AMSGrad,110,2.539836e-1,-5.951943e-1
+Adam-AMSGrad,114,2.434868e-1,-6.135246e-1
+Adam-AMSGrad,118,2.328698e-1,-6.328868e-1
+Adam-AMSGrad,122,2.221313e-1,-6.533903e-1
+Adam-AMSGrad,126,2.112699e-1,-6.751623e-1
+Adam-AMSGrad,130,2.002845e-1,-6.983527e-1
+Adam-AMSGrad,134,1.891737e-1,-7.231392e-1
+Adam-AMSGrad,138,1.779392e-1,-7.497283e-1
+Adam-AMSGrad,142,1.665852e-1,-7.783635e-1
+Adam-AMSGrad,146,1.551154e-1,-8.093452e-1
+Adam-AMSGrad,150,1.435328e-1,-8.430489e-1
+Adam-AMSGrad,154,1.318403e-1,-8.799517e-1
+Adam-AMSGrad,158,1.200406e-1,-9.206720e-1
+Adam-AMSGrad,162,1.081356e-1,-9.660311e-1
+Adam-AMSGrad,166,9.612755e-2,-1.017152e0
+Adam-AMSGrad,170,8.401802e-2,-1.075628e0
+Adam-AMSGrad,174,7.180859e-2,-1.143824e0
+Adam-AMSGrad,178,5.950061e-2,-1.225479e0
+Adam-AMSGrad,182,4.709529e-2,-1.327023e0
+Adam-AMSGrad,186,3.459370e-2,-1.461003e0
+Adam-AMSGrad,190,2.199678e-2,-1.657641e0
+Adam-AMSGrad,194,9.305370e-3,-2.031266e0
+Adam-WeightDecay,2,5.528885e-1,-2.573625e-1
+Adam-WeightDecay,6,5.528885e-1,-2.573625e-1
+Adam-WeightDecay,10,5.338267e-1,-2.725997e-1
+Adam-WeightDecay,14,5.140580e-1,-2.889879e-1
+Adam-WeightDecay,18,4.935782e-1,-3.066441e-1
+Adam-WeightDecay,22,4.723809e-1,-3.257077e-1
+Adam-WeightDecay,26,4.504586e-1,-3.463451e-1
+Adam-WeightDecay,30,4.278037e-1,-3.687555e-1
+Adam-WeightDecay,34,4.044078e-1,-3.931805e-1
+Adam-WeightDecay,38,3.802628e-1,-4.199162e-1
+Adam-WeightDecay,42,3.553605e-1,-4.493308e-1
+Adam-WeightDecay,46,3.296928e-1,-4.818905e-1
+Adam-WeightDecay,50,3.032517e-1,-5.181968e-1
+Adam-WeightDecay,54,2.760293e-1,-5.590448e-1
+Adam-WeightDecay,58,2.480181e-1,-6.055166e-1
+Adam-WeightDecay,62,2.192108e-1,-6.591380e-1
+Adam-WeightDecay,66,1.896004e-1,-7.221609e-1
+Adam-WeightDecay,70,1.591800e-1,-7.981116e-1
+Adam-WeightDecay,74,1.279433e-1,-8.929825e-1
+Adam-WeightDecay,78,9.588421e-2,-1.018253e0
+Adam-WeightDecay,82,6.299704e-2,-1.200680e0
+Adam-WeightDecay,86,2.927642e-2,-1.533482e0
+Adam-WeightDecay,2,1.335036e-1,-8.745071e-1
+Adam-WeightDecay,6,1.335036e-1,-8.745071e-1
+Adam-WeightDecay,10,1.001872e-1,-9.991877e-1
+Adam-WeightDecay,14,6.614982e-2,-1.179471e0
+Adam-WeightDecay,18,3.139009e-2,-1.503207e0
+Adam-WeightDecay,2,2.337867e-1,-6.311801e-1
+Adam-WeightDecay,6,2.337867e-1,-6.311801e-1
+Adam-WeightDecay,10,2.061366e-1,-6.858450e-1
+Adam-WeightDecay,14,1.777661e-1,-7.501511e-1
+Adam-WeightDecay,18,1.486722e-1,-8.277702e-1
+Adam-WeightDecay,22,1.188512e-1,-9.249963e-1
+Adam-WeightDecay,26,8.829884e-2,-1.054045e0
+Adam-WeightDecay,30,5.701041e-2,-1.244046e0
+Adam-WeightDecay,34,2.498103e-2,-1.602390e0
+Trust Region-Adaptive,2,8.213767e-1,-8.545763e-2
+Trust Region-Adaptive,7,8.213767e-1,-8.545763e-2
+Trust Region-Adaptive,12,4.713767e-1,-3.266319e-1
+Trust Region-Adaptive,17,1.904971e-1,-7.201117e-1
+Trust Region-Adaptive,2,3.996502e-2,-1.398320e0
+Trust Region-Adaptive,7,3.996502e-2,-1.398320e0
+Trust Region-Adaptive,2,3.712307e-1,-4.303561e-1
+Trust Region-Adaptive,7,3.712307e-1,-4.303561e-1
+Trust Region-Adaptive,12,9.544430e-2,-1.020250e0
+Trust Region-Adaptive,2,4.935639e-1,-3.066566e-1
+Trust Region-Adaptive,7,4.935639e-1,-3.066566e-1
+Trust Region-Adaptive,12,2.112629e-1,-6.751768e-1
+Trust Region-Adaptive,2,9.198573e-1,-3.627956e-2
+Trust Region-Adaptive,7,9.198573e-1,-3.627956e-2
+Trust Region-Adaptive,12,4.005052e-1,-3.973919e-1
+Trust Region-Adaptive,17,1.234534e-1,-9.084970e-1
+Trust Region-Standard,937,3.230890e1,1.509322e0
+Trust Region-Standard,2,1.049415e-1,-9.790528e-1
+Trust Region-Standard,7,1.049415e-1,-9.790528e-1
+Trust Region-Standard,2,3.796628e-1,-4.206020e-1
+Trust Region-Standard,7,3.796628e-1,-4.206020e-1
+Trust Region-Conservative,2,7.441472e-1,-1.283411e-1
+Trust Region-Conservative,7,7.441472e-1,-1.283411e-1
+Trust Region-Conservative,12,7.340402e-1,-1.342802e-1
+Trust Region-Conservative,17,7.239375e-1,-1.402989e-1
+Trust Region-Conservative,22,7.138390e-1,-1.463997e-1
+Trust Region-Conservative,27,7.037442e-1,-1.525852e-1
+Trust Region-Conservative,32,6.936529e-1,-1.588578e-1
+Trust Region-Conservative,37,6.835648e-1,-1.652203e-1
+Trust Region-Conservative,42,6.734798e-1,-1.716754e-1
+Trust Region-Conservative,47,6.633975e-1,-1.782261e-1
+Trust Region-Conservative,52,6.533180e-1,-1.848754e-1
+Trust Region-Conservative,57,6.432408e-1,-1.916264e-1
+Trust Region-Conservative,62,6.331660e-1,-1.984824e-1
+Trust Region-Conservative,67,6.230934e-1,-2.054468e-1
+Trust Region-Conservative,72,6.130229e-1,-2.125233e-1
+Trust Region-Conservative,77,6.029543e-1,-2.197156e-1
+Trust Region-Conservative,82,5.928875e-1,-2.270277e-1
+Trust Region-Conservative,87,5.828225e-1,-2.344637e-1
+Trust Region-Conservative,92,5.727592e-1,-2.420280e-1
+Trust Region-Conservative,97,5.626974e-1,-2.497251e-1
+Trust Region-Conservative,102,5.526371e-1,-2.575600e-1
+Trust Region-Conservative,107,5.425782e-1,-2.655376e-1
+Trust Region-Conservative,112,5.325207e-1,-2.736635e-1
+Trust Region-Conservative,117,5.224645e-1,-2.819432e-1
+Trust Region-Conservative,122,5.124096e-1,-2.903828e-1
+Trust Region-Conservative,127,5.023558e-1,-2.989886e-1
+Trust Region-Conservative,132,4.923032e-1,-3.077673e-1
+Trust Region-Conservative,137,4.822517e-1,-3.167263e-1
+Trust Region-Conservative,142,4.722012e-1,-3.258729e-1
+Trust Region-Conservative,147,4.621517e-1,-3.352155e-1
+Trust Region-Conservative,152,4.521032e-1,-3.447625e-1
+Trust Region-Conservative,157,4.420556e-1,-3.545231e-1
+Trust Region-Conservative,162,4.320089e-1,-3.645073e-1
+Trust Region-Conservative,167,4.219630e-1,-3.747256e-1
+Trust Region-Conservative,172,4.119180e-1,-3.851892e-1
+Trust Region-Conservative,177,4.018738e-1,-3.959103e-1
+Trust Region-Conservative,182,3.918304e-1,-4.069019e-1
+Trust Region-Conservative,187,3.817877e-1,-4.181781e-1
+Trust Region-Conservative,192,3.717457e-1,-4.297541e-1
+Trust Region-Conservative,197,3.617044e-1,-4.416462e-1
+Trust Region-Conservative,202,3.516638e-1,-4.538723e-1
+Trust Region-Conservative,207,3.416239e-1,-4.664518e-1
+Trust Region-Conservative,212,3.315846e-1,-4.794057e-1
+Trust Region-Conservative,217,3.215458e-1,-4.927571e-1
+Trust Region-Conservative,222,3.115077e-1,-5.065312e-1
+Trust Region-Conservative,227,3.014702e-1,-5.207556e-1
+Trust Region-Conservative,232,2.914332e-1,-5.354610e-1
+Trust Region-Conservative,237,2.813968e-1,-5.506809e-1
+Trust Region-Conservative,242,2.713609e-1,-5.664528e-1
+Trust Region-Conservative,247,2.613255e-1,-5.828183e-1
+Trust Region-Conservative,252,2.512906e-1,-5.998238e-1
+Trust Region-Conservative,257,2.412561e-1,-6.175216e-1
+Trust Region-Conservative,262,2.312222e-1,-6.359705e-1
+Trust Region-Conservative,267,2.211887e-1,-6.552371e-1
+Trust Region-Conservative,272,2.111557e-1,-6.753973e-1
+Trust Region-Conservative,277,2.011230e-1,-6.965382e-1
+Trust Region-Conservative,282,1.910908e-1,-7.187601e-1
+Trust Region-Conservative,287,1.810591e-1,-7.421797e-1
+Trust Region-Conservative,292,1.710277e-1,-7.669336e-1
+Trust Region-Conservative,297,1.609967e-1,-7.931830e-1
+Trust Region-Conservative,302,1.509661e-1,-8.211206e-1
+Trust Region-Conservative,307,1.409359e-1,-8.509785e-1
+Trust Region-Conservative,312,1.309060e-1,-8.830405e-1
+Trust Region-Conservative,317,1.208765e-1,-9.176582e-1
+Trust Region-Conservative,322,1.108473e-1,-9.552748e-1
+Trust Region-Conservative,327,1.008185e-1,-9.964599e-1
+Trust Region-Conservative,332,9.078998e-2,-1.041962e0
+Trust Region-Conservative,337,8.076180e-2,-1.092794e0
+Trust Region-Conservative,342,7.073394e-2,-1.150372e0
+Trust Region-Conservative,347,6.070639e-2,-1.216766e0
+Trust Region-Conservative,352,5.067915e-2,-1.295171e0
+Trust Region-Conservative,357,4.065219e-2,-1.390916e0
+Trust Region-Conservative,362,3.062553e-2,-1.513916e0
+Trust Region-Conservative,367,2.059915e-2,-1.686151e0
+Trust Region-Conservative,372,1.057305e-2,-1.975800e0
+Trust Region-Conservative,377,5.472158e-4,-3.261841e0
+Trust Region-Conservative,2,2.841532e-1,-5.464474e-1
+Trust Region-Conservative,7,2.841532e-1,-5.464474e-1
+Trust Region-Conservative,12,2.741171e-1,-5.620638e-1
+Trust Region-Conservative,17,2.640816e-1,-5.782619e-1
+Trust Region-Conservative,22,2.540465e-1,-5.950868e-1
+Trust Region-Conservative,27,2.440119e-1,-6.125890e-1
+Trust Region-Conservative,32,2.339778e-1,-6.308253e-1
+Trust Region-Conservative,37,2.239442e-1,-6.498603e-1
+Trust Region-Conservative,42,2.139110e-1,-6.697670e-1
+Trust Region-Conservative,47,2.038782e-1,-6.906292e-1
+Trust Region-Conservative,52,1.938458e-1,-7.125435e-1
+Trust Region-Conservative,57,1.838139e-1,-7.356216e-1
+Trust Region-Conservative,62,1.737824e-1,-7.599942e-1
+Trust Region-Conservative,67,1.637513e-1,-7.858153e-1
+Trust Region-Conservative,72,1.537205e-1,-8.132681e-1
+Trust Region-Conservative,77,1.436902e-1,-8.425729e-1
+Trust Region-Conservative,82,1.336602e-1,-8.739980e-1
+Trust Region-Conservative,87,1.236305e-1,-9.078743e-1
+Trust Region-Conservative,92,1.136012e-1,-9.446170e-1
+Trust Region-Conservative,97,1.035723e-1,-9.847565e-1
+Trust Region-Conservative,102,9.354365e-2,-1.028986e0
+Trust Region-Conservative,107,8.351535e-2,-1.078234e0
+Trust Region-Conservative,112,7.348737e-2,-1.133787e0
+Trust Region-Conservative,117,6.345970e-2,-1.197502e0
+Trust Region-Conservative,122,5.343234e-2,-1.272196e0
+Trust Region-Conservative,127,4.340527e-2,-1.362458e0
+Trust Region-Conservative,132,3.337849e-2,-1.476533e0
+Trust Region-Conservative,137,2.335200e-2,-1.631676e0
+Trust Region-Conservative,142,1.332579e-2,-1.875307e0
+Trust Region-Conservative,147,3.299851e-3,-2.481506e0

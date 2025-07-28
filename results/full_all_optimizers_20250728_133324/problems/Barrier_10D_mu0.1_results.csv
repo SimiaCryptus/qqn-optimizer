@@ -1,0 +1,561 @@
+Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged
+QQN-GoldenSection,0,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,1,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,2,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,3,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,4,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,5,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,6,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,7,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,8,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,9,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,10,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,11,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,12,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,13,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,14,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,15,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,16,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,17,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,18,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,19,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,0,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,1,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,2,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,3,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,4,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,5,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,6,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,7,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,8,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,9,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,10,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,11,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,12,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,13,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,14,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,15,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,16,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,17,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,18,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,19,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,0,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,1,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,2,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,3,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,4,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,5,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,6,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,7,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,8,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,9,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,10,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,11,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,12,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,13,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,14,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,15,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,16,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,17,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,18,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,19,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,0,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,1,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,2,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,3,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,4,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,5,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,6,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,7,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,8,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,9,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,10,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,11,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,12,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,13,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,14,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,15,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,16,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,17,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,18,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,19,inf,inf,0,0,0,0.000,false
+Adam-Fast,0,2.583166e0,4.720896e0,15,33,32,0.001,false
+Adam-Fast,1,2.502270e0,4.067531e0,14,31,30,0.001,false
+Adam-Fast,2,2.686198e0,4.943895e0,14,31,30,0.001,false
+Adam-Fast,3,2.576053e0,4.212315e0,15,33,32,0.001,false
+Adam-Fast,4,2.676485e0,4.962335e0,15,33,32,0.001,false
+Adam-Fast,5,2.675311e0,5.431450e0,14,31,30,0.001,false
+Adam-Fast,6,2.720786e0,5.237119e0,14,31,30,0.001,false
+Adam-Fast,7,2.632199e0,4.871501e0,14,31,30,0.001,false
+Adam-Fast,8,2.640177e0,4.828431e0,14,31,30,0.001,false
+Adam-Fast,9,2.634180e0,4.910325e0,14,31,30,0.001,false
+Adam-Fast,10,2.525101e0,4.006891e0,15,33,32,0.001,false
+Adam-Fast,11,2.394501e0,3.655145e0,14,31,30,0.001,false
+Adam-Fast,12,2.484598e0,4.148091e0,14,31,30,0.001,false
+Adam-Fast,13,2.607121e0,4.486026e0,14,31,30,0.001,false
+Adam-Fast,14,2.623463e0,4.659835e0,14,31,30,0.001,false
+Adam-Fast,15,2.502869e0,3.752926e0,14,31,30,0.001,false
+Adam-Fast,16,2.717801e0,5.876386e0,14,31,30,0.001,false
+Adam-Fast,17,2.684652e0,5.298176e0,14,31,30,0.001,false
+Adam-Fast,18,2.572157e0,4.885481e0,15,33,32,0.001,false
+Adam-Fast,19,2.511648e0,3.824429e0,14,31,30,0.001,false
+GD,0,1.997866e0,1.323932e-4,298,301,598,0.008,false
+GD,1,1.997866e0,1.308732e-4,303,306,608,0.008,false
+GD,2,1.997866e0,1.299246e-4,302,305,606,0.008,false
+GD,3,1.997866e0,1.312590e-4,304,307,610,0.008,false
+GD,4,1.997866e0,1.303695e-4,302,305,606,0.008,false
+GD,5,1.997866e0,1.294940e-4,300,303,602,0.008,false
+GD,6,1.997866e0,1.288634e-4,299,302,600,0.008,false
+GD,7,1.997866e0,1.275188e-4,300,303,602,0.008,false
+GD,8,1.997866e0,1.292778e-4,305,308,612,0.008,false
+GD,9,1.997866e0,1.288678e-4,305,308,612,0.008,false
+GD,10,1.997866e0,1.286042e-4,299,302,600,0.008,false
+GD,11,1.997866e0,1.314740e-4,301,304,604,0.008,false
+GD,12,1.997866e0,1.287717e-4,304,307,610,0.008,false
+GD,13,1.997866e0,1.277666e-4,301,304,604,0.008,false
+GD,14,1.997866e0,1.320439e-4,300,303,602,0.008,false
+GD,15,1.997866e0,1.317278e-4,302,305,606,0.008,false
+GD,16,1.997866e0,1.287911e-4,302,305,606,0.008,false
+GD,17,1.997866e0,1.306239e-4,302,305,606,0.008,false
+GD,18,1.997866e0,1.320869e-4,304,307,610,0.008,false
+GD,19,1.997866e0,1.291308e-4,302,305,606,0.008,false
+QQN-GoldenSection,0,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,1,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,2,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,3,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,4,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,5,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,6,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,7,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,8,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,9,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,10,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,11,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,12,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,13,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,14,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,15,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,16,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,17,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,18,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,19,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,0,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,1,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,2,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,3,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,4,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,5,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,6,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,7,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,8,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,9,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,10,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,11,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,12,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,13,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,14,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,15,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,16,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,17,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,18,inf,inf,0,0,0,0.000,false
+QQN-Bisection-1,19,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,0,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,1,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,2,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,3,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,4,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,5,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,6,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,7,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,8,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,9,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,10,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,11,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,12,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,13,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,14,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,15,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,16,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,17,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,18,inf,inf,0,0,0,0.000,false
+QQN-Bisection-2,19,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,0,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,1,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,2,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,3,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,4,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,5,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,6,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,7,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,8,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,9,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,10,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,11,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,12,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,13,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,14,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,15,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,16,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,17,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,18,inf,inf,0,0,0,0.000,false
+QQN-StrongWolfe,19,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,0,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,1,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,2,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,3,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,4,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,5,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,6,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,7,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,8,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,9,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,10,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,11,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,12,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,13,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,14,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,15,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,16,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,17,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,18,inf,inf,0,0,0,0.000,false
+QQN-Backtracking,19,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,0,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,1,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,2,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,3,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,4,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,5,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,6,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,7,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,8,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,9,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,10,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,11,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,12,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,13,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,14,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,15,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,16,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,17,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,18,inf,inf,0,0,0,0.000,false
+QQN-GoldenSection,19,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,0,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,1,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,2,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,3,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,4,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,5,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,6,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,7,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,8,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,9,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,10,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,11,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,12,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,13,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,14,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,15,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,16,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,17,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,18,inf,inf,0,0,0,0.000,false
+QQN-MoreThuente,19,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,0,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,1,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,2,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,3,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,4,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,5,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,6,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,7,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,8,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,9,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,10,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,11,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,12,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,13,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,14,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,15,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,16,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,17,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,18,inf,inf,0,0,0,0.000,false
+QQN-CubicQuadraticInterpolation,19,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,0,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,1,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,2,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,3,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,4,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,5,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,6,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,7,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,8,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,9,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,10,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,11,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,12,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,13,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,14,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,15,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,16,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,17,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,18,inf,inf,0,0,0,0.000,false
+L-BFGS-Aggressive,19,inf,inf,0,0,0,0.000,false
+L-BFGS,0,inf,inf,0,0,0,0.000,false
+L-BFGS,1,inf,inf,0,0,0,0.000,false
+L-BFGS,2,inf,inf,0,0,0,0.000,false
+L-BFGS,3,inf,inf,0,0,0,0.000,false
+L-BFGS,4,inf,inf,0,0,0,0.000,false
+L-BFGS,5,inf,inf,0,0,0,0.000,false
+L-BFGS,6,inf,inf,0,0,0,0.000,false
+L-BFGS,7,inf,inf,0,0,0,0.000,false
+L-BFGS,8,inf,inf,0,0,0,0.000,false
+L-BFGS,9,inf,inf,0,0,0,0.000,false
+L-BFGS,10,inf,inf,0,0,0,0.000,false
+L-BFGS,11,inf,inf,0,0,0,0.000,false
+L-BFGS,12,inf,inf,0,0,0,0.000,false
+L-BFGS,13,inf,inf,0,0,0,0.000,false
+L-BFGS,14,inf,inf,0,0,0,0.000,false
+L-BFGS,15,inf,inf,0,0,0,0.000,false
+L-BFGS,16,inf,inf,0,0,0,0.000,false
+L-BFGS,17,inf,inf,0,0,0,0.000,false
+L-BFGS,18,inf,inf,0,0,0,0.000,false
+L-BFGS,19,inf,inf,0,0,0,0.000,false
+L-BFGS-Conservative,0,1.997866e0,2.996114e-4,59,299,238,0.009,false
+L-BFGS-Conservative,1,1.997866e0,2.880185e-4,83,418,334,0.011,false
+L-BFGS-Conservative,2,1.997866e0,1.726395e-4,70,353,282,0.009,false
+L-BFGS-Conservative,3,1.997866e0,1.751264e-4,79,400,318,0.011,false
+L-BFGS-Conservative,4,1.997866e0,2.571438e-4,73,368,294,0.009,false
+L-BFGS-Conservative,5,1.997866e0,9.556617e-5,77,388,310,0.010,false
+L-BFGS-Conservative,6,1.997866e0,4.328065e-5,76,383,306,0.010,false
+L-BFGS-Conservative,7,1.997866e0,2.603549e-4,82,413,330,0.011,false
+L-BFGS-Conservative,8,1.997866e0,9.183867e-5,74,387,298,0.010,false
+L-BFGS-Conservative,9,1.997866e0,1.635264e-4,59,298,238,0.008,false
+L-BFGS-Conservative,10,1.997866e0,9.615754e-5,75,382,302,0.010,false
+L-BFGS-Conservative,11,1.997866e0,1.275756e-4,72,369,290,0.009,false
+L-BFGS-Conservative,12,1.997866e0,6.915256e-5,80,408,322,0.010,false
+L-BFGS-Conservative,13,1.997866e0,3.260314e-4,70,357,282,0.009,false
+L-BFGS-Conservative,14,1.997866e0,6.825460e-5,60,306,242,0.007,false
+L-BFGS-Conservative,15,1.997866e0,2.401230e-4,76,383,306,0.010,false
+L-BFGS-Conservative,16,1.997866e0,6.998833e-4,110,557,446,0.014,false
+L-BFGS-Conservative,17,1.997866e0,4.225322e-4,76,417,306,0.010,false
+L-BFGS-Conservative,18,1.997866e0,2.755521e-5,70,353,282,0.009,false
+L-BFGS-Conservative,19,1.997866e0,4.386823e-4,70,353,282,0.009,false
+GD,0,1.997866e0,1.319730e-4,302,305,606,0.008,false
+GD,1,1.997866e0,1.291611e-4,302,305,606,0.008,false
+GD,2,1.997866e0,1.299315e-4,303,306,608,0.008,false
+GD,3,1.997866e0,1.301733e-4,302,305,606,0.008,false
+GD,4,1.997866e0,1.286653e-4,303,306,608,0.008,false
+GD,5,1.997866e0,1.311546e-4,300,303,602,0.008,false
+GD,6,1.997866e0,1.302924e-4,301,304,604,0.008,false
+GD,7,1.997866e0,1.294185e-4,299,302,600,0.008,false
+GD,8,1.997866e0,1.318178e-4,300,303,602,0.008,false
+GD,9,1.997866e0,1.306111e-4,303,306,608,0.008,false
+GD,10,1.997866e0,1.287349e-4,303,306,608,0.008,false
+GD,11,1.997866e0,1.318369e-4,303,306,608,0.008,false
+GD,12,1.997866e0,1.279374e-4,304,307,610,0.008,false
+GD,13,1.997866e0,1.304148e-4,301,304,604,0.008,false
+GD,14,1.997866e0,1.299460e-4,304,307,610,0.008,false
+GD,15,1.997866e0,1.284147e-4,302,305,606,0.008,false
+GD,16,1.997866e0,1.310464e-4,303,306,608,0.008,false
+GD,17,1.997866e0,1.326115e-4,303,306,608,0.008,false
+GD,18,1.997866e0,1.303959e-4,305,308,612,0.008,false
+GD,19,1.997866e0,1.317556e-4,297,300,596,0.008,false
+GD-Momentum,0,2.944737e0,5.548017e0,18,21,38,0.001,false
+GD-Momentum,1,3.390418e0,9.374521e0,18,21,38,0.001,false
+GD-Momentum,2,3.692510e0,1.357636e1,18,21,38,0.001,false
+GD-Momentum,3,3.518036e0,1.094588e1,19,22,40,0.001,false
+GD-Momentum,4,3.328155e0,8.721530e0,18,21,38,0.001,false
+GD-Momentum,5,3.137922e0,6.971443e0,18,21,38,0.001,false
+GD-Momentum,6,3.518887e0,1.107929e1,18,21,38,0.001,false
+GD-Momentum,7,3.283829e0,8.299414e0,18,21,38,0.001,false
+GD-Momentum,8,3.655467e0,1.217079e1,18,21,38,0.001,false
+GD-Momentum,9,3.268482e0,8.055558e0,18,21,38,0.001,false
+GD-Momentum,10,3.400516e0,9.488641e0,19,22,40,0.001,false
+GD-Momentum,11,3.485528e0,1.031709e1,18,21,38,0.001,false
+GD-Momentum,12,3.349478e0,8.916232e0,18,21,38,0.001,false
+GD-Momentum,13,3.044190e0,6.256106e0,18,21,38,0.001,false
+GD-Momentum,14,3.603193e0,1.264222e1,19,22,40,0.001,false
+GD-Momentum,15,3.487653e0,1.023758e1,18,21,38,0.001,false
+GD-Momentum,16,3.435206e0,9.786966e0,18,21,38,0.001,false
+GD-Momentum,17,3.316424e0,8.566568e0,19,22,40,0.001,false
+GD-Momentum,18,3.093084e0,6.558194e0,18,21,38,0.001,false
+GD-Momentum,19,3.373799e0,9.424626e0,19,22,40,0.001,false
+GD-Nesterov,0,2.435623e0,2.713506e0,18,21,38,0.001,false
+GD-Nesterov,1,2.496551e0,3.015893e0,18,21,38,0.001,false
+GD-Nesterov,2,2.474292e0,2.893808e0,18,21,38,0.001,false
+GD-Nesterov,3,2.637820e0,3.726182e0,18,21,38,0.001,false
+GD-Nesterov,4,2.533525e0,3.202235e0,18,21,38,0.001,false
+GD-Nesterov,5,2.448542e0,2.768809e0,18,21,38,0.001,false
+GD-Nesterov,6,2.549873e0,3.304331e0,18,21,38,0.001,false
+GD-Nesterov,7,2.465547e0,2.845856e0,18,21,38,0.001,false
+GD-Nesterov,8,2.491399e0,2.996102e0,18,21,38,0.001,false
+GD-Nesterov,9,2.449681e0,2.769396e0,18,21,38,0.001,false
+GD-Nesterov,10,2.547202e0,3.271088e0,18,21,38,0.001,false
+GD-Nesterov,11,2.518148e0,3.102799e0,18,21,38,0.001,false
+GD-Nesterov,12,2.493144e0,3.007535e0,18,21,38,0.001,false
+GD-Nesterov,13,2.477467e0,2.917828e0,18,21,38,0.001,false
+GD-Nesterov,14,2.518792e0,3.115574e0,18,21,38,0.001,false
+GD-Nesterov,15,2.473350e0,2.903469e0,18,21,38,0.001,false
+GD-Nesterov,16,2.589583e0,3.487548e0,18,21,38,0.001,false
+GD-Nesterov,17,2.433080e0,2.695127e0,18,21,38,0.001,false
+GD-Nesterov,18,2.449605e0,2.773737e0,18,21,38,0.001,false
+GD-Nesterov,19,2.445809e0,2.760721e0,18,21,38,0.001,false
+GD-WeightDecay,0,1.998506e0,7.218705e-2,46,49,94,0.002,false
+GD-WeightDecay,1,1.998519e0,7.288533e-2,47,50,96,0.002,false
+GD-WeightDecay,2,1.998499e0,7.177536e-2,46,49,94,0.002,false
+GD-WeightDecay,3,1.998507e0,7.220885e-2,47,50,96,0.002,false
+GD-WeightDecay,4,1.998490e0,7.125473e-2,46,49,94,0.002,false
+GD-WeightDecay,5,1.998504e0,7.206231e-2,46,49,94,0.002,false
+GD-WeightDecay,6,1.998501e0,7.187783e-2,46,49,94,0.002,false
+GD-WeightDecay,7,1.998497e0,7.165287e-2,46,49,94,0.002,false
+GD-WeightDecay,8,1.998539e0,7.400574e-2,47,50,96,0.002,false
+GD-WeightDecay,9,1.998520e0,7.297441e-2,47,50,96,0.002,false
+GD-WeightDecay,10,1.998505e0,7.209268e-2,46,49,94,0.002,false
+GD-WeightDecay,11,1.998500e0,7.179786e-2,46,49,94,0.002,false
+GD-WeightDecay,12,1.998516e0,7.275488e-2,46,49,94,0.002,false
+GD-WeightDecay,13,1.998519e0,7.288695e-2,47,50,96,0.002,false
+GD-WeightDecay,14,1.998499e0,7.179044e-2,46,49,94,0.002,false
+GD-WeightDecay,15,1.998472e0,7.019552e-2,45,48,92,0.002,false
+GD-WeightDecay,16,1.998541e0,7.412680e-2,47,50,96,0.002,false
+GD-WeightDecay,17,1.998523e0,7.312177e-2,47,50,96,0.002,false
+GD-WeightDecay,18,1.998470e0,7.009536e-2,45,48,92,0.002,false
+GD-WeightDecay,19,1.998530e0,7.351859e-2,47,50,96,0.002,false
+Adam-Fast,0,2.620644e0,4.675339e0,14,31,30,0.001,false
+Adam-Fast,1,2.471422e0,3.632891e0,14,31,30,0.001,false
+Adam-Fast,2,2.623981e0,4.829106e0,15,33,32,0.001,false
+Adam-Fast,3,2.788660e0,5.683245e0,15,33,32,0.001,false
+Adam-Fast,4,2.686046e0,5.195215e0,14,31,30,0.001,false
+Adam-Fast,5,2.502147e0,3.935192e0,14,31,30,0.001,false
+Adam-Fast,6,2.576856e0,4.224048e0,15,33,32,0.001,false
+Adam-Fast,7,2.551947e0,4.160287e0,15,33,32,0.001,false
+Adam-Fast,8,2.471332e0,4.016484e0,14,31,30,0.001,false
+Adam-Fast,9,2.593692e0,4.206701e0,15,33,32,0.001,false
+Adam-Fast,10,2.527510e0,4.000823e0,14,31,30,0.001,false
+Adam-Fast,11,2.660867e0,4.918240e0,15,33,32,0.001,false
+Adam-Fast,12,2.552358e0,4.670764e0,14,31,30,0.001,false
+Adam-Fast,13,2.580789e0,4.169648e0,15,33,32,0.001,false
+Adam-Fast,14,2.523806e0,4.047898e0,14,31,30,0.001,false
+Adam-Fast,15,2.687064e0,5.075044e0,14,31,30,0.001,false
+Adam-Fast,16,2.523212e0,4.174573e0,14,31,30,0.001,false
+Adam-Fast,17,2.724089e0,5.222498e0,14,31,30,0.001,false
+Adam-Fast,18,2.612370e0,4.460697e0,15,33,32,0.001,false
+Adam-Fast,19,2.679824e0,5.179106e0,15,33,32,0.001,false
+Adam,0,6.274899e0,4.491901e0,249,502,502,0.011,false
+Adam,1,6.602737e0,4.648372e0,249,502,502,0.011,false
+Adam,2,5.757773e0,4.231927e0,249,502,502,0.011,false
+Adam,3,6.681280e0,4.682072e0,249,502,502,0.011,false
+Adam,4,6.022027e0,4.365205e0,249,502,502,0.011,false
+Adam,5,5.530034e0,4.116909e0,249,502,502,0.011,false
+Adam,6,5.361172e0,4.022684e0,249,502,502,0.011,false
+Adam,7,5.440939e0,4.067161e0,249,502,502,0.011,false
+Adam,8,5.813972e0,4.264467e0,249,502,502,0.011,false
+Adam,9,5.988794e0,4.350347e0,249,502,502,0.011,false
+Adam,10,5.869435e0,4.292933e0,249,502,502,0.011,false
+Adam,11,7.059547e0,4.858014e0,249,502,502,0.011,false
+Adam,12,6.133464e0,4.417540e0,249,502,502,0.011,false
+Adam,13,5.795262e0,4.252561e0,249,502,502,0.011,false
+Adam,14,5.986831e0,4.351609e0,249,502,502,0.011,false
+Adam,15,5.558561e0,4.134114e0,249,502,502,0.011,false
+Adam,16,6.691103e0,4.691303e0,249,502,502,0.011,false
+Adam,17,5.679956e0,4.193790e0,249,502,502,0.011,false
+Adam,18,6.095816e0,4.403666e0,249,502,502,0.011,false
+Adam,19,6.452378e0,4.572105e0,249,502,502,0.011,false
+Adam-AMSGrad,0,6.619684e0,4.655291e0,249,502,502,0.013,false
+Adam-AMSGrad,1,6.325127e0,4.516725e0,249,502,502,0.013,false
+Adam-AMSGrad,2,5.875159e0,4.291949e0,249,502,502,0.013,false
+Adam-AMSGrad,3,5.916622e0,4.312059e0,249,502,502,0.012,false
+Adam-AMSGrad,4,5.731196e0,4.221802e0,249,502,502,0.012,false
+Adam-AMSGrad,5,6.673632e0,4.681049e0,249,502,502,0.012,false
+Adam-AMSGrad,6,5.834377e0,4.272336e0,249,502,502,0.012,false
+Adam-AMSGrad,7,5.555985e0,4.128277e0,249,502,502,0.012,false
+Adam-AMSGrad,8,6.278081e0,4.491750e0,249,502,502,0.012,false
+Adam-AMSGrad,9,6.026600e0,4.373865e0,249,502,502,0.012,false
+Adam-AMSGrad,10,5.475544e0,4.091813e0,249,502,502,0.012,false
+Adam-AMSGrad,11,6.202020e0,4.452514e0,249,502,502,0.013,false
+Adam-AMSGrad,12,6.425553e0,4.564638e0,249,502,502,0.013,false
+Adam-AMSGrad,13,6.346015e0,4.525376e0,249,502,502,0.013,false
+Adam-AMSGrad,14,5.919908e0,4.317798e0,249,502,502,0.013,false
+Adam-AMSGrad,15,6.953776e0,4.811725e0,249,502,502,0.013,false
+Adam-AMSGrad,16,5.840722e0,4.274731e0,249,502,502,0.013,false
+Adam-AMSGrad,17,6.538916e0,4.614477e0,249,502,502,0.013,false
+Adam-AMSGrad,18,6.396327e0,4.551510e0,249,502,502,0.012,false
+Adam-AMSGrad,19,5.633218e0,4.169595e0,249,502,502,0.013,false
+Adam-WeightDecay,0,2.151307e0,9.854543e-1,249,502,502,0.012,false
+Adam-WeightDecay,1,2.122948e0,8.748683e-1,249,502,502,0.011,false
+Adam-WeightDecay,2,2.131609e0,9.054322e-1,249,502,502,0.012,false
+Adam-WeightDecay,3,2.185102e0,1.058485e0,249,502,502,0.012,false
+Adam-WeightDecay,4,2.278369e0,1.291788e0,249,502,502,0.012,false
+Adam-WeightDecay,5,2.243665e0,1.211728e0,249,502,502,0.012,false
+Adam-WeightDecay,6,2.232608e0,1.189366e0,249,502,502,0.012,false
+Adam-WeightDecay,7,2.270886e0,1.287170e0,249,502,502,0.012,false
+Adam-WeightDecay,8,2.179247e0,1.052093e0,249,502,502,0.012,false
+Adam-WeightDecay,9,2.207555e0,1.130514e0,249,502,502,0.012,false
+Adam-WeightDecay,10,2.084051e0,7.510548e-1,249,502,502,0.012,false
+Adam-WeightDecay,11,2.142656e0,9.536173e-1,249,502,502,0.012,false
+Adam-WeightDecay,12,2.231316e0,1.182393e0,249,502,502,0.012,false
+Adam-WeightDecay,13,2.094970e0,7.896227e-1,249,502,502,0.012,false
+Adam-WeightDecay,14,2.230834e0,1.178632e0,249,502,502,0.012,false
+Adam-WeightDecay,15,2.146233e0,9.509114e-1,249,502,502,0.012,false
+Adam-WeightDecay,16,2.177420e0,1.066571e0,249,502,502,0.012,false
+Adam-WeightDecay,17,2.284466e0,1.310023e0,249,502,502,0.012,false
+Adam-WeightDecay,18,2.173358e0,1.024499e0,249,502,502,0.012,false
+Adam-WeightDecay,19,2.380491e0,1.508179e0,249,502,502,0.012,false
+Trust Region-Adaptive,0,2.000267e0,1.358878e-1,32,99,67,0.001,false
+Trust Region-Adaptive,1,2.049119e0,5.966785e-1,30,92,62,0.001,false
+Trust Region-Adaptive,2,2.062443e0,6.665489e-1,28,86,58,0.001,false
+Trust Region-Adaptive,3,2.057446e0,6.431276e-1,34,104,70,0.001,false
+Trust Region-Adaptive,4,2.014815e0,3.560466e-1,36,111,75,0.001,false
+Trust Region-Adaptive,5,2.408906e0,1.627482e0,35,107,72,0.001,false
+Trust Region-Adaptive,6,2.127727e0,9.044824e-1,35,108,73,0.001,false
+Trust Region-Adaptive,7,2.041728e0,5.557599e-1,33,101,68,0.001,false
+Trust Region-Adaptive,8,2.426564e0,1.792954e0,33,101,68,0.001,false
+Trust Region-Adaptive,9,2.013122e0,3.677028e-1,36,111,75,0.001,false
+Trust Region-Adaptive,10,2.092895e0,7.529619e-1,32,99,67,0.001,false
+Trust Region-Adaptive,11,2.022501e0,4.581190e-1,38,117,79,0.001,false
+Trust Region-Adaptive,12,2.026066e0,5.067582e-1,30,92,62,0.001,false
+Trust Region-Adaptive,13,2.361450e0,1.481869e0,35,107,72,0.001,false
+Trust Region-Adaptive,14,2.268596e0,1.295222e0,36,111,75,0.001,false
+Trust Region-Adaptive,15,2.023748e0,4.559421e-1,35,108,73,0.001,false
+Trust Region-Adaptive,16,2.037214e0,6.072366e-1,38,116,78,0.001,false
+Trust Region-Adaptive,17,2.113424e0,8.445658e-1,31,96,65,0.001,false
+Trust Region-Adaptive,18,1.999500e0,1.124948e-1,32,99,67,0.001,false
+Trust Region-Adaptive,19,2.330718e0,1.423040e0,34,105,71,0.001,false
+Trust Region-Standard,0,3.282617e0,2.612953e0,10,33,23,0.000,false
+Trust Region-Standard,1,2.109204e0,8.564863e-1,9,30,21,0.000,false
+Trust Region-Standard,2,2.063391e0,6.689291e-1,8,27,19,0.000,false
+Trust Region-Standard,3,2.187073e0,1.095502e0,9,30,21,0.000,false
+Trust Region-Standard,4,2.009278e0,2.908876e-1,10,33,23,0.000,false
+Trust Region-Standard,5,2.171977e0,1.055193e0,9,30,21,0.000,false
+Trust Region-Standard,6,3.083013e0,2.420204e0,11,36,25,0.000,false
+Trust Region-Standard,7,2.284704e0,1.326960e0,9,29,20,0.000,false
+Trust Region-Standard,8,2.044521e0,5.696819e-1,8,27,19,0.000,false
+Trust Region-Standard,9,2.000993e0,1.548406e-1,9,30,21,0.000,false
+Trust Region-Standard,10,2.105466e0,8.457062e-1,10,33,23,0.000,false
+Trust Region-Standard,11,3.220629e0,2.555566e0,10,33,23,0.000,false
+Trust Region-Standard,12,2.175549e0,1.066461e0,9,30,21,0.000,false
+Trust Region-Standard,13,2.151434e0,1.324383e0,9,29,20,0.000,false
+Trust Region-Standard,14,2.005350e0,2.374232e-1,11,36,25,0.000,false
+Trust Region-Standard,15,3.312905e0,2.640326e0,11,36,25,0.000,false
+Trust Region-Standard,16,2.232940e0,1.210578e0,10,32,22,0.000,false
+Trust Region-Standard,17,2.250452e0,1.250808e0,10,32,22,0.000,false
+Trust Region-Standard,18,2.291768e0,1.339215e0,9,29,20,0.000,false
+Trust Region-Standard,19,2.310081e0,1.378794e0,10,32,22,0.000,false
+Trust Region-Conservative,0,7.903077e0,5.215426e0,199,602,402,0.004,false
+Trust Region-Conservative,1,8.785314e0,5.562522e0,199,602,402,0.004,false
+Trust Region-Conservative,2,8.198426e0,5.334657e0,199,602,402,0.004,false
+Trust Region-Conservative,3,8.136651e0,5.308888e0,199,602,402,0.004,false
+Trust Region-Conservative,4,8.766017e0,5.554860e0,199,602,402,0.004,false
+Trust Region-Conservative,5,7.152043e0,4.896910e0,199,602,402,0.004,false
+Trust Region-Conservative,6,7.275314e0,4.951831e0,199,602,402,0.004,false
+Trust Region-Conservative,7,7.891736e0,5.212321e0,199,602,402,0.004,false
+Trust Region-Conservative,8,7.776569e0,5.162410e0,199,602,402,0.005,false
+Trust Region-Conservative,9,6.568418e0,4.637374e0,199,602,402,0.004,false
+Trust Region-Conservative,10,8.972727e0,5.634380e0,199,602,402,0.004,false
+Trust Region-Conservative,11,7.966109e0,5.238000e0,199,602,402,0.004,false
+Trust Region-Conservative,12,8.638378e0,5.507813e0,199,602,402,0.004,false
+Trust Region-Conservative,13,8.174968e0,5.324530e0,199,602,402,0.005,false
+Trust Region-Conservative,14,8.411546e0,5.417978e0,199,602,402,0.005,false
+Trust Region-Conservative,15,7.207139e0,4.921568e0,199,602,402,0.004,false
+Trust Region-Conservative,16,7.238184e0,4.933347e0,199,602,402,0.004,false
+Trust Region-Conservative,17,9.158806e0,5.701690e0,199,602,402,0.004,false
+Trust Region-Conservative,18,6.687469e0,4.690990e0,199,602,402,0.004,false
+Trust Region-Conservative,19,7.400045e0,5.004941e0,199,602,402,0.004,false

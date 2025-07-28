@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for PenaltyI\textbackslash{}_10D\textbackslash{}_alpha1e6 Problem}
+\label{tab:penaltyi_10d_alpha1e6}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-GoldenSection} & 5.63e0 & 9.72e-4 & 5.63e0 & 5.63e0 & 909.6 & 0.0 & 0.016 \\
+QQN-Bisection-1 & 5.64e0 & 3.69e-3 & 5.63e0 & 5.64e0 & 442.6 & 0.0 & 0.014 \\
+L-BFGS-Conservative & 5.73e0 & 1.04e-1 & 5.63e0 & 6.00e0 & 683.1 & 0.0 & 0.009 \\
+GD & 8.44e0 & 1.42e1 & 5.68e0 & 9.67e1 & 18.3 & 0.0 & 0.000 \\
+Adam-WeightDecay & 9.80e0 & 6.26e0 & 5.72e0 & 3.18e1 & 269.4 & 0.0 & 0.006 \\
+QQN-Bisection-2 & 2.38e1 & 9.61e0 & 9.95e0 & 4.07e1 & 590.8 & 0.0 & 0.014 \\
+QQN-Backtracking & 2.39e1 & 1.01e1 & 9.57e0 & 4.18e1 & 709.7 & 0.0 & 0.023 \\
+QQN-CubicQuadraticInterpolation & 3.13e1 & 1.46e1 & 1.10e1 & 6.19e1 & 396.8 & 0.0 & 0.016 \\
+QQN-StrongWolfe & 3.35e1 & 1.63e1 & 1.35e1 & 7.22e1 & 593.2 & 0.0 & 0.017 \\
+GD-WeightDecay & 5.39e1 & 1.22e2 & 6.87e0 & 5.40e2 & 15.9 & 0.0 & 0.000 \\
+GD-Nesterov & 1.82e2 & 3.92e2 & 6.83e0 & 1.60e3 & 14.7 & 0.0 & 0.000 \\
+GD-Momentum & 3.14e2 & 5.37e2 & 7.48e0 & 1.85e3 & 15.2 & 0.0 & 0.000 \\
+Adam-Fast & 1.43e3 & 1.48e3 & 6.84e0 & 5.21e3 & 32.1 & 0.0 & 0.001 \\
+Adam & 6.19e4 & 3.79e4 & 3.61e3 & 1.53e5 & 502.0 & 0.0 & 0.011 \\
+Adam-AMSGrad & 6.67e4 & 3.34e4 & 1.06e4 & 1.33e5 & 502.0 & 0.0 & 0.012 \\
+QQN-MoreThuente & 1.15e5 & 2.49e4 & 4.71e4 & 1.60e5 & 487.0 & 0.0 & 0.011 \\
+L-BFGS & 2.47e5 & 3.39e5 & 1.09e1 & 9.93e5 & 112.9 & 0.0 & 0.002 \\
+L-BFGS-Aggressive & 3.92e5 & 4.12e5 & 8.21e0 & 1.06e6 & 387.1 & 0.0 & 0.004 \\
+Trust Region-Adaptive & 7.29e5 & 1.87e5 & 3.99e5 & 1.24e6 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Conservative & 7.49e5 & 2.29e5 & 3.55e5 & 1.26e6 & 602.0 & 0.0 & 0.004 \\
+Trust Region-Standard & 8.13e5 & 1.70e5 & 5.09e5 & 1.09e6 & 602.0 & 0.0 & 0.004 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

@@ -298,7 +298,6 @@ We evaluate 21 optimizer variants:
 * **Gradient Descent Variants** (4): Basic GD, Momentum, Nesterov acceleration, and Weight Decay
 * **Adam Variants** (4): Standard Adam, Fast (high learning rate), AMSGrad, and AdamW
 
-
 All implementations use consistent convergence criteria:
 
 * Function tolerance: problem-dependent, chosen based on median best value in calibration phase
@@ -498,8 +497,8 @@ Our benchmarking framework represents a significant methodological advance in op
    - **CSV files** for further statistical analysis
    - **Detailed per-run logs** for debugging and deep analysis
 
-
 ### Insights Enabled by the Framework
+
 The comprehensive reporting revealed patterns invisible to traditional evaluation:
 
 1. **Failure Mode Analysis**: Detailed per-run reporting exposed that L-BFGS variants often fail due to line search failures on non-convex problems, while Adam variants typically stagnate in poor local minima.
@@ -508,6 +507,7 @@ The comprehensive reporting revealed patterns invisible to traditional evaluatio
 4. **Statistical vs Practical Significance**: The framework's dual reporting of p-values and effect sizes revealed cases where statistically significant differences have negligible practical impact (e.g., 10 vs 12 function evaluations on Sphere).
 
 ### Framework Design Decisions
+
 Several design choices proved crucial for meaningful evaluation:
 
 1. **Function Evaluation Fairness**: Counting function evaluations rather than iterations ensures fair comparison across algorithms with different evaluation patterns (e.g., line search vs trust region).
@@ -516,6 +516,7 @@ Several design choices proved crucial for meaningful evaluation:
 4. **Hierarchical Reporting**: The multi-level report structure (summary → problem-specific → detailed per-run) allows both quick overview and deep investigation.
 
 ### Limitations and Extensions
+
 While comprehensive, the framework has limitations that suggest future extensions:
 
 1. **Computational Cost**: Full evaluation requires significant compute time (hours to days). Future work could incorporate adaptive sampling to reduce cost while maintaining statistical power.
@@ -524,6 +525,7 @@ While comprehensive, the framework has limitations that suggest future extension
 4. **Performance Profiles**: Future versions could incorporate performance and data profiles for more nuanced algorithm comparison across problem scales.
 
 ### Impact on Optimization Research
+
 This benchmarking framework addresses several chronic issues in optimization research:
 
 1. **Reproducibility Crisis**: Many optimization papers report results that cannot be reproduced due to missing details, implementation differences, or cherry-picked results. Our framework ensures complete reproducibility.
@@ -532,7 +534,6 @@ This benchmarking framework addresses several chronic issues in optimization res
 4. **Implementation Quality**: By providing reference implementations of multiple optimizers with consistent interfaces, we eliminate implementation quality as a confounding factor.
 
 The framework's modular design encourages extension: researchers can easily add new optimizers, problems, or analysis methods while maintaining compatibility with the existing infrastructure. We envision this becoming a standard tool for optimization algorithm development and evaluation.
-
 
 ## When to Use QQN
 
@@ -546,8 +547,6 @@ The framework's modular design encourages extension: researchers can easily add 
 * **Unknown problem structure**: QQN variants' statistical dominance makes them the safest default choice
 
 Use specialized methods when:
-
-
 
 * **Extreme efficiency required**: L-BFGS-Aggressive for convex problems (7-10 evaluations)
 * **Neural networks**: Consider Adam-Fast as fallback (35-45% success)

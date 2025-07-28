@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Trigonometric\textbackslash{}_5D Problem}
+\label{tab:trigonometric_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Bisection-2} & 9.15e-5 & 3.88e-4 & 1.28e-16 & 1.74e-3 & 352.8 & 80.0 & 0.009 \\
+QQN-MoreThuente & 9.85e-4 & 2.43e-3 & 1.92e-16 & 9.01e-3 & 385.1 & 75.0 & 0.009 \\
+QQN-StrongWolfe & 6.32e-3 & 1.54e-2 & 1.32e-17 & 5.26e-2 & 272.2 & 70.0 & 0.009 \\
+GD-WeightDecay & 1.31e-2 & 2.55e-2 & 3.46e-10 & 8.87e-2 & 150.9 & 65.0 & 0.005 \\
+QQN-Bisection-1 & 6.86e-3 & 1.45e-2 & 6.80e-17 & 5.47e-2 & 353.9 & 60.0 & 0.009 \\
+QQN-Backtracking & 1.59e-3 & 5.52e-3 & 2.14e-17 & 2.49e-2 & 344.1 & 55.0 & 0.013 \\
+QQN-GoldenSection & 1.84e-3 & 6.22e-3 & 4.87e-17 & 4.17e-2 & 819.6 & 50.0 & 0.015 \\
+QQN-CubicQuadraticInterpolation & 6.54e-2 & 1.66e-1 & 5.14e-16 & 6.30e-1 & 379.8 & 10.0 & 0.015 \\
+L-BFGS-Conservative & 3.35e-4 & 1.46e-3 & 1.25e-13 & 6.68e-3 & 618.4 & 5.0 & 0.013 \\
+Adam-WeightDecay & 2.74e-2 & 3.10e-2 & 1.16e-6 & 8.56e-2 & 418.4 & 5.0 & 0.010 \\
+Adam & 1.23e-1 & 1.17e-1 & 1.18e-9 & 4.39e-1 & 498.9 & 5.0 & 0.011 \\
+GD & 6.00e-3 & 1.47e-2 & 5.26e-9 & 5.40e-2 & 335.0 & 0.0 & 0.009 \\
+GD-Nesterov & 2.33e-2 & 2.66e-2 & 6.94e-4 & 7.13e-2 & 32.8 & 0.0 & 0.001 \\
+Adam-Fast & 4.40e-2 & 4.63e-2 & 8.05e-4 & 1.85e-1 & 52.0 & 0.0 & 0.001 \\
+Trust Region-Conservative & 7.45e-2 & 1.19e-1 & 3.11e-3 & 4.59e-1 & 372.4 & 0.0 & 0.003 \\
+GD-Momentum & 1.01e-1 & 7.22e-2 & 7.53e-3 & 2.61e-1 & 25.7 & 0.0 & 0.001 \\
+Adam-AMSGrad & 1.05e-1 & 7.88e-2 & 6.12e-7 & 3.51e-1 & 502.0 & 0.0 & 0.012 \\
+Trust Region-Adaptive & 1.25e-1 & 5.84e-2 & 3.13e-2 & 2.39e-1 & 22.2 & 0.0 & 0.000 \\
+Trust Region-Standard & 3.57e-1 & 2.03e-1 & 6.34e-2 & 9.69e-1 & 8.8 & 0.0 & 0.000 \\
+L-BFGS-Aggressive & 1.40e0 & 6.81e-1 & 1.25e-1 & 2.65e0 & 771.9 & 0.0 & 0.006 \\
+L-BFGS & 2.13e0 & 2.43e0 & 9.90e-5 & 1.12e1 & 231.8 & 0.0 & 0.004 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

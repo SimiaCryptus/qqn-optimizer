@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for StyblinskiTang\textbackslash{}_5D Problem}
+\label{tab:styblinskitang_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Bisection-2} & -1.91e2 & 6.74e0 & -1.96e2 & -1.82e2 & 230.2 & 0.0 & 0.005 \\
+GD & -1.90e2 & 8.83e0 & -1.96e2 & -1.68e2 & 106.5 & 0.0 & 0.003 \\
+QQN-Bisection-1 & -1.89e2 & 8.81e0 & -1.96e2 & -1.62e2 & 299.0 & 0.0 & 0.007 \\
+QQN-GoldenSection & -1.88e2 & 1.11e1 & -1.96e2 & -1.53e2 & 471.9 & 0.0 & 0.008 \\
+GD-WeightDecay & -1.85e2 & 1.27e1 & -1.96e2 & -1.56e2 & 76.7 & 0.0 & 0.002 \\
+GD-Nesterov & -1.85e2 & 1.41e1 & -1.96e2 & -1.47e2 & 51.8 & 0.0 & 0.002 \\
+QQN-StrongWolfe & -1.85e2 & 1.17e1 & -1.96e2 & -1.53e2 & 237.4 & 0.0 & 0.007 \\
+L-BFGS-Conservative & -1.85e2 & 1.17e1 & -1.96e2 & -1.53e2 & 553.9 & 0.0 & 0.014 \\
+QQN-Backtracking & -1.84e2 & 1.21e1 & -1.96e2 & -1.53e2 & 135.7 & 0.0 & 0.004 \\
+Adam-Fast & -1.82e2 & 9.72e0 & -1.88e2 & -1.48e2 & 72.3 & 0.0 & 0.001 \\
+Trust Region-Standard & -1.81e2 & 1.85e1 & -1.96e2 & -1.20e2 & 559.1 & 0.0 & 0.004 \\
+QQN-CubicQuadraticInterpolation & -1.80e2 & 1.50e1 & -1.96e2 & -1.39e2 & 294.3 & 0.0 & 0.010 \\
+L-BFGS & -1.78e2 & 1.20e1 & -1.96e2 & -1.49e2 & 154.2 & 0.0 & 0.002 \\
+GD-Momentum & -1.66e2 & 2.83e1 & -1.96e2 & -9.86e1 & 73.8 & 0.0 & 0.002 \\
+QQN-MoreThuente & -1.40e2 & 5.69e1 & -1.96e2 & -5.49e1 & 363.1 & 0.0 & 0.011 \\
+L-BFGS-Aggressive & -9.94e1 & 2.92e1 & -1.63e2 & -4.34e1 & 775.9 & 0.0 & 0.007 \\
+Trust Region-Adaptive & -5.06e1 & 6.99e-1 & -5.21e1 & -4.96e1 & 602.0 & 0.0 & 0.004 \\
+Adam-WeightDecay & -3.35e1 & 3.40e0 & -3.92e1 & -2.73e1 & 502.0 & 0.0 & 0.011 \\
+Adam-AMSGrad & -6.49e0 & 1.45e0 & -9.30e0 & -4.32e0 & 502.0 & 0.0 & 0.012 \\
+Adam & -6.44e0 & 1.88e0 & -9.72e0 & -3.11e0 & 502.0 & 0.0 & 0.010 \\
+Trust Region-Conservative & -2.51e0 & 7.47e-1 & -3.84e0 & -1.51e0 & 602.0 & 0.0 & 0.004 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

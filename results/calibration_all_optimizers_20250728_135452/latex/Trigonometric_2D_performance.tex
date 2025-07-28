@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Trigonometric\textbackslash{}_2D Problem}
+\label{tab:trigonometric_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-MoreThuente} & 7.65e-15 & 1.63e-14 & 2.69e-18 & 6.48e-14 & 163.3 & 100.0 & 0.003 \\
+QQN-CubicQuadraticInterpolation & 7.44e-4 & 4.65e-3 & 2.76e-19 & 2.98e-2 & 200.3 & 97.5 & 0.006 \\
+QQN-Backtracking & 8.58e-5 & 3.74e-4 & 3.19e-14 & 1.72e-3 & 273.4 & 95.0 & 0.009 \\
+QQN-Bisection-2 & 1.47e-3 & 6.41e-3 & 4.35e-22 & 2.94e-2 & 156.9 & 95.0 & 0.003 \\
+QQN-GoldenSection & 3.13e-3 & 1.07e-2 & 8.09e-20 & 5.14e-2 & 445.0 & 91.7 & 0.007 \\
+QQN-StrongWolfe & 2.38e-3 & 1.04e-2 & 3.15e-16 & 4.75e-2 & 231.7 & 90.0 & 0.007 \\
+L-BFGS & 1.98e-2 & 6.51e-2 & 5.25e-16 & 2.82e-1 & 237.3 & 90.0 & 0.004 \\
+QQN-Bisection-1 & 1.62e-3 & 6.37e-3 & 9.89e-19 & 3.15e-2 & 211.4 & 87.5 & 0.004 \\
+L-BFGS-Aggressive & 2.36e-3 & 6.44e-3 & 2.37e-16 & 2.70e-2 & 323.0 & 75.0 & 0.004 \\
+GD-WeightDecay & 5.88e-3 & 1.61e-2 & 3.52e-10 & 5.43e-2 & 133.7 & 70.0 & 0.004 \\
+Adam-WeightDecay & 1.03e-4 & 2.40e-4 & 9.70e-8 & 9.30e-4 & 334.6 & 60.0 & 0.007 \\
+GD & 5.13e-4 & 2.36e-3 & 2.41e-9 & 1.46e-2 & 330.5 & 10.0 & 0.008 \\
+L-BFGS-Conservative & 3.04e-8 & 8.83e-8 & 1.66e-13 & 4.06e-7 & 560.2 & 5.0 & 0.014 \\
+Adam-Fast & 6.05e-3 & 5.10e-3 & 2.80e-8 & 1.98e-2 & 45.1 & 5.0 & 0.001 \\
+Adam & 1.43e-2 & 1.95e-2 & 5.80e-8 & 6.31e-2 & 487.6 & 5.0 & 0.009 \\
+Adam-AMSGrad & 2.49e-2 & 2.11e-2 & 5.29e-10 & 5.62e-2 & 495.4 & 5.0 & 0.011 \\
+Trust Region-Conservative & 6.78e-3 & 1.21e-2 & 1.03e-3 & 5.64e-2 & 48.0 & 0.0 & 0.000 \\
+GD-Nesterov & 1.30e-2 & 1.92e-2 & 3.89e-4 & 6.10e-2 & 23.1 & 0.0 & 0.001 \\
+GD-Momentum & 3.84e-2 & 3.07e-2 & 1.57e-3 & 9.20e-2 & 21.3 & 0.0 & 0.001 \\
+Trust Region-Adaptive & 1.68e0 & 3.90e0 & 2.84e-2 & 1.70e1 & 14.1 & 0.0 & 0.000 \\
+Trust Region-Standard & 6.92e0 & 1.85e1 & 4.21e-2 & 8.34e1 & 13.5 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

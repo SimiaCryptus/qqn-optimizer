@@ -1,0 +1,42 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for NoisySphere\textbackslash{}_10D\textbackslash{}_sigma0.01 Problem}
+\label{tab:noisysphere_10d_sigma0.01}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{GD-Momentum} & 1.00e1 & 1.76e0 & 5.05e0 & 1.23e1 & 17.3 & 10.0 & 0.006 \\
+L-BFGS & 2.84e1 & 1.07e1 & 1.12e1 & 5.12e1 & 61.5 & 5.0 & 0.005 \\
+L-BFGS-Conservative & 5.33e0 & 1.38e0 & 2.96e0 & 8.18e0 & 835.8 & 0.0 & 0.045 \\
+QQN-Bisection-1 & 8.30e0 & 1.77e0 & 3.20e0 & 1.05e1 & 127.7 & 0.0 & 0.037 \\
+QQN-Backtracking & 8.49e0 & 2.58e0 & 2.59e0 & 1.13e1 & 254.3 & 0.0 & 0.015 \\
+QQN-StrongWolfe & 9.34e0 & 1.35e0 & 6.81e0 & 1.14e1 & 26.9 & 0.0 & 0.003 \\
+QQN-GoldenSection & 9.40e0 & 1.57e0 & 3.86e0 & 1.23e1 & 26.5 & 0.0 & 0.002 \\
+QQN-MoreThuente & 9.45e0 & 5.78e-1 & 8.36e0 & 1.02e1 & 14.9 & 0.0 & 0.003 \\
+QQN-CubicQuadraticInterpolation & 9.88e0 & 7.88e-1 & 8.12e0 & 1.18e1 & 26.0 & 0.0 & 0.006 \\
+Trust Region-Standard & 9.92e0 & 7.60e-1 & 8.76e0 & 1.17e1 & 5.0 & 0.0 & 0.001 \\
+Trust Region-Conservative & 9.99e0 & 7.74e-1 & 8.78e0 & 1.16e1 & 7.1 & 0.0 & 0.001 \\
+GD-WeightDecay & 9.99e0 & 1.30e0 & 6.67e0 & 1.20e1 & 15.9 & 0.0 & 0.005 \\
+Adam & 1.00e1 & 8.06e-1 & 8.40e0 & 1.18e1 & 30.6 & 0.0 & 0.006 \\
+L-BFGS-Aggressive & 1.01e1 & 7.91e-1 & 8.41e0 & 1.15e1 & 11.1 & 0.0 & 0.001 \\
+Adam-WeightDecay & 1.02e1 & 7.97e-1 & 9.00e0 & 1.16e1 & 28.8 & 0.0 & 0.005 \\
+Trust Region-Adaptive & 1.03e1 & 7.89e-1 & 9.14e0 & 1.19e1 & 5.0 & 0.0 & 0.001 \\
+GD & 1.03e1 & 9.17e-1 & 8.51e0 & 1.19e1 & 12.6 & 0.0 & 0.004 \\
+Adam-AMSGrad & 1.03e1 & 8.26e-1 & 9.13e0 & 1.19e1 & 30.6 & 0.0 & 0.006 \\
+GD-Nesterov & 1.05e1 & 1.21e0 & 7.41e0 & 1.23e1 & 11.8 & 0.0 & 0.004 \\
+Adam-Fast & 1.09e1 & 1.61e0 & 6.81e0 & 1.51e1 & 19.1 & 0.0 & 0.003 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

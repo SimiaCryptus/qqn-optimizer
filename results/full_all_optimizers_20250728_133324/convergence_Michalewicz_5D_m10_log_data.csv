@@ -1,0 +1,5 @@
+Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue
+L-BFGS,146,1.213200e-1,-9.160676e-1
+L-BFGS,155,8.829205e-5,-4.054078e0
+L-BFGS,89,2.748465e-1,-5.609097e-1
+L-BFGS,98,3.684638e-3,-2.433605e0

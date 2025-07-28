@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Levi\textbackslash{}_2D Problem}
+\label{tab:levi_2d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{7}{S[table-format=2.2e-1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS} & 6.89e0 & 7.25e0 & 7.10e-1 & 2.80e1 & 109.8 & 40.0 & 0.001 \\
+QQN-Bisection-2 & 8.60e-1 & 8.64e-1 & 7.09e-19 & 1.98e0 & 184.4 & 25.0 & 0.003 \\
+QQN-GoldenSection & 8.39e-1 & 9.77e-1 & 9.52e-25 & 3.96e0 & 524.7 & 21.7 & 0.008 \\
+QQN-Backtracking & 1.37e0 & 9.26e-1 & 5.79e-17 & 3.07e0 & 172.8 & 20.0 & 0.004 \\
+QQN-Bisection-1 & 1.25e0 & 7.84e-1 & 1.02e-17 & 2.44e0 & 192.0 & 10.0 & 0.003 \\
+QQN-CubicQuadraticInterpolation & 1.39e0 & 8.96e-1 & 1.38e-17 & 3.07e0 & 211.4 & 10.0 & 0.006 \\
+QQN-StrongWolfe & 1.29e0 & 9.72e-1 & 3.76e-17 & 2.75e0 & 246.4 & 5.0 & 0.006 \\
+QQN-MoreThuente & 1.81e0 & 5.87e-1 & 1.10e-1 & 3.07e0 & 132.2 & 5.0 & 0.003 \\
+GD-WeightDecay & 1.84e0 & 3.25e-1 & 1.20e0 & 2.59e0 & 35.0 & 0.0 & 0.001 \\
+Adam-AMSGrad & 1.86e0 & 2.05e-1 & 1.43e0 & 1.98e0 & 309.8 & 0.0 & 0.007 \\
+Adam-WeightDecay & 1.88e0 & 3.00e-1 & 1.43e0 & 2.76e0 & 97.7 & 0.0 & 0.002 \\
+Adam & 1.94e0 & 1.32e-1 & 1.43e0 & 1.98e0 & 272.7 & 0.0 & 0.005 \\
+Adam-Fast & 1.99e0 & 3.15e-1 & 9.45e-1 & 2.78e0 & 52.0 & 0.0 & 0.001 \\
+L-BFGS-Conservative & 1.99e0 & 1.94e-1 & 1.70e0 & 2.75e0 & 221.8 & 0.0 & 0.003 \\
+GD-Momentum & 2.05e0 & 5.26e-1 & 4.44e-1 & 3.26e0 & 20.1 & 0.0 & 0.000 \\
+Trust Region-Standard & 2.05e0 & 2.73e-1 & 1.31e0 & 2.66e0 & 11.2 & 0.0 & 0.000 \\
+GD-Nesterov & 2.09e0 & 2.79e-1 & 1.11e0 & 2.35e0 & 16.3 & 0.0 & 0.000 \\
+GD & 2.16e0 & 3.56e-1 & 1.43e0 & 3.10e0 & 18.2 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 2.23e0 & 8.06e-1 & 1.43e0 & 5.08e0 & 19.4 & 0.0 & 0.000 \\
+Trust Region-Conservative & 2.43e0 & 6.20e-1 & 1.70e0 & 4.24e0 & 440.1 & 0.0 & 0.003 \\
+L-BFGS-Aggressive & 2.52e0 & 1.21e0 & 1.93e-1 & 4.76e0 & 754.3 & 0.0 & 0.006 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

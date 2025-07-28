@@ -1,0 +1,23 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Optimizer Family Comparison Matrix}
+\label{tab:family_comparison_matrix}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{QQN Family} & \textbf{Adam} & \textbf{GD} & \textbf{L-BFGS} & \textbf{Trust Region}\\ 
+\midrule
+\textbf{QQN} & \textcolor{green!70!black}{47W-4L-8T} & \textcolor{green!70!black}{35W-7L-17T} & \textcolor{green!70!black}{39W-1L-19T} & \textcolor{green!70!black}{49W-0L-10T} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN family dominance, red indicates non-QQN family dominance.
+\end{document}
