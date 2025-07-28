@@ -1,9 +1,7 @@
-use qqn_optimizer::benchmarks::analytic_functions::{
-    GoldsteinPriceFunction, LeviFunction, MatyasFunction, StyblinskiTangFunction,
-};
+use qqn_optimizer::benchmarks::analytic_functions::{BarrierFunction, GoldsteinPriceFunction, IllConditionedRosenbrock, LeviFunction, MatyasFunction, NoisySphere, PenaltyFunctionI, SparseQuadratic, SparseRosenbrock, StyblinskiTangFunction, TrigonometricFunction};
 use qqn_optimizer::benchmarks::ml_problems::{generate_linear_regression_data, generate_svm_data};
 use qqn_optimizer::benchmarks::mnist::ActivationType;
-use qqn_optimizer::benchmarks::MichalewiczFunction;
+use qqn_optimizer::benchmarks::{BoothFunction, GriewankFunction, HimmelblauFunction, LevyFunction, MichalewiczFunction, SchwefelFunction, ZakharovFunction};
 use qqn_optimizer::{
     AckleyFunction, BealeFunction, LinearRegression, LogisticRegression, MnistNeuralNetwork,
     NeuralNetworkTraining, OptimizationProblem, RastriginFunction, RosenbrockFunction,
@@ -36,6 +34,48 @@ pub fn analytic_problems() -> Vec<Arc<dyn OptimizationProblem>> {
         Arc::new(LeviFunction::new()),
         Arc::new(GoldsteinPriceFunction::new()),
         Arc::new(MatyasFunction::new()),
+        Arc::new(HimmelblauFunction::new()),
+        Arc::new(BoothFunction::new()),
+        Arc::new(GriewankFunction::new(2)),
+        Arc::new(GriewankFunction::new(5)),
+        Arc::new(GriewankFunction::new(10)),
+        Arc::new(SchwefelFunction::new(2)),
+        Arc::new(SchwefelFunction::new(5)),
+        Arc::new(SchwefelFunction::new(10)),
+        Arc::new(LevyFunction::new(2)),
+        Arc::new(LevyFunction::new(5)),
+        Arc::new(LevyFunction::new(10)),
+        Arc::new(ZakharovFunction::new(2)),
+        Arc::new(ZakharovFunction::new(5)),
+        Arc::new(ZakharovFunction::new(10)),
+        Arc::new(IllConditionedRosenbrock::new(2, 100.0)),
+        Arc::new(IllConditionedRosenbrock::new(5, 100.0)),
+        Arc::new(IllConditionedRosenbrock::new(10, 100.0)),
+        Arc::new(TrigonometricFunction::new(2)),
+        Arc::new(TrigonometricFunction::new(5)),
+        Arc::new(TrigonometricFunction::new(10)),
+        Arc::new(PenaltyFunctionI::new(2)),
+        Arc::new(PenaltyFunctionI::new(5)),
+        Arc::new(PenaltyFunctionI::new(10)),
+        Arc::new({
+            let mut barrier = BarrierFunction::new(2);
+            barrier
+        }),
+        Arc::new({
+            let mut barrier = BarrierFunction::new(5);
+            barrier
+        }),
+        Arc::new({
+            let mut barrier = BarrierFunction::new(10);
+            barrier
+        }),
+        Arc::new(NoisySphere::new(2, 0.01)),
+        Arc::new(NoisySphere::new(5, 0.01)),
+        Arc::new(NoisySphere::new(10, 0.01)),
+        Arc::new(SparseRosenbrock::new(4)),
+        Arc::new(SparseRosenbrock::new(10)),
+        Arc::new(SparseQuadratic::new(5)),
+        Arc::new(SparseQuadratic::new(10)),
     ]
 }
 
