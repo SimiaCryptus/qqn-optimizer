@@ -1,7 +1,7 @@
 //! Report generation tools.
 
 use crate::analysis::AnalysisReport;
-use crate::core::OptResult;
+use crate::optimizers::OptResult;
 
 #[derive(Debug, Clone)]
 pub struct ReportConfig {

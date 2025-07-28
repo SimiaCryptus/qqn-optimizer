@@ -39,8 +39,8 @@
 //! - **Lax**: Aggressive settings for well-conditioned problems requiring fast convergence
 //! - **QQN**: Specialized settings when used as a component within QQN
 
-use crate::core::optimizer::OptimizationMetadata;
-use crate::core::optimizer::{ConvergenceInfo, Optimizer, StepResult};
+use crate::optimizers::optimizer::OptimizationMetadata;
+use crate::optimizers::optimizer::{ConvergenceInfo, Optimizer, StepResult};
 use crate::utils::math::{compute_magnitude, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info, warn};

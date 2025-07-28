@@ -1,12 +1,12 @@
 pub mod analysis;
 pub mod benchmarks;
-pub mod core;
+pub mod optimizers;
 pub mod utils;
 pub mod line_search;
 pub mod experiment_runner;
 
 // Re-export commonly used types
-pub use core::{
+pub use optimizers::{
     lbfgs::{LBFGSConfig, LBFGSOptimizer},
     optimizer::{ConvergenceInfo, Optimizer, StepResult},
     qqn::{QQNConfig, QQNOptimizer},
@@ -35,7 +35,7 @@ pub use crate::benchmarks::ml_problems::{
 };
 
 // Re-export commonly used types
-pub use crate::core::adam::{AdamConfig, AdamOptimizer, AdamState};
+pub use crate::optimizers::adam::{AdamConfig, AdamOptimizer, AdamState};
 // Error types
 pub use anyhow::{Error, Result};
 pub use benchmarks::analytic_functions::AckleyFunction;

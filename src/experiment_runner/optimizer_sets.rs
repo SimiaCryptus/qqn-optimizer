@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use crate::{AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, Optimizer, QQNConfig, QQNOptimizer};
-use crate::core::{GDConfig, GDOptimizer, TrustRegionConfig, TrustRegionOptimizer};
+use crate::optimizers::{GDConfig, GDOptimizer, TrustRegionConfig, TrustRegionOptimizer};
 
 pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![

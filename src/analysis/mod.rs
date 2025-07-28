@@ -13,7 +13,7 @@ pub mod statistics;
 // Re-export commonly used types
 
 use crate::benchmarks::evaluation::BenchmarkResults;
-use crate::core::OptResult;
+use crate::optimizers::OptResult;
 pub use plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter};
 pub use statistics::{

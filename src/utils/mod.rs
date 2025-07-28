@@ -54,13 +54,13 @@ pub mod paths {
 
 /// Validation utilities
 pub mod validation {
-    use crate::core::OptResult;
+    use crate::optimizers::OptResult;
 
     /// Validate that a vector contains only finite values
     pub fn validate_finite(values: &[f64]) -> OptResult<()> {
         for (i, &val) in values.iter().enumerate() {
             if !val.is_finite() {
-                return Err(crate::core::OptError::InvalidInput(format!(
+                return Err(crate::optimizers::OptError::InvalidInput(format!(
                     "Non-finite value {} at index {}",
                     val, i
                 )));
@@ -72,7 +72,7 @@ pub mod validation {
     /// Validate that a value is within reasonable bounds
     pub fn validate_bounds(value: f64, min: f64, max: f64) -> OptResult<()> {
         if value < min || value > max {
-            return Err(crate::core::OptError::InvalidInput(format!(
+            return Err(crate::optimizers::OptError::InvalidInput(format!(
                 "Value {} outside bounds [{}, {}]",
                 value, min, max
             )));

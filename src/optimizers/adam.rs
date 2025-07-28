@@ -62,7 +62,7 @@
 //! - Problems where SGD with momentum performs well
 //!
 
-use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+use crate::optimizers::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};
@@ -852,7 +852,7 @@ impl Optimizer for AdamOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::optimizer::Optimizer;
+    use crate::optimizers::optimizer::Optimizer;
     use candle_core::{Device, Tensor};
 
     /// Simple quadratic function for testing: f(x) = 0.5 * ||x||^2

@@ -1,6 +1,6 @@
 use std::cmp::max;
 use crate::benchmarks::functions::OptimizationProblem;
-use crate::core::optimizer::Optimizer;
+use crate::optimizers::optimizer::Optimizer;
 use crate::utils::math::DifferentiableFunction;
 use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
@@ -909,7 +909,7 @@ impl BenchmarkResults {
 mod tests {
     use super::*;
     use crate::benchmarks::analytic_functions::SphereFunction;
-    use crate::core::lbfgs::{LBFGSConfig, LBFGSOptimizer};
+    use crate::optimizers::lbfgs::{LBFGSConfig, LBFGSOptimizer};
 
     #[tokio::test]
     async fn test_benchmark_runner() {

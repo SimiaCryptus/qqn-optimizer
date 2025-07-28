@@ -25,7 +25,7 @@
 //! - **Memory requirements**: Needs to store Hessian approximation
 //! - **Conservative**: May take smaller steps than necessary on well-behaved problems
 
-use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+use crate::optimizers::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 use crate::utils::math::{
     compute_magnitude, dot_product,
     DifferentiableFunction,

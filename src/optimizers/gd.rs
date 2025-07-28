@@ -58,7 +58,7 @@
 //! - **Avoid for**: Highly ill-conditioned problems, when fast convergence is critical
 //! - **Consider alternatives**: Adam/AdamW for adaptive per-parameter scaling, L-BFGS for smooth functions
 
-use crate::core::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
+use crate::optimizers::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
 use crate::utils::math::DifferentiableFunction;
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};

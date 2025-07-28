@@ -1,7 +1,7 @@
-use crate::core::lbfgs::LBFGSState;
-use crate::core::optimizer::OptimizationMetadata;
-use crate::core::Optimizer;
-use crate::core::StepResult;
+use crate::optimizers::lbfgs::LBFGSState;
+use crate::optimizers::optimizer::OptimizationMetadata;
+use crate::optimizers::Optimizer;
+use crate::optimizers::StepResult;
 use crate::utils::math::{compute_magnitude, log_tensor,
                          DifferentiableFunction,
 };
