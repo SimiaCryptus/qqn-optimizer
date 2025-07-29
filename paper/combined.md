@@ -578,19 +578,6 @@ Our evaluation across 62 benchmark problems with 21 optimizer variants (over 31,
 The simplicity of QQN's core insight—that quadratic interpolation provides the natural geometry for combining optimization directions—contrasts with the complexity of recent developments. 
 Combined with our evaluation methodology, this work establishes new standards for both algorithm development and empirical validation in optimization research.
 
-**Stochastic Extensions and Limitations**: QQN fundamentally relies on line-search along a curved path, requiring accurate function evaluations and gradient information. This makes stochastic extensions challenging for several reasons:
-
-1. **Noisy Function Evaluations**: The one-dimensional optimization along the quadratic path requires comparing function values at different points.
-   With stochastic noise, these comparisons become unreliable.
-
-2. **Curvature Information**: L-BFGS builds its Hessian approximation from consecutive gradient differences.
-   Stochastic gradients would corrupt this curvature information, undermining the quasi-Newton component.
-
-3. **Path Coherence**: The quadratic interpolation assumes a smooth underlying function where the path from gradient to quasi-Newton direction is meaningful.
-   In stochastic settings, this geometric interpretation breaks down.
-
-QQN is therefore best suited for deterministic optimization problems where accurate function and gradient evaluations are available, such as scientific computing, engineering design, and full-batch machine learning applications. This paper focuses on deterministic optimization as the foundation of a planned series. Future work will explore stochastic extensions with variance reduction techniques, constrained optimization through trust region variants, and large-scale deep learning applications.
-
 **Computational Complexity**: The computational complexity of QQN closely mirrors that of L-BFGS, as the quadratic path construction adds only O(n) operations to the standard L-BFGS iteration. 
 Wall-clock time comparisons on our benchmark problems would primarily reflect implementation details rather than algorithmic differences. 
 For problems where function evaluation dominates computation time, QQN's additional overhead is negligible. 

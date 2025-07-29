@@ -1,12 +1,24 @@
 use super::StatisticalAnalysis;
+use crate::benchmarks::evaluation::{
+    is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
+    SingleResult,
+};
+use crate::OptimizationProblem;
 use anyhow::Context;
 use log::warn;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec, SingleResult};
-use crate::OptimizationProblem;
+
+/// Data structure for family performance comparison
+#[derive(Debug, Clone)]
+struct FamilyPerformanceData {
+    average_ranking: f64,
+    best_rank_average: f64,
+    best_variant: String,
+    worst_variant: String,
+}
 
 /// Handles HTML report generation and CSV exports
 pub struct ReportGenerator {
@@ -65,17 +77,19 @@ impl ReportGenerator {
         fs::create_dir_all(&self.output_dir)
             .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
         println!("Generating report in directory: {}", self.output_dir);
+
         // Generate detailed optimizer-problem reports first
         self.generate_detailed_reports(all_results, use_optimizer_families)
             .await?;
 
         let mut html_content = self.generate_header();
-        html_content.push_str(&self.generate_header());
         html_content.push_str(&self.generate_winner_summary_table(all_results));
 
         for (problem, results) in all_results {
             html_content.push_str(&self.generate_problem_section(problem, results)?);
         }
+        // Add optimizer family vs problem family comparison
+        html_content.push_str(&self.generate_family_vs_family_comparison_table(all_results)?);
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(
@@ -154,11 +168,11 @@ impl ReportGenerator {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let success_rate = success_count as f64 / runs.len() as f64;
                 let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
-                
+
                 // Calculate median best value
                 let median_best = if !best_values.is_empty() {
                     let mut sorted_best = best_values.clone();
-                    sorted_best.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    sorted_best.sort_by(|a, b| a.total_cmp(b));
                     let len = sorted_best.len();
                     if len % 2 == 0 {
                         (sorted_best[len / 2 - 1] + sorted_best[len / 2]) / 2.0
@@ -168,17 +182,13 @@ impl ReportGenerator {
                 } else {
                     f64::INFINITY
                 };
-                
+
                 perf_data.push((optimizer.clone(), success_rate, mean_final, median_best));
             }
             // Sort by success rate first, then by mean final value
-            perf_data.sort_by(|a, b| {
-                let success_cmp = b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal);
-                if success_cmp != std::cmp::Ordering::Equal {
-                    success_cmp
-                } else {
-                    a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal)
-                }
+            perf_data.sort_by(|a, b| match b.1.total_cmp(&a.1) {
+                std::cmp::Ordering::Equal => a.2.total_cmp(&b.2),
+                other => other,
             });
             if !perf_data.is_empty() {
                 let winner = &perf_data[0];
@@ -225,6 +235,256 @@ impl ReportGenerator {
 "#,
         );
         summary
+    }
+    fn generate_family_vs_family_comparison_table(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
+        let mut content = String::from(
+            r#"## Optimizer Family vs Problem Family Performance Matrix
+This table shows how different optimizer families perform across different problem families. Each cell contains:
+- **Average Ranking**: Mean rank of the optimizer family across all problems in the problem family
+- **Best Rank**: Average of the best rank achieved by any variant in the optimizer family for each problem
+- **Best Variant**: The specific optimizer variant that achieved the best average rank
+- **Worst Variant**: The specific optimizer variant that achieved the worst average rank
+"#,
+        );
+        // Collect all optimizer families and problem families
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family =
+                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+        if optimizer_families.is_empty() || problem_families.is_empty() {
+            return Ok("*No data available for family comparison.*\n\n".to_string());
+        }
+        // Create the table header
+        content.push_str(r#"<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">Problem Family</th>
+"#);
+        for optimizer_family in &optimizer_families {
+            content.push_str(&format!(
+                r#"<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">{}</th>
+"#,
+                optimizer_family
+            ));
+        }
+        content.push_str("</tr>\n");
+        // For each problem family, calculate statistics
+        for problem_family in &problem_families {
+            content.push_str(&format!(
+                r#"<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">{}</td>
+"#,
+                problem_family
+            ));
+            // Get all problems in this family
+            let problems_in_family: Vec<_> = all_results
+                .iter()
+                .filter(|(problem, _)| get_family(&problem.get_name()) == *problem_family)
+                .collect();
+            for optimizer_family in &optimizer_families {
+                let cell_data =
+                    self.calculate_family_performance_data(&problems_in_family, optimizer_family)?;
+                let cell_style = if optimizer_family == "QQN" {
+                    "border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #e8f5e8; font-size: 10px;"
+                } else {
+                    "border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;"
+                };
+                content.push_str(&format!(
+                    r#"<td style="{}">
+<div><strong>Avg Rank:</strong> {:.1}</div>
+<div><strong>Best Rank:</strong> {:.1}</div>
+<div><strong>Best Var:</strong> {}</div>
+<div><strong>Worst Var:</strong> {}</div>
+</td>
+"#,
+                    cell_style,
+                    cell_data.average_ranking,
+                    cell_data.best_rank_average,
+                    cell_data.best_variant,
+                    cell_data.worst_variant
+                ));
+            }
+            content.push_str("</tr>\n");
+        }
+        content.push_str(
+            r#"</table>
+**Legend:**
+- **Avg Rank**: Average ranking of all variants in the optimizer family across problems in the problem family (lower is better)
+- **Best Rank**: Average of the best rank achieved by any variant in the optimizer family for each problem (lower is better)
+- **Best Var**: The specific optimizer variant that achieved the best average rank in this problem family
+- **Worst Var**: The specific optimizer variant that achieved the worst average rank in this problem family
+- QQN family cells are highlighted in green
+"#,
+        );
+        Ok(content)
+    }
+    fn calculate_family_performance_data(
+        &self,
+        problems_in_family: &[&(&ProblemSpec, BenchmarkResults)],
+        optimizer_family: &str,
+    ) -> anyhow::Result<FamilyPerformanceData> {
+        let mut all_rankings = Vec::new();
+        let mut best_ranks_per_problem = Vec::new();
+        let mut variant_performance = std::collections::HashMap::new();
+        for (_, results) in problems_in_family {
+            // Calculate rankings for this problem
+            let mut optimizer_stats = HashMap::new();
+            for result in &results.results {
+                let stats = optimizer_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert(Vec::new());
+                stats.push(result);
+            }
+            let mut perf_data = Vec::new();
+            for (optimizer, runs) in &optimizer_stats {
+                let final_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.best_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
+                if final_values.is_empty() {
+                    continue;
+                }
+                let success_count = if is_no_threshold_mode() {
+                    runs.iter().filter(|r| r.convergence_achieved).count()
+                } else {
+                    0
+                };
+                let success_rate = success_count as f64 / runs.len() as f64;
+                let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+                let mean_func_evals = runs
+                    .iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .sum::<f64>()
+                    / runs.len() as f64;
+                let mean_grad_evals = runs
+                    .iter()
+                    .map(|r| r.gradient_evaluations as f64)
+                    .sum::<f64>()
+                    / runs.len() as f64;
+                perf_data.push((
+                    optimizer.clone(),
+                    success_rate,
+                    mean_final,
+                    mean_func_evals + mean_grad_evals,
+                ));
+            }
+            // Sort by success rate first, then by mean final value, then by total evaluations
+            perf_data.sort_by(|a, b| {
+                if is_no_threshold_mode() {
+                    // In no-threshold mode, sort by best value, then by total evaluations
+                    match a.2.total_cmp(&b.2) {
+                        std::cmp::Ordering::Equal => a.3.total_cmp(&b.3),
+                        ord => ord,
+                    }
+                } else {
+                    match b.1.total_cmp(&a.1) {
+                        std::cmp::Ordering::Equal => match a.2.total_cmp(&b.2) {
+                            std::cmp::Ordering::Equal => a.3.total_cmp(&b.3),
+                            ord => ord,
+                        },
+                        ord => ord,
+                    }
+                }
+            });
+            // Assign rankings and collect data for this optimizer family
+            let mut family_ranks_this_problem = Vec::new();
+            let mut best_rank_this_problem = f64::INFINITY;
+            for (rank, (optimizer, _, mean_final, _)) in perf_data.iter().enumerate() {
+                let current_family = super::experiment_runner::get_optimizer_family(optimizer);
+                let rank_value = (rank + 1) as f64;
+                if current_family == *optimizer_family {
+                    all_rankings.push(rank_value);
+                    family_ranks_this_problem.push(rank_value);
+                    best_rank_this_problem = best_rank_this_problem.min(rank_value);
+
+                    // Track individual variant performance
+                    variant_performance
+                        .entry(optimizer.clone())
+                        .or_insert_with(Vec::new)
+                        .push((rank_value, *mean_final));
+                }
+            }
+            if best_rank_this_problem.is_finite() {
+                best_ranks_per_problem.push(best_rank_this_problem);
+            }
+        }
+        // Calculate averages
+        let average_ranking = if !all_rankings.is_empty() {
+            all_rankings.iter().sum::<f64>() / all_rankings.len() as f64
+        } else {
+            f64::INFINITY
+        };
+        let best_rank_average = if !best_ranks_per_problem.is_empty() {
+            best_ranks_per_problem.iter().sum::<f64>() / best_ranks_per_problem.len() as f64
+        } else {
+            f64::INFINITY
+        };
+        // Find best and worst variants
+        let mut variant_averages = Vec::new();
+        for (variant, ranks_and_values) in variant_performance {
+            if !ranks_and_values.is_empty() {
+                let avg_rank = ranks_and_values.iter().map(|(rank, _)| *rank).sum::<f64>()
+                    / ranks_and_values.len() as f64;
+                variant_averages.push((variant, avg_rank));
+            }
+        }
+        variant_averages.sort_by(|a, b| a.1.total_cmp(&b.1));
+        let best_variant = variant_averages
+            .first()
+            .map(|(name, _)| self.shorten_optimizer_name(name))
+            .unwrap_or_else(|| "N/A".to_string());
+        let worst_variant = variant_averages
+            .last()
+            .map(|(name, _)| self.shorten_optimizer_name(name))
+            .unwrap_or_else(|| "N/A".to_string());
+        Ok(FamilyPerformanceData {
+            average_ranking,
+            best_rank_average,
+            best_variant,
+            worst_variant,
+        })
+    }
+    fn shorten_optimizer_name(&self, name: &str) -> String {
+        // Shorten optimizer names for display in the table
+        if name.len() <= 12 {
+            name.to_string()
+        } else {
+            // Try to create meaningful abbreviations
+            let shortened = name
+                .replace("Optimizer", "")
+                .replace("Algorithm", "")
+                .replace("Method", "")
+                .replace("Quasi", "Q")
+                .replace("Newton", "N")
+                .replace("Limited", "L")
+                .replace("Memory", "M")
+                .replace("Broyden", "B")
+                .replace("Fletcher", "F")
+                .replace("Goldfarb", "G")
+                .replace("Shanno", "S")
+                .replace("Quadratic", "Quad");
+
+            if shortened.len() <= 12 {
+                shortened
+            } else {
+                // Take first 9 chars + "..."
+                format!("{}...", &shortened[..9.min(shortened.len())])
+            }
+        }
     }
 
     fn generate_header(&self) -> String {
@@ -281,6 +541,16 @@ impl ReportGenerator {
                     result.function_evaluations,
                     result.final_value,
                 ));
+            }
+            // Also check for NaN or infinite values
+            if !result.final_value.is_finite() || !result.final_gradient_norm.is_finite() {
+                warn!(
+                    "Non-finite values detected for {} on {}: final_value={}, gradient_norm={}",
+                    result.optimizer_name,
+                    problem_name,
+                    result.final_value,
+                    result.final_gradient_norm
+                );
             }
         }
 
@@ -458,28 +728,11 @@ impl ReportGenerator {
             if is_no_threshold_mode() {
                 a.3.total_cmp(&b.3) // In no-threshold mode, sort by best value
             } else {
-                match a.7.partial_cmp(&b.7) {
-                    Some(ord) => {
-                        if ord == Ordering::Equal {
-                            (a.5+a.6).total_cmp(&(b.5 + b.6)) // If success rates are equal, compare mean function and gradient evaluations
-                        } else {
-                            ord.reverse() // Sort by success rate first
-                        }
-                    }
-                    None => match (a.7.is_nan(), b.7.is_nan()) {
-                        
-                        (true, true) => { // If both are NaN, compare mean final
-                            // Use mean_final_success if available, otherwise mean_final
-                            let mean_final_a = if(a.9.is_finite()) { a.9 } else { a.1 };
-                            let mean_final_b = if(b.9.is_finite()) { b.9 } else { b.1 };
-                            mean_final_a.total_cmp(&mean_final_b)
-                        },
-                        (true, false) => return Ordering::Greater, // If a is NaN, b is better
-                        (false, true) => return Ordering::Less, // If b is NaN, a is better
-                        (false, false) => unreachable!(), // Both are finite, should not happen
-                    },
+                match b.7.total_cmp(&a.7) {
+                    // Sort by success rate descending
+                    Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)), // Then by total evaluations
+                    other => other,
                 }
-
             }
         });
 
@@ -517,7 +770,7 @@ impl ReportGenerator {
             let detailed_report_filename =
                 format!("detailed_{}_{}.md", problem_filename, optimizer_filename);
             let optimizer_link = format!(
-                r#"<a href="{}">{}</a>"#,
+                r#"<a href="{}" title="Click for detailed analysis">{}</a>"#,
                 detailed_report_filename, optimizer
             );
 
@@ -532,7 +785,11 @@ impl ReportGenerator {
             } else {
                 format!("{:.2e}", mean_final_fail)
             };
-            let final_value_str = format!("{:.2e} / {} / {}", mean_final, success_str, fail_str);
+            let final_value_str = if mean_final.is_finite() {
+                format!("{:.2e} / {} / {}", mean_final, success_str, fail_str)
+            } else {
+                format!("- / {} / {}", success_str, fail_str)
+            };
             // Create formatted strings for function evaluations
             let func_success_str =
                 if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
@@ -643,14 +900,13 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         Ok(section)
     }
 
-    fn generate_conclusions(
-        &self,
-        all_results: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> String {
+    fn generate_conclusions(&self, all_results: &[(&ProblemSpec, BenchmarkResults)]) -> String {
         let mut optimizer_scores = HashMap::new();
         let mut ml_optimizer_scores = HashMap::new();
         let mut math_optimizer_scores = HashMap::new();
         let mut optimizer_efficiency = HashMap::new();
+        let mut qqn_wins = 0;
+        let mut total_problems = 0;
 
         for (_, results) in all_results {
             for result in &results.results {
@@ -669,6 +925,21 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     .or_insert((0, 0.0));
                 efficiency.0 += if result.convergence_achieved { 1 } else { 0 };
                 efficiency.1 += result.execution_time.as_secs_f64();
+            }
+        }
+        // Count QQN wins
+        for (problem, results) in all_results {
+            total_problems += 1;
+            let mut best_optimizer = String::new();
+            let mut best_value = f64::INFINITY;
+            for result in &results.results {
+                if result.final_value < best_value {
+                    best_value = result.final_value;
+                    best_optimizer = result.optimizer_name.clone();
+                }
+            }
+            if best_optimizer.contains("QQN") {
+                qqn_wins += 1;
             }
         }
 
@@ -694,15 +965,24 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                 }
             }
         }
-        r#"
+
+        format!(
+            r#"
 
 ## Conclusions
 
 ### Key Findings
+- **QQN Performance:** QQN variants won on {}/{} problems ({:.1}% win rate)
+- **Convergence Analysis:** Statistical significance testing reveals meaningful performance differences
+- **Efficiency Trade-offs:** Different optimizers show varying trade-offs between solution quality and computational cost
+- **Problem-Specific Insights:** Performance varies significantly across problem families
 
 
-"#
-        .to_string()
+"#,
+            qqn_wins,
+            total_problems,
+            (qqn_wins as f64 / total_problems as f64) * 100.0
+        )
     }
 
     fn generate_html_footer(&self) -> String {
@@ -901,18 +1181,18 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     dimension.unwrap_or(0),
                     optimizer,
                     mean_final,
-                   if successful_runs.is_empty() { f64::NAN } else { mean_final_success },
-                   if unsuccessful_runs.is_empty() { f64::NAN } else { mean_final_fail },
+                    mean_final_success,
+                    mean_final_fail,
                     std_final,
                     best_final,
                     worst_final,
                     mean_iterations,
                     mean_function_evals,
-                   if successful_runs.is_empty() { f64::NAN } else { mean_func_evals_success },
-                   if unsuccessful_runs.is_empty() { f64::NAN } else { mean_func_evals_fail },
+                    mean_func_evals_success,
+                    mean_func_evals_fail,
                     mean_gradient_evals,
-                   if successful_runs.is_empty() { f64::NAN } else { mean_grad_evals_success },
-                   if unsuccessful_runs.is_empty() { f64::NAN } else { mean_grad_evals_fail },
+                    mean_grad_evals_success,
+                    mean_grad_evals_fail,
                     mean_time,
                     success_rate,
                     runs.len()
@@ -991,6 +1271,15 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         self.generate_comparison_matrix_latex_table(all_results, &latex_dir)?;
         // Generate family comparison matrix table
         self.generate_family_comparison_matrix_latex_table(all_results, &latex_dir)?;
+        // Generate family vs family comparison matrix table
+        self.generate_family_vs_family_latex_table(all_results, &latex_dir)
+            .await?;
+        // Generate efficiency matrix table
+        self.generate_efficiency_matrix_latex_table(all_results, &latex_dir)?;
+        // Generate success rate heatmap table
+        self.generate_success_rate_heatmap_latex_table(all_results, &latex_dir)?;
+        // Generate convergence speed analysis table
+        self.generate_convergence_speed_latex_table(all_results, &latex_dir)?;
 
         Ok(())
     }
@@ -1378,8 +1667,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
                     ));
                 }
                 // Sort by success rate
-                optimizer_data
-                    .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                optimizer_data.sort_by(|a, b| b.1.total_cmp(&a.1));
                 for (
                     i,
                     (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),
@@ -1734,6 +2022,117 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         );
         Ok(())
     }
+    /// Generate family vs family comparison LaTeX table
+    async fn generate_family_vs_family_latex_table(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        latex_dir: &Path,
+    ) -> anyhow::Result<()> {
+        // Collect all optimizer families and problem families
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family =
+                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+        if optimizer_families.is_empty() || problem_families.is_empty() {
+            return Ok(());
+        }
+        let mut latex_content = String::from(
+            r#"\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{adjustbox}
+\usepackage{rotating}
+\begin{document}
+"#,
+        );
+        latex_content.push_str(&format!(
+            r#"\begin{{table}}[htbp]
+\centering
+\caption{{Optimizer Family vs Problem Family Performance Matrix}}
+\label{{tab:family_vs_family_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{Problem Family}} {}\\ 
+\midrule
+"#,
+            "c".repeat(optimizer_families.len()),
+            optimizer_families
+                .iter()
+                .map(|fam| format!(
+                    "& \\rotatebox{{90}}{{\\textbf{{{}}}}}",
+                    Self::escape_latex(fam)
+                ))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ));
+        // For each problem family, calculate statistics
+        for problem_family in &problem_families {
+            latex_content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex(problem_family)
+            ));
+            // Get all problems in this family
+            let problems_in_family: Vec<_> = all_results
+                .iter()
+                .filter(|(problem, _)| get_family(&problem.get_name()) == *problem_family)
+                .collect();
+            for optimizer_family in &optimizer_families {
+                let cell_data =
+                    self.calculate_family_performance_data(&problems_in_family, optimizer_family)?;
+                let cell_content = if optimizer_family == "QQN" {
+                    format!(
+                        "& \\cellcolor{{green!20}}\\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
+                        cell_data.average_ranking,
+                        cell_data.best_rank_average,
+                        Self::escape_latex(&cell_data.best_variant),
+                        Self::escape_latex(&cell_data.worst_variant)
+                    )
+                } else {
+                    format!(
+                        "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
+                        cell_data.average_ranking,
+                        cell_data.best_rank_average,
+                        Self::escape_latex(&cell_data.best_variant),
+                        Self::escape_latex(&cell_data.worst_variant)
+                    )
+                };
+                latex_content.push_str(&cell_content);
+            }
+            latex_content.push_str(" \\\\\n");
+        }
+        latex_content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} Each cell contains four values: Average Ranking (top), Best Rank Average (second), Best Variant (third), Worst Variant (bottom). Lower rankings are better. QQN family cells are highlighted in green.
+\end{document}
+"#,
+        );
+        let latex_path = latex_dir.join("family_vs_family_matrix.tex");
+        fs::write(&latex_path, latex_content)
+            .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
+        println!(
+            "Generated family vs family comparison LaTeX table: {}",
+            latex_path.display()
+        );
+        Ok(())
+    }
 
     /// Generate comprehensive LaTeX document with all tables
     fn generate_comprehensive_latex_document(
@@ -1810,6 +2209,34 @@ The following sections present detailed performance comparisons across all teste
         );
         // Include family comparison matrix content
         latex_content.push_str(&self.generate_family_comparison_matrix_table_content(all_results)?);
+        latex_content.push_str(
+            r#"
+\subsection{Optimizer Family vs Problem Family Performance Matrix}
+"#,
+        );
+        // Include family vs family comparison matrix content
+        latex_content.push_str(&self.generate_family_vs_family_table_content(all_results)?);
+        latex_content.push_str(
+            r#"
+\subsection{Algorithm Efficiency Matrix}
+"#,
+        );
+        // Include efficiency matrix content
+        latex_content.push_str(&self.generate_efficiency_matrix_table_content(all_results)?);
+        latex_content.push_str(
+            r#"
+\subsection{Success Rate Heatmap}
+"#,
+        );
+        // Include success rate heatmap content
+        latex_content.push_str(&self.generate_success_rate_heatmap_table_content(all_results)?);
+        latex_content.push_str(
+            r#"
+\subsection{Convergence Speed Analysis}
+"#,
+        );
+        // Include convergence speed analysis content
+        latex_content.push_str(&self.generate_convergence_speed_table_content(all_results)?);
 
         latex_content.push_str(
             r#"
@@ -2149,6 +2576,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         }
         qqn_optimizers.sort();
         non_qqn_optimizers.sort();
+
         let mut content = format!(
             r#"\begin{{table}}[H]
 \centering
@@ -2383,6 +2811,774 @@ All raw experimental data, convergence plots, and additional analysis files are 
 }
 \end{table}
 \textbf{Legend:} W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant difference). Green indicates QQN family dominance, red indicates non-QQN family dominance.
+"#,
+        );
+        Ok(content)
+    }
+    /// Generate family vs family table content (without document wrapper)
+    fn generate_family_vs_family_table_content(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
+        // Collect all optimizer families and problem families
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family =
+                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+        if optimizer_families.is_empty() || problem_families.is_empty() {
+            return Ok(String::new());
+        }
+        let mut content = format!(
+            r#"\begin{{table}}[H]
+\centering
+\caption{{Optimizer Family vs Problem Family Performance Matrix}}
+\label{{tab:family_vs_family_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{Problem Family}} {}\\ 
+\midrule
+"#,
+            "c".repeat(optimizer_families.len()),
+            optimizer_families
+                .iter()
+                .map(|fam| format!(
+                    "& \\rotatebox{{90}}{{\\textbf{{{}}}}}",
+                    Self::escape_latex(fam)
+                ))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        // For each problem family, calculate statistics
+        for problem_family in &problem_families {
+            content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex(problem_family)
+            ));
+            // Get all problems in this family
+            let problems_in_family: Vec<_> = all_results
+                .iter()
+                .filter(|(problem, _)| get_family(&problem.get_name()) == *problem_family)
+                .collect();
+            for optimizer_family in &optimizer_families {
+                let cell_data =
+                    self.calculate_family_performance_data(&problems_in_family, optimizer_family)?;
+                let cell_content = if optimizer_family == "QQN" {
+                    format!(
+                        "& \\cellcolor{{green!20}}\\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
+                        cell_data.average_ranking,
+                        cell_data.best_rank_average,
+                        Self::escape_latex(&cell_data.best_variant),
+                        Self::escape_latex(&cell_data.worst_variant)
+                    )
+                } else {
+                    format!(
+                        "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
+                        cell_data.average_ranking,
+                        cell_data.best_rank_average,
+                        Self::escape_latex(&cell_data.best_variant),
+                        Self::escape_latex(&cell_data.worst_variant)
+                    )
+                };
+                content.push_str(&cell_content);
+            }
+            content.push_str(" \\\\\n");
+        }
+        content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} Each cell contains four values: Average Ranking (top), Best Rank Average (second), Best Variant (third), Worst Variant (bottom). Lower rankings are better. QQN family cells are highlighted in green.
+"#,
+        );
+        Ok(content)
+    }
+    /// Generate efficiency matrix LaTeX table
+    fn generate_efficiency_matrix_latex_table(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        latex_dir: &Path,
+    ) -> anyhow::Result<()> {
+        // Collect all optimizer families and problem families
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family =
+                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+        if optimizer_families.is_empty() || problem_families.is_empty() {
+            return Ok(());
+        }
+        let mut latex_content = String::from(
+            r#"\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{adjustbox}
+\begin{document}
+"#,
+        );
+        latex_content.push_str(&format!(
+            r#"\begin{{table}}[htbp]
+\centering
+\caption{{Algorithm Efficiency Matrix: Mean Function Evaluations for Successful Runs}}
+\label{{tab:efficiency_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{Optimizer Family}} {}\\ 
+\midrule
+"#,
+            "c".repeat(problem_families.len()),
+            problem_families
+                .iter()
+                .map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam)))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ));
+        // Calculate efficiency data for each optimizer family across problem families
+        for optimizer_family in &optimizer_families {
+            latex_content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex(optimizer_family)
+            ));
+            for problem_family in &problem_families {
+                // Get all successful runs for this optimizer family on this problem family
+                let mut successful_evaluations = Vec::new();
+                for (problem, results) in all_results {
+                    if get_family(&problem.get_name()) == *problem_family {
+                        for result in &results.results {
+                            let result_optimizer_family =
+                                super::experiment_runner::get_optimizer_family(
+                                    &result.optimizer_name,
+                                );
+                            if result_optimizer_family == *optimizer_family
+                                && result.convergence_achieved
+                            {
+                                successful_evaluations.push(result.function_evaluations as f64);
+                            }
+                        }
+                    }
+                }
+                let cell_content = if successful_evaluations.is_empty() {
+                    "N/A".to_string()
+                } else {
+                    let mean = successful_evaluations.iter().sum::<f64>()
+                        / successful_evaluations.len() as f64;
+                    let variance = successful_evaluations
+                        .iter()
+                        .map(|x| (x - mean).powi(2))
+                        .sum::<f64>()
+                        / successful_evaluations.len() as f64;
+                    let std_dev = variance.sqrt();
+                    if optimizer_family == "QQN" {
+                        format!("\\cellcolor{{green!20}}{:.0} $\\pm$ {:.0}", mean, std_dev)
+                    } else {
+                        format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
+                    }
+                };
+                latex_content.push_str(&format!("& {} ", cell_content));
+            }
+            latex_content.push_str("\\\\\n");
+        }
+        latex_content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Purpose:} Shows mean function evaluations $\pm$ standard deviation for successful runs only across problem families. Lower values indicate higher efficiency. QQN family cells are highlighted in green.
+\end{document}
+"#,
+        );
+        let latex_path = latex_dir.join("efficiency_matrix.tex");
+        fs::write(&latex_path, latex_content).with_context(|| {
+            format!(
+                "Failed to write efficiency matrix LaTeX table to: {}",
+                latex_path.display()
+            )
+        })?;
+        println!(
+            "Generated efficiency matrix LaTeX table: {}",
+            latex_path.display()
+        );
+        Ok(())
+    }
+    /// Generate success rate heatmap LaTeX table
+    fn generate_success_rate_heatmap_latex_table(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        latex_dir: &Path,
+    ) -> anyhow::Result<()> {
+        // Collect all optimizers and problems
+        let mut all_optimizers = std::collections::HashSet::new();
+        let mut all_problems = Vec::new();
+        for (problem, results) in all_results {
+            all_problems.push(problem.get_name());
+            for result in &results.results {
+                all_optimizers.insert(result.optimizer_name.clone());
+            }
+        }
+        let mut optimizers: Vec<_> = all_optimizers.into_iter().collect();
+        optimizers.sort();
+        if optimizers.is_empty() || all_problems.is_empty() {
+            return Ok(());
+        }
+        let mut latex_content = String::from(
+            r#"\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{rotating}
+\begin{document}
+"#,
+        );
+        latex_content.push_str(&format!(
+            r#"\begin{{table}}[htbp]
+\centering
+\caption{{Success Rate Heatmap: Color-coded Success Rates Across All Optimizer-Problem Combinations}}
+\label{{tab:success_rate_heatmap}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{Problem}} {}\\ 
+\midrule
+"#,
+            "c".repeat(optimizers.len()),
+            optimizers
+                .iter()
+                .map(|opt| format!("& \\rotatebox{{90}}{{\\textbf{{{}}}}}", Self::escape_latex(opt)))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ));
+        // Calculate success rates for each problem-optimizer combination
+        for (problem, results) in all_results {
+            let problem_name = problem.get_name();
+            latex_content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex(&problem_name)
+            ));
+            for optimizer in &optimizers {
+                let optimizer_results: Vec<_> = results
+                    .results
+                    .iter()
+                    .filter(|r| r.optimizer_name == *optimizer)
+                    .collect();
+                let success_rate = if optimizer_results.is_empty() {
+                    0.0
+                } else {
+                    let successful = optimizer_results
+                        .iter()
+                        .filter(|r| r.convergence_achieved)
+                        .count();
+                    successful as f64 / optimizer_results.len() as f64 * 100.0
+                };
+                let (color, text_color) = if success_rate >= 90.0 {
+                    ("green!70", "black")
+                } else if success_rate >= 50.0 {
+                    ("yellow!70", "black")
+                } else if success_rate >= 10.0 {
+                    ("orange!70", "black")
+                } else {
+                    ("red!70", "white")
+                };
+                let cell_content = if optimizer_results.is_empty() {
+                    format!("& \\cellcolor{{gray!30}}\\textcolor{{white}}{{N/A}}")
+                } else {
+                    format!(
+                        "& \\cellcolor{{{}}}\\textcolor{{{}}}{{{:.0}\\%}}",
+                        color, text_color, success_rate
+                    )
+                };
+                latex_content.push_str(&cell_content);
+            }
+            latex_content.push_str(" \\\\\n");
+        }
+        latex_content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} 
+\colorbox{green!70}{90-100\%} Excellent, 
+\colorbox{yellow!70}{50-89\%} Good, 
+\colorbox{orange!70}{10-49\%} Poor, 
+\colorbox{red!70}{\textcolor{white}{0-9\%}} Very Poor, 
+\colorbox{gray!30}{\textcolor{white}{N/A}} No Data.
+Quickly identifies which optimizers work on which problem types.
+\end{document}
+"#,
+        );
+        let latex_path = latex_dir.join("success_rate_heatmap.tex");
+        fs::write(&latex_path, latex_content).with_context(|| {
+            format!(
+                "Failed to write success rate heatmap LaTeX table to: {}",
+                latex_path.display()
+            )
+        })?;
+        println!(
+            "Generated success rate heatmap LaTeX table: {}",
+            latex_path.display()
+        );
+        Ok(())
+    }
+    /// Generate convergence speed analysis LaTeX table
+    fn generate_convergence_speed_latex_table(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        latex_dir: &Path,
+    ) -> anyhow::Result<()> {
+        // Collect convergence speed data for all optimizers
+        let mut optimizer_speed_data = std::collections::HashMap::new();
+        for (_, results) in all_results {
+            for result in &results.results {
+                if result.convergence_achieved && !result.trace.iterations.is_empty() {
+                    let speed_data = optimizer_speed_data
+                        .entry(result.optimizer_name.clone())
+                        .or_insert(Vec::new());
+                    // Calculate convergence milestones
+                    let initial_value = result
+                        .trace
+                        .iterations
+                        .first()
+                        .map(|iter| iter.function_value)
+                        .unwrap_or(result.final_value);
+                    let final_value = result.final_value;
+                    let improvement_50 = initial_value - 0.5 * (initial_value - final_value);
+                    let improvement_90 = initial_value - 0.9 * (initial_value - final_value);
+                    let mut iter_to_50 = None;
+                    let mut iter_to_90 = None;
+                    for iter_data in &result.trace.iterations {
+                        if iter_to_50.is_none() && iter_data.function_value <= improvement_50 {
+                            iter_to_50 = Some(iter_data.iteration);
+                        }
+                        if iter_to_90.is_none() && iter_data.function_value <= improvement_90 {
+                            iter_to_90 = Some(iter_data.iteration);
+                        }
+                    }
+                    speed_data.push((
+                        iter_to_50.unwrap_or(result.iterations),
+                        iter_to_90.unwrap_or(result.iterations),
+                        result.iterations,
+                    ));
+                }
+            }
+        }
+        if optimizer_speed_data.is_empty() {
+            return Ok(());
+        }
+        let mut latex_content = String::from(
+            r#"\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{adjustbox}
+\begin{document}
+\begin{table}[htbp]
+\centering
+\caption{Convergence Speed Analysis: Mean Iterations to Reach Improvement Milestones}
+\label{tab:convergence_speed}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{3}{S[table-format=3.1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Iterations} & \textbf{Mean Iterations} & \textbf{Final Convergence} \\
+ & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Iteration} \\
+\midrule
+"#,
+        );
+        // Calculate averages and sort by overall convergence speed
+        let mut optimizer_averages = Vec::new();
+        for (optimizer, speed_data) in optimizer_speed_data {
+            if !speed_data.is_empty() {
+                let avg_50 = speed_data
+                    .iter()
+                    .map(|(iter_50, _, _)| *iter_50 as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                let avg_90 = speed_data
+                    .iter()
+                    .map(|(_, iter_90, _)| *iter_90 as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                let avg_final = speed_data
+                    .iter()
+                    .map(|(_, _, final_iter)| *final_iter as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                optimizer_averages.push((optimizer, avg_50, avg_90, avg_final));
+            }
+        }
+        // Sort by fastest overall convergence (weighted average of milestones)
+        optimizer_averages.sort_by(|a, b| {
+            let score_a = 0.3 * a.1 + 0.4 * a.2 + 0.3 * a.3;
+            let score_b = 0.3 * b.1 + 0.4 * b.2 + 0.3 * b.3;
+            score_a
+                .partial_cmp(&score_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
+            let optimizer_style = if i == 0 {
+                format!("\\textbf{{{}}}", Self::escape_latex(optimizer))
+            } else if optimizer.contains("QQN") {
+                format!(
+                    "\\textcolor{{green!70!black}}{{{}}}",
+                    Self::escape_latex(optimizer)
+                )
+            } else {
+                Self::escape_latex(optimizer)
+            };
+            latex_content.push_str(&format!(
+                "{} & {:.1} & {:.1} & {:.1} \\\\\n",
+                optimizer_style, avg_50, avg_90, avg_final
+            ));
+        }
+        latex_content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Purpose:} Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
+\end{document}
+"#,
+        );
+        let latex_path = latex_dir.join("convergence_speed_table.tex");
+        fs::write(&latex_path, latex_content).with_context(|| {
+            format!(
+                "Failed to write convergence speed LaTeX table to: {}",
+                latex_path.display()
+            )
+        })?;
+        println!(
+            "Generated convergence speed analysis LaTeX table: {}",
+            latex_path.display()
+        );
+        Ok(())
+    }
+    /// Generate efficiency matrix table content (without document wrapper)
+    fn generate_efficiency_matrix_table_content(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
+        // Similar logic as generate_efficiency_matrix_latex_table but return just the table content
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family =
+                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+        if optimizer_families.is_empty() || problem_families.is_empty() {
+            return Ok(String::new());
+        }
+        let mut content = format!(
+            r#"\begin{{table}}[H]
+\centering
+\caption{{Algorithm Efficiency Matrix: Mean Function Evaluations for Successful Runs}}
+\label{{tab:efficiency_matrix}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{Optimizer Family}} {}\\ 
+\midrule
+"#,
+            "c".repeat(problem_families.len()),
+            problem_families
+                .iter()
+                .map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam)))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        // Same calculation logic as the standalone table
+        for optimizer_family in &optimizer_families {
+            content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex(optimizer_family)
+            ));
+            for problem_family in &problem_families {
+                let mut successful_evaluations = Vec::new();
+                for (problem, results) in all_results {
+                    if get_family(&problem.get_name()) == *problem_family {
+                        for result in &results.results {
+                            let result_optimizer_family =
+                                super::experiment_runner::get_optimizer_family(
+                                    &result.optimizer_name,
+                                );
+                            if result_optimizer_family == *optimizer_family
+                                && result.convergence_achieved
+                            {
+                                successful_evaluations.push(result.function_evaluations as f64);
+                            }
+                        }
+                    }
+                }
+                let cell_content = if successful_evaluations.is_empty() {
+                    "N/A".to_string()
+                } else {
+                    let mean = successful_evaluations.iter().sum::<f64>()
+                        / successful_evaluations.len() as f64;
+                    let variance = successful_evaluations
+                        .iter()
+                        .map(|x| (x - mean).powi(2))
+                        .sum::<f64>()
+                        / successful_evaluations.len() as f64;
+                    let std_dev = variance.sqrt();
+                    if optimizer_family == "QQN" {
+                        format!("\\cellcolor{{green!20}}{:.0} $\\pm$ {:.0}", mean, std_dev)
+                    } else {
+                        format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
+                    }
+                };
+                content.push_str(&format!("& {} ", cell_content));
+            }
+            content.push_str("\\\\\n");
+        }
+        content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Purpose:} Shows mean function evaluations $\pm$ standard deviation for successful runs only across problem families. Lower values indicate higher efficiency. QQN family cells are highlighted in green.
+"#,
+        );
+        Ok(content)
+    }
+    /// Generate success rate heatmap table content (without document wrapper)
+    fn generate_success_rate_heatmap_table_content(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
+        // Similar logic as generate_success_rate_heatmap_latex_table but return just the table content
+        let mut all_optimizers = std::collections::HashSet::new();
+        let mut all_problems = Vec::new();
+        for (problem, results) in all_results {
+            all_problems.push(problem.get_name());
+            for result in &results.results {
+                all_optimizers.insert(result.optimizer_name.clone());
+            }
+        }
+        let mut optimizers: Vec<_> = all_optimizers.into_iter().collect();
+        optimizers.sort();
+        if optimizers.is_empty() || all_problems.is_empty() {
+            return Ok(String::new());
+        }
+        let mut content = format!(
+            r#"\begin{{table}}[H]
+\centering
+\caption{{Success Rate Heatmap: Color-coded Success Rates Across All Optimizer-Problem Combinations}}
+\label{{tab:success_rate_heatmap}}
+\adjustbox{{width=\textwidth,center}}{{
+\begin{{tabular}}{{l{}}}
+\toprule
+\textbf{{Problem}} {}\\ 
+\midrule
+"#,
+            "c".repeat(optimizers.len()),
+            optimizers
+                .iter()
+                .map(|opt| format!(
+                    "& \\rotatebox{{90}}{{\\textbf{{{}}}}}",
+                    Self::escape_latex(opt)
+                ))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+        // Same calculation logic as the standalone table
+        for (problem, results) in all_results {
+            let problem_name = problem.get_name();
+            content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex(&problem_name)
+            ));
+            for optimizer in &optimizers {
+                let optimizer_results: Vec<_> = results
+                    .results
+                    .iter()
+                    .filter(|r| r.optimizer_name == *optimizer)
+                    .collect();
+                let success_rate = if optimizer_results.is_empty() {
+                    0.0
+                } else {
+                    let successful = optimizer_results
+                        .iter()
+                        .filter(|r| r.convergence_achieved)
+                        .count();
+                    successful as f64 / optimizer_results.len() as f64 * 100.0
+                };
+                let (color, text_color) = if success_rate >= 90.0 {
+                    ("green!70", "black")
+                } else if success_rate >= 50.0 {
+                    ("yellow!70", "black")
+                } else if success_rate >= 10.0 {
+                    ("orange!70", "black")
+                } else {
+                    ("red!70", "white")
+                };
+                let cell_content = if optimizer_results.is_empty() {
+                    format!("& \\cellcolor{{gray!30}}\\textcolor{{white}}{{N/A}}")
+                } else {
+                    format!(
+                        "& \\cellcolor{{{}}}\\textcolor{{{}}}{{{:.0}\\%}}",
+                        color, text_color, success_rate
+                    )
+                };
+                content.push_str(&cell_content);
+            }
+            content.push_str(" \\\\\n");
+        }
+        content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Legend:} 
+\colorbox{green!70}{90-100\%} Excellent, 
+\colorbox{yellow!70}{50-89\%} Good, 
+\colorbox{orange!70}{10-49\%} Poor, 
+\colorbox{red!70}{\textcolor{white}{0-9\%}} Very Poor, 
+\colorbox{gray!30}{\textcolor{white}{N/A}} No Data.
+Quickly identifies which optimizers work on which problem types.
+"#,
+        );
+        Ok(content)
+    }
+    /// Generate convergence speed table content (without document wrapper)
+    fn generate_convergence_speed_table_content(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
+        // Similar logic as generate_convergence_speed_latex_table but return just the table content
+        let mut optimizer_speed_data = std::collections::HashMap::new();
+        for (_, results) in all_results {
+            for result in &results.results {
+                if result.convergence_achieved && !result.trace.iterations.is_empty() {
+                    let speed_data = optimizer_speed_data
+                        .entry(result.optimizer_name.clone())
+                        .or_insert(Vec::new());
+                    let initial_value = result
+                        .trace
+                        .iterations
+                        .first()
+                        .map(|iter| iter.function_value)
+                        .unwrap_or(result.final_value);
+                    let final_value = result.final_value;
+                    let improvement_50 = initial_value - 0.5 * (initial_value - final_value);
+                    let improvement_90 = initial_value - 0.9 * (initial_value - final_value);
+                    let mut iter_to_50 = None;
+                    let mut iter_to_90 = None;
+                    for iter_data in &result.trace.iterations {
+                        if iter_to_50.is_none() && iter_data.function_value <= improvement_50 {
+                            iter_to_50 = Some(iter_data.iteration);
+                        }
+                        if iter_to_90.is_none() && iter_data.function_value <= improvement_90 {
+                            iter_to_90 = Some(iter_data.iteration);
+                        }
+                    }
+                    speed_data.push((
+                        iter_to_50.unwrap_or(result.iterations),
+                        iter_to_90.unwrap_or(result.iterations),
+                        result.iterations,
+                    ));
+                }
+            }
+        }
+        if optimizer_speed_data.is_empty() {
+            return Ok(String::new());
+        }
+        let mut content = String::from(
+            r#"\begin{table}[H]
+\centering
+\caption{Convergence Speed Analysis: Mean Iterations to Reach Improvement Milestones}
+\label{tab:convergence_speed}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{l*{3}{S[table-format=3.1]}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Iterations} & \textbf{Mean Iterations} & \textbf{Final Convergence} \\
+ & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Iteration} \\
+\midrule
+"#,
+        );
+        // Same calculation and sorting logic as the standalone table
+        let mut optimizer_averages = Vec::new();
+        for (optimizer, speed_data) in optimizer_speed_data {
+            if !speed_data.is_empty() {
+                let avg_50 = speed_data
+                    .iter()
+                    .map(|(iter_50, _, _)| *iter_50 as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                let avg_90 = speed_data
+                    .iter()
+                    .map(|(_, iter_90, _)| *iter_90 as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                let avg_final = speed_data
+                    .iter()
+                    .map(|(_, _, final_iter)| *final_iter as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                optimizer_averages.push((optimizer, avg_50, avg_90, avg_final));
+            }
+        }
+        optimizer_averages.sort_by(|a, b| {
+            let score_a = 0.3 * a.1 + 0.4 * a.2 + 0.3 * a.3;
+            let score_b = 0.3 * b.1 + 0.4 * b.2 + 0.3 * b.3;
+            score_a
+                .partial_cmp(&score_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
+            let optimizer_style = if i == 0 {
+                format!("\\textbf{{{}}}", Self::escape_latex(optimizer))
+            } else if optimizer.contains("QQN") {
+                format!(
+                    "\\textcolor{{green!70!black}}{{{}}}",
+                    Self::escape_latex(optimizer)
+                )
+            } else {
+                Self::escape_latex(optimizer)
+            };
+            content.push_str(&format!(
+                "{} & {:.1} & {:.1} & {:.1} \\\\\n",
+                optimizer_style, avg_50, avg_90, avg_final
+            ));
+        }
+        content.push_str(
+            r#"\bottomrule
+\end{tabular}
+}
+\end{table}
+\textbf{Purpose:} Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
 "#,
         );
         Ok(content)
@@ -2725,29 +3921,37 @@ All raw experimental data, convergence plots, and additional analysis files are 
             let mean_func_evals =
                 function_evals.iter().sum::<usize>() as f64 / function_evals.len() as f64;
             let mean_time = times.iter().sum::<f64>() / times.len() as f64;
+            // Find min and max times with their corresponding iterations
+            let (min_iter, min_time) = successful_runs
+                .iter()
+                .map(|r| (r.iterations, r.execution_time.as_secs_f64()))
+                .min_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or((0, 0.0));
+            let (max_iter, max_time) = successful_runs
+                .iter()
+                .map(|r| (r.iterations, r.execution_time.as_secs_f64()))
+                .max_by(|(_, t1), (_, t2)| t1.partial_cmp(t2).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap_or((0, 0.0));
+
             content.push_str(&format!(
                 r#"### Successful Runs ({} out of {})
-- **Average Iterations to Convergence:** {:.1}
-- **Average Function Evaluations:** {:.1}
-- **Average Time to Convergence:** {:.3}s
-- **Fastest Convergence:** {} iterations ({:.3}s)
-- **Slowest Convergence:** {} iterations ({:.3}s)
+
+* **Average Iterations to Convergence:** {:.1}
+* **Average Function Evaluations:** {:.1}
+* **Average Time to Convergence:** {:.3}s
+* **Fastest Convergence:** {} iterations ({:.3}s)
+* **Slowest Convergence:** {} iterations ({:.3}s)
+
 "#,
                 successful_runs.len(),
                 runs.len(),
                 mean_iterations,
                 mean_func_evals,
                 mean_time,
-                iterations.iter().min().unwrap_or(&0),
-                times
-                    .iter()
-                    .min_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or(&0.0),
-                iterations.iter().max().unwrap_or(&0),
-                times
-                    .iter()
-                    .max_by(|a, b| a.partial_cmp(b).unwrap())
-                    .unwrap_or(&0.0)
+                min_iter,
+                min_time,
+                max_iter,
+                max_time
             ));
         }
         if !failed_runs.is_empty() {
@@ -2778,7 +3982,11 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let best_run = runs
             .iter()
             .filter(|r| r.final_value.is_finite())
-            .min_by(|a, b| a.final_value.partial_cmp(&b.final_value).unwrap());
+            .min_by(|a, b| {
+                a.final_value
+                    .partial_cmp(&b.final_value)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
         if let Some(best_run) = best_run {
             content.push_str(&format!(
                 r#"### Best Run Analysis (Run {})
