@@ -86,7 +86,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
             Arc::new(QQNOptimizer::new(QQNConfig {
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::CubicQuadraticInterpolation,
-                    max_iterations: 0,
+                    max_iterations: 5,
                     initial_step: 1.0,
                     min_step: 1e-10,
                     max_step: 10.0,

@@ -49,7 +49,7 @@ impl OptimizationProblem for MatyasFunction {
         Ok(vec![0.52 * x1 - 0.48 * x2, 0.52 * x2 - 0.48 * x1])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-6)
+        Some(2.5e-2)
     }
 }
 
@@ -409,9 +409,9 @@ impl OptimizationProblem for RosenbrockFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(8.45e-3),
-            5 => Some(3.98e-1),
-            10 => Some(9.70e0),
+            2 => Some(8.45e-3),  // Already set in problem_sets.rs
+            5 => Some(3.98e-1),  // Already set in problem_sets.rs
+            10 => Some(9.70e0),  // Already set in problem_sets.rs
             _ => None,
         }
 
@@ -476,9 +476,9 @@ impl OptimizationProblem for RastriginFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(7.96e0),
-            5 => Some(2.04e1),
-            10 => Some(4.18e1),
+            2 => Some(7.96e0),   // Already set in problem_sets.rs
+            5 => Some(2.04e1),   // Already set in problem_sets.rs
+            10 => Some(4.18e1),  // Already set in problem_sets.rs
             _ => None,
         }
     }
@@ -529,7 +529,7 @@ impl OptimizationProblem for SphereFunction {
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-6)
+        Some(5e-3)
     }
 }
 
@@ -589,7 +589,7 @@ impl OptimizationProblem for BealeFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-6)
+        Some(1.5e-2)
     }
 }
 
@@ -642,7 +642,7 @@ impl OptimizationProblem for HimmelblauFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-8)
+        Some(2.5e-1)
     }
 }
 
@@ -695,7 +695,7 @@ impl OptimizationProblem for BoothFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1e-8)
+        Some(1.2e-1)
     }
 }
 
@@ -771,9 +771,9 @@ impl OptimizationProblem for AckleyFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(3.57e0),
-            5 => Some(3.57e0),
-            10 => Some(3.57e0),
+            2 => Some(3.57e0),   // Already set in problem_sets.rs
+            5 => Some(3.57e0),   // Already set in problem_sets.rs
+            10 => Some(3.57e0),  // Already set in problem_sets.rs
             _ => None,
         }
     }

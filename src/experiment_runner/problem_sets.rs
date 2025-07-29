@@ -87,7 +87,11 @@ pub fn analytic_problems() -> Vec<ProblemSpec> {
             // func.set_optimal_value(Some(-3.78e2));
             func
         }), "StyblinskiTang".to_string(), Some(10), 42),
-        ProblemSpec::new(Arc::new(BealeFunction::new()), "Beale".to_string(), Some(2), 42),
+        ProblemSpec::new(Arc::new({
+            let mut func = BealeFunction::new();
+            // func.set_optimal_value(Some(1.5e-2));
+            func
+        }), "Beale".to_string(), Some(2), 42),
         ProblemSpec::new(Arc::new({
             let mut func = LeviFunction::new();
             // func.set_optimal_value(Some(2.84e-1));

@@ -1,3 +1,4 @@
+use super::experiment_runner;
 use super::StatisticalAnalysis;
 use crate::benchmarks::evaluation::{
     is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
@@ -5,6 +6,7 @@ use crate::benchmarks::evaluation::{
 };
 use crate::OptimizationProblem;
 use anyhow::Context;
+use experiment_runner::get_optimizer_family;
 use log::warn;
 use std::collections::HashMap;
 use std::fs;
@@ -256,8 +258,7 @@ This table shows how different optimizer families perform across different probl
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -404,7 +405,7 @@ This table shows how different optimizer families perform across different probl
             let mut family_ranks_this_problem = Vec::new();
             let mut best_rank_this_problem = f64::INFINITY;
             for (rank, (optimizer, _, mean_final, _)) in perf_data.iter().enumerate() {
-                let current_family = super::experiment_runner::get_optimizer_family(optimizer);
+                let current_family = get_optimizer_family(optimizer);
                 let rank_value = (rank + 1) as f64;
                 if current_family == *optimizer_family {
                     all_rankings.push(rank_value);
@@ -556,7 +557,7 @@ This table shows how different optimizer families perform across different probl
 
         if !suspicious_results.is_empty() {
             section.push_str(
-                r#"> ⚠️ **Suspicious/False Convergence Results Detected:**
+                r#"> WARNING: **Suspicious/False Convergence Results Detected:**
 > 
 "#,
             );
@@ -1295,12 +1296,13 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{longtable}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{siunitx}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 \adjustbox{width=\textwidth,center}{
-\begin{longtable}{l*{8}{S[table-format=2.2e-1]}}
+\begin{longtable}{p{2.5cm}p{2.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
 \toprule
 \textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
@@ -1458,8 +1460,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{siunitx}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 "#,
         );
@@ -1469,7 +1472,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \caption{{Performance Results for {} Problem}}
 \label{{tab:{}}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l*{{7}}{{S[table-format=2.2e-1]}}}}
+\begin{{tabular}}{{p{{2.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}}}
 \toprule
 \textbf{{Optimizer}} & \textbf{{Mean Final}} & \textbf{{Std Dev}} & \textbf{{Best}} & \textbf{{Worst}} & \textbf{{Mean Func}} & \textbf{{Success}} & \textbf{{Mean Time}} \\
  & \textbf{{Value}} & & \textbf{{Value}} & \textbf{{Value}} & \textbf{{Evals}} & \textbf{{Rate (\%)}} & \textbf{{(s)}} \\
@@ -1596,14 +1599,16 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{array}
 \usepackage{siunitx}
 \usepackage{multirow}
+\usepackage[table]{xcolor}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 \begin{table}[htbp]
 \centering
 \caption{Summary Statistics by Problem Family}
 \label{tab:summary_statistics}
 \adjustbox{width=\textwidth,center}{
-\begin{tabular}{l*{6}{S[table-format=2.2e-1]}}
+\begin{tabular}{p{2.5cm}p{2.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
 \toprule
 \textbf{Problem Family} & \textbf{Optimizer} & \textbf{Avg Success} & \textbf{Avg Final} & \textbf{Avg Func} & \textbf{Avg Grad} & \textbf{Avg Time} \\
  & & \textbf{Rate (\%)} & \textbf{Value} & \textbf{Evals} & \textbf{Evals} & \textbf{(s)} \\
@@ -1754,21 +1759,24 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{xcolor}
 \usepackage{multirow}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 "#,
         );
+        // Calculate column specification dynamically
+        let col_spec = format!("l{}", "c".repeat(non_qqn_optimizers.len()));
+
         latex_content.push_str(&format!(
             r#"\begin{{table}}[htbp]
 \centering
 \caption{{QQN vs Non-QQN Optimizer Comparison Matrix}}
 \label{{tab:comparison_matrix}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l{}}}
+\begin{{tabular}}{{{col_spec}}}
 \toprule
 \textbf{{QQN Optimizer}} {}\\ 
 \midrule
 "#,
-            "c".repeat(non_qqn_optimizers.len()),
             non_qqn_optimizers
                 .iter()
                 .map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex(opt)))
@@ -1880,7 +1888,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let mut all_families = std::collections::HashSet::new();
         for (_, results) in all_results {
             for result in &results.results {
-                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let family = get_optimizer_family(&result.optimizer_name);
                 all_families.insert(family);
             }
         }
@@ -1898,6 +1906,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         }
         qqn_families.sort();
         non_qqn_families.sort();
+        // Calculate column specification dynamically
+        let col_spec = format!("l{}", "c".repeat(non_qqn_families.len()));
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -1905,6 +1916,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{xcolor}
 \usepackage{multirow}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 "#,
         );
@@ -1914,12 +1926,11 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \caption{{Optimizer Family Comparison Matrix}}
 \label{{tab:family_comparison_matrix}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l{}}}
+\begin{{tabular}}{{{col_spec}}}
 \toprule
 \textbf{{QQN Family}} {}\\ 
 \midrule
 "#,
-            "c".repeat(non_qqn_families.len()),
             non_qqn_families
                 .iter()
                 .map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam)))
@@ -1932,7 +1943,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         for (problem, results) in all_results {
             let problem_name = problem.get_name();
             for result in &results.results {
-                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let family = get_optimizer_family(&result.optimizer_name);
                 problem_family_results
                     .entry(problem_name.to_string())
                     .or_insert_with(HashMap::new)
@@ -2035,8 +2046,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2044,9 +2054,30 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+
+            for result in &results.results {
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+
         if optimizer_families.is_empty() || problem_families.is_empty() {
             return Ok(());
         }
+        // Calculate column specification dynamically
+        let col_spec = format!("l{}", "c".repeat(optimizer_families.len()));
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -2056,6 +2087,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{siunitx}
 \usepackage{adjustbox}
 \usepackage{rotating}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 "#,
         );
@@ -2065,12 +2097,11 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \caption{{Optimizer Family vs Problem Family Performance Matrix}}
 \label{{tab:family_vs_family_matrix}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l{}}}
+\begin{{tabular}}{{{col_spec}}}
 \toprule
 \textbf{{Problem Family}} {}\\ 
 \midrule
 "#,
-            "c".repeat(optimizer_families.len()),
             optimizer_families
                 .iter()
                 .map(|fam| format!(
@@ -2094,23 +2125,14 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             for optimizer_family in &optimizer_families {
                 let cell_data =
                     self.calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-                let cell_content = if optimizer_family == "QQN" {
-                    format!(
-                        "& \\cellcolor{{green!20}}\\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
-                        cell_data.average_ranking,
-                        cell_data.best_rank_average,
-                        Self::escape_latex(&cell_data.best_variant),
-                        Self::escape_latex(&cell_data.worst_variant)
-                    )
-                } else {
-                    format!(
-                        "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
-                        cell_data.average_ranking,
-                        cell_data.best_rank_average,
-                        Self::escape_latex(&cell_data.best_variant),
-                        Self::escape_latex(&cell_data.worst_variant)
-                    )
-                };
+                let cell_content =                     format!(
+                    "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
+                    cell_data.average_ranking,
+                    cell_data.best_rank_average,
+                    Self::escape_latex(&cell_data.best_variant),
+                    Self::escape_latex(&cell_data.worst_variant)
+                )
+                    ;
                 latex_content.push_str(&cell_content);
             }
             latex_content.push_str(" \\\\\n");
@@ -2120,7 +2142,14 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \end{tabular}
 }
 \end{table}
-\textbf{Legend:} Each cell contains four values: Average Ranking (top), Best Rank Average (second), Best Variant (third), Worst Variant (bottom). Lower rankings are better. QQN family cells are highlighted in green.
+\textbf{Legend:} Each cell contains four values arranged vertically:
+\begin{itemize}
+\item \textbf{Top line:} Average Ranking across all problems in the family (lower is better)
+\item \textbf{Second line:} Best Rank Average - average of best ranks achieved (lower is better)
+\item \textbf{Third line:} Best Variant - optimizer that achieved the best average rank
+\item \textbf{Bottom line:} Worst Variant - optimizer that achieved the worst average rank
+\end{itemize}
+QQN family cells are highlighted in green for easy identification.
 \end{document}
 "#,
         );
@@ -2147,7 +2176,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{longtable}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{siunitx}
 \usepackage{amsmath}
 \usepackage{graphicx}
@@ -2155,6 +2184,8 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{adjustbox}
+\usepackage{rotating}
+\usepackage{colortbl}
 \title{Quadratic Quasi-Newton (QQN) Optimizer: Comprehensive Benchmark Results}
 \author{QQN Benchmark Suite}
 \date{\today}
@@ -2171,7 +2202,7 @@ This report presents the results of comprehensive benchmarking experiments compa
         );
         latex_content.push_str(&format!(
             r#"{} independent runs with different random seeds
-\item \textbf{{Success criteria:}} Minimum {:.2e}\\% improvement per iteration OR optimizer-specific convergence within {} iterations or {} objective evaluations
+\item \textbf{{Success criteria:}} Minimum {:.2e}\% improvement per iteration OR optimizer-specific convergence within {} iterations or {} objective evaluations
 \item \textbf{{Time limit:}} {:?} per run
 \item \textbf{{Hardware:}} Standard CPU implementation
 \item \textbf{{Implementation:}} Rust-based optimization framework
@@ -2295,7 +2326,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     ) -> anyhow::Result<String> {
         let mut content = String::from(
             r#"\adjustbox{width=\textwidth,center}{
-\begin{longtable}{l*{8}{S[table-format=2.2e-1]}}
+\begin{longtable}{p{2.5cm}p{2.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
 \toprule
 \textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
@@ -2441,7 +2472,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \caption{Summary Statistics by Problem Family}
 \label{tab:summary_statistics}
 \adjustbox{width=\textwidth,center}{
-\begin{tabular}{l*{6}{S[table-format=2.2e-1]}}
+\begin{tabular}{p{{2.5cm}}p{{2.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}}
 \toprule
 \textbf{Problem Family} & \textbf{Optimizer} & \textbf{Avg Success} & \textbf{Avg Final} & \textbf{Avg Func} & \textbf{Avg Grad} & \textbf{Avg Time} \\
  & & \textbf{Rate (\%)} & \textbf{Value} & \textbf{Evals} & \textbf{Evals} & \textbf{(s)} \\
@@ -2691,7 +2722,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut all_families = std::collections::HashSet::new();
         for (_, results) in all_results {
             for result in &results.results {
-                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let family = get_optimizer_family(&result.optimizer_name);
                 all_families.insert(family);
             }
         }
@@ -2733,7 +2764,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
         for (problem, results) in all_results {
             let problem_name = problem.get_name();
             for result in &results.results {
-                let family = super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let family = get_optimizer_family(&result.optimizer_name);
                 problem_family_results
                     .entry(problem_name.to_string())
                     .or_insert_with(HashMap::new)
@@ -2827,8 +2858,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2874,23 +2904,14 @@ All raw experimental data, convergence plots, and additional analysis files are 
             for optimizer_family in &optimizer_families {
                 let cell_data =
                     self.calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-                let cell_content = if optimizer_family == "QQN" {
-                    format!(
-                        "& \\cellcolor{{green!20}}\\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
-                        cell_data.average_ranking,
-                        cell_data.best_rank_average,
-                        Self::escape_latex(&cell_data.best_variant),
-                        Self::escape_latex(&cell_data.worst_variant)
-                    )
-                } else {
-                    format!(
-                        "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
-                        cell_data.average_ranking,
-                        cell_data.best_rank_average,
-                        Self::escape_latex(&cell_data.best_variant),
-                        Self::escape_latex(&cell_data.worst_variant)
-                    )
-                };
+                let cell_content =                     format!(
+                    "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
+                    cell_data.average_ranking,
+                    cell_data.best_rank_average,
+                    Self::escape_latex(&cell_data.best_variant),
+                    Self::escape_latex(&cell_data.worst_variant)
+                )
+                    ;
                 content.push_str(&cell_content);
             }
             content.push_str(" \\\\\n");
@@ -2900,7 +2921,14 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \end{tabular}
 }
 \end{table}
-\textbf{Legend:} Each cell contains four values: Average Ranking (top), Best Rank Average (second), Best Variant (third), Worst Variant (bottom). Lower rankings are better. QQN family cells are highlighted in green.
+\textbf{Legend:} Each cell contains four values arranged vertically:
+\begin{itemize}
+\item \textbf{Top line:} Average Ranking across all problems in the family (lower is better)
+\item \textbf{Second line:} Best Rank Average - average of best ranks achieved (lower is better)  
+\item \textbf{Third line:} Best Variant - optimizer that achieved the best average rank
+\item \textbf{Bottom line:} Worst Variant - optimizer that achieved the worst average rank
+\end{itemize}
+QQN family cells are highlighted in green for easy identification.
 "#,
         );
         Ok(content)
@@ -2918,8 +2946,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2927,9 +2954,30 @@ All raw experimental data, convergence plots, and additional analysis files are 
         let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
+        let mut all_optimizer_families = std::collections::HashSet::new();
+        let mut all_problem_families = std::collections::HashSet::new();
+
+        for (problem, results) in all_results {
+            let problem_family = get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+
+            for result in &results.results {
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
+        optimizer_families.sort();
+        problem_families.sort();
+
         if optimizer_families.is_empty() || problem_families.is_empty() {
             return Ok(());
         }
+        // Calculate column specification dynamically
+        let col_spec = format!("l{}", "c".repeat(problem_families.len()));
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -2937,6 +2985,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \usepackage{xcolor}
 \usepackage{siunitx}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 "#,
         );
@@ -2946,12 +2995,11 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \caption{{Algorithm Efficiency Matrix: Mean Function Evaluations for Successful Runs}}
 \label{{tab:efficiency_matrix}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l{}}}
+\begin{{tabular}}{{{col_spec}}}
 \toprule
 \textbf{{Optimizer Family}} {}\\ 
 \midrule
 "#,
-            "c".repeat(problem_families.len()),
             problem_families
                 .iter()
                 .map(|fam| format!("& \\textbf{{{}}}", Self::escape_latex(fam)))
@@ -2971,9 +3019,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
                     if get_family(&problem.get_name()) == *problem_family {
                         for result in &results.results {
                             let result_optimizer_family =
-                                super::experiment_runner::get_optimizer_family(
-                                    &result.optimizer_name,
-                                );
+                                get_optimizer_family(&result.optimizer_name);
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
@@ -2993,11 +3039,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
                         .sum::<f64>()
                         / successful_evaluations.len() as f64;
                     let std_dev = variance.sqrt();
-                    if optimizer_family == "QQN" {
-                        format!("\\cellcolor{{green!20}}{:.0} $\\pm$ {:.0}", mean, std_dev)
-                    } else {
-                        format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
-                    }
+                    format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
                 };
                 latex_content.push_str(&format!("& {} ", cell_content));
             }
@@ -3008,7 +3050,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \end{tabular}
 }
 \end{table}
-\textbf{Purpose:} Shows mean function evaluations $\pm$ standard deviation for successful runs only across problem families. Lower values indicate higher efficiency. QQN family cells are highlighted in green.
+\textbf{Purpose:} Shows mean function evaluations $\pm$ standard deviation for successful runs only across problem families. Lower values indicate higher efficiency.
 \end{document}
 "#,
         );
@@ -3045,13 +3087,17 @@ All raw experimental data, convergence plots, and additional analysis files are 
         if optimizers.is_empty() || all_problems.is_empty() {
             return Ok(());
         }
+        // Calculate column specification dynamically
+        let col_spec = format!("l{}", "c".repeat(optimizers.len()));
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{adjustbox}
 \usepackage{rotating}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 "#,
         );
@@ -3061,12 +3107,12 @@ All raw experimental data, convergence plots, and additional analysis files are 
 \caption{{Success Rate Heatmap: Color-coded Success Rates Across All Optimizer-Problem Combinations}}
 \label{{tab:success_rate_heatmap}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l{}}}
+\begin{{tabular}}{{{}}}
 \toprule
 \textbf{{Problem}} {}\\ 
 \midrule
 "#,
-            "c".repeat(optimizers.len()),
+            col_spec,
             optimizers
                 .iter()
                 .map(|opt| format!("& \\rotatebox{{90}}{{\\textbf{{{}}}}}", Self::escape_latex(opt)))
@@ -3193,16 +3239,17 @@ Quickly identifies which optimizers work on which problem types.
             r#"\documentclass{article}
 \usepackage{booktabs}
 \usepackage{array}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{siunitx}
 \usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
 \begin{document}
 \begin{table}[htbp]
 \centering
 \caption{Convergence Speed Analysis: Mean Iterations to Reach Improvement Milestones}
 \label{tab:convergence_speed}
 \adjustbox{width=\textwidth,center}{
-\begin{tabular}{l*{3}{S[table-format=3.1]}}
+\begin{tabular}{p{3cm}p{2cm}p{2cm}p{2cm}}
 \toprule
 \textbf{Optimizer} & \textbf{Mean Iterations} & \textbf{Mean Iterations} & \textbf{Final Convergence} \\
  & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Iteration} \\
@@ -3289,8 +3336,7 @@ Quickly identifies which optimizers work on which problem types.
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    super::experiment_runner::get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -3331,9 +3377,7 @@ Quickly identifies which optimizers work on which problem types.
                     if get_family(&problem.get_name()) == *problem_family {
                         for result in &results.results {
                             let result_optimizer_family =
-                                super::experiment_runner::get_optimizer_family(
-                                    &result.optimizer_name,
-                                );
+                                get_optimizer_family(&result.optimizer_name);
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
@@ -3353,11 +3397,7 @@ Quickly identifies which optimizers work on which problem types.
                         .sum::<f64>()
                         / successful_evaluations.len() as f64;
                     let std_dev = variance.sqrt();
-                    if optimizer_family == "QQN" {
-                        format!("\\cellcolor{{green!20}}{:.0} $\\pm$ {:.0}", mean, std_dev)
-                    } else {
-                        format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
-                    }
+                    format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
                 };
                 content.push_str(&format!("& {} ", cell_content));
             }
@@ -3521,7 +3561,7 @@ Quickly identifies which optimizers work on which problem types.
 \caption{Convergence Speed Analysis: Mean Iterations to Reach Improvement Milestones}
 \label{tab:convergence_speed}
 \adjustbox{width=\textwidth,center}{
-\begin{tabular}{l*{3}{S[table-format=3.1]}}
+\begin{tabular}{lrrr}
 \toprule
 \textbf{Optimizer} & \textbf{Mean Iterations} & \textbf{Mean Iterations} & \textbf{Final Convergence} \\
  & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Iteration} \\
@@ -3598,7 +3638,7 @@ Quickly identifies which optimizers work on which problem types.
 \caption{{Performance Results for {} Problem}}
 \label{{tab:{}}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{l*{{7}}{{S[table-format=2.2e-1]}}}}
+\begin{{tabular}}{{p{{3cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}}}
 \toprule
 \textbf{{Optimizer}} & \textbf{{Mean Final}} & \textbf{{Std Dev}} & \textbf{{Best}} & \textbf{{Worst}} & \textbf{{Mean Func}} & \textbf{{Success}} & \textbf{{Mean Time}} \\
  & \textbf{{Value}} & & \textbf{{Value}} & \textbf{{Value}} & \textbf{{Evals}} & \textbf{{Rate (\%)}} & \textbf{{(s)}} \\
@@ -3711,16 +3751,16 @@ Quickly identifies which optimizers work on which problem types.
 
     /// Escape special LaTeX characters
     fn escape_latex(text: &str) -> String {
-        text.replace("&", "\\&")
+        text.replace("_", "\\_")
+            .replace("&", "\\&")
             .replace("%", "\\%")
             .replace("$", "\\$")
             .replace("#", "\\#")
             .replace("^", "\\textasciicircum{}")
-            .replace("_", "\\_")
             .replace("{", "\\{")
             .replace("}", "\\}")
             .replace("~", "\\textasciitilde{}")
-            .replace("\\", "\\textbackslash{}")
+        // Don't replace backslash as it breaks LaTeX commands
     }
 
     /// Generate detailed reports for each optimizer-problem combination
@@ -3734,7 +3774,7 @@ Quickly identifies which optimizers work on which problem types.
             // Group results by optimizer
             for result in &results.results {
                 let optimizer_key = if use_optimizer_families {
-                    super::experiment_runner::get_optimizer_family(&result.optimizer_name)
+                    get_optimizer_family(&result.optimizer_name)
                 } else {
                     result.optimizer_name.clone()
                 };
@@ -3893,9 +3933,9 @@ Quickly identifies which optimizers work on which problem types.
                 run.gradient_evaluations,
                 run.execution_time.as_secs_f64(),
                 if run.convergence_achieved {
-                    "✓"
+                    "Yes"
                 } else {
-                    "✗"
+                    "No"
                 },
                 convergence_reason
             ));
