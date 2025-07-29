@@ -1,17 +1,17 @@
-use super::experiment_runner;
 use super::StatisticalAnalysis;
 use crate::benchmarks::evaluation::{
     is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
     SingleResult,
 };
+use super::experiment_runner;
 use crate::OptimizationProblem;
 use anyhow::Context;
-use experiment_runner::get_optimizer_family;
 use log::warn;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
+use experiment_runner::get_optimizer_family;
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -258,7 +258,8 @@ This table shows how different optimizer families perform across different probl
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                let optimizer_family =
+                    get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -1292,17 +1293,21 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
             r#"\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{longtable}
-\usepackage[table]{xcolor}
+\usepackage{colortbl}
+\usepackage{xcolor}
 \usepackage{siunitx}
 \usepackage{adjustbox}
-\usepackage[margin=1in]{geometry}
+\usepackage{rotating}
+\usepackage{graphicx}
 \begin{document}
-\adjustbox{width=\textwidth,center}{
-\begin{longtable}{p{2.5cm}p{2.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
+\tiny
+\begin{adjustbox}{width=\textwidth,center}
+\begin{longtable}{p{2cm}p{2cm}p{1.2cm}p{1.2cm}p{1.2cm}p{1.2cm}p{1.2cm}p{1.2cm}p{1.2cm}}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
 \toprule
 \textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
@@ -1433,7 +1438,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         }
         latex_content.push_str(
             r#"\end{longtable}
-}
+\end{adjustbox}
 \end{document}
 "#,
         );
@@ -1457,13 +1462,16 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         let problem_filename = problem_name.replace(" ", "_");
         let mut latex_content = String::from(
             r#"\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{siunitx}
-\usepackage[table]{xcolor}
+\usepackage{colortbl}
+\usepackage{xcolor}
 \usepackage{adjustbox}
-\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
 \begin{document}
+\small
 "#,
         );
         latex_content.push_str(&format!(
@@ -1472,13 +1480,13 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 \caption{{Performance Results for {} Problem}}
 \label{{tab:{}}}
 \adjustbox{{width=\textwidth,center}}{{
-\begin{{tabular}}{{p{{2.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}p{{1.5cm}}}}
+\begin{{tabular}}{{p{{2.5cm}}*{{7}}{{c}}}}
 \toprule
 \textbf{{Optimizer}} & \textbf{{Mean Final}} & \textbf{{Std Dev}} & \textbf{{Best}} & \textbf{{Worst}} & \textbf{{Mean Func}} & \textbf{{Success}} & \textbf{{Mean Time}} \\
  & \textbf{{Value}} & & \textbf{{Value}} & \textbf{{Value}} & \textbf{{Evals}} & \textbf{{Rate (\%)}} & \textbf{{(s)}} \\
 \midrule
 "#,
-            Self::escape_latex(&problem_name),
+            Self::escape_latex_safe(&problem_name),
             problem_filename.to_lowercase()
         ));
         let mut optimizer_stats = HashMap::new();
@@ -1595,20 +1603,23 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
             r#"\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{siunitx}
 \usepackage{multirow}
-\usepackage[table]{xcolor}
+\usepackage{colortbl}
+\usepackage{xcolor}
 \usepackage{adjustbox}
-\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
 \begin{document}
+\small
 \begin{table}[htbp]
 \centering
 \caption{Summary Statistics by Problem Family}
 \label{tab:summary_statistics}
 \adjustbox{width=\textwidth,center}{
-\begin{tabular}{p{2.5cm}p{2.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
+\begin{tabular}{p{2.5cm}p{2.5cm}*{5}{c}}
 \toprule
 \textbf{Problem Family} & \textbf{Optimizer} & \textbf{Avg Success} & \textbf{Avg Final} & \textbf{Avg Func} & \textbf{Avg Grad} & \textbf{Avg Time} \\
  & & \textbf{Rate (\%)} & \textbf{Value} & \textbf{Evals} & \textbf{Evals} & \textbf{(s)} \\
@@ -1754,18 +1765,21 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         non_qqn_optimizers.sort();
         let mut latex_content = String::from(
             r#"\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{colortbl}
 \usepackage{xcolor}
 \usepackage{multirow}
 \usepackage{adjustbox}
-\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
 \begin{document}
+\tiny
 "#,
         );
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(non_qqn_optimizers.len()));
-
+        
         latex_content.push_str(&format!(
             r#"\begin{{table}}[htbp]
 \centering
@@ -1779,7 +1793,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 "#,
             non_qqn_optimizers
                 .iter()
-                .map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex(opt)))
+                .map(|opt| format!("& \\textbf{{{}}}", Self::escape_latex_safe(opt)))
                 .collect::<Vec<_>>()
                 .join(" ")
         ));
@@ -1798,7 +1812,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             }
         }
         for qqn_opt in &qqn_optimizers {
-            latex_content.push_str(&format!("\\textbf{{{}}} ", Self::escape_latex(qqn_opt)));
+            latex_content.push_str(&format!("\\textbf{{{}}} ", Self::escape_latex_safe(qqn_opt)));
             for non_qqn_opt in &non_qqn_optimizers {
                 let mut wins = 0;
                 let mut losses = 0;
@@ -1908,7 +1922,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         non_qqn_families.sort();
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(non_qqn_families.len()));
-
+        
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -2046,7 +2060,8 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                let optimizer_family =
+                    get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2056,28 +2071,28 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         problem_families.sort();
         let mut all_optimizer_families = std::collections::HashSet::new();
         let mut all_problem_families = std::collections::HashSet::new();
-
+        
         for (problem, results) in all_results {
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
-
+            
             for result in &results.results {
                 let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
-
+        
         let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
         let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
-
+        
         if optimizer_families.is_empty() || problem_families.is_empty() {
             return Ok(());
         }
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(optimizer_families.len()));
-
+        
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -2170,13 +2185,14 @@ QQN family cells are highlighted in green for easy identification.
         latex_dir: &Path,
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
-            r#"\documentclass[11pt]{article}
-\usepackage[margin=1in]{geometry}
+            r#"\documentclass[10pt]{article}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{longtable}
-\usepackage[table]{xcolor}
+\usepackage{colortbl}
+\usepackage{xcolor}
 \usepackage{siunitx}
 \usepackage{amsmath}
 \usepackage{graphicx}
@@ -2185,11 +2201,11 @@ QQN family cells are highlighted in green for easy identification.
 \usepackage{subcaption}
 \usepackage{adjustbox}
 \usepackage{rotating}
-\usepackage{colortbl}
 \title{Quadratic Quasi-Newton (QQN) Optimizer: Comprehensive Benchmark Results}
 \author{QQN Benchmark Suite}
 \date{\today}
 \begin{document}
+\small
 \maketitle
 \begin{abstract}
 This document presents comprehensive benchmark results for the Quadratic Quasi-Newton (QQN) optimizer compared against established optimization algorithms. The evaluation covers multiple problem families including convex unimodal, non-convex unimodal, and highly multimodal optimization problems.
@@ -2325,8 +2341,9 @@ All raw experimental data, convergence plots, and additional analysis files are 
         all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<String> {
         let mut content = String::from(
-            r#"\adjustbox{width=\textwidth,center}{
-\begin{longtable}{p{2.5cm}p{2.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.5cm}}
+            r#"\tiny
+\begin{adjustbox}{width=\textwidth,center}
+\begin{longtable}{p{2cm}p{2cm}*{7}{c}}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
 \toprule
 \textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
@@ -2458,6 +2475,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
             }
         }
         content.push_str("\\end{longtable}\n}\n");
+        content.push_str("\\end{adjustbox}\n");
         Ok(content)
     }
     /// Generate summary statistics table content (without document wrapper)
@@ -2858,7 +2876,8 @@ All raw experimental data, convergence plots, and additional analysis files are 
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                let optimizer_family =
+                    get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2946,7 +2965,8 @@ QQN family cells are highlighted in green for easy identification.
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                let optimizer_family =
+                    get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2956,28 +2976,28 @@ QQN family cells are highlighted in green for easy identification.
         problem_families.sort();
         let mut all_optimizer_families = std::collections::HashSet::new();
         let mut all_problem_families = std::collections::HashSet::new();
-
+        
         for (problem, results) in all_results {
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
-
+            
             for result in &results.results {
                 let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
-
+        
         let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
         let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
-
+        
         if optimizer_families.is_empty() || problem_families.is_empty() {
             return Ok(());
         }
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(problem_families.len()));
-
+        
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -3019,7 +3039,9 @@ QQN family cells are highlighted in green for easy identification.
                     if get_family(&problem.get_name()) == *problem_family {
                         for result in &results.results {
                             let result_optimizer_family =
-                                get_optimizer_family(&result.optimizer_name);
+                                get_optimizer_family(
+                                    &result.optimizer_name,
+                                );
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
@@ -3089,7 +3111,7 @@ QQN family cells are highlighted in green for easy identification.
         }
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(optimizers.len()));
-
+        
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -3377,7 +3399,9 @@ Quickly identifies which optimizers work on which problem types.
                     if get_family(&problem.get_name()) == *problem_family {
                         for result in &results.results {
                             let result_optimizer_family =
-                                get_optimizer_family(&result.optimizer_name);
+                                get_optimizer_family(
+                                    &result.optimizer_name,
+                                );
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
@@ -3750,17 +3774,29 @@ Quickly identifies which optimizers work on which problem types.
     }
 
     /// Escape special LaTeX characters
-    fn escape_latex(text: &str) -> String {
+    fn escape_latex_safe(text: &str) -> String {
+        // More conservative escaping to avoid LaTeX compilation errors
         text.replace("_", "\\_")
             .replace("&", "\\&")
             .replace("%", "\\%")
             .replace("$", "\\$")
             .replace("#", "\\#")
-            .replace("^", "\\textasciicircum{}")
+            .replace("^", "\\textasciicircum")
             .replace("{", "\\{")
             .replace("}", "\\}")
-            .replace("~", "\\textasciitilde{}")
-        // Don't replace backslash as it breaks LaTeX commands
+            .replace("~", "\\textasciitilde")
+            .replace("\\", "\\textbackslash")
+            // Remove problematic characters that cause math mode issues
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric() || " ()-.,_".contains(*c))
+            .collect::<String>()
+            .trim()
+            .to_string()
+    }
+    
+    /// Legacy escape function for backward compatibility
+    fn escape_latex(text: &str) -> String {
+        Self::escape_latex_safe(text)
     }
 
     /// Generate detailed reports for each optimizer-problem combination
@@ -3933,9 +3969,9 @@ Quickly identifies which optimizers work on which problem types.
                 run.gradient_evaluations,
                 run.execution_time.as_secs_f64(),
                 if run.convergence_achieved {
-                    "Yes"
+                        "Yes"
                 } else {
-                    "No"
+                        "No"
                 },
                 convergence_reason
             ));
