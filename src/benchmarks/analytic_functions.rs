@@ -111,7 +111,7 @@ impl OptimizationProblem for LeviFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(3.50e-1)
+        Some(2.84e-1)
     }
 }
 
@@ -179,7 +179,7 @@ impl OptimizationProblem for GoldsteinPriceFunction {
         Ok(vec![grad_x1, grad_x2])
     }
     fn optimal_value(&self) -> Option<f64> {
-        Some(1.70e2)
+        Some(8.40e1)
     }
 }
 
@@ -236,7 +236,7 @@ impl OptimizationProblem for StyblinskiTangFunction {
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
             2 => Some(-7.83e1),
-            5 => Some(-1.96e2),
+            5 => Some(-1.95e2),
             10 => Some(-3.78e2),
             _ => None,
         }
@@ -317,7 +317,7 @@ impl OptimizationProblem for MichalewiczFunction {
     fn optimal_value(&self) -> Option<f64> {
         // Approximate known values for small dimensions
         match self.dimension {
-            2 => Some(-7.23e-8),
+            2 => Some(-9.96e-1),
             5 => Some(-2.69e0),
             10 => Some(-6.26e0),
             _ => None,
@@ -409,10 +409,10 @@ impl OptimizationProblem for RosenbrockFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(7.55e-2),
-            5 => Some(3.82e-1),
-            10 => Some(1.74e1),
-            _ => Some(1e-2),
+            2 => Some(8.45e-3),
+            5 => Some(3.98e-1),
+            10 => Some(9.70e0),
+            _ => None,
         }
 
     }
@@ -477,7 +477,7 @@ impl OptimizationProblem for RastriginFunction {
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
             2 => Some(7.96e0),
-            5 => Some(2.09e1),
+            5 => Some(2.04e1),
             10 => Some(4.18e1),
             _ => None,
         }
@@ -771,7 +771,7 @@ impl OptimizationProblem for AckleyFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(2.64e0),
+            2 => Some(3.57e0),
             5 => Some(3.57e0),
             10 => Some(3.57e0),
             _ => None,
@@ -1464,10 +1464,10 @@ impl OptimizationProblem for NoisySphere {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(1.37e0),
-            5 => Some(2.01e0),
-            10 => Some(5.89e0),
-            _ => Some(self.noise_level * 3.0),
+            2 => Some(1.66e0),
+            5 => Some(4.58e0),
+            10 => Some(9.71e0),
+            _ => None,
         }
     }
 }

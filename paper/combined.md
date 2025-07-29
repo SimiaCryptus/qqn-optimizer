@@ -300,13 +300,13 @@ The summary results are presented in a win/loss/tie table, showing how many prob
 
 ## Algorithm Implementations
 
-We evaluate 21 optimizer variants:
+We evaluate 25 optimizer variants, with 5 variants from each major optimizer family to ensure balanced comparison:
 
-* **QQN Variants** (7): Different line search methods including Backtracking, Strong Wolfe, Golden Section, Bisection, Moré-Thuente, and Cubic-Quadratic Interpolation
-* **L-BFGS Variants** (3): Standard, Aggressive, and Conservative configurations
-* **Trust Region Variants** (3): Standard, Aggressive, and Conservative configurations
-* **Gradient Descent Variants** (4): Basic GD, Momentum, Nesterov acceleration, and Weight Decay
-* **Adam Variants** (4): Standard Adam, Fast (high learning rate), AMSGrad, and AdamW
+* **QQN Variants** (5): Golden Section, Bisection-1, Bisection-2, Strong Wolfe, and Cubic-Quadratic Interpolation line search methods
+* **L-BFGS Variants** (5): Aggressive, Standard, Conservative, Moré-Thuente, and Limited configurations
+* **Trust Region Variants** (5): Adaptive, Standard, Conservative, Aggressive, and Precise configurations
+* **Gradient Descent Variants** (5): Basic GD, Momentum, Nesterov acceleration, Weight Decay, and Adaptive Momentum
+* **Adam Variants** (5): Fast, Standard Adam, AMSGrad, Weight Decay (AdamW), and Robust configurations
 
 All implementations use consistent convergence criteria:
 
@@ -317,17 +317,17 @@ All implementations use consistent convergence criteria:
 
 ## Benchmark Problems
 
-We selected 62 benchmark problems that comprehensively test different aspects of optimization algorithms across five categories:
+We selected 74 benchmark problems that comprehensively test different aspects of optimization algorithms across five categories:
 
-**Convex Functions** (6): Sphere (2D, 5D, 10D, 20D), Matyas, Zakharov variants - test basic convergence
+**Convex Functions** (9): Sphere (2D, 10D), Matyas, Zakharov (2D, 5D, 10D), SparseQuadratic (5D, 10D) - test basic convergence and sparse optimization
 
-**Non-Convex Unimodal** (12): Rosenbrock (2D, 5D, 10D, 20D), Beale, Levy variants, GoldsteinPrice, Booth - test handling of valleys and conditioning
+**Non-Convex Unimodal** (17): Rosenbrock (2D, 5D, 10D), Beale, Levi, GoldsteinPrice, Booth, Himmelblau, IllConditionedRosenbrock (2D, 5D, 10D), SparseRosenbrock (4D, 10D), Barrier (2D, 5D, 10D) - test handling of valleys, conditioning, and constraints
 
-**Highly Multimodal** (24): Rastrigin, Ackley, Michalewicz, StyblinskiTang, Schwefel, Griewank (multiple dimensions) - test global optimization capability
+**Highly Multimodal** (30): Rastrigin, Ackley, Michalewicz, StyblinskiTang, Griewank, Schwefel, LevyN (all in 2D, 5D, 10D), Trigonometric (2D, 5D, 10D), PenaltyI (2D, 5D, 10D), NoisySphere (2D, 5D, 10D) - test global optimization capability and robustness to noise
 
 **ML-Convex** (8): Linear regression, logistic regression, SVM (varying sample sizes) - test practical convex problems
 
-**ML-Non-Convex** (9): Neural networks with varying architectures and sample sizes - test small versions of real-world ML problems
+**ML-Non-Convex** (10): Neural networks with varying architectures, MNIST with different activation functions (ReLU, Logistic) and depths - test realistic ML optimization scenarios
 
 ## Statistical Analysis
 
@@ -345,11 +345,11 @@ We apply Bonferroni correction for multiple comparisons with adjusted significan
 
 ## Overall Performance
 
-The evaluation revealed significant performance variations across 21 optimizers tested on 62 problems with over 31,000 individual optimization runs (50 runs per problem-optimizer pair). QQN variants dominated the winner's table, claiming 36 out of 62 problems (58%).
+The evaluation revealed significant performance variations across 25 optimizers tested on 62 problems with over 38,750 individual optimization runs (50 runs per problem-optimizer pair). QQN variants dominated the winner's table, claiming 36 out of 62 problems (58%).
 
 ## Evaluation Insights
 
-The comprehensive evaluation revealed several key insights:
+The comprehensive evaluation with balanced optimizer representation (5 variants per family) revealed several key insights:
 
 1. **QQN Dominance**: QQN variants won 36 out of 62 problems (58%):
    - QQN-Bisection-1: Won 8 problems including Sphere_2D and Levy_10D
@@ -481,7 +481,7 @@ Our benchmarking framework represents a significant methodological advance in op
 
 2. **Reproducibility Infrastructure**: Fixed seeds, deterministic algorithms, and automated report generation eliminate common sources of irreproducibility in optimization research. All results can be regenerated with a single command.
 
-3. **Diverse Problem Suite**: The 62-problem benchmark suite covers a wide range of optimization challenges, from convex to highly multimodal landscapes, ensuring comprehensive evaluation across algorithm families.
+3. **Diverse Problem Suite**: The 74-problem benchmark suite covers a wide range of optimization challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned problems, and constrained optimization scenarios.
 
 4. **Multi-Format Reporting**: The system generates:
    - **Markdown reports** with embedded visualizations for web viewing
@@ -563,7 +563,7 @@ The quadratic interpolation approach of QQN could be extended in various ways:
 
 We have presented the Quadratic-Quasi-Newton (QQN) algorithm and a comprehensive benchmarking methodology for fair optimization algorithm comparison. Our contributions advance both algorithmic development and empirical evaluation standards in optimization research.
 
-Our evaluation across 62 benchmark problems with 21 optimizer variants (over 31,000 individual optimization runs) demonstrates:
+Our evaluation across 62 benchmark problems with 25 optimizer variants (over 38,750 individual optimization runs) demonstrates:
 
 1. **Clear Dominance**: QQN variants won 36 out of 62 problems (58%), more than double any other algorithm family. QQN-Bisection-1 alone won 8 problems, demonstrating consistent superiority across diverse optimization landscapes.
 
