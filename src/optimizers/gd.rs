@@ -100,55 +100,55 @@ use std::time::Instant;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GDConfig {
     /// Learning rate (step size)
-    /// 
+    ///
     /// Controls the size of parameter updates. Higher values lead to faster
     /// convergence but risk overshooting or divergence. Lower values are
     /// more stable but converge slowly.
     pub learning_rate: f64,
-    
+
     /// Momentum coefficient (0.0 = no momentum, 0.9 = high momentum)
-    /// 
+    ///
     /// Accumulates gradients from previous iterations to accelerate convergence
     /// and smooth out oscillations. Higher values provide more acceleration
     /// but can cause overshooting.
     pub momentum: f64,
-    
+
     /// Weight decay (L2 regularization)
-    /// 
+    ///
     /// Adds a penalty term proportional to parameter magnitude, equivalent
     /// to L2 regularization. Helps prevent overfitting by encouraging
     /// smaller parameter values.
     pub weight_decay: f64,
-    
+
     /// Enable Nesterov momentum
-    /// 
+    ///
     /// Uses "look-ahead" gradients for better convergence properties.
     /// Only effective when momentum > 0. Generally provides better
     /// convergence than standard momentum.
     pub nesterov: bool,
-    
+
     /// Maximum gradient norm for clipping (0.0 = no clipping)
-    /// 
+    ///
     /// Clips gradients to this maximum norm to prevent gradient explosion.
     /// Essential for training stability on functions with large gradients
     /// or steep regions.
     pub max_grad_norm: f64,
-    
+
     /// Enable adaptive learning rate based on gradient magnitude
-    /// 
+    ///
     /// Automatically reduces learning rate when gradients are large to
     /// prevent divergence. Uses a sigmoid-like scaling function that
     /// preserves learning rate for moderate gradients.
     pub adaptive_lr: bool,
-    
+
     /// Minimum learning rate when using adaptive scaling
-    /// 
+    ///
     /// Prevents adaptive learning rate from becoming too small, which
     /// could halt optimization progress. Only used when adaptive_lr is true.
     pub min_learning_rate: f64,
-    
+
     /// Enable verbose logging
-    /// 
+    ///
     /// Provides detailed logging of optimization progress including
     /// parameter values, gradients, and internal computations.
     /// Useful for debugging but can impact performance.
@@ -172,13 +172,13 @@ impl Default for GDConfig {
 
 impl GDConfig {
     /// Create a strict configuration with conservative settings for stable convergence.
-    /// 
-    /// **Best for**: 
+    ///
+    /// **Best for**:
     /// - Ill-conditioned problems with high condition numbers
     /// - Functions with large or unstable gradients
     /// - Production environments where stability is critical
     /// - When you need guaranteed convergence over speed
-    /// 
+    ///
     /// **Characteristics**:
     /// - Very small learning rate (0.001) for stability
     /// - No momentum to avoid overshooting
@@ -196,15 +196,15 @@ impl GDConfig {
             verbose: false,
         }
     }
-    
+
     /// Create a lax configuration with aggressive settings for fast convergence.
-    /// 
+    ///
     /// **Best for**:
     /// - Well-conditioned problems with reasonable condition numbers
     /// - Experimentation and hyperparameter tuning
     /// - When convergence speed is prioritized over stability
     /// - Functions with well-behaved gradients
-    /// 
+    ///
     /// **Characteristics**:
     /// - Large learning rate (0.1) for fast progress
     /// - High momentum (0.9) with Nesterov acceleration
@@ -222,21 +222,21 @@ impl GDConfig {
             verbose: false,
         }
     }
-    
+
     /// Create a configuration optimized for the Rosenbrock function and similar challenging landscapes.
-    /// 
+    ///
     /// **Best for**:
     /// - Non-convex optimization problems
     /// - Functions with narrow valleys or ridges (like Rosenbrock)
     /// - Problems with vastly different curvatures in different directions
     /// - Optimization landscapes with saddle points
-    /// 
+    ///
     /// **Characteristics**:
     /// - Moderate learning rate (0.001) to handle steep gradients
     /// - High momentum (0.9) with Nesterov to navigate valleys
     /// - Moderate gradient clipping for stability
     /// - Adaptive learning rate to handle varying gradient magnitudes
-    /// 
+    ///
     /// **Note**: The Rosenbrock function f(x,y) = (1-x)² + 100(y-x²)² is a classic
     /// test case with a narrow curved valley that challenges most optimizers.
     pub fn rosenbrock() -> Self {
@@ -251,20 +251,20 @@ impl GDConfig {
             verbose: false,
         }
     }
-    
+
     /// Create a configuration with verbose logging enabled for debugging.
-    /// 
+    ///
     /// **Best for**:
     /// - Debugging optimization problems
     /// - Understanding optimizer behavior
     /// - Analyzing convergence patterns
     /// - Educational purposes
-    /// 
+    ///
     /// **Characteristics**:
     /// - Based on default configuration for balanced behavior
     /// - Verbose logging enabled for detailed output
     /// - Shows parameter values, gradients, and internal computations
-    /// 
+    ///
     /// **Warning**: Verbose logging can significantly impact performance
     /// and should not be used in production or performance-critical code.
     pub fn debug() -> Self {
@@ -281,27 +281,26 @@ impl GDConfig {
     }
 }
 
-
 /// State information for GD optimization.
 ///
 /// Maintains the internal state of the gradient descent optimizer across
 /// optimization steps. This includes iteration counting and momentum buffers.
 ///
 /// # Serialization Note
-/// 
+///
 /// The momentum buffer is excluded from serialization (`serde(skip)`) because
 /// Tensor objects cannot be easily serialized. When deserializing, the momentum
 /// buffer will be reinitialized on the first optimization step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GDState {
     /// Current iteration number
-    /// 
+    ///
     /// Tracks the number of optimization steps taken. Used for logging,
     /// convergence criteria, and potential learning rate scheduling.
     pub iteration: usize,
-    
+
     /// Momentum buffer (velocity)
-    /// 
+    ///
     /// Stores the accumulated momentum for each parameter tensor.
     /// Only allocated when momentum > 0. The buffer has the same
     /// structure as the parameter tensors.
@@ -311,7 +310,7 @@ pub struct GDState {
 
 impl GDState {
     /// Create a new GD state.
-    /// 
+    ///
     /// Initializes the state with zero iterations and no momentum buffer.
     /// The momentum buffer will be allocated on the first step if momentum > 0.
     pub fn new() -> Self {
@@ -322,7 +321,7 @@ impl GDState {
     }
 
     /// Reset the GD state to initial conditions.
-    /// 
+    ///
     /// Clears the iteration counter and momentum buffer, effectively
     /// restarting the optimization from scratch. Useful for multiple
     /// optimization runs or when changing problem parameters.
@@ -332,7 +331,7 @@ impl GDState {
     }
 
     /// Get the current iteration number.
-    /// 
+    ///
     /// Returns the number of optimization steps completed. This can be
     /// used for convergence analysis or learning rate scheduling.
     pub fn iteration(&self) -> usize {
@@ -349,7 +348,7 @@ impl GDState {
 /// # Algorithm Details
 ///
 /// The optimizer implements the following update sequence:
-/// 
+///
 /// 1. **Gradient Computation**: Compute ∇f(θ_t) using the provided function
 /// 2. **Weight Decay**: Add L2 regularization term: `grad += weight_decay * param`
 /// 3. **Gradient Clipping**: Clip gradients if norm exceeds `max_grad_norm`
@@ -373,14 +372,14 @@ pub struct GDOptimizer {
     config: GDConfig,
     state: GDState,
     /// Stagnation multiplier for relaxed convergence criteria
-    /// 
+    ///
     /// Used to relax convergence criteria when the optimizer appears
     /// to be making slow progress. Higher values make convergence
     /// detection more lenient.
     stagnation_multiplier: f64,
-    
+
     /// Stagnation count threshold
-    /// 
+    ///
     /// Number of consecutive steps with minimal progress before
     /// applying stagnation-based convergence relaxation.
     stagnation_count: usize,
@@ -959,7 +958,7 @@ mod tests {
             learning_rate: 0.1,
             momentum: 0.9,
             max_grad_norm: 10.0, // Allow larger gradients for faster convergence
-            adaptive_lr: false, // Disable adaptive LR for predictable behavior
+            adaptive_lr: false,  // Disable adaptive LR for predictable behavior
             ..Default::default()
         };
         let mut optimizer = GDOptimizer::new(config);

@@ -1,8 +1,8 @@
+use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
+use crate::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 use log::{info, warn};
 use std::fs;
 use std::sync::Arc;
-use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
-use crate::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 
 /// Manages plot generation with error handling
 pub struct PlottingManager {
@@ -20,8 +20,7 @@ impl PlottingManager {
             enable_grid: true,
             ..Default::default()
         };
-        let plotting_engine = PlottingEngine::new(output_dir.clone())
-            .with_config(config);
+        let plotting_engine = PlottingEngine::new(output_dir.clone()).with_config(config);
         Self {
             output_dir,
             plotting_engine,
@@ -34,8 +33,10 @@ impl PlottingManager {
         all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)?;
-        info!("Generating plots for {} benchmark results", all_results.len());
-
+        info!(
+            "Generating plots for {} benchmark results",
+            all_results.len()
+        );
 
         // Generate convergence plots for each problem
         for (problem, results) in all_results {
@@ -62,19 +63,28 @@ impl PlottingManager {
                 .collect();
 
             if !traces.is_empty() {
-                info!("Generating plots for {} with {} optimizers", problem_name, traces.len());
+                info!(
+                    "Generating plots for {} with {} optimizers",
+                    problem_name,
+                    traces.len()
+                );
 
                 let filename = format!("convergence_{}", problem_name.replace(" ", "_"));
                 self.generate_plot_with_fallback(
                     || self.plotting_engine.convergence_plot(&traces, &filename),
                     &format!("convergence plot for {}", problem_name),
-                ).await;
+                )
+                .await;
 
                 if self.enable_enhanced_plots {
                     self.generate_plot_with_fallback(
-                        || self.plotting_engine.log_convergence_plot(&traces, &format!("{}_log", filename)),
+                        || {
+                            self.plotting_engine
+                                .log_convergence_plot(&traces, &format!("{}_log", filename))
+                        },
                         &format!("log convergence plot for {}", problem_name),
-                    ).await;
+                    )
+                    .await;
                 }
             }
             tokio::task::yield_now().await;
@@ -86,14 +96,22 @@ impl PlottingManager {
                 info!("Generating performance comparison plots");
 
                 self.generate_plot_with_fallback(
-                    || self.plotting_engine.performance_comparison(first_results, "performance_comparison"),
+                    || {
+                        self.plotting_engine
+                            .performance_comparison(first_results, "performance_comparison")
+                    },
                     "performance comparison plot",
-                ).await;
+                )
+                .await;
 
                 self.generate_plot_with_fallback(
-                    || self.plotting_engine.performance_boxplot(first_results, "performance_distribution"),
+                    || {
+                        self.plotting_engine
+                            .performance_boxplot(first_results, "performance_distribution")
+                    },
                     "performance boxplot",
-                ).await;
+                )
+                .await;
             }
         }
 

@@ -1,19 +1,19 @@
-use std::cmp::max;
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::optimizers::optimizer::Optimizer;
 use crate::utils::math::DifferentiableFunction;
+use candle_core::Result as CandleResult;
 use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use statrs::statistics::Statistics;
+use std::cmp::max;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
-use candle_core::{Result as CandleResult};
-use statrs::statistics::Statistics;
-use std::sync::atomic::AtomicBool;
 /// Global flag to disable optimal value thresholds for all problems
 static NO_THRESHOLD_MODE: AtomicBool = AtomicBool::new(false);
 /// Enable "no threshold" mode where all problems have -inf optimal values
@@ -140,7 +140,9 @@ impl OptimizationTrace {
         if self.iterations.is_empty() {
             None
         } else {
-            Some(Statistics::min(self.iterations.iter().map(|data| data.function_value)))
+            Some(Statistics::min(
+                self.iterations.iter().map(|data| data.function_value),
+            ))
         }
     }
 
@@ -398,14 +400,27 @@ impl BenchmarkRunner {
                     ConvergenceReason::GradientTolerance | ConvergenceReason::FunctionTolerance
                 ),
                 reason,
-                trace.iterations.iter().map(|iter| iter.function_value).fold(f64::INFINITY, f64::min),
+                trace
+                    .iterations
+                    .iter()
+                    .map(|iter| iter.function_value)
+                    .fold(f64::INFINITY, f64::min),
             ),
             Ok(Err(_)) => (false, ConvergenceReason::NumericalError, f64::INFINITY),
-            Err(_) => (false, ConvergenceReason::TimeLimit, trace.iterations.iter().map(|iter| iter.function_value).fold(f64::INFINITY, f64::min)),
+            Err(_) => (
+                false,
+                ConvergenceReason::TimeLimit,
+                trace
+                    .iterations
+                    .iter()
+                    .map(|iter| iter.function_value)
+                    .fold(f64::INFINITY, f64::min),
+            ),
         };
 
         // Final evaluation
-        let final_value = problem.problem
+        let final_value = problem
+            .problem
             .evaluate_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         if !final_value.is_finite() {
@@ -414,7 +429,8 @@ impl BenchmarkRunner {
                 final_value
             )));
         }
-        let final_gradient = problem.problem
+        let final_gradient = problem
+            .problem
             .gradient_f64(&x)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
@@ -449,7 +465,10 @@ impl BenchmarkRunner {
             },
         };
         if iteration == 0 {
-            warn!("No iterations performed, convergence reason: {:?}",convergence_reason);
+            warn!(
+                "No iterations performed, convergence reason: {:?}",
+                convergence_reason
+            );
             Err(BenchmarkError::ProblemError(
                 "No iterations performed, likely due to initial evaluation failure".to_string(),
             ))
@@ -459,7 +478,11 @@ impl BenchmarkRunner {
                 optimizer_name: opt_name.clone(),
                 run_id,
                 final_value,
-                best_value: if best_value.is_finite() { best_value } else { final_value },
+                best_value: if best_value.is_finite() {
+                    best_value
+                } else {
+                    final_value
+                },
                 final_gradient_norm,
                 iterations: iteration,
                 function_evaluations: trace.total_function_evaluations,
@@ -495,7 +518,8 @@ impl BenchmarkRunner {
             Ok(val) => val,
             Err(e) => {
                 return Err(BenchmarkError::ProblemError(format!(
-                    "Initial function evaluation failed: {}", e
+                    "Initial function evaluation failed: {}",
+                    e
                 )));
             }
         };
@@ -504,7 +528,8 @@ impl BenchmarkRunner {
             Ok(grad) => grad,
             Err(e) => {
                 return Err(BenchmarkError::ProblemError(format!(
-                    "Initial gradient evaluation failed: {}", e
+                    "Initial gradient evaluation failed: {}",
+                    e
                 )));
             }
         };
@@ -523,10 +548,11 @@ impl BenchmarkRunner {
         );
         best_f_val = initial_f_val;
 
-
         while *iteration < self.config.max_iterations {
             // Check if we've exceeded maximum function calls
-            if max(*function_evaluations, *gradient_evaluations) >= self.config.maximum_function_calls {
+            if max(*function_evaluations, *gradient_evaluations)
+                >= self.config.maximum_function_calls
+            {
                 info!(
                     "Maximum function evaluations reached: {}",
                     self.config.maximum_function_calls
@@ -637,18 +663,18 @@ impl BenchmarkRunner {
                 if let Some(optimal_value) = problem.problem.optimal_value() {
                     if f_val < optimal_value {
                         info!("Converged by function tolerance at iteration {}", iteration);
-                       // Record final iteration data before returning
-                       trace.check_convergence_with_optimizer(
-                           *iteration,
-                           f_val,
-                           optimizer,
-                           input_floats,
-                           &gradient,
-                           0.0,
-                           start_time.elapsed(),
-                           *function_evaluations,
-                           *gradient_evaluations,
-                       );
+                        // Record final iteration data before returning
+                        trace.check_convergence_with_optimizer(
+                            *iteration,
+                            f_val,
+                            optimizer,
+                            input_floats,
+                            &gradient,
+                            0.0,
+                            start_time.elapsed(),
+                            *function_evaluations,
+                            *gradient_evaluations,
+                        );
                         return Ok(ConvergenceReason::FunctionTolerance);
                     }
                 }
@@ -670,23 +696,24 @@ impl BenchmarkRunner {
             *function_evaluations += problem_wrapper.get_function_evaluations() - func_evals_before;
             *gradient_evaluations += problem_wrapper.get_gradient_evaluations() - grad_evals_before;
             // Check again after step in case the optimizer made multiple function calls
-            if (*function_evaluations + *gradient_evaluations) >= self.config.maximum_function_calls {
+            if (*function_evaluations + *gradient_evaluations) >= self.config.maximum_function_calls
+            {
                 info!(
                     "Maximum evaluations reached after step: {}",
                     self.config.maximum_function_calls
                 );
-               // Record final iteration data before returning
-               trace.check_convergence_with_optimizer(
-                   *iteration,
-                   f_val,
-                   optimizer,
-                   input_floats,
-                   &gradient,
-                   step_result.step_size,
-                   start_time.elapsed(),
-                   *function_evaluations,
-                   *gradient_evaluations,
-               );
+                // Record final iteration data before returning
+                trace.check_convergence_with_optimizer(
+                    *iteration,
+                    f_val,
+                    optimizer,
+                    input_floats,
+                    &gradient,
+                    step_result.step_size,
+                    start_time.elapsed(),
+                    *function_evaluations,
+                    *gradient_evaluations,
+                );
                 return Ok(ConvergenceReason::MaxFunctionEvaluations);
             }
 
@@ -697,18 +724,18 @@ impl BenchmarkRunner {
                     "Converged by optimizer at iteration {}: step_size={:.6e}",
                     iteration, step_result.step_size
                 );
-               // Record final iteration data before returning
-               trace.check_convergence_with_optimizer(
-                   *iteration - 1, // Use previous iteration number since we already incremented
-                   f_val,
-                   optimizer,
-                   input_floats,
-                   &gradient,
-                   step_result.step_size,
-                   start_time.elapsed(),
-                   *function_evaluations,
-                   *gradient_evaluations,
-               );
+                // Record final iteration data before returning
+                trace.check_convergence_with_optimizer(
+                    *iteration - 1, // Use previous iteration number since we already incremented
+                    f_val,
+                    optimizer,
+                    input_floats,
+                    &gradient,
+                    step_result.step_size,
+                    start_time.elapsed(),
+                    *function_evaluations,
+                    *gradient_evaluations,
+                );
                 return Ok(ConvergenceReason::GradientTolerance);
             }
 
@@ -737,18 +764,18 @@ impl BenchmarkRunner {
                 }
             }
 
-           // Record iteration data only after successful step
-           trace.check_convergence_with_optimizer(
-               *iteration - 1, // Use previous iteration number since we already incremented
-               f_val,
-               optimizer,
-               input_floats,
-               &gradient,
-               step_result.step_size,
-               start_time.elapsed(),
-               *function_evaluations,
-               *gradient_evaluations,
-           );
+            // Record iteration data only after successful step
+            trace.check_convergence_with_optimizer(
+                *iteration - 1, // Use previous iteration number since we already incremented
+                f_val,
+                optimizer,
+                input_floats,
+                &gradient,
+                step_result.step_size,
+                start_time.elapsed(),
+                *function_evaluations,
+                *gradient_evaluations,
+            );
 
             // Check for numerical errors
             if input_floats.iter().any(|&xi| !xi.is_finite()) {
@@ -760,7 +787,6 @@ impl BenchmarkRunner {
 
         Ok(ConvergenceReason::MaxIterations)
     }
-
 }
 
 fn create_1d_tensor(values: &[f64], device: &Device) -> CandleResult<Tensor> {
@@ -806,7 +832,8 @@ impl DifferentiableFunction for ProblemWrapper {
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         self.gradient_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
-        let grad_vec = self.problem
+        let grad_vec = self
+            .problem
             .gradient_f64(&x_vec)
             .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
         let device = &Device::Cpu;
@@ -925,12 +952,7 @@ mod tests {
         let runner = BenchmarkRunner::new(config);
 
         let sphere_function = Arc::new(SphereFunction::new(2));
-        let problem_spec = ProblemSpec::new(
-            sphere_function,
-            "sphere".to_string(),
-            Some(2),
-            42,
-        );
+        let problem_spec = ProblemSpec::new(sphere_function, "sphere".to_string(), Some(2), 42);
         let problems: Vec<Box<ProblemSpec>> = vec![Box::new(problem_spec)];
 
         // Use a more conservative L-BFGS configuration for testing
@@ -1061,6 +1083,8 @@ impl ProblemSpec {
         self
     }
     pub fn get_name(&self) -> String {
-        self.name.clone().unwrap_or_else(|| self.problem.name().to_string())
+        self.name
+            .clone()
+            .unwrap_or_else(|| self.problem.name().to_string())
     }
 }

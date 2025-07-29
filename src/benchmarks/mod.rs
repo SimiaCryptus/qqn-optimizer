@@ -6,11 +6,11 @@
 //! - Benchmark execution framework
 //! - Performance evaluation metrics
 
+pub mod analytic_functions;
 pub mod evaluation;
 pub mod functions;
 pub mod ml_problems;
 pub mod mnist;
-pub mod analytic_functions;
 // Re-export commonly used types
 
 pub use analytic_functions::AckleyFunction;

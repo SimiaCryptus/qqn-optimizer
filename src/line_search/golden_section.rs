@@ -1,7 +1,7 @@
-use anyhow::anyhow;
-use log::debug;
 use crate::line_search::line_search::OneDimensionalProblem;
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
+use anyhow::anyhow;
+use log::debug;
 
 /// Configuration for Golden Section line search algorithm.
 ///
@@ -92,7 +92,6 @@ impl GoldenSectionConfig {
     }
 }
 
-
 /// Golden Section line search implementation.
 ///
 /// This algorithm finds the minimum of a unimodal function along a given direction using
@@ -125,10 +124,7 @@ pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
 }
 impl LineSearch for GoldenSectionLineSearch {
-    fn optimize_1d(
-        &mut self,
-        problem: &OneDimensionalProblem,
-    ) -> anyhow::Result<LineSearchResult> {
+    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
@@ -206,7 +202,7 @@ impl GoldenSectionLineSearch {
     }
     /// Golden ratio constant
     const RESPHI: f64 = 0.618033988749895; // 1/phi = phi - 1
-    
+
     /// Find minimum using golden section search.
     ///
     /// This is the core algorithm that performs the golden section search within
@@ -254,7 +250,7 @@ impl GoldenSectionLineSearch {
         self.log_verbose(&format!("Golden section completed with x={:.3e}", final_x));
         Ok(final_x)
     }
-    
+
     /// Find a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c).
     ///
     /// This is often the most expensive part of the golden section search, as it may
@@ -305,7 +301,6 @@ impl GoldenSectionLineSearch {
             f_c = (problem.objective)(c)?;
         }
 
-
         // At this point, we should have f_c > f_b
         // We need to ensure f_b < f_a as well
         if f_b >= f_a {
@@ -328,15 +323,14 @@ impl GoldenSectionLineSearch {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::init_logging;
-    use approx::assert_abs_diff_eq;
-    use std::sync::Arc;
     use crate::line_search::line_search::create_1d_problem_linear;
     use crate::line_search::TerminationReason;
+    use approx::assert_abs_diff_eq;
+    use std::sync::Arc;
 
     fn quadratic_function(x: &[f64]) -> anyhow::Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
@@ -396,7 +390,7 @@ mod tests {
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
         )
-            .unwrap();
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -418,13 +412,15 @@ mod tests {
             &direction,
             Arc::new(rosenbrock_function),
             Arc::new(rosenbrock_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
         // Verify that the step actually reduces the function value
         let f_initial = rosenbrock_function(&current_point).unwrap();
-        let new_point: Vec<f64> = current_point.iter()
+        let new_point: Vec<f64> = current_point
+            .iter()
             .zip(direction.iter())
             .map(|(x, d)| x + result.step_size * d)
             .collect();
@@ -447,7 +443,8 @@ mod tests {
             &direction,
             Arc::new(quartic_function),
             Arc::new(quartic_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -468,7 +465,8 @@ mod tests {
             &direction,
             Arc::new(exponential_function),
             Arc::new(exponential_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -488,15 +486,18 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
-        assert!(result.success || (result.termination_reason == TerminationReason::StepSizeTooSmall));
+        assert!(
+            result.success || (result.termination_reason == TerminationReason::StepSizeTooSmall)
+        );
     }
     #[test]
     fn test_golden_section_max_iterations() {
         let mut line_search = GoldenSectionLineSearch::new(GoldenSectionConfig {
             max_iterations: 5, // Very low to force early termination
-            tolerance: 1e-12, // Very tight tolerance
+            tolerance: 1e-12,  // Very tight tolerance
             verbose: false,
             ..GoldenSectionConfig::default()
         });
@@ -507,7 +508,8 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         // Should still succeed even with limited iterations
         assert!(result.step_size > 0.0);
@@ -577,7 +579,8 @@ mod tests {
             &direction,
             Arc::new(quartic_function),
             Arc::new(quartic_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         // This should test the bracket finding logic
         let (a, b, c) = line_search.find_bracket(&problem).unwrap();
         assert!(a < b);
@@ -601,9 +604,8 @@ mod tests {
             // Very small quadratic term to ensure some improvement is possible
             Ok(1.0 + 1e-15 * x[0] * x[0])
         };
-        let nearly_flat_gradient = |x: &[f64]| -> anyhow::Result<Vec<f64>> {
-            Ok(vec![2e-15 * x[0]])
-        };
+        let nearly_flat_gradient =
+            |x: &[f64]| -> anyhow::Result<Vec<f64>> { Ok(vec![2e-15 * x[0]]) };
         let current_point = vec![0.0];
         let direction = vec![-1.0];
 
@@ -623,7 +625,10 @@ mod tests {
                 assert!(res.step_size > 0.0);
             } else {
                 // Should fail gracefully due to ill-conditioning
-                assert!(line_search_result.unwrap_err().to_string().contains("ill-conditioned"));
+                assert!(line_search_result
+                    .unwrap_err()
+                    .to_string()
+                    .contains("ill-conditioned"));
             }
         }
 
@@ -640,6 +645,9 @@ mod tests {
 
         // This should fail because directional derivative is exactly zero
         assert!(zero_grad_result.is_err());
-        assert!(zero_grad_result.unwrap_err().to_string().contains("descent direction"));
+        assert!(zero_grad_result
+            .unwrap_err()
+            .to_string()
+            .contains("descent direction"));
     }
 }

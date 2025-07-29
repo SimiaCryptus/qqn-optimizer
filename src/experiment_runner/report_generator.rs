@@ -1,17 +1,17 @@
-use super::StatisticalAnalysis;
+use super::experiment_runner;
+use super::{ExperimentRunner, StatisticalAnalysis};
 use crate::benchmarks::evaluation::{
     is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
     SingleResult,
 };
-use super::experiment_runner;
 use crate::OptimizationProblem;
 use anyhow::Context;
+use experiment_runner::get_optimizer_family;
 use log::warn;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use experiment_runner::get_optimizer_family;
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -81,17 +81,29 @@ impl ReportGenerator {
         println!("Generating report in directory: {}", self.output_dir);
 
         // Generate detailed optimizer-problem reports first
-        Self::generate_detailed_reports(&self.output_dir, all_results, use_optimizer_families)
-            .await?;
+        Self::generate_detailed_reports(
+            &self.output_dir,
+            all_results,
+            use_optimizer_families,
+            self,
+        )
+        .await?;
 
         let mut html_content = Self::generate_header();
         html_content.push_str(&Self::generate_winner_summary_table(all_results));
 
         for (problem, results) in all_results {
-            html_content.push_str(&Self::generate_problem_section(problem, results, &self.output_dir)?);
+            html_content.push_str(&Self::generate_problem_section(
+                problem,
+                results,
+                &self.output_dir,
+            )?);
         }
         // Add optimizer family vs problem family comparison
-        html_content.push_str(&Self::generate_family_vs_family_comparison_table(all_results)?);
+        html_content.push_str(&Self::generate_family_vs_family_comparison_table(
+            all_results,
+            self,
+        )?);
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(
@@ -113,22 +125,26 @@ impl ReportGenerator {
 
         Self::generate_csv_exports(&self.output_dir, all_results)?;
         // Generate LaTeX tables
-        Self::generate_latex_tables(&self.output_dir, &self.statistical_analysis, all_results, self).await?;
+        Self::generate_latex_tables(
+            &self.output_dir,
+            &self.statistical_analysis,
+            all_results,
+            self,
+        )
+        .await?;
         // Generate comprehensive LaTeX document
         Self::generate_comprehensive_latex_document(
             &self.config,
             &self.statistical_analysis,
             all_results,
             &Path::new(&self.output_dir).join("latex"),
-            self
+            self,
         )?;
 
         Ok(())
     }
 
-    fn generate_winner_summary_table(
-        all_results: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> String {
+    fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)]) -> String {
         let mut summary = String::from(
             r#"## Quick Summary: Winners by Problem
 <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
@@ -242,6 +258,7 @@ impl ReportGenerator {
     }
     fn generate_family_vs_family_comparison_table(
         all_results: &[(&ProblemSpec, BenchmarkResults)],
+        slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
         let mut content = String::from(
             r#"## Optimizer Family vs Problem Family Performance Matrix
@@ -259,8 +276,7 @@ This table shows how different optimizer families perform across different probl
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -930,7 +946,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             }
         }
         // Count QQN wins
-        for (problem, results) in all_results {
+        for (_problem, results) in all_results {
             total_problems += 1;
             let mut best_optimizer = String::new();
             let mut best_value = f64::INFINITY;
@@ -1272,12 +1288,16 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         // Generate summary statistics table
         Self::generate_summary_statistics_latex_table(all_results, &latex_dir, slf)?;
         // Generate comparison matrix table
-        Self::generate_comparison_matrix_latex_table(statistical_analysis, all_results, &latex_dir)?;
+        Self::generate_comparison_matrix_latex_table(
+            statistical_analysis,
+            all_results,
+            &latex_dir,
+            slf,
+        )?;
         // Generate family comparison matrix table
         Self::generate_family_comparison_matrix_latex_table(slf, all_results, &latex_dir)?;
         // Generate family vs family comparison matrix table
-        Self::generate_family_vs_family_latex_table(all_results, &latex_dir, slf)
-            .await?;
+        Self::generate_family_vs_family_latex_table(all_results, &latex_dir, slf).await?;
         // Generate efficiency matrix table
         Self::generate_efficiency_matrix_latex_table(all_results, &latex_dir)?;
         // Generate success rate heatmap table
@@ -1741,6 +1761,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
+        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         // Collect all optimizers
         let mut all_optimizers = std::collections::HashSet::new();
@@ -1779,7 +1800,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         );
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(non_qqn_optimizers.len()));
-        
+
         latex_content.push_str(&format!(
             r#"\begin{{table}}[htbp]
 \centering
@@ -1812,7 +1833,10 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             }
         }
         for qqn_opt in &qqn_optimizers {
-            latex_content.push_str(&format!("\\textbf{{{}}} ", Self::escape_latex_safe(qqn_opt)));
+            latex_content.push_str(&format!(
+                "\\textbf{{{}}} ",
+                Self::escape_latex_safe(qqn_opt)
+            ));
             for non_qqn_opt in &non_qqn_optimizers {
                 let mut wins = 0;
                 let mut losses = 0;
@@ -1922,7 +1946,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         non_qqn_families.sort();
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(non_qqn_families.len()));
-        
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -2060,8 +2084,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2071,28 +2094,28 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         problem_families.sort();
         let mut all_optimizer_families = std::collections::HashSet::new();
         let mut all_problem_families = std::collections::HashSet::new();
-        
+
         for (problem, results) in all_results {
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
-            
+
             for result in &results.results {
                 let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
-        
+
         let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
         let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
-        
+
         if optimizer_families.is_empty() || problem_families.is_empty() {
             return Ok(());
         }
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(optimizer_families.len()));
-        
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -2243,49 +2266,68 @@ The following sections present detailed performance comparisons across all teste
 "#,
         );
         // Include summary statistics table content
-        latex_content.push_str(&Self::generate_summary_statistics_table_content(all_results)?);
+        latex_content.push_str(&Self::generate_summary_statistics_table_content(
+            all_results,
+        )?);
         latex_content.push_str(
             r#"
 \subsection{QQN vs Non-QQN Comparison Matrix}
 "#,
         );
         // Include comparison matrix content
-        latex_content.push_str(&Self::generate_comparison_matrix_table_content(statistical_analysis, all_results, slf)?);
+        latex_content.push_str(&Self::generate_comparison_matrix_table_content(
+            statistical_analysis,
+            all_results,
+            slf,
+        )?);
         latex_content.push_str(
             r#"
 \subsection{Optimizer Family Comparison Matrix}
 "#,
         );
         // Include family comparison matrix content
-        latex_content.push_str(&Self::generate_family_comparison_matrix_table_content(statistical_analysis, all_results, )?);
+        latex_content.push_str(&Self::generate_family_comparison_matrix_table_content(
+            statistical_analysis,
+            all_results,
+            slf,
+        )?);
         latex_content.push_str(
             r#"
 \subsection{Optimizer Family vs Problem Family Performance Matrix}
 "#,
         );
         // Include family vs family comparison matrix content
-        latex_content.push_str(&Self::generate_family_vs_family_table_content(all_results)?);
+        latex_content.push_str(&Self::generate_family_vs_family_table_content(
+            all_results,
+            slf,
+        )?);
         latex_content.push_str(
             r#"
 \subsection{Algorithm Efficiency Matrix}
 "#,
         );
         // Include efficiency matrix content
-        latex_content.push_str(&Self::generate_efficiency_matrix_table_content(all_results)?);
+        latex_content.push_str(&Self::generate_efficiency_matrix_table_content(
+            all_results,
+        )?);
         latex_content.push_str(
             r#"
 \subsection{Success Rate Heatmap}
 "#,
         );
         // Include success rate heatmap content
-        latex_content.push_str(&Self::generate_success_rate_heatmap_table_content(all_results)?);
+        latex_content.push_str(&Self::generate_success_rate_heatmap_table_content(
+            all_results,
+        )?);
         latex_content.push_str(
             r#"
 \subsection{Convergence Speed Analysis}
 "#,
         );
         // Include convergence speed analysis content
-        latex_content.push_str(&Self::generate_convergence_speed_table_content(all_results)?);
+        latex_content.push_str(&Self::generate_convergence_speed_table_content(
+            all_results,
+        )?);
 
         latex_content.push_str(
             r#"
@@ -2736,6 +2778,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     fn generate_family_comparison_matrix_table_content(
         statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
+        slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
         // Collect all optimizer families
         let mut all_families = std::collections::HashSet::new();
@@ -2868,6 +2911,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate family vs family table content (without document wrapper)
     fn generate_family_vs_family_table_content(
         all_results: &[(&ProblemSpec, BenchmarkResults)],
+        slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
         // Collect all optimizer families and problem families
         let mut all_optimizer_families = std::collections::HashSet::new();
@@ -2876,8 +2920,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2922,7 +2965,7 @@ All raw experimental data, convergence plots, and additional analysis files are 
                 .collect();
             for optimizer_family in &optimizer_families {
                 let cell_data =
-                    self.calculate_family_performance_data(&problems_in_family, optimizer_family)?;
+                    Self::calculate_family_performance_data(&problems_in_family, optimizer_family)?;
                 let cell_content =                     format!(
                     "& \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} \\\\ {:.1} \\\\ \\tiny{{{}}} \\\\ \\tiny{{{}}} \\end{{tabular}}",
                     cell_data.average_ranking,
@@ -2964,8 +3007,7 @@ QQN family cells are highlighted in green for easy identification.
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
             for result in &results.results {
-                let optimizer_family =
-                    get_optimizer_family(&result.optimizer_name);
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
@@ -2975,28 +3017,28 @@ QQN family cells are highlighted in green for easy identification.
         problem_families.sort();
         let mut all_optimizer_families = std::collections::HashSet::new();
         let mut all_problem_families = std::collections::HashSet::new();
-        
+
         for (problem, results) in all_results {
             let problem_family = get_family(&problem.get_name());
             all_problem_families.insert(problem_family);
-            
+
             for result in &results.results {
                 let optimizer_family = get_optimizer_family(&result.optimizer_name);
                 all_optimizer_families.insert(optimizer_family);
             }
         }
-        
+
         let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
         let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
-        
+
         if optimizer_families.is_empty() || problem_families.is_empty() {
             return Ok(());
         }
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(problem_families.len()));
-        
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -3038,9 +3080,7 @@ QQN family cells are highlighted in green for easy identification.
                     if get_family(&problem.get_name()) == *problem_family {
                         for result in &results.results {
                             let result_optimizer_family =
-                                get_optimizer_family(
-                                    &result.optimizer_name,
-                                );
+                                get_optimizer_family(&result.optimizer_name);
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
@@ -3109,7 +3149,7 @@ QQN family cells are highlighted in green for easy identification.
         }
         // Calculate column specification dynamically
         let col_spec = format!("l{}", "c".repeat(optimizers.len()));
-        
+
         let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
@@ -3396,9 +3436,7 @@ Quickly identifies which optimizers work on which problem types.
                     if get_family(&problem.get_name()) == *problem_family {
                         for result in &results.results {
                             let result_optimizer_family =
-                                get_optimizer_family(
-                                    &result.optimizer_name,
-                                );
+                                get_optimizer_family(&result.optimizer_name);
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
@@ -3787,7 +3825,7 @@ Quickly identifies which optimizers work on which problem types.
             .trim()
             .to_string()
     }
-    
+
     /// Legacy escape function for backward compatibility
     fn escape_latex(text: &str) -> String {
         Self::escape_latex_safe(text)
@@ -3798,6 +3836,7 @@ Quickly identifies which optimizers work on which problem types.
         output_dir: &str,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         use_optimizer_families: bool,
+        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         for (problem, results) in all_results {
             let mut optimizer_results = std::collections::HashMap::new();
@@ -3819,6 +3858,7 @@ Quickly identifies which optimizers work on which problem types.
                     problem.problem.as_ref(),
                     &optimizer_name,
                     &optimizer_runs,
+                    slf,
                 )
                 .await?;
             }
@@ -3831,12 +3871,23 @@ Quickly identifies which optimizers work on which problem types.
         problem: &dyn OptimizationProblem,
         optimizer_name: &str,
         runs: &[&SingleResult],
+        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         let problem_name = problem.name();
         let problem_filename = problem_name.replace(" ", "_");
         let optimizer_filename = optimizer_name.replace(" ", "_");
         let filename = format!("detailed_{}_{}.md", problem_filename, optimizer_filename);
         let filepath = Path::new(output_dir).join(&filename);
+        let mut content = Self::generate_detailed_report_header(problem, optimizer_name, runs);
+        content.push_str(&Self::generate_run_by_run_analysis(runs)?);
+        content.push_str(&Self::generate_convergence_analysis(runs)?);
+        content.push_str(&Self::generate_parameter_evolution_analysis(runs)?);
+        content.push_str(&Self::generate_performance_analysis(runs)?);
+        content.push_str(&Self::generate_failure_analysis(runs)?);
+        content.push_str(&Self::generate_detailed_report_footer(
+            problem_name,
+            optimizer_name,
+        ));
         fs::write(&filepath, content).with_context(|| {
             format!("Failed to write detailed report to: {}", filepath.display())
         })?;
@@ -3956,9 +4007,9 @@ Quickly identifies which optimizers work on which problem types.
                 run.gradient_evaluations,
                 run.execution_time.as_secs_f64(),
                 if run.convergence_achieved {
-                        "Yes"
+                    "Yes"
                 } else {
-                        "No"
+                    "No"
                 },
                 convergence_reason
             ));
@@ -4036,9 +4087,7 @@ Quickly identifies which optimizers work on which problem types.
         }
         Ok(content)
     }
-    fn generate_parameter_evolution_analysis(
-        runs: &[&SingleResult],
-    ) -> anyhow::Result<String> {
+    fn generate_parameter_evolution_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
         let mut content = String::from("## Parameter Evolution Analysis\n\n");
         // Find the run with the best final value for detailed analysis
         let best_run = runs

@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use crate::line_search::line_search::OneDimensionalProblem;
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
+use anyhow::anyhow;
 
 /// Configuration parameters for the backtracking line search algorithm.
 ///
@@ -26,22 +26,22 @@ pub struct BacktrackingConfig {
     /// Controls the required amount of decrease in the objective function.
     /// Smaller values are more permissive, larger values are more strict.
     pub c1: f64,
-    
+
     /// Backtracking factor (0 < rho < 1, typically 0.5).
     /// The step size is multiplied by this factor in each backtracking iteration.
     /// Smaller values lead to more aggressive backtracking.
     pub rho: f64,
-    
+
     /// Maximum number of backtracking iterations before giving up.
     pub max_iterations: usize,
-    
+
     /// Minimum allowable step size. If the step becomes smaller than this,
     /// the algorithm will attempt to use this minimum step if it provides improvement.
     pub min_step: f64,
-    
+
     /// Initial step size to try. This is reset for each line search.
     pub initial_step: f64,
-    
+
     /// Maximum allowable step size (typically f64::MAX for no limit).
     pub max_step: f64,
 }
@@ -49,12 +49,12 @@ pub struct BacktrackingConfig {
 impl Default for BacktrackingConfig {
     fn default() -> Self {
         Self {
-            c1: 1e-4,              // Standard Armijo parameter
-            rho: 0.5,              // Standard backtracking factor
-            max_iterations: 100,    // More generous iteration limit
-            min_step: 1e-12,       // More practical minimum step
+            c1: 1e-4,            // Standard Armijo parameter
+            rho: 0.5,            // Standard backtracking factor
+            max_iterations: 100, // More generous iteration limit
+            min_step: 1e-12,     // More practical minimum step
             initial_step: 1.0,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         }
     }
 }
@@ -76,12 +76,12 @@ impl BacktrackingConfig {
     /// - When convergence reliability is critical
     pub fn strict() -> Self {
         Self {
-            c1: 1e-3,              // Stricter Armijo condition
-            rho: 0.3,              // More aggressive backtracking
-            max_iterations: 200,    // More iterations for thorough search
-            min_step: 1e-15,       // Smaller minimum step
+            c1: 1e-3,            // Stricter Armijo condition
+            rho: 0.3,            // More aggressive backtracking
+            max_iterations: 200, // More iterations for thorough search
+            min_step: 1e-15,     // Smaller minimum step
             initial_step: 1.0,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         }
     }
     /// Create a lax configuration with permissive parameters.
@@ -101,12 +101,12 @@ impl BacktrackingConfig {
     /// - Initial exploration phases of optimization
     pub fn lax() -> Self {
         Self {
-            c1: 1e-6,              // More permissive Armijo condition
-            rho: 0.8,              // Less aggressive backtracking
-            max_iterations: 50,     // Fewer iterations for speed
-            min_step: 1e-10,       // Larger minimum step
+            c1: 1e-6,           // More permissive Armijo condition
+            rho: 0.8,           // Less aggressive backtracking
+            max_iterations: 50, // Fewer iterations for speed
+            min_step: 1e-10,    // Larger minimum step
             initial_step: 1.0,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         }
     }
     /// Create the default configuration.
@@ -117,7 +117,6 @@ impl BacktrackingConfig {
         Self::default()
     }
 }
-
 
 /// Backtracking line search implementation using the Armijo rule.
 ///
@@ -171,7 +170,7 @@ impl BacktrackingLineSearch {
     pub fn new(config: BacktrackingConfig) -> Self {
         Self { config }
     }
-    
+
     /// Create a backtracking line search with default configuration.
     ///
     /// Uses balanced parameters suitable for most optimization problems:
@@ -206,13 +205,13 @@ impl BacktrackingLineSearch {
     pub fn lax() -> Self {
         Self::new(BacktrackingConfig::lax())
     }
-    
+
     /// Create a backtracking line search optimized for robust optimization.
     ///
     /// This variant is designed for maximum reliability when dealing with
     /// challenging optimization problems. It uses:
     /// - Standard Armijo parameter (c1 = 1e-4) for balanced acceptance
-    /// - Moderate backtracking (rho = 0.5) 
+    /// - Moderate backtracking (rho = 0.5)
     /// - Very high iteration limit (500) for thorough search
     /// - Very small minimum step (1e-16) to handle difficult cases
     ///
@@ -223,12 +222,12 @@ impl BacktrackingLineSearch {
     /// - Research or exploratory optimization
     pub fn robust() -> Self {
         Self::new(BacktrackingConfig {
-            c1: 1e-4,              // Standard Armijo parameter
-            rho: 0.5,              // Standard backtracking
-            max_iterations: 500,    // High iteration limit
-            min_step: 1e-16,       // Very small minimum step
+            c1: 1e-4,            // Standard Armijo parameter
+            rho: 0.5,            // Standard backtracking
+            max_iterations: 500, // High iteration limit
+            min_step: 1e-16,     // Very small minimum step
             initial_step: 1.0,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         })
     }
 }
@@ -360,10 +359,10 @@ impl LineSearch for BacktrackingLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::line_search::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use log::debug;
     use std::sync::Arc;
-    use crate::line_search::line_search::create_1d_problem_linear;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
@@ -403,26 +402,31 @@ mod tests {
     fn test_backtracking_behavior() {
         // Test that backtracking actually occurs with a steep function
         let config = BacktrackingConfig {
-            initial_step: 10.0,  // Much larger initial step to force backtracking
+            initial_step: 10.0, // Much larger initial step to force backtracking
             rho: 0.5,
-            c1: 1e-1,  // Stricter Armijo condition to force backtracking
+            c1: 1e-1, // Stricter Armijo condition to force backtracking
             max_iterations: 10,
             min_step: 1e-12,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config);
-        let current_point = vec![0.1];  // Start closer to optimum to make large steps violate Armijo
+        let current_point = vec![0.1]; // Start closer to optimum to make large steps violate Armijo
         let direction = vec![-1.0]; // Descent direction
         let problem = create_1d_problem_linear(
             &current_point,
             &direction,
             Arc::new(steep_function),
             Arc::new(steep_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         // With a steep function, the step size should be much smaller than initial
-        assert!(result.step_size < 1.0, "Step size should be smaller than initial due to backtracking: {}", result.step_size);
+        assert!(
+            result.step_size < 1.0,
+            "Step size should be smaller than initial due to backtracking: {}",
+            result.step_size
+        );
         assert!(result.step_size > 0.0);
     }
     #[test]
@@ -434,7 +438,7 @@ mod tests {
             c1: 1e-3,
             max_iterations: 20,
             min_step: 1e-15,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config.clone());
         let current_point = vec![2.0, 1.0];
@@ -444,28 +448,34 @@ mod tests {
             &direction,
             Arc::new(rosenbrock_1d_function),
             Arc::new(rosenbrock_1d_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         // Verify Armijo condition is satisfied
         let obj = problem.objective;
         let f0 = obj(0.0).unwrap();
         let f_alpha = obj(result.step_size).unwrap();
-        let armijo_threshold = f0 + config.c1 * result.step_size * problem.initial_directional_derivative;
-        assert!(f_alpha <= armijo_threshold,
-                "Armijo condition not satisfied: f({}) = {} > {} = f(0) + c1*alpha*grad",
-                result.step_size, f_alpha, armijo_threshold);
+        let armijo_threshold =
+            f0 + config.c1 * result.step_size * problem.initial_directional_derivative;
+        assert!(
+            f_alpha <= armijo_threshold,
+            "Armijo condition not satisfied: f({}) = {} > {} = f(0) + c1*alpha*grad",
+            result.step_size,
+            f_alpha,
+            armijo_threshold
+        );
     }
     #[test]
     fn test_max_iterations_reached() {
         // Test behavior when max iterations is reached
         let config = BacktrackingConfig {
             initial_step: 10.0, // Very large initial step
-            rho: 0.99, // Very slow backtracking
-            c1: 1e-1, // Strict Armijo condition
-            max_iterations: 3, // Very few iterations
+            rho: 0.99,          // Very slow backtracking
+            c1: 1e-1,           // Strict Armijo condition
+            max_iterations: 3,  // Very few iterations
             min_step: 1e-20,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config);
         let current_point = vec![1.0];
@@ -475,16 +485,19 @@ mod tests {
             &direction,
             Arc::new(steep_function),
             Arc::new(steep_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem);
         // Should either succeed with best point found or fail gracefully
         match result {
             Ok(res) => {
                 assert!(res.success);
-                assert!(matches!(res.termination_reason, 
-                    TerminationReason::MaxIterationsReached | 
-                    TerminationReason::ArmijoConditionSatisfied |
-                    TerminationReason::StepSizeTooSmall));
+                assert!(matches!(
+                    res.termination_reason,
+                    TerminationReason::MaxIterationsReached
+                        | TerminationReason::ArmijoConditionSatisfied
+                        | TerminationReason::StepSizeTooSmall
+                ));
             }
             Err(_) => {
                 // Acceptable if no improvement was possible
@@ -506,7 +519,7 @@ mod tests {
                 c1: 1e-4,
                 max_iterations: 50,
                 min_step: 1e-16,
-                max_step: f64::MAX,    // No upper limit by default
+                max_step: f64::MAX, // No upper limit by default
             };
             let mut line_search = BacktrackingLineSearch::new(config);
             let current_point = vec![1.0];
@@ -516,12 +529,17 @@ mod tests {
                 &direction,
                 Arc::new(steep_function),
                 Arc::new(steep_gradient),
-            ).unwrap();
+            )
+            .unwrap();
             let result = line_search.optimize_1d(&problem);
             assert!(result.is_ok(), "Failed with {}: {:?}", description, result);
             let result = result.unwrap();
             assert!(result.success, "Not successful with {}", description);
-            assert!(result.step_size > 0.0, "Invalid step size with {}", description);
+            assert!(
+                result.step_size > 0.0,
+                "Invalid step size with {}",
+                description
+            );
         }
     }
     #[test]
@@ -533,7 +551,7 @@ mod tests {
             rho: 0.5,
             max_iterations: 50,
             min_step: 1e-16,
-            max_step: f64::MAX,    // No upper limit by default
+            max_step: f64::MAX, // No upper limit by default
         };
         let lenient_config = BacktrackingConfig {
             c1: 1e-6, // Very lenient
@@ -548,7 +566,8 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let strict_result = strict_search.optimize_1d(&problem).unwrap();
         // Test with lenient c1
         let mut lenient_search = BacktrackingLineSearch::new(lenient_config);
@@ -557,15 +576,19 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let lenient_result = lenient_search.optimize_1d(&problem).unwrap();
         assert!(strict_result.success);
         assert!(lenient_result.success);
         // Lenient c1 should generally allow larger steps
         // (though this isn't guaranteed for all functions)
-        assert!(lenient_result.step_size >= strict_result.step_size * 0.1,
-                "Lenient c1 should allow reasonably larger steps: {} vs {}",
-                lenient_result.step_size, strict_result.step_size);
+        assert!(
+            lenient_result.step_size >= strict_result.step_size * 0.1,
+            "Lenient c1 should allow reasonably larger steps: {} vs {}",
+            lenient_result.step_size,
+            strict_result.step_size
+        );
     }
     #[test]
     fn test_min_step_size() {
@@ -573,10 +596,10 @@ mod tests {
         let config = BacktrackingConfig {
             min_step: 1e-1, // Much larger minimum step
             initial_step: 1.0,
-            rho: 0.9,          // Less aggressive backtracking
-            c1: 1e-8,          // Very strict Armijo condition
-            max_iterations: 5, // Few iterations
-            max_step: f64::MAX,    // No upper limit by default
+            rho: 0.9,           // Less aggressive backtracking
+            c1: 1e-8,           // Very strict Armijo condition
+            max_iterations: 5,  // Few iterations
+            max_step: f64::MAX, // No upper limit by default
         };
         let mut line_search = BacktrackingLineSearch::new(config);
         // Use a function that requires very small steps to satisfy Armijo
@@ -603,7 +626,7 @@ mod tests {
             Arc::new(difficult_function),
             Arc::new(difficult_gradient),
         )
-            .unwrap();
+        .unwrap();
         let result = line_search.optimize_1d(&problem).map_or_else(
             |e| {
                 debug!("Line search failed: {}", e);
@@ -642,7 +665,7 @@ mod tests {
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
         )
-            .unwrap();
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -661,7 +684,8 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
     }
@@ -673,12 +697,30 @@ mod tests {
         let robust = BacktrackingLineSearch::robust();
         let default = BacktrackingLineSearch::new(BacktrackingConfig::default());
         // Verify they have different configurations
-        assert!(strict.config.c1 > default.config.c1, "Strict should have stricter c1");
-        assert!(strict.config.rho < default.config.rho, "Strict should have more aggressive rho");
-        assert!(lax.config.c1 < default.config.c1, "Lax should have more permissive c1");
-        assert!(lax.config.rho > default.config.rho, "Lax should have less aggressive rho");
-        assert!(robust.config.max_iterations > default.config.max_iterations, "Robust should have more iterations");
-        assert!(robust.config.min_step <= default.config.min_step, "Robust should have smaller min step");
+        assert!(
+            strict.config.c1 > default.config.c1,
+            "Strict should have stricter c1"
+        );
+        assert!(
+            strict.config.rho < default.config.rho,
+            "Strict should have more aggressive rho"
+        );
+        assert!(
+            lax.config.c1 < default.config.c1,
+            "Lax should have more permissive c1"
+        );
+        assert!(
+            lax.config.rho > default.config.rho,
+            "Lax should have less aggressive rho"
+        );
+        assert!(
+            robust.config.max_iterations > default.config.max_iterations,
+            "Robust should have more iterations"
+        );
+        assert!(
+            robust.config.min_step <= default.config.min_step,
+            "Robust should have smaller min step"
+        );
         // Test that they all work on a simple problem
         let current_point = vec![1.0];
         let direction = vec![-1.0];
@@ -686,19 +728,24 @@ mod tests {
             (strict, "strict"),
             (lax, "lax"),
             (robust, "robust"),
-            (default, "default")
+            (default, "default"),
         ] {
             let problem = create_1d_problem_linear(
                 &current_point,
                 &direction,
                 Arc::new(quadratic_function),
                 Arc::new(quadratic_gradient1),
-            ).unwrap();
+            )
+            .unwrap();
             let result = line_search.optimize_1d(&problem);
             assert!(result.is_ok(), "{} constructor failed: {:?}", name, result);
             let result = result.unwrap();
             assert!(result.success, "{} constructor did not succeed", name);
-            assert!(result.step_size > 0.0, "{} constructor returned invalid step size", name);
+            assert!(
+                result.step_size > 0.0,
+                "{} constructor returned invalid step size",
+                name
+            );
         }
     }
     #[test]
@@ -714,13 +761,15 @@ mod tests {
             &direction,
             Arc::new(steep_function),
             Arc::new(steep_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let lax_problem = create_1d_problem_linear(
             &current_point,
             &direction,
             Arc::new(steep_function),
             Arc::new(steep_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let strict_result = strict.optimize_1d(&strict_problem).unwrap();
         let lax_result = lax.optimize_1d(&lax_problem).unwrap();
         assert!(strict_result.success);

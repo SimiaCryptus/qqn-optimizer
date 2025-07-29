@@ -1,8 +1,8 @@
+use crate::line_search::line_search::OneDimensionalProblem;
+use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 use std::f64::EPSILON;
-use crate::line_search::line_search::OneDimensionalProblem;
-use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 
 /// Configuration for the More-Thuente line search algorithm.
 ///
@@ -43,15 +43,15 @@ impl Default for MoreThuenteConfig {
     /// - 50 iterations: Usually sufficient for most well-conditioned problems
     fn default() -> Self {
         Self {
-            c1: 1e-4,  // Standard Armijo parameter
-            c2: 0.9,   // Standard strong Wolfe parameter
+            c1: 1e-4, // Standard Armijo parameter
+            c2: 0.9,  // Standard strong Wolfe parameter
             max_iterations: 50,
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
             verbose: false,
-            xtol: 1e-12,  // Relative tolerance for step size
-            ftol: 1e-6,   // Relative tolerance for function decrease
+            xtol: 1e-12, // Relative tolerance for step size
+            ftol: 1e-6,  // Relative tolerance for function decrease
         }
     }
 }
@@ -71,14 +71,14 @@ impl MoreThuenteConfig {
     pub fn strict() -> Self {
         Self {
             c1: 1e-4,
-            c2: 0.1,  // Much stricter curvature condition
+            c2: 0.1, // Much stricter curvature condition
             max_iterations: 100,
             min_step: 1e-16,
             max_step: 1e16,
             initial_step: 1.0,
             verbose: false,
-            xtol: 1e-15,  // Very tight step tolerance
-            ftol: 1e-8,   // Very tight function tolerance
+            xtol: 1e-15, // Very tight step tolerance
+            ftol: 1e-8,  // Very tight function tolerance
         }
     }
     /// Create a lax configuration for fast, approximate line searches
@@ -95,15 +95,15 @@ impl MoreThuenteConfig {
     /// - More permissive Wolfe conditions
     pub fn lax() -> Self {
         Self {
-            c1: 1e-3,  // More permissive Armijo condition
-            c2: 0.9,   // Standard curvature condition
+            c1: 1e-3, // More permissive Armijo condition
+            c2: 0.9,  // Standard curvature condition
             max_iterations: 20,
             min_step: 1e-12,
             max_step: 1e12,
             initial_step: 1.0,
             verbose: false,
-            xtol: 1e-8,   // Looser step tolerance
-            ftol: 1e-4,   // Looser function tolerance
+            xtol: 1e-8, // Looser step tolerance
+            ftol: 1e-4, // Looser function tolerance
         }
     }
     /// Create the default configuration
@@ -111,7 +111,6 @@ impl MoreThuenteConfig {
         Self::default()
     }
 }
-
 
 /// More-Thuente line search implementation.
 ///
@@ -447,10 +446,7 @@ impl MoreThuenteLineSearch {
 }
 
 impl LineSearch for MoreThuenteLineSearch {
-    fn optimize_1d(
-        &mut self,
-        problem: &OneDimensionalProblem,
-    ) -> anyhow::Result<LineSearchResult> {
+    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
         // Validate input
@@ -487,7 +483,7 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut brackt = false;
         let mut best_stp = 0.0;
         let mut best_f = f0;
-        
+
         self.log_verbose(&format!(
             "Starting More-Thuente with f(0)={:.3e}, g(0)={:.3e}",
             f0, g0
@@ -508,7 +504,10 @@ impl LineSearch for MoreThuenteLineSearch {
             let gp = (problem.gradient)(stp)?;
             // Check for NaN or infinite values
             if !fp.is_finite() || !gp.is_finite() {
-                self.log_verbose(&format!("Non-finite values at step {}: f={}, g={}", stp, fp, gp));
+                self.log_verbose(&format!(
+                    "Non-finite values at step {}: f={}, g={}",
+                    stp, fp, gp
+                ));
                 // Return best point found so far
                 if best_stp > 0.0 && best_f < f0 {
                     return Ok(LineSearchResult {
@@ -570,9 +569,7 @@ impl LineSearch for MoreThuenteLineSearch {
 
             // Update the interval endpoints
             self.update_endpoints(
-                &mut stx, &mut fx, &mut gx,
-                &mut sty, &mut fy, &mut gy,
-                stp, fp, gp, f0, g0, iter,
+                &mut stx, &mut fx, &mut gx, &mut sty, &mut fy, &mut gy, stp, fp, gp, f0, g0, iter,
             );
 
             // Update step
@@ -617,10 +614,10 @@ impl LineSearch for MoreThuenteLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::line_search::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use approx::assert_relative_eq;
     use std::sync::Arc;
-    use crate::line_search::line_search::create_1d_problem_linear;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
@@ -672,7 +669,7 @@ mod tests {
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
         )
-            .unwrap();
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -694,7 +691,8 @@ mod tests {
             &direction,
             Arc::new(rosenbrock_function),
             Arc::new(rosenbrock_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -722,9 +720,16 @@ mod tests {
         let fp = 2.0; // Higher than fx
         let gp = -0.5;
         let new_stp = line_search.update_interval(
-            &mut stx, &mut fx, &mut gx,
-            &mut sty, &mut fy, &mut gy,
-            stp, fp, gp, &mut brackt,
+            &mut stx,
+            &mut fx,
+            &mut gx,
+            &mut sty,
+            &mut fy,
+            &mut gy,
+            stp,
+            fp,
+            gp,
+            &mut brackt,
         );
         assert!(brackt); // Should set bracket to true
         assert!(new_stp >= 0.0);
@@ -743,11 +748,18 @@ mod tests {
         let mut brackt = false;
         let stp = 1.0;
         let fp = 1.5; // Lower than fx
-        let gp = 0.5;  // Positive gradient (opposite sign to gx)
+        let gp = 0.5; // Positive gradient (opposite sign to gx)
         let new_stp = line_search.update_interval(
-            &mut stx, &mut fx, &mut gx,
-            &mut sty, &mut fy, &mut gy,
-            stp, fp, gp, &mut brackt,
+            &mut stx,
+            &mut fx,
+            &mut gx,
+            &mut sty,
+            &mut fy,
+            &mut gy,
+            stp,
+            fp,
+            gp,
+            &mut brackt,
         );
         assert!(brackt); // Should set bracket to true
         assert!(new_stp >= 0.0);
@@ -767,9 +779,16 @@ mod tests {
         let fp = 1.5; // Lower than fx
         let gp = -0.5; // Same sign as gx, but smaller magnitude
         let new_stp = line_search.update_interval(
-            &mut stx, &mut fx, &mut gx,
-            &mut sty, &mut fy, &mut gy,
-            stp, fp, gp, &mut brackt,
+            &mut stx,
+            &mut fx,
+            &mut gx,
+            &mut sty,
+            &mut fy,
+            &mut gy,
+            stp,
+            fp,
+            gp,
+            &mut brackt,
         );
         assert!(new_stp >= 0.0);
     }
@@ -788,9 +807,16 @@ mod tests {
         let fp = 1.5; // Lower than fx
         let gp = -1.0; // Same sign as gx, larger magnitude
         let new_stp = line_search.update_interval(
-            &mut stx, &mut fx, &mut gx,
-            &mut sty, &mut fy, &mut gy,
-            stp, fp, gp, &mut brackt,
+            &mut stx,
+            &mut fx,
+            &mut gx,
+            &mut sty,
+            &mut fy,
+            &mut gy,
+            stp,
+            fp,
+            gp,
+            &mut brackt,
         );
         assert!(new_stp >= 0.0);
         // Should interpolate between stp and sty
@@ -812,9 +838,16 @@ mod tests {
         let fp = 1.5; // Lower than fx
         let gp = -1.0; // Same sign as gx, larger magnitude
         let new_stp = line_search.update_interval(
-            &mut stx, &mut fx, &mut gx,
-            &mut sty, &mut fy, &mut gy,
-            stp, fp, gp, &mut brackt,
+            &mut stx,
+            &mut fx,
+            &mut gx,
+            &mut sty,
+            &mut fy,
+            &mut gy,
+            stp,
+            fp,
+            gp,
+            &mut brackt,
         );
         assert!(new_stp >= 0.0);
         // Without bracket, should extrapolate
@@ -830,7 +863,8 @@ mod tests {
         // Test satisfied conditions
         let f_alpha = 0.9; // Satisfies Armijo
         let grad_alpha = -0.1; // Satisfies curvature
-        let (armijo, curvature) = line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
+        let (armijo, curvature) =
+            line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
         assert!(armijo);
         assert!(curvature);
         // Test violated Armijo condition
@@ -840,7 +874,8 @@ mod tests {
         // Test violated curvature condition
         let f_alpha = 0.9;
         let grad_alpha = -0.95; // Violates curvature
-        let (_, curvature) = line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
+        let (_, curvature) =
+            line_search.check_wolfe_conditions(f0, f_alpha, grad_alpha, alpha, grad0);
         assert!(!curvature);
     }
     #[test]
@@ -863,7 +898,10 @@ mod tests {
 
         let result = line_search.optimize_1d(&problem);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not a descent direction"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not a descent direction"));
     }
     #[test]
     fn test_ill_conditioned_function() {
@@ -881,7 +919,8 @@ mod tests {
             &direction,
             Arc::new(flat_function),
             Arc::new(flat_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem);
         // Should either succeed with tiny step or fail with ill-conditioned error
         if result.is_err() {
@@ -892,7 +931,7 @@ mod tests {
     fn test_max_iterations_reached() {
         let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig {
             max_iterations: 2, // Very low to force max iterations
-            xtol: 1e-20, // Make step size tolerance very small to avoid early convergence
+            xtol: 1e-20,       // Make step size tolerance very small to avoid early convergence
             verbose: false,
             ..MoreThuenteConfig::default()
         });
@@ -903,7 +942,8 @@ mod tests {
             &direction,
             Arc::new(steep_function),
             Arc::new(steep_gradient),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         // The algorithm may terminate due to step size being too small or max iterations
@@ -927,7 +967,8 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size >= line_search.config.min_step);
@@ -959,13 +1000,13 @@ mod tests {
     fn test_static_constructors() {
         // Test strict configuration
         let strict = MoreThuenteLineSearch::strict();
-        assert_eq!(strict.config.c2, 0.1);  // Stricter curvature
+        assert_eq!(strict.config.c2, 0.1); // Stricter curvature
         assert_eq!(strict.config.max_iterations, 100);
         assert_eq!(strict.config.xtol, 1e-15);
         assert_eq!(strict.config.ftol, 1e-8);
         // Test lax configuration
         let lax = MoreThuenteLineSearch::lax();
-        assert_eq!(lax.config.c1, 1e-3);  // More permissive Armijo
+        assert_eq!(lax.config.c1, 1e-3); // More permissive Armijo
         assert_eq!(lax.config.max_iterations, 20);
         assert_eq!(lax.config.xtol, 1e-8);
         assert_eq!(lax.config.ftol, 1e-4);
@@ -983,7 +1024,7 @@ mod tests {
         assert!(line_search.config.verbose);
         let strict_verbose = MoreThuenteLineSearch::strict().with_verbose();
         assert!(strict_verbose.config.verbose);
-        assert_eq!(strict_verbose.config.c2, 0.1);  // Should preserve other settings
+        assert_eq!(strict_verbose.config.c2, 0.1); // Should preserve other settings
     }
     #[test]
     fn test_strict_vs_lax_behavior() {
@@ -995,7 +1036,8 @@ mod tests {
             &direction,
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
-        ).unwrap();
+        )
+        .unwrap();
         let mut strict = MoreThuenteLineSearch::strict();
         let mut lax = MoreThuenteLineSearch::lax();
         let strict_result = strict.optimize_1d(&problem).unwrap();
@@ -1012,12 +1054,8 @@ mod tests {
     fn test_numerical_stability() {
         // Test with very small gradients
         let mut line_search = MoreThuenteLineSearch::new(MoreThuenteConfig::default());
-        let tiny_gradient_fn = |x: &[f64]| -> Result<f64> {
-            Ok(x[0] * 1e-15)
-        };
-        let tiny_gradient_grad = |_: &[f64]| -> Result<Vec<f64>> {
-            Ok(vec![1e-15])
-        };
+        let tiny_gradient_fn = |x: &[f64]| -> Result<f64> { Ok(x[0] * 1e-15) };
+        let tiny_gradient_grad = |_: &[f64]| -> Result<Vec<f64>> { Ok(vec![1e-15]) };
         let current_point = vec![1.0];
         let direction = vec![-1.0];
         let problem = create_1d_problem_linear(
@@ -1025,7 +1063,8 @@ mod tests {
             &direction,
             Arc::new(tiny_gradient_fn),
             Arc::new(tiny_gradient_grad),
-        ).unwrap();
+        )
+        .unwrap();
         let result = line_search.optimize_1d(&problem);
         // Should handle tiny gradients gracefully
         assert!(result.is_ok());

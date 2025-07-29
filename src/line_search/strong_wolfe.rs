@@ -1,8 +1,8 @@
+use crate::line_search::line_search::OneDimensionalProblem;
+use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
 use serde::{Deserialize, Serialize};
-use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
-use crate::line_search::line_search::OneDimensionalProblem;
 
 /// Strong Wolfe line search implementation following Nocedal & Wright Algorithm 3.5.
 ///
@@ -25,19 +25,19 @@ use crate::line_search::line_search::OneDimensionalProblem;
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrongWolfeConfig {
-    pub c1: f64,               // Armijo condition parameter: controls sufficient decrease strictness
-    pub c2: f64,               // Curvature condition parameter: controls gradient reduction requirement
+    pub c1: f64, // Armijo condition parameter: controls sufficient decrease strictness
+    pub c2: f64, // Curvature condition parameter: controls gradient reduction requirement
     pub max_iterations: usize, // Maximum line search iterations
-    pub min_step: f64,         // Minimum step size
-    pub max_step: f64,         // Maximum step size
-    pub initial_step: f64,     // Initial step size
-    pub verbose: bool,         // Enable verbose logging
+    pub min_step: f64, // Minimum step size
+    pub max_step: f64, // Maximum step size
+    pub initial_step: f64, // Initial step size
+    pub verbose: bool, // Enable verbose logging
 }
 
 impl Default for StrongWolfeConfig {
     fn default() -> Self {
         Self {
-            c1: 1e-4,              // Standard value: good balance of decrease vs acceptance
+            c1: 1e-4, // Standard value: good balance of decrease vs acceptance
             c2: 0.9,
             max_iterations: 50,
             min_step: 1e-16,
@@ -64,11 +64,11 @@ impl StrongWolfeConfig {
     /// - Tighter step size bounds
     pub fn strict() -> Self {
         Self {
-            c1: 1e-6,              // Very strict sufficient decrease
-            c2: 0.1,               // Very strict curvature condition
-            max_iterations: 100,   // More iterations for precision
-            min_step: 1e-20,       // Smaller minimum step
-            max_step: 1e10,        // Conservative maximum step
+            c1: 1e-6,            // Very strict sufficient decrease
+            c2: 0.1,             // Very strict curvature condition
+            max_iterations: 100, // More iterations for precision
+            min_step: 1e-20,     // Smaller minimum step
+            max_step: 1e10,      // Conservative maximum step
             initial_step: 1.0,
             verbose: false,
         }
@@ -90,11 +90,11 @@ impl StrongWolfeConfig {
     /// - Wider step size bounds
     pub fn lax() -> Self {
         Self {
-            c1: 1e-2,              // Relaxed sufficient decrease
-            c2: 0.99,              // Very relaxed curvature condition
-            max_iterations: 20,    // Fewer iterations for efficiency
-            min_step: 1e-12,       // Larger minimum step
-            max_step: 1e20,        // Larger maximum step
+            c1: 1e-2,           // Relaxed sufficient decrease
+            c2: 0.99,           // Very relaxed curvature condition
+            max_iterations: 20, // Fewer iterations for efficiency
+            min_step: 1e-12,    // Larger minimum step
+            max_step: 1e20,     // Larger maximum step
             initial_step: 1.0,
             verbose: false,
         }
@@ -161,7 +161,6 @@ impl StrongWolfeConfig {
 ///
 /// **Constraint**: Must satisfy 0 < c₁ < c₂ < 1 for theoretical guarantees
 /// - **max_iterations**: 20-100 depending on precision requirements
-
 
 /// Strong Wolfe line search implementation
 #[derive(Debug, Clone)]
@@ -363,10 +362,7 @@ impl LineSearch for StrongWolfeLineSearch {
     ///
     /// ## Fallback Strategy
     /// If standard algorithm fails, tries machine epsilon steps as last resort.
-    fn optimize_1d(
-        &mut self,
-        problem: &OneDimensionalProblem,
-    ) -> anyhow::Result<LineSearchResult> {
+    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let directional_derivative = problem.initial_directional_derivative;
 
@@ -389,7 +385,10 @@ impl LineSearch for StrongWolfeLineSearch {
         self.log_verbose(&format!("Initial step size: {:.3e}", alpha));
 
         for i in 0..self.config.max_iterations {
-            self.log_verbose(&format!("Line Search Iteration {}: trying alpha={:.3e}", i, alpha));
+            self.log_verbose(&format!(
+                "Line Search Iteration {}: trying alpha={:.3e}",
+                i, alpha
+            ));
 
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;
@@ -501,10 +500,10 @@ impl LineSearch for StrongWolfeLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::line_search::line_search::create_1d_problem_linear;
     use anyhow::Result;
     use approx::assert_relative_eq;
     use std::sync::Arc;
-    use crate::line_search::line_search::create_1d_problem_linear;
 
     fn quadratic_function(x: &[f64]) -> Result<f64> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
@@ -543,7 +542,7 @@ mod tests {
             Arc::new(rosenbrock),
             Arc::new(rosenbrock_gradient),
         )
-            .unwrap();
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
@@ -572,7 +571,7 @@ mod tests {
             Arc::new(quadratic_function),
             Arc::new(quadratic_gradient1),
         )
-            .unwrap();
+        .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap();
 
         assert!(result.success);

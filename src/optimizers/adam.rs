@@ -81,7 +81,7 @@ pub struct AdamConfig {
     /// **Typical values:** 0.001 (default), 0.0001 (conservative), 0.01 (aggressive)
     /// **Effect:** Higher values lead to faster convergence but may overshoot minima
     pub learning_rate: f64,
-    
+
     /// Learning rate schedule strategy
     ///
     /// **Options:**
@@ -92,34 +92,34 @@ pub struct AdamConfig {
     ///
     /// **Recommendation:** Use "adaptive" for unknown problems, "cosine" for deep learning
     pub lr_schedule: String,
-    
+
     /// Decay rate for exponential learning rate schedule
     ///
     /// **Range:** (0, 1), typically 0.99-0.999
     /// **Effect:** Lower values cause faster decay
     pub lr_decay: f64,
-    
+
     /// Minimum learning rate floor
     ///
     /// **Purpose:** Prevents learning rate from becoming too small
     /// **Typical values:** 1e-8 to 1e-15
     pub min_learning_rate: f64,
-    
+
     /// Gradient clipping threshold (optional)
     ///
     /// **Purpose:** Prevents exploding gradients by clipping gradient norm
     /// **Typical values:** 0.5-5.0, or None to disable
     /// **Effect:** Improves training stability but may slow convergence
     pub gradient_clip: Option<f64>,
-    
+
     /// Exponential decay rate for first moment estimates (momentum parameter)
     ///
     /// **Range:** [0, 1), typically 0.9
-    /// **Effect:** 
+    /// **Effect:**
     /// - Higher values: More momentum, smoother updates
     /// - Lower values: Less momentum, more responsive to recent gradients
     pub beta1: f64,
-    
+
     /// Exponential decay rate for second moment estimates (adaptive learning rate parameter)
     ///
     /// **Range:** [0, 1), typically 0.999
@@ -128,33 +128,33 @@ pub struct AdamConfig {
     /// - Lower values: Faster adaptation to gradient changes, potentially less stable
     /// **Critical:** This parameter significantly affects convergence behavior
     pub beta2: f64,
-    
+
     /// Small constant added to denominator for numerical stability
     ///
     /// **Range:** 1e-8 to 1e-12
     /// **Purpose:** Prevents division by zero when second moment estimates are small
     /// **Trade-off:** Smaller values allow smaller effective learning rates but may cause instability
     pub epsilon: f64,
-    
+
     /// Weight decay coefficient (L2 regularization strength)
     ///
     /// **Range:** [0, ∞), typically 0.0-0.01
     /// **Purpose:** Prevents overfitting by penalizing large parameter values
     /// **Implementation:** Adds weight_decay * param to gradient before Adam update
     pub weight_decay: f64,
-    
+
     /// Enable AMSGrad variant for improved convergence guarantees
     ///
     /// **AMSGrad modification:** Uses max(v_t, v_{t-1}) instead of v_t for second moment
     /// **Benefits:** Better theoretical convergence properties, may avoid local minima
     /// **Cost:** Slightly more memory and computation
     pub amsgrad: bool,
-    
+
     /// Maximum line search iterations (currently unused but reserved for future enhancements)
     ///
     /// **Purpose:** Would limit computational cost of line search procedures
     pub max_line_search_iter: usize,
-    
+
     /// Enable detailed logging for debugging and monitoring
     ///
     /// **Output:** Gradient norms, parameter statistics, convergence metrics
@@ -202,19 +202,19 @@ impl AdamConfig {
         Self {
             learning_rate: 0.0001, // 10x smaller than default for precision
             lr_schedule: "adaptive".to_string(),
-            lr_decay: 0.995,       // Slower decay for adaptive schedule
+            lr_decay: 0.995,          // Slower decay for adaptive schedule
             min_learning_rate: 1e-15, // Allow very small learning rates
             gradient_clip: Some(0.5), // Tight gradient control
             beta1: 0.9,
-            beta2: 0.9999,         // More stable second moment estimates
-            epsilon: 1e-12,        // Higher numerical precision
+            beta2: 0.9999,  // More stable second moment estimates
+            epsilon: 1e-12, // Higher numerical precision
             weight_decay: 0.0,
-            amsgrad: true,         // Better convergence guarantees
+            amsgrad: true,            // Better convergence guarantees
             max_line_search_iter: 50, // Thorough step size selection
             verbose: false,
         }
     }
-    
+
     /// Create a lax configuration for fast, approximate optimization.
     ///
     /// **Use case:** Rapid prototyping, approximate solutions, time-constrained optimization
@@ -232,21 +232,21 @@ impl AdamConfig {
     /// - **Cons:** May overshoot minima, less stable, lower final precision
     pub fn lax() -> Self {
         Self {
-            learning_rate: 0.01,   // 10x larger than default for speed
+            learning_rate: 0.01, // 10x larger than default for speed
             lr_schedule: "exponential".to_string(),
-            lr_decay: 0.99,        // Faster decay to control later iterations
+            lr_decay: 0.99,          // Faster decay to control later iterations
             min_learning_rate: 1e-8, // Don't go too small
-            gradient_clip: None,   // Allow large steps
+            gradient_clip: None,     // Allow large steps
             beta1: 0.9,
-            beta2: 0.99,           // Faster adaptation to gradient changes
-            epsilon: 1e-6,         // Lower precision for speed
+            beta2: 0.99,   // Faster adaptation to gradient changes
+            epsilon: 1e-6, // Lower precision for speed
             weight_decay: 0.0,
-            amsgrad: false,        // Standard Adam is faster
+            amsgrad: false,          // Standard Adam is faster
             max_line_search_iter: 5, // Minimal line search overhead
             verbose: false,
         }
     }
-    
+
     /// Create a configuration optimized for deep learning tasks.
     ///
     /// **Use case:** Neural network training, deep learning research
@@ -265,22 +265,21 @@ impl AdamConfig {
     /// - **Cons:** May not be optimal for non-neural network problems
     pub fn deep_learning() -> Self {
         Self {
-            learning_rate: 0.001,  // Sweet spot for neural networks
+            learning_rate: 0.001, // Sweet spot for neural networks
             lr_schedule: "cosine".to_string(),
             lr_decay: 0.999,
-            min_learning_rate: 1e-6, // Don't decay too aggressively
+            min_learning_rate: 1e-6,  // Don't decay too aggressively
             gradient_clip: Some(1.0), // Prevent exploding gradients
             beta1: 0.9,
             beta2: 0.999,
             epsilon: 1e-8,
-            weight_decay: 0.01,    // Moderate regularization
+            weight_decay: 0.01, // Moderate regularization
             amsgrad: false,
             max_line_search_iter: 10,
             verbose: false,
         }
     }
 }
-
 
 /// Internal state maintained by the Adam optimizer across iterations.
 ///
@@ -294,7 +293,7 @@ pub struct AdamState {
     ///
     /// **Purpose:** Bias correction terms depend on iteration count: (1 - β^t)
     pub iteration: usize,
-    
+
     /// First moment estimates (exponentially decaying average of gradients)
     ///
     /// **Formula:** m_t = β₁ * m_{t-1} + (1 - β₁) * g_t
@@ -302,7 +301,7 @@ pub struct AdamState {
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
     pub m: Option<Vec<Tensor>>,
-    
+
     /// Second moment estimates (exponentially decaying average of squared gradients)
     ///
     /// **Formula:** v_t = β₂ * v_{t-1} + (1 - β₂) * g_t²
@@ -310,7 +309,7 @@ pub struct AdamState {
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
     pub v: Option<Vec<Tensor>>,
-    
+
     /// Maximum second moment estimates (AMSGrad variant only)
     ///
     /// **Formula:** v̂_t = max(v_t, v̂_{t-1})
@@ -544,8 +543,11 @@ impl AdamOptimizer {
                     } else {
                         self.bad_step_count = 0;
                         // Optionally increase learning rate when making good progress
-                        if relative_improvement > 1e-6 && self.current_lr < self.config.learning_rate * 0.1 {
-                            self.current_lr = (self.current_lr * 1.1).min(self.config.learning_rate * 0.1);
+                        if relative_improvement > 1e-6
+                            && self.current_lr < self.config.learning_rate * 0.1
+                        {
+                            self.current_lr =
+                                (self.current_lr * 1.1).min(self.config.learning_rate * 0.1);
                         }
                     }
                 }
@@ -1180,10 +1182,14 @@ mod tests {
         }
         let lax_final = lax_params[0].flatten_all()?.to_vec1::<f64>()?;
         let lax_value = function.evaluate(&lax_params)?;
-        println!("Strict final: [{:.6}, {:.6}], value: {:.6e}",
-                 strict_final[0], strict_final[1], strict_value);
-        println!("Lax final: [{:.6}, {:.6}], value: {:.6e}",
-                 lax_final[0], lax_final[1], lax_value);
+        println!(
+            "Strict final: [{:.6}, {:.6}], value: {:.6e}",
+            strict_final[0], strict_final[1], strict_value
+        );
+        println!(
+            "Lax final: [{:.6}, {:.6}], value: {:.6e}",
+            lax_final[0], lax_final[1], lax_value
+        );
         // Both should make progress, but lax might make larger steps
         assert!(strict_value < 4.0); // Should improve from initial value of 4.0
         assert!(lax_value < 4.0);
@@ -1194,11 +1200,11 @@ mod tests {
     fn test_adam_convergence_detection() -> CandleResult<()> {
         let device = Device::Cpu;
         let config = AdamConfig {
-            learning_rate: 0.01,  // Much smaller learning rate to avoid overshooting
+            learning_rate: 0.01, // Much smaller learning rate to avoid overshooting
             lr_schedule: "constant".to_string(),
-            beta1: 0.9,           // Standard momentum
-            beta2: 0.999,         // Standard second moment decay
-            epsilon: 1e-8,        // Standard epsilon
+            beta1: 0.9,    // Standard momentum
+            beta2: 0.999,  // Standard second moment decay
+            epsilon: 1e-8, // Standard epsilon
             ..Default::default()
         };
         let mut optimizer = AdamOptimizer::new(config);
@@ -1207,7 +1213,8 @@ mod tests {
         let function = Arc::new(QuadraticFunction);
         // Run optimization
         let mut converged = false;
-        for i in 0..1000 {  // Allow more iterations
+        for i in 0..1000 {
+            // Allow more iterations
             let result = optimizer.step(&mut params, function.clone())?;
             // Print progress for debugging
             if i % 10 == 0 {
@@ -1215,8 +1222,15 @@ mod tests {
                 let current_function_value = function.evaluate(&params)?;
                 println!(
                     "Step {}: params=[{:.6e}, {:.6e}], f={:.6e}, grad_norm={:.6e}",
-                    i, current_values[0], current_values[1], current_function_value,
-                    result.metadata.optimizer_data.get("gradient_norm").unwrap_or(&0.0)
+                    i,
+                    current_values[0],
+                    current_values[1],
+                    current_function_value,
+                    result
+                        .metadata
+                        .optimizer_data
+                        .get("gradient_norm")
+                        .unwrap_or(&0.0)
                 );
             }
 

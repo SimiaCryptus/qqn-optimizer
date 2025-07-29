@@ -15,7 +15,6 @@ pub enum ActivationType {
     Sinewave,
 }
 
-
 #[derive(Debug)]
 struct MnistData {
     images: Vec<Vec<u8>>,
@@ -38,16 +37,20 @@ impl MLP {
     ) -> candle_core::Result<Self> {
         let mut layers = Vec::new();
         let mut prev_dim = input_dim;
-        
+
         // Create hidden layers
         for (i, &hidden_dim) in hidden_dims.iter().enumerate() {
             layers.push(linear(prev_dim, hidden_dim, vs.pp(format!("ln{}", i)))?);
             prev_dim = hidden_dim;
         }
-        
+
         // Create output layer
-        layers.push(linear(prev_dim, output_dim, vs.pp(format!("ln{}", hidden_dims.len())))?);
-        
+        layers.push(linear(
+            prev_dim,
+            output_dim,
+            vs.pp(format!("ln{}", hidden_dims.len())),
+        )?);
+
         Ok(Self { layers, activation })
     }
     fn apply_activation(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
@@ -63,18 +66,23 @@ impl MLP {
             ActivationType::Sinewave => xs.sin(),
         }
     }
-    
-    fn forward_with_dropout(&self, xs: &Tensor, dropout_rate: f64, training: bool) -> candle_core::Result<Tensor> {
+
+    fn forward_with_dropout(
+        &self,
+        xs: &Tensor,
+        dropout_rate: f64,
+        training: bool,
+    ) -> candle_core::Result<Tensor> {
         let mut xs = xs.clone();
-        
+
         // Apply all layers except the last one with activation and dropout
         for (i, layer) in self.layers.iter().enumerate() {
             xs = layer.forward(&xs)?;
-            
+
             // Apply activation to all but the last layer
             if i < self.layers.len() - 1 {
                 xs = self.apply_activation(&xs)?;
-                
+
                 // Apply dropout during training (not on the last layer)
                 if training && dropout_rate > 0.0 {
                     let keep_prob = 1.0 - dropout_rate;
@@ -84,7 +92,7 @@ impl MLP {
                 }
             }
         }
-        
+
         Ok(xs)
     }
 }
@@ -92,17 +100,17 @@ impl MLP {
 impl Module for MLP {
     fn forward(&self, xs: &Tensor) -> candle_core::Result<Tensor> {
         let mut xs = xs.clone();
-        
+
         // Apply all layers except the last one with activation
         for (i, layer) in self.layers.iter().enumerate() {
             xs = layer.forward(&xs)?;
-            
+
             // Apply activation to all but the last layer
             if i < self.layers.len() - 1 {
                 xs = self.apply_activation(&xs)?;
             }
         }
-        
+
         Ok(xs)
     }
 }
@@ -138,9 +146,11 @@ impl MnistNeuralNetwork {
         activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
         if hidden_sizes.is_empty() {
-            return Err(anyhow::anyhow!("At least one hidden layer size must be specified"));
+            return Err(anyhow::anyhow!(
+                "At least one hidden layer size must be specified"
+            ));
         }
-        
+
         // Use CUDA if available
         let device = Device::cuda_if_available(0)?;
         let n_samples = x_data.len();
@@ -151,8 +161,15 @@ impl MnistNeuralNetwork {
             ActivationType::Logistic => "logistic",
             ActivationType::Sinewave => "sine",
         };
-        let hidden_str = hidden_sizes.iter().map(|s| s.to_string()).collect::<Vec<_>>().join("x");
-        let name = format!("MNIST_NN_{}samples_hidden{}_{}", n_samples, hidden_str, activation_name);
+        let hidden_str = hidden_sizes
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join("x");
+        let name = format!(
+            "MNIST_NN_{}samples_hidden{}_{}",
+            n_samples, hidden_str, activation_name
+        );
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
@@ -162,7 +179,7 @@ impl MnistNeuralNetwork {
         let varmap = VarMap::new();
         let vs = VarBuilder::from_varmap(&varmap, precision, &device);
         let model = MLP::new(vs, input_dim, hidden_sizes, output_dim, activation)?;
-        
+
         // Pre-calculate parameter count
         let mut param_count = 0;
         let mut prev_dim = input_dim;
@@ -217,7 +234,7 @@ impl MnistNeuralNetwork {
         let mut indices: Vec<usize> = (0..actual_samples).collect();
         use rand::seq::SliceRandom;
         indices.shuffle(rng);
-        
+
         let mut x_data = Vec::with_capacity(actual_samples);
         let mut y_data = Vec::with_capacity(actual_samples);
 
@@ -296,8 +313,6 @@ impl MnistNeuralNetwork {
     }
 
     fn download_file(url: &str, path: &str) -> anyhow::Result<()> {
-
-
         // Try curl first
         if let Ok(output) = std::process::Command::new("curl")
             .args(&["-L", "-f", "-s", "-o", path, url])
@@ -307,7 +322,7 @@ impl MnistNeuralNetwork {
                 return Ok(());
             }
         }
-        
+
         // Fallback to wget
         if let Ok(output) = std::process::Command::new("wget")
             .args(&["-q", "-O", path, url])
@@ -317,7 +332,7 @@ impl MnistNeuralNetwork {
                 return Ok(());
             }
         }
-        
+
         // If both fail, try using reqwest in blocking mode
         #[cfg(feature = "download")]
         {
@@ -326,7 +341,7 @@ impl MnistNeuralNetwork {
             file.write_all(&response.bytes()?)?;
             return Ok(());
         }
-        
+
         Err(anyhow::anyhow!(
             "Failed to download {} - neither curl nor wget available",
             url
@@ -440,14 +455,12 @@ impl MnistNeuralNetwork {
             if hidden_size > 2048 {
                 return Err(anyhow::anyhow!(
                     "Hidden size at layer {} too large: {} (max 2048)",
-                    i, hidden_size
+                    i,
+                    hidden_size
                 ));
             }
             if hidden_size == 0 {
-                return Err(anyhow::anyhow!(
-                    "Hidden size at layer {} cannot be zero",
-                    i
-                ));
+                return Err(anyhow::anyhow!("Hidden size at layer {} cannot be zero", i));
             }
         }
         let samples = n_samples.unwrap_or(1000);
@@ -481,9 +494,12 @@ impl MnistNeuralNetwork {
         // Check for extreme values that might cause numerical instability
         let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f64::max);
         if max_abs > 1e6 {
-            return Err(anyhow::anyhow!("Parameters too large: max abs value = {}", max_abs));
+            return Err(anyhow::anyhow!(
+                "Parameters too large: max abs value = {}",
+                max_abs
+            ));
         }
-        
+
         // Invalidate caches when parameters change
         *self.param_cache.write() = None;
         *self.gradient_cache.write() = None;
@@ -599,7 +615,10 @@ impl MnistNeuralNetwork {
             let zero_count = values.iter().filter(|&&x| x.abs() < 1e-10).count();
             let zero_percentage = (zero_count as f64 / values.len() as f64) * 100.0;
             // Check for extreme values
-            let extreme_count = values.iter().filter(|&&x| x.abs() > 3.0 * std_dev + mean.abs()).count();
+            let extreme_count = values
+                .iter()
+                .filter(|&&x| x.abs() > 3.0 * std_dev + mean.abs())
+                .count();
             let extreme_percentage = (extreme_count as f64 / values.len() as f64) * 100.0;
             println!("\nParameter: {}", name);
             println!("  Shape: {:?}", tensor.shape());
@@ -688,47 +707,45 @@ impl OptimizationProblem for MnistNeuralNetwork {
         let batch_losses: Vec<(f64, usize)> = (0..n_batches)
             .into_par_iter()
             .map(|batch_idx| -> anyhow::Result<(f64, usize)> {
-            let start = batch_idx * self.batch_size;
-            let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
-            let batch_size = end - start;
+                let start = batch_idx * self.batch_size;
+                let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
+                let batch_size = end - start;
 
+                // Use Tensor::cat for efficient batch creation
+                let x_tensors: Vec<Tensor> = (start..end)
+                    .map(|i| {
+                        Tensor::from_vec(
+                            self.x_data[i].clone(),
+                            (1, self.x_data[0].len()),
+                            &self.device,
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let x_batch = Tensor::cat(&x_tensors, 0)?;
 
+                let y_tensors: Vec<Tensor> = (start..end)
+                    .map(|i| {
+                        Tensor::from_vec(
+                            self.y_data[i].clone(),
+                            (1, self.y_data[0].len()),
+                            &self.device,
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let y_batch = Tensor::cat(&y_tensors, 0)?;
 
-            // Use Tensor::cat for efficient batch creation
-            let x_tensors: Vec<Tensor> = (start..end)
-                .map(|i| {
-                    Tensor::from_vec(
-                        self.x_data[i].clone(),
-                        (1, self.x_data[0].len()),
-                        &self.device,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let x_batch = Tensor::cat(&x_tensors, 0)?;
+                // Forward pass
+                let y_pred = self.model.forward(&x_batch)?;
+                let y_pred = softmax(&y_pred, 1)?;
 
-            let y_tensors: Vec<Tensor> = (start..end)
-                .map(|i| {
-                    Tensor::from_vec(
-                        self.y_data[i].clone(),
-                        (1, self.y_data[0].len()),
-                        &self.device,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let y_batch = Tensor::cat(&y_tensors, 0)?;
+                // Cross-entropy loss for this batch
+                let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
+                let batch_loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
 
-            // Forward pass
-            let y_pred = self.model.forward(&x_batch)?;
-            let y_pred = softmax(&y_pred, 1)?;
-
-            // Cross-entropy loss for this batch
-            let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
-            let batch_loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
-
-            let batch_loss_value = batch_loss.to_scalar::<f64>()?;
-            Ok((batch_loss_value, batch_size))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+                let batch_loss_value = batch_loss.to_scalar::<f64>()?;
+                Ok((batch_loss_value, batch_size))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Aggregate batch losses
         for (loss, size) in batch_losses {
@@ -737,7 +754,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
 
         // Average loss across all samples
         let mut loss_value = total_loss / (n_samples as f64);
-        
+
         // Add L2 regularization
         if self.l2_regularization > 0.0 {
             let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
@@ -766,81 +783,81 @@ impl OptimizationProblem for MnistNeuralNetwork {
         self.set_parameters(params)?;
         let n_samples = self.x_data.len();
         let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
-        
+
         // Accumulate gradients across batches
         let mut accumulated_grads = vec![0.0; self.param_count];
-        
+
         // Process batches in parallel
         let batch_grads: Vec<Vec<f64>> = (0..n_batches)
             .into_par_iter()
             .map(|batch_idx| -> anyhow::Result<Vec<f64>> {
-            let start = batch_idx * self.batch_size;
-            let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
-            let batch_size = end - start;
-            
-            // Use Tensor::cat for efficient batch creation
-            let x_tensors: Vec<Tensor> = (start..end)
-                .map(|i| {
-                    Tensor::from_vec(
-                        self.x_data[i].clone(),
-                        (1, self.x_data[0].len()),
-                        &self.device,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let x_batch = Tensor::cat(&x_tensors, 0)?;
+                let start = batch_idx * self.batch_size;
+                let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
+                let batch_size = end - start;
 
-            let y_tensors: Vec<Tensor> = (start..end)
-                .map(|i| {
-                    Tensor::from_vec(
-                        self.y_data[i].clone(),
-                        (1, self.y_data[0].len()),
-                        &self.device,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let y_batch = Tensor::cat(&y_tensors, 0)?;
+                // Use Tensor::cat for efficient batch creation
+                let x_tensors: Vec<Tensor> = (start..end)
+                    .map(|i| {
+                        Tensor::from_vec(
+                            self.x_data[i].clone(),
+                            (1, self.x_data[0].len()),
+                            &self.device,
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let x_batch = Tensor::cat(&x_tensors, 0)?;
 
-            // Create variables for autodiff
-            let mut vars = Vec::with_capacity(self.model.layers.len() * 2); // Each layer has weights and biases
+                let y_tensors: Vec<Tensor> = (start..end)
+                    .map(|i| {
+                        Tensor::from_vec(
+                            self.y_data[i].clone(),
+                            (1, self.y_data[0].len()),
+                            &self.device,
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let y_batch = Tensor::cat(&y_tensors, 0)?;
 
-            let data = self.varmap.data().lock().unwrap();
-            for (_, var) in data.iter() {
-                vars.push(var.clone());
-            }
-            drop(data);
+                // Create variables for autodiff
+                let mut vars = Vec::with_capacity(self.model.layers.len() * 2); // Each layer has weights and biases
 
-            // Forward pass with autodiff
-            let y_pred = self.model.forward(&x_batch)?;
-            let y_pred = softmax(&y_pred, 1)?;
-
-            // Compute loss
-            let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
-            let loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
-
-            // Compute gradients using candle's autodiff
-            let grads = loss.backward()?;
-
-            // Extract gradients in the same order as parameters
-            let mut batch_grads = vec![0.0; self.param_count];
-            let mut grad_idx = 0;
-
-            for var in &vars {
-                if let Some(grad) = grads.get(var) {
-                    let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
-                    for (i, &g) in grad_values.iter().enumerate() {
-                        batch_grads[grad_idx + i] = g * (batch_size as f64);
-                    }
-                    grad_idx += grad_values.len();
-                } else {
-                    // If no gradient, assume zero
-                    let tensor = var.as_tensor();
-                    grad_idx += tensor.elem_count();
+                let data = self.varmap.data().lock().unwrap();
+                for (_, var) in data.iter() {
+                    vars.push(var.clone());
                 }
-            }
-            Ok(batch_grads)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+                drop(data);
+
+                // Forward pass with autodiff
+                let y_pred = self.model.forward(&x_batch)?;
+                let y_pred = softmax(&y_pred, 1)?;
+
+                // Compute loss
+                let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
+                let loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
+
+                // Compute gradients using candle's autodiff
+                let grads = loss.backward()?;
+
+                // Extract gradients in the same order as parameters
+                let mut batch_grads = vec![0.0; self.param_count];
+                let mut grad_idx = 0;
+
+                for var in &vars {
+                    if let Some(grad) = grads.get(var) {
+                        let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
+                        for (i, &g) in grad_values.iter().enumerate() {
+                            batch_grads[grad_idx + i] = g * (batch_size as f64);
+                        }
+                        grad_idx += grad_values.len();
+                    } else {
+                        // If no gradient, assume zero
+                        let tensor = var.as_tensor();
+                        grad_idx += tensor.elem_count();
+                    }
+                }
+                Ok(batch_grads)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         // Aggregate gradients from all batches
         for batch_grad in batch_grads {
             for (i, &g) in batch_grad.iter().enumerate() {
@@ -852,14 +869,14 @@ impl OptimizationProblem for MnistNeuralNetwork {
         for g in &mut accumulated_grads {
             *g /= n_samples as f64;
         }
-        
+
         // Add L2 regularization gradient
         if self.l2_regularization > 0.0 {
             for (i, g) in accumulated_grads.iter_mut().enumerate() {
                 *g += self.l2_regularization * params[i];
             }
         }
-        
+
         // Gradient clipping to prevent exploding gradients
         let grad_norm: f64 = accumulated_grads.iter().map(|g| g * g).sum::<f64>().sqrt();
         if grad_norm > 10.0 {

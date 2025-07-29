@@ -1,10 +1,14 @@
+use crate::line_search::{
+    BacktrackingConfig, BacktrackingLineSearch, BisectionConfig, BisectionLineSearch,
+    CubicQuadraticConfig, CubicQuadraticLineSearch, GoldenSectionConfig, GoldenSectionLineSearch,
+    MoreThuenteConfig, MoreThuenteLineSearch, StrongWolfeConfig, StrongWolfeLineSearch,
+};
 use crate::utils::math::dot_product_f64;
 use anyhow::{anyhow, Error, Result};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::Arc;
-use crate::line_search::{BacktrackingConfig, BacktrackingLineSearch, BisectionConfig, BisectionLineSearch, CubicQuadraticConfig, CubicQuadraticLineSearch, GoldenSectionConfig, GoldenSectionLineSearch, MoreThuenteConfig, MoreThuenteLineSearch, StrongWolfeConfig, StrongWolfeLineSearch};
 
 /// Trait for 1-D differentiable parametric curves
 pub trait ParametricCurve: Send + Sync {
@@ -22,12 +26,14 @@ pub struct OneDimensionalProblem {
     pub gradient: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
     /// Initial directional derivative at t=0
     pub initial_directional_derivative: f64,
-
 }
 impl Debug for OneDimensionalProblem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("OneDimensionalProblem")
-            .field("initial_directional_derivative", &self.initial_directional_derivative)
+            .field(
+                "initial_directional_derivative",
+                &self.initial_directional_derivative,
+            )
             .field("objective", &"<closure>")
             .field("gradient", &"<closure>")
             .finish()
@@ -59,21 +65,28 @@ pub fn create_1d_problem(
 ) -> Result<OneDimensionalProblem> {
     let initial_position = curve.position(0.0)?;
     let initial_direction = curve.direction(0.0)?;
-    let initial_value = objective_fn(&initial_position).map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
+    let initial_value = objective_fn(&initial_position)
+        .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
     let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
     let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
     debug!("create_1d_problem: initial_derivative={:?}, initial_direction={:?}, initial_directional_derivative={:.3e}",
           initial_gradient, initial_direction, initial_directional_derivative);
-        // Check for zero direction
-        let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
-        if direction_norm < 1e-16 {
-            return Err(anyhow!("Direction vector is essentially zero (norm = {:.3e})", direction_norm));
-        }
+    // Check for zero direction
+    let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if direction_norm < 1e-16 {
+        return Err(anyhow!(
+            "Direction vector is essentially zero (norm = {:.3e})",
+            direction_norm
+        ));
+    }
 
     // For descent: ∇f · d < 0
     if initial_directional_derivative > 0.0 {
         // Warn and flip the direction of the gradient fn
-        warn!("Initial directional derivative is positive ({:.3e}), flipping direction", initial_directional_derivative);
+        warn!(
+            "Initial directional derivative is positive ({:.3e}), flipping direction",
+            initial_directional_derivative
+        );
         let negative_gradient_fn = {
             let gradient_fn = gradient_fn.clone();
             Arc::new(move |x: &[f64]| -> Result<Vec<f64>, Error> {
@@ -82,13 +95,15 @@ pub fn create_1d_problem(
         };
         return create_1d_problem(
             curve,
-            objective_fn, // Keep the objective function
+            objective_fn,         // Keep the objective function
             negative_gradient_fn, // Negate the gradient
         );
     } else if initial_directional_derivative == 0.0 {
-        return Err(anyhow!("Initial directional derivative must be negative for descent direction: {:.3e}", initial_directional_derivative));
+        return Err(anyhow!(
+            "Initial directional derivative must be negative for descent direction: {:.3e}",
+            initial_directional_derivative
+        ));
     }
-
 
     // Use Arc to share the curve between closures
     let curve = Arc::new(curve);
@@ -103,7 +118,9 @@ pub fn create_1d_problem(
         let result = objective_fn_for_closure(&result_vec)?;
         debug!(
             "1D objective at t={:.3e}: f={:.3e}, improvement: {:.3e}",
-            t, result, (initial_value - result)
+            t,
+            result,
+            (initial_value - result)
         );
         Ok(result)
     });
@@ -342,13 +359,10 @@ mod tests {
         let gradient_fn = Arc::new(quadratic_gradient1);
         // Calculate expected value before moving objective_fn
         let expected_f0 = objective_fn(&current_point).unwrap();
-        
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            objective_fn,
-            gradient_fn,
-        ).unwrap();
+
+        let problem =
+            create_1d_problem_linear(&current_point, &direction, objective_fn, gradient_fn)
+                .unwrap();
         // Test that f(0) gives the current function value
         let f0 = (problem.objective)(0.0).unwrap();
         assert_relative_eq!(f0, expected_f0, epsilon = 1e-10);

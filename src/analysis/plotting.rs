@@ -196,17 +196,17 @@ impl PlottingEngine {
             eprintln!("[Plotting] Warning: All traces were empty after sanitization");
             return Ok(());
         }
-       // Group traces by optimizer name for consistent coloring
-       let mut optimizer_traces: HashMap<String, Vec<&ExtendedOptimizationTrace>> = HashMap::new();
-       for trace in &sanitized_traces {
-           optimizer_traces
-               .entry(trace.optimizer_name.clone())
-               .or_insert_with(Vec::new)
-               .push(trace);
-       }
-       // Create a sorted list of unique optimizer names for consistent color assignment
-       let mut unique_optimizers: Vec<String> = optimizer_traces.keys().cloned().collect();
-       unique_optimizers.sort();
+        // Group traces by optimizer name for consistent coloring
+        let mut optimizer_traces: HashMap<String, Vec<&ExtendedOptimizationTrace>> = HashMap::new();
+        for trace in &sanitized_traces {
+            optimizer_traces
+                .entry(trace.optimizer_name.clone())
+                .or_insert_with(Vec::new)
+                .push(trace);
+        }
+        // Create a sorted list of unique optimizer names for consistent color assignment
+        let mut unique_optimizers: Vec<String> = optimizer_traces.keys().cloned().collect();
+        unique_optimizers.sort();
 
         // Export CSV data for this plot
         self.export_convergence_csv(&sanitized_traces, filename)?;
@@ -269,10 +269,15 @@ impl PlottingEngine {
 
         // Color palette for different optimizers
         let colors = [
-            &RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK,
-            &RGBColor(255, 165, 0), // Orange
-            &RGBColor(128, 0, 128),  // Purple
-            &RGBColor(165, 42, 42),  // Brown
+            &RED,
+            &BLUE,
+            &GREEN,
+            &MAGENTA,
+            &CYAN,
+            &BLACK,
+            &RGBColor(255, 165, 0),   // Orange
+            &RGBColor(128, 0, 128),   // Purple
+            &RGBColor(165, 42, 42),   // Brown
             &RGBColor(255, 192, 203), // Pink
             &RGBColor(128, 128, 128), // Grey
             &YELLOW,
@@ -290,42 +295,42 @@ impl PlottingEngine {
             &RGBColor(0, 255, 0),     // Lime
         ];
 
-       // Plot traces grouped by optimizer name
-       for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
-           let color = colors[optimizer_idx % colors.len()];
-           let traces_for_optimizer = &optimizer_traces[optimizer_name];
-           
-           for trace in traces_for_optimizer {
-            let series_data: Vec<(usize, f64)> = trace
-                .evaluation_counts
-                .iter()
-                .zip(trace.objective_values.iter())
-                .filter(|(_, &obj_val)| obj_val.is_finite())
-                .map(|(&eval_count, &obj_val)| (eval_count, obj_val))
-                .collect();
-            if series_data.is_empty() {
-                continue;
-            }
+        // Plot traces grouped by optimizer name
+        for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
+            let color = colors[optimizer_idx % colors.len()];
+            let traces_for_optimizer = &optimizer_traces[optimizer_name];
 
-            // Draw series
-            chart
-                .draw_series(LineSeries::new(series_data.clone(), color))
-                .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
-            // Add markers at regular intervals for better visibility
-            let marker_interval = series_data.len().max(1) / 20 + 1;
-            chart
-                .draw_series(
-                    series_data
-                        .iter()
-                        .step_by(marker_interval)
-                        .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
-                )
-                .map_err(|e| anyhow::anyhow!("Marker drawing error: {}", e))?;
-           }
+            for trace in traces_for_optimizer {
+                let series_data: Vec<(usize, f64)> = trace
+                    .evaluation_counts
+                    .iter()
+                    .zip(trace.objective_values.iter())
+                    .filter(|(_, &obj_val)| obj_val.is_finite())
+                    .map(|(&eval_count, &obj_val)| (eval_count, obj_val))
+                    .collect();
+                if series_data.is_empty() {
+                    continue;
+                }
+
+                // Draw series
+                chart
+                    .draw_series(LineSeries::new(series_data.clone(), color))
+                    .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
+                // Add markers at regular intervals for better visibility
+                let marker_interval = series_data.len().max(1) / 20 + 1;
+                chart
+                    .draw_series(
+                        series_data
+                            .iter()
+                            .step_by(marker_interval)
+                            .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
+                    )
+                    .map_err(|e| anyhow::anyhow!("Marker drawing error: {}", e))?;
+            }
         }
         // Try to add legend
-       if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
-           self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
+        if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
+            self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
         }
 
         root.present()?;
@@ -377,17 +382,17 @@ impl PlottingEngine {
             eprintln!("[Plotting] Warning: All traces were empty after sanitization");
             return Ok(());
         }
-       // Group traces by optimizer name for consistent coloring
-       let mut optimizer_traces: HashMap<String, Vec<&ExtendedOptimizationTrace>> = HashMap::new();
-       for trace in &sanitized_traces {
-           optimizer_traces
-               .entry(trace.optimizer_name.clone())
-               .or_insert_with(Vec::new)
-               .push(trace);
-       }
-       // Create a sorted list of unique optimizer names for consistent color assignment
-       let mut unique_optimizers: Vec<String> = optimizer_traces.keys().cloned().collect();
-       unique_optimizers.sort();
+        // Group traces by optimizer name for consistent coloring
+        let mut optimizer_traces: HashMap<String, Vec<&ExtendedOptimizationTrace>> = HashMap::new();
+        for trace in &sanitized_traces {
+            optimizer_traces
+                .entry(trace.optimizer_name.clone())
+                .or_insert_with(Vec::new)
+                .push(trace);
+        }
+        // Create a sorted list of unique optimizer names for consistent color assignment
+        let mut unique_optimizers: Vec<String> = optimizer_traces.keys().cloned().collect();
+        unique_optimizers.sort();
 
         // Export CSV data for this plot
         self.export_log_convergence_csv(&sanitized_traces, filename)?;
@@ -455,42 +460,42 @@ impl PlottingEngine {
 
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
 
-       // Plot traces grouped by optimizer name
-       for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
-           let color = colors[optimizer_idx % colors.len()];
-           let traces_for_optimizer = &optimizer_traces[optimizer_name];
-           
-           for trace in traces_for_optimizer {
-            let series_data: Vec<(usize, f64)> = trace
-                .evaluation_counts
-                .iter()
-                .zip(trace.objective_values.iter())
-                .filter(|(_, &obj_val)| obj_val > 0.0 && obj_val.is_finite())
-                .map(|(&eval_count, &obj_val)| {
-                    let safe_val = obj_val.max(1e-15).min(1e10);
-                    let log_val = safe_val.log10().max(-15.0).min(15.0);
-                    (eval_count, log_val)
-                })
-                .collect();
+        // Plot traces grouped by optimizer name
+        for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
+            let color = colors[optimizer_idx % colors.len()];
+            let traces_for_optimizer = &optimizer_traces[optimizer_name];
 
-            // Only draw if we have valid data points
-            if !series_data.is_empty() {
-                chart.draw_series(LineSeries::new(series_data.clone(), color))?;
+            for trace in traces_for_optimizer {
+                let series_data: Vec<(usize, f64)> = trace
+                    .evaluation_counts
+                    .iter()
+                    .zip(trace.objective_values.iter())
+                    .filter(|(_, &obj_val)| obj_val > 0.0 && obj_val.is_finite())
+                    .map(|(&eval_count, &obj_val)| {
+                        let safe_val = obj_val.max(1e-15).min(1e10);
+                        let log_val = safe_val.log10().max(-15.0).min(15.0);
+                        (eval_count, log_val)
+                    })
+                    .collect();
 
-                // Add markers for better visibility
-                let marker_interval = series_data.len().max(1) / 20 + 1;
-                chart.draw_series(
-                    series_data
-                        .iter()
-                        .step_by(marker_interval)
-                        .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
-                )?;
+                // Only draw if we have valid data points
+                if !series_data.is_empty() {
+                    chart.draw_series(LineSeries::new(series_data.clone(), color))?;
+
+                    // Add markers for better visibility
+                    let marker_interval = series_data.len().max(1) / 20 + 1;
+                    chart.draw_series(
+                        series_data
+                            .iter()
+                            .step_by(marker_interval)
+                            .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
+                    )?;
+                }
             }
-           }
         }
         // Try to add legend
-       if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
-           self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
+        if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
+            self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
         }
 
         root.present()?;
@@ -583,10 +588,15 @@ impl PlottingEngine {
         let num_problems = chart_data.len();
         let subplot_height = self.height / num_problems as u32;
         let colors = [
-            &RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK,
-            &RGBColor(255, 165, 0), // Orange
-            &RGBColor(128, 0, 128),  // Purple
-            &RGBColor(165, 42, 42),  // Brown
+            &RED,
+            &BLUE,
+            &GREEN,
+            &MAGENTA,
+            &CYAN,
+            &BLACK,
+            &RGBColor(255, 165, 0),   // Orange
+            &RGBColor(128, 0, 128),   // Purple
+            &RGBColor(165, 42, 42),   // Brown
             &RGBColor(255, 192, 203), // Pink
             &RGBColor(128, 128, 128), // Grey
             &YELLOW,
@@ -1115,62 +1125,62 @@ impl PlottingEngine {
 
         Ok(())
     }
-   /// Helper function to add legend for unique optimizers
-   fn add_legend_for_optimizers<DB: DrawingBackend>(
-       &self,
-       root: &DrawingArea<DB, Shift>,
-       optimizer_names: &[String],
-       colors: &[&RGBColor],
-   ) -> Result<()> {
-       if !self.has_fonts {
-           return Ok(());
-       }
-       let legend_x = self.width as i32 - 200;
-       let legend_y = 50;
-       let line_height = 20;
-       // Draw legend background
-       let _ = root.draw(&Rectangle::new(
-           [
-               (legend_x - 10, legend_y - 10),
-               (
-                   legend_x + 180,
-                   legend_y + optimizer_names.len() as i32 * line_height + 10,
-               ),
-           ],
-           WHITE.mix(0.8).filled(),
-       ));
-       // Draw legend border
-       let _ = root.draw(&Rectangle::new(
-           [
-               (legend_x - 10, legend_y - 10),
-               (
-                   legend_x + 180,
-                   legend_y + optimizer_names.len() as i32 * line_height + 10,
-               ),
-           ],
-           BLACK,
-       ));
-       // Draw legend entries
-       for (i, optimizer_name) in optimizer_names.iter().enumerate() {
-           let color = colors[i % colors.len()];
-           let y_pos = legend_y + i as i32 * line_height;
-           // Draw color line
-           let _ = root.draw(&PathElement::new(
-               vec![(legend_x, y_pos), (legend_x + 30, y_pos)],
-               color.stroke_width(2),
-           ));
-           // Try to draw text label (ignore errors)
-           let _ = root.draw(&Text::new(
-               optimizer_name.as_str(),
-               (legend_x + 40, y_pos),
-               ("sans-serif", 15)
-                   .into_font()
-                   .color(&BLACK)
-                   .pos(Pos::new(HPos::Left, VPos::Center)),
-           ));
-       }
-       Ok(())
-   }
+    /// Helper function to add legend for unique optimizers
+    fn add_legend_for_optimizers<DB: DrawingBackend>(
+        &self,
+        root: &DrawingArea<DB, Shift>,
+        optimizer_names: &[String],
+        colors: &[&RGBColor],
+    ) -> Result<()> {
+        if !self.has_fonts {
+            return Ok(());
+        }
+        let legend_x = self.width as i32 - 200;
+        let legend_y = 50;
+        let line_height = 20;
+        // Draw legend background
+        let _ = root.draw(&Rectangle::new(
+            [
+                (legend_x - 10, legend_y - 10),
+                (
+                    legend_x + 180,
+                    legend_y + optimizer_names.len() as i32 * line_height + 10,
+                ),
+            ],
+            WHITE.mix(0.8).filled(),
+        ));
+        // Draw legend border
+        let _ = root.draw(&Rectangle::new(
+            [
+                (legend_x - 10, legend_y - 10),
+                (
+                    legend_x + 180,
+                    legend_y + optimizer_names.len() as i32 * line_height + 10,
+                ),
+            ],
+            BLACK,
+        ));
+        // Draw legend entries
+        for (i, optimizer_name) in optimizer_names.iter().enumerate() {
+            let color = colors[i % colors.len()];
+            let y_pos = legend_y + i as i32 * line_height;
+            // Draw color line
+            let _ = root.draw(&PathElement::new(
+                vec![(legend_x, y_pos), (legend_x + 30, y_pos)],
+                color.stroke_width(2),
+            ));
+            // Try to draw text label (ignore errors)
+            let _ = root.draw(&Text::new(
+                optimizer_name.as_str(),
+                (legend_x + 40, y_pos),
+                ("sans-serif", 15)
+                    .into_font()
+                    .color(&BLACK)
+                    .pos(Pos::new(HPos::Left, VPos::Center)),
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]

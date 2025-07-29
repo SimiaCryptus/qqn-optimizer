@@ -14,7 +14,7 @@ pub struct LogisticRegression {
     name: String,
     n_samples: usize,
     n_features: usize,
-   optimal_value: Option<f64>,
+    optimal_value: Option<f64>,
 }
 
 impl LogisticRegression {
@@ -31,12 +31,12 @@ impl LogisticRegression {
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
-       // Set default optimal value based on problem size
-       let optimal_value = if n_samples <= 100 && n_features <= 5 {
-           Some(0.35) // Small problems: ~15% above 0.302
-       } else {
-           Some(0.32) // Large problems: ~15% above 0.277
-       };
+        // Set default optimal value based on problem size
+        let optimal_value = if n_samples <= 100 && n_features <= 5 {
+            Some(0.35) // Small problems: ~15% above 0.302
+        } else {
+            Some(0.32) // Large problems: ~15% above 0.277
+        };
 
         Ok(Self {
             n_samples,
@@ -46,7 +46,7 @@ impl LogisticRegression {
             y_tensor,
             device,
             regularization,
-           optimal_value,
+            optimal_value,
         })
     }
 
@@ -74,9 +74,9 @@ impl LogisticRegression {
 
         Self::new(x_data, y_data, 0.01)
     }
-   pub fn set_optimal_value(&mut self, value: Option<f64>) {
-       self.optimal_value = value;
-   }
+    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+        self.optimal_value = value;
+    }
 }
 
 impl OptimizationProblem for LogisticRegression {
@@ -84,7 +84,7 @@ impl OptimizationProblem for LogisticRegression {
         &self.name
     }
     fn optimal_value(&self) -> Option<f64> {
-       self.optimal_value
+        self.optimal_value
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
@@ -166,7 +166,7 @@ pub struct NeuralNetworkTraining {
     y_tensor: Tensor,
     device: Device,
     name: String,
-   optimal_value: Option<f64>,
+    optimal_value: Option<f64>,
 }
 
 impl NeuralNetworkTraining {
@@ -193,24 +193,24 @@ impl NeuralNetworkTraining {
 
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, input_dim), &device)?;
         let y_tensor = Tensor::from_vec(y_flat, (n_samples, output_dim), &device)?;
-       // Set default optimal value based on network size
-       let mut temp_nn = Self {
-           layer_sizes: layer_sizes.clone(),
-           x_tensor,
-           y_tensor,
-           device,
-           name,
-           optimal_value: None,
-       };
-       let total_params = temp_nn.count_parameters();
-       let optimal_value = if total_params > 100 {
-           Some(0.1)
-       } else {
-           Some(0.25)
-       };
-       temp_nn.optimal_value = optimal_value;
+        // Set default optimal value based on network size
+        let mut temp_nn = Self {
+            layer_sizes: layer_sizes.clone(),
+            x_tensor,
+            y_tensor,
+            device,
+            name,
+            optimal_value: None,
+        };
+        let total_params = temp_nn.count_parameters();
+        let optimal_value = if total_params > 100 {
+            Some(0.1)
+        } else {
+            Some(0.25)
+        };
+        temp_nn.optimal_value = optimal_value;
 
-       Ok(temp_nn)
+        Ok(temp_nn)
     }
 
     pub fn mlp_classification(layer_sizes: Vec<usize>, rng: &mut StdRng) -> Result<Self> {
@@ -237,9 +237,9 @@ impl NeuralNetworkTraining {
 
         Self::new(layer_sizes, x_data, y_data)
     }
-   pub fn set_optimal_value(&mut self, value: Option<f64>) {
-       self.optimal_value = value;
-   }
+    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+        self.optimal_value = value;
+    }
 
     fn count_parameters(&self) -> usize {
         let mut count = 0;
@@ -386,7 +386,7 @@ impl OptimizationProblem for NeuralNetworkTraining {
     }
 
     fn optimal_value(&self) -> Option<f64> {
-       self.optimal_value
+        self.optimal_value
     }
 }
 
@@ -398,7 +398,7 @@ pub struct LinearRegression {
     device: Device,
     regularization: f64,
     name: String,
-   optimal_value: Option<f64>,
+    optimal_value: Option<f64>,
 }
 
 impl LinearRegression {
@@ -415,12 +415,12 @@ impl LinearRegression {
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
-       // Set default optimal value based on problem size
-       let optimal_value = if n_samples <= 100 && n_features <= 5 {
-           Some(10.0) // Small problems: ~8% margin above 23.2
-       } else {
-           Some(140.0) // Larger problem threshold
-       };
+        // Set default optimal value based on problem size
+        let optimal_value = if n_samples <= 100 && n_features <= 5 {
+            Some(10.0) // Small problems: ~8% margin above 23.2
+        } else {
+            Some(140.0) // Larger problem threshold
+        };
 
         Ok(Self {
             x_tensor,
@@ -428,12 +428,12 @@ impl LinearRegression {
             device,
             regularization,
             name,
-           optimal_value,
+            optimal_value,
         })
     }
-   pub fn set_optimal_value(&mut self, value: Option<f64>) {
-       self.optimal_value = value;
-   }
+    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+        self.optimal_value = value;
+    }
 }
 
 impl OptimizationProblem for LinearRegression {
@@ -444,7 +444,7 @@ impl OptimizationProblem for LinearRegression {
         &self.name
     }
     fn optimal_value(&self) -> Option<f64> {
-       self.optimal_value
+        self.optimal_value
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
@@ -512,7 +512,7 @@ pub struct SupportVectorMachine {
     c: f64, // Regularization parameter
     name: String,
     ones_tensor: Option<Tensor>, // Cache for ones tensor
-   optimal_value: Option<f64>,
+    optimal_value: Option<f64>,
 }
 
 impl SupportVectorMachine {
@@ -526,12 +526,12 @@ impl SupportVectorMachine {
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
-       // Set default optimal value based on problem size
-       let optimal_value = if n_samples <= 100 && n_features <= 5 {
-           Some(1.05) // Small problems: ~5% above 0.994
-       } else {
-           Some(1.0) // Large problems: ~6% above 0.942
-       };
+        // Set default optimal value based on problem size
+        let optimal_value = if n_samples <= 100 && n_features <= 5 {
+            Some(1.05) // Small problems: ~5% above 0.994
+        } else {
+            Some(1.0) // Large problems: ~6% above 0.942
+        };
 
         Ok(Self {
             x_tensor,
@@ -540,12 +540,12 @@ impl SupportVectorMachine {
             c,
             name,
             ones_tensor: None,
-           optimal_value,
+            optimal_value,
         })
     }
-   pub fn set_optimal_value(&mut self, value: Option<f64>) {
-       self.optimal_value = value;
-   }
+    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+        self.optimal_value = value;
+    }
 }
 
 impl OptimizationProblem for SupportVectorMachine {
@@ -556,7 +556,7 @@ impl OptimizationProblem for SupportVectorMachine {
         &self.name
     }
     fn optimal_value(&self) -> Option<f64> {
-       self.optimal_value
+        self.optimal_value
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
@@ -634,11 +634,11 @@ impl OptimizationProblem for SupportVectorMachine {
     }
 }
 
-
 /// Generate synthetic linear regression data
 pub fn generate_linear_regression_data(
     n_samples: usize,
-    n_features: usize, rng: &mut StdRng,
+    n_features: usize,
+    rng: &mut StdRng,
 ) -> (Vec<Vec<f64>>, Vec<f64>) {
     use rand::Rng;
     let mut x_data = Vec::new();
@@ -660,7 +660,11 @@ pub fn generate_linear_regression_data(
     (x_data, y_data)
 }
 /// Generate synthetic SVM data
-pub fn generate_svm_data(n_samples: usize, n_features: usize, rng: &mut StdRng) -> (Vec<Vec<f64>>, Vec<f64>) {
+pub fn generate_svm_data(
+    n_samples: usize,
+    n_features: usize,
+    rng: &mut StdRng,
+) -> (Vec<Vec<f64>>, Vec<f64>) {
     use rand::Rng;
     let mut x_data = Vec::new();
     let mut y_data = Vec::new();

@@ -1,10 +1,19 @@
+use crate::line_search::line_search::{
+    create_1d_problem, create_1d_problem_linear, create_line_search, ParametricCurve,
+};
+use crate::line_search::LineSearchMethod::Bisection;
+use crate::line_search::{
+    BacktrackingLineSearch, BisectionLineSearch, CubicQuadraticLineSearch, GoldenSectionLineSearch,
+    LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, MoreThuenteLineSearch,
+    StrongWolfeLineSearch, TerminationReason,
+};
 use crate::optimizers::lbfgs::LBFGSState;
 use crate::optimizers::optimizer::OptimizationMetadata;
 use crate::optimizers::Optimizer;
 use crate::optimizers::StepResult;
-use crate::utils::math::{compute_magnitude, log_tensor,
-                         DifferentiableFunction,
-};
+use crate::utils::math::{compute_magnitude, log_tensor, DifferentiableFunction};
+use crate::utils::{vector_add, vector_scale};
+use crate::ConvergenceInfo;
 use anyhow::{anyhow, Result as AnyhowResult};
 use candle_core::{Device, Error, Result as CandleResult, Tensor};
 use log::{debug, error, info, trace, warn};
@@ -13,11 +22,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use crate::ConvergenceInfo;
-use crate::line_search::line_search::{create_1d_problem, create_1d_problem_linear, create_line_search, ParametricCurve};
-use crate::line_search::{BacktrackingLineSearch, BisectionLineSearch, CubicQuadraticLineSearch, GoldenSectionLineSearch, LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, MoreThuenteLineSearch, StrongWolfeLineSearch, TerminationReason};
-use crate::line_search::LineSearchMethod::Bisection;
-use crate::utils::{vector_add, vector_scale};
 
 /// Configuration for the QQN optimizer
 #[derive(Debug, Clone)]
@@ -360,7 +364,10 @@ impl QQNOptimizer {
         // Check for convergence before attempting steepest descent
         let grad_norm = compute_magnitude(gradients)?;
         if grad_norm < self.config.epsilon {
-            info!("Converged: gradient norm {:.3e} < epsilon {:.3e}", grad_norm, self.config.epsilon);
+            info!(
+                "Converged: gradient norm {:.3e} < epsilon {:.3e}",
+                grad_norm, self.config.epsilon
+            );
             return Ok(StepResult {
                 step_size: 0.0,
                 convergence_info: ConvergenceInfo {
@@ -370,13 +377,15 @@ impl QQNOptimizer {
                 metadata: {
                     let mut metadata = OptimizationMetadata::default();
                     metadata.optimizer_data.insert("method".to_string(), 0.0); // 0 = steepest descent
-                    metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+                    metadata
+                        .optimizer_data
+                        .insert("gradient_norm".to_string(), grad_norm);
                     metadata.optimizer_data.insert("converged".to_string(), 1.0);
                     metadata
                 },
             });
         }
-        
+
         // Evaluate function at current parameters to check for increasing steps
         let initial_function_value = function.evaluate(nd_params)?;
         debug!(
@@ -395,7 +404,10 @@ impl QQNOptimizer {
         // Check if direction is essentially zero (this should be caught above, but double-check)
         let direction_norm = compute_magnitude(&direction)?;
         if direction_norm < self.config.epsilon {
-            warn!("Direction norm {:.3e} is too small, indicating convergence", direction_norm);
+            warn!(
+                "Direction norm {:.3e} is too small, indicating convergence",
+                direction_norm
+            );
             return Ok(StepResult {
                 step_size: 0.0,
                 convergence_info: ConvergenceInfo {
@@ -405,8 +417,12 @@ impl QQNOptimizer {
                 metadata: {
                     let mut metadata = OptimizationMetadata::default();
                     metadata.optimizer_data.insert("method".to_string(), 0.0);
-                    metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
-                    metadata.optimizer_data.insert("direction_norm".to_string(), direction_norm);
+                    metadata
+                        .optimizer_data
+                        .insert("gradient_norm".to_string(), grad_norm);
+                    metadata
+                        .optimizer_data
+                        .insert("direction_norm".to_string(), direction_norm);
                     metadata.optimizer_data.insert("converged".to_string(), 1.0);
                     metadata
                 },
@@ -521,7 +537,7 @@ impl QQNOptimizer {
         let actual_step_size = line_search_result.step_size * self.config.gradient_scale_factor;
         self.log_scalar("Line Search Step Size", line_search_result.step_size);
         self.log_scalar("Actual Step Size (with scaling)", actual_step_size);
-        
+
         // Save old parameters before updating
         let old_params = nd_params.to_vec();
 
@@ -594,13 +610,14 @@ impl QQNOptimizer {
         metadata
             .optimizer_data
             .insert("final_function_value".to_string(), final_function_value);
-        metadata
-            .optimizer_data
-            .insert("gradient_scale_factor".to_string(), self.config.gradient_scale_factor);
+        metadata.optimizer_data.insert(
+            "gradient_scale_factor".to_string(),
+            self.config.gradient_scale_factor,
+        );
         metadata
             .optimizer_data
             .insert("actual_step_size".to_string(), actual_step_size);
-            
+
         Ok(StepResult {
             step_size: actual_step_size,
             convergence_info,
@@ -623,13 +640,15 @@ impl QQNOptimizer {
             bisection.set_initial_step(prev_step);
         } else if let Some(strong_wolfe) = line_search_any.downcast_mut::<StrongWolfeLineSearch>() {
             strong_wolfe.set_initial_step(prev_step);
-        } else if let Some(backtracking) = line_search_any.downcast_mut::<BacktrackingLineSearch>() {
+        } else if let Some(backtracking) = line_search_any.downcast_mut::<BacktrackingLineSearch>()
+        {
             backtracking.set_initial_step(prev_step);
         } else if let Some(golden) = line_search_any.downcast_mut::<GoldenSectionLineSearch>() {
             golden.set_initial_step(prev_step);
         } else if let Some(more_thuente) = line_search_any.downcast_mut::<MoreThuenteLineSearch>() {
             more_thuente.set_initial_step(prev_step);
-        } else if let Some(cubic_quad) = line_search_any.downcast_mut::<CubicQuadraticLineSearch>() {
+        } else if let Some(cubic_quad) = line_search_any.downcast_mut::<CubicQuadraticLineSearch>()
+        {
             cubic_quad.set_initial_step(prev_step);
         }
     }
@@ -645,7 +664,10 @@ impl Optimizer for QQNOptimizer {
         params: &mut [Tensor],
         function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult> {
-        info!("QQN step {}: starting optimization step",self.state.iteration);
+        info!(
+            "QQN step {}: starting optimization step",
+            self.state.iteration
+        );
         self.log_optimization_state(self.state.iteration, "Starting step");
         if params.is_empty() {
             warn!("Empty parameters or gradients provided to QQN step");
@@ -660,7 +682,10 @@ impl Optimizer for QQNOptimizer {
         // Check for convergence based on gradient norm
         let grad_norm = compute_magnitude(&initial_gradients)?;
         if grad_norm < self.config.epsilon {
-            info!("Converged: gradient norm {:.3e} < epsilon {:.3e}", grad_norm, self.config.epsilon);
+            info!(
+                "Converged: gradient norm {:.3e} < epsilon {:.3e}",
+                grad_norm, self.config.epsilon
+            );
             self.state.iteration += 1;
             return Ok(StepResult {
                 step_size: 0.0,
@@ -670,13 +695,14 @@ impl Optimizer for QQNOptimizer {
                 },
                 metadata: {
                     let mut metadata = OptimizationMetadata::default();
-                    metadata.optimizer_data.insert("gradient_norm".to_string(), grad_norm);
+                    metadata
+                        .optimizer_data
+                        .insert("gradient_norm".to_string(), grad_norm);
                     metadata.optimizer_data.insert("converged".to_string(), 1.0);
                     metadata
                 },
             });
         }
-
 
         // Check for NaN/Inf in inputs
         for (i, grad) in initial_gradients.iter().enumerate() {
@@ -711,7 +737,10 @@ impl Optimizer for QQNOptimizer {
         }
 
         debug!("Computing L-BFGS direction");
-        let lbfgs_direction = self.state.lbfgs_state.compute_direction(&initial_gradients)?;
+        let lbfgs_direction = self
+            .state
+            .lbfgs_state
+            .compute_direction(&initial_gradients)?;
         self.log_tensor_data("L-BFGS Direction", &lbfgs_direction);
 
         // Check if L-BFGS direction is valid (i.e., all finite)
@@ -732,14 +761,17 @@ impl Optimizer for QQNOptimizer {
             params, lbfgs_direction
         );
         let quadratic_path = self.create_quadratic_path(
-                params,
-                &initial_gradients,
-                &lbfgs_direction,
-                function.clone()
-            )?;
+            params,
+            &initial_gradients,
+            &lbfgs_direction,
+            function.clone(),
+        )?;
         // Configure line search with previous step size if available
         if let Some(prev_step) = self.state.previous_step_size {
-            debug!("Using previous step size {:.3e} as initial step for line search", prev_step);
+            debug!(
+                "Using previous step size {:.3e} as initial step for line search",
+                prev_step
+            );
             self.set_initial_step(prev_step);
         }
         let line_search_result = self.find_optimal_t_line_search(quadratic_path.clone());
@@ -797,9 +829,12 @@ impl Optimizer for QQNOptimizer {
             if line_search_result.step_size > self.config.min_step_persist {
                 let step_size = line_search_result.step_size;
                 self.state.previous_step_size = Some(step_size);
-                debug!("Persisted step size {:.3e} for next iteration",step_size);
+                debug!("Persisted step size {:.3e} for next iteration", step_size);
             } else {
-                debug!("Line search returned step size {:.3e}, below persistence threshold", line_search_result.step_size);
+                debug!(
+                    "Line search returned step size {:.3e}, below persistence threshold",
+                    line_search_result.step_size
+                );
                 self.state.previous_step_size = None; // Reset if too small
             }
         }

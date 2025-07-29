@@ -12,7 +12,7 @@
 //! 2. **Scaling**: Applies initial Hessian approximation H₀ = γI where γ = (s_k^T y_k)/(y_k^T y_k)
 //! 3. **Second loop**: Applies corrections to obtain the final search direction
 //!
-//! The method maintains vectors s_k = x_{k+1} - x_k (parameter changes) and 
+//! The method maintains vectors s_k = x_{k+1} - x_k (parameter changes) and
 //! y_k = ∇f_{k+1} - ∇f_k (gradient changes) to implicitly represent the inverse Hessian.
 //!
 //! ## Strengths
@@ -39,17 +39,20 @@
 //! - **Lax**: Aggressive settings for well-conditioned problems requiring fast convergence
 //! - **QQN**: Specialized settings when used as a component within QQN
 
+use crate::line_search::line_search::{create_1d_problem_linear, create_line_search};
+use crate::line_search::{LineSearch, LineSearchConfig, LineSearchMethod};
 use crate::optimizers::optimizer::OptimizationMetadata;
 use crate::optimizers::optimizer::{ConvergenceInfo, Optimizer, StepResult};
-use crate::utils::math::{compute_magnitude, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale, vector_subtract, DifferentiableFunction};
+use crate::utils::math::{
+    compute_magnitude, dot_product, log_tensor, tensors_to_f64, vector_add, vector_scale,
+    vector_subtract, DifferentiableFunction,
+};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
-use crate::line_search::line_search::{create_1d_problem_linear, create_line_search};
-use crate::line_search::{LineSearch, LineSearchConfig, LineSearchMethod};
 
 /// Configuration parameters for the L-BFGS optimizer.
 ///
@@ -65,13 +68,13 @@ pub struct LBFGSConfig {
     /// computation. Values below 5 may converge slowly, while values above 20
     /// rarely provide significant benefit and can cause numerical issues.
     pub history_size: usize,
-    
+
     /// Line search configuration for step size selection.
     ///
     /// Controls how the optimizer finds an appropriate step size along the search
     /// direction. Uses strong Wolfe conditions by default for robust convergence.
     pub line_search: LineSearchConfig,
-    
+
     /// Numerical stability constant for avoiding division by zero.
     ///
     /// **Range**: 1e-16 to 1e-6, **Default**: 1e-8
@@ -79,7 +82,7 @@ pub struct LBFGSConfig {
     /// Used in curvature condition checks and gradient magnitude comparisons.
     /// Smaller values allow more aggressive optimization but may cause instability.
     pub epsilon: f64,
-    
+
     /// Maximum number of correction pairs to use in two-loop recursion.
     ///
     /// **Range**: 1 to history_size, **Default**: 10
@@ -87,7 +90,7 @@ pub struct LBFGSConfig {
     /// Limits computational cost when history is large. Should typically equal
     /// history_size unless computational budget is severely constrained.
     pub max_correction_pairs: usize,
-    
+
     /// Maximum allowed step size in any single iteration.
     ///
     /// **Range**: 0.1 to 100+, **Default**: 2.0
@@ -96,7 +99,7 @@ pub struct LBFGSConfig {
     /// or overshooting. Conservative values (0.5-1.0) improve stability but
     /// may slow convergence on well-conditioned problems.
     pub max_step_size: f64,
-    
+
     /// Minimum allowed step size before declaring convergence failure.
     ///
     /// **Range**: 1e-20 to 1e-10, **Default**: 1e-16
@@ -104,7 +107,7 @@ pub struct LBFGSConfig {
     /// Prevents infinite loops when line search cannot find acceptable step.
     /// Very small values allow more persistent optimization attempts.
     pub min_step_size: f64,
-    
+
     /// Maximum allowed parameter change per iteration (L∞ norm).
     ///
     /// **Range**: 0.01 to 1000+, **Default**: 1.0
@@ -113,7 +116,7 @@ pub struct LBFGSConfig {
     /// Useful for problems where parameters have physical meaning or constraints.
     /// Set to 0.0 to disable this constraint.
     pub max_param_change: f64,
-    
+
     /// Gradient clipping threshold to prevent numerical overflow.
     ///
     /// **Range**: 0.0 (disabled) to 1e6+, **Default**: 1e3
@@ -121,7 +124,7 @@ pub struct LBFGSConfig {
     /// Clips gradient norm to this value if exceeded. Useful for problems with
     /// occasional large gradients. Set to 0.0 to disable clipping.
     pub gradient_clip: f64,
-    
+
     /// Enable recovery mechanism when optimization stagnates.
     ///
     /// **Default**: true
@@ -130,7 +133,7 @@ pub struct LBFGSConfig {
     /// is observed for `recovery_patience` iterations. Helps escape from
     /// poor local approximations but may discard useful curvature information.
     pub enable_recovery: bool,
-    
+
     /// Number of iterations without improvement before triggering recovery.
     ///
     /// **Range**: 1-20, **Default**: 5
@@ -138,7 +141,7 @@ pub struct LBFGSConfig {
     /// Lower values trigger recovery more aggressively, potentially helping
     /// with difficult problems but also discarding good approximations sooner.
     pub recovery_patience: usize,
-    
+
     /// Enable verbose logging of tensor data and internal state.
     ///
     /// **Default**: false
@@ -154,21 +157,21 @@ impl Default for LBFGSConfig {
         Self {
             history_size: 10,
             line_search: LineSearchConfig {
-                c1: 1e-4,  // Standard Armijo condition
-                c2: 0.9,   // Standard curvature condition for L-BFGS
+                c1: 1e-4, // Standard Armijo condition
+                c2: 0.9,  // Standard curvature condition for L-BFGS
                 initial_step: 1.0,
-                max_step: 2.0,  // Moderate maximum step
+                max_step: 2.0, // Moderate maximum step
                 method: LineSearchMethod::StrongWolfe,
                 ..LineSearchConfig::default()
             },
             epsilon: 1e-8,
             max_correction_pairs: 10,
-            max_step_size: 2.0,   // Moderate step size limit
+            max_step_size: 2.0, // Moderate step size limit
             min_step_size: 1e-16,
-            max_param_change: 1.0,  // Moderate parameter change limit
-            gradient_clip: 1e3,     // Moderate gradient clipping
+            max_param_change: 1.0, // Moderate parameter change limit
+            gradient_clip: 1e3,    // Moderate gradient clipping
             enable_recovery: true,
-            recovery_patience: 5,   // Standard recovery patience
+            recovery_patience: 5, // Standard recovery patience
             verbose: false,
         }
     }
@@ -189,22 +192,22 @@ impl LBFGSConfig {
     /// **Trade-offs**: More robust convergence but potentially slower on well-conditioned problems.
     pub fn strict() -> Self {
         Self {
-            history_size: 5,  // Smaller history to reduce memory effects
+            history_size: 5, // Smaller history to reduce memory effects
             line_search: LineSearchConfig {
-                c1: 1e-4,     // Standard Armijo condition
-                c2: 0.9,      // Strict curvature condition
-                initial_step: 0.1,  // Conservative initial step
-                max_step: 1.0,      // Conservative maximum step
+                c1: 1e-4,          // Standard Armijo condition
+                c2: 0.9,           // Strict curvature condition
+                initial_step: 0.1, // Conservative initial step
+                max_step: 1.0,     // Conservative maximum step
                 ..LineSearchConfig::default()
             },
-            epsilon: 1e-10,   // Higher precision
+            epsilon: 1e-10, // Higher precision
             max_correction_pairs: 5,
-            max_step_size: 0.5,     // Conservative step size
-            min_step_size: 1e-20,   // Allow very small steps
-            max_param_change: 0.1,  // Small parameter changes
-            gradient_clip: 1e2,     // Conservative gradient clipping
+            max_step_size: 0.5,    // Conservative step size
+            min_step_size: 1e-20,  // Allow very small steps
+            max_param_change: 0.1, // Small parameter changes
+            gradient_clip: 1e2,    // Conservative gradient clipping
             enable_recovery: true,
-            recovery_patience: 10,  // Patient recovery
+            recovery_patience: 10, // Patient recovery
             verbose: false,
         }
     }
@@ -224,22 +227,22 @@ impl LBFGSConfig {
     /// numerical instability or overshooting on difficult problems.
     pub fn lax() -> Self {
         Self {
-            history_size: 20,  // Larger history for better approximation
+            history_size: 20, // Larger history for better approximation
             line_search: LineSearchConfig {
-                c1: 1e-4,      // Standard Armijo condition
-                c2: 0.1,       // Relaxed curvature condition
-                initial_step: 2.0,   // Aggressive initial step
-                max_step: 50.0,      // Large maximum step
+                c1: 1e-4,          // Standard Armijo condition
+                c2: 0.1,           // Relaxed curvature condition
+                initial_step: 2.0, // Aggressive initial step
+                max_step: 50.0,    // Large maximum step
                 ..LineSearchConfig::default()
             },
-            epsilon: 1e-6,     // Lower precision for speed
+            epsilon: 1e-6, // Lower precision for speed
             max_correction_pairs: 20,
             max_step_size: 50.0,     // Large step sizes allowed
             min_step_size: 1e-12,    // Reasonable minimum
             max_param_change: 100.0, // Large parameter changes allowed
             gradient_clip: 1e6,      // High gradient clipping threshold
             enable_recovery: true,
-            recovery_patience: 2,    // Quick recovery trigger
+            recovery_patience: 2, // Quick recovery trigger
             verbose: false,
         }
     }
@@ -262,7 +265,7 @@ impl LBFGSConfig {
             history_size: 10,
             line_search: LineSearchConfig {
                 c1: 1e-4,
-                c2: 0.5,       // Balanced curvature condition
+                c2: 0.5, // Balanced curvature condition
                 initial_step: 1.0,
                 max_step: 10.0,
                 ..LineSearchConfig::default()
@@ -272,14 +275,13 @@ impl LBFGSConfig {
             max_step_size: 10.0,
             min_step_size: 1e-16,
             max_param_change: 10.0,
-            gradient_clip: 0.0,      // Disable gradient clipping for QQN
-            enable_recovery: false,  // Let QQN handle recovery
-            recovery_patience: 0,    // Not used when recovery disabled
+            gradient_clip: 0.0,     // Disable gradient clipping for QQN
+            enable_recovery: false, // Let QQN handle recovery
+            recovery_patience: 0,   // Not used when recovery disabled
             verbose: false,
         }
     }
 }
-
 
 /// State information for L-BFGS optimization.
 ///
@@ -307,64 +309,64 @@ pub struct LBFGSState {
     /// Used in the two-loop recursion to apply curvature corrections.
     #[serde(skip_serializing, skip_deserializing)]
     s_history: VecDeque<Vec<Tensor>>,
-    
+
     /// History of gradient differences (y_k = ∇f_{k+1} - ∇f_k).
     ///
     /// Each entry represents how gradients changed in a previous iteration.
     /// Combined with s_history to capture local curvature information.
     #[serde(skip_serializing, skip_deserializing)]
     y_history: VecDeque<Vec<Tensor>>,
-    
+
     /// Precomputed reciprocals ρ_k = 1/(s_k^T y_k) for computational efficiency.
     ///
     /// These values are used repeatedly in the two-loop recursion, so precomputing
     /// them avoids redundant dot product calculations.
     rho_history: VecDeque<f64>,
-    
+
     /// Previous gradient for computing y_k differences in next update.
     ///
     /// Stored from the previous iteration to compute y_k = ∇f_k - ∇f_{k-1}
     /// when the next update occurs.
     #[serde(skip_serializing, skip_deserializing)]
     prev_gradient: Option<Vec<Tensor>>,
-    
+
     /// Current iteration number for tracking optimization progress.
     iteration: usize,
-    
+
     /// Scaling factor γ for initial Hessian approximation H₀ = γI.
     ///
     /// Updated each iteration as γ = (s_k^T y_k)/(y_k^T y_k) to capture
     /// the characteristic scale of the problem's curvature.
     gamma: f64,
-    
+
     /// Numerical stability constant for avoiding division by zero and other issues.
     epsilon: f64,
-    
+
     /// Best function value encountered during optimization.
     ///
     /// Used to track progress and trigger recovery mechanisms when
     /// no improvement is observed for extended periods.
     best_function_value: Option<f64>,
-    
+
     /// Counter for iterations without improvement in function value.
     ///
     /// When this exceeds recovery_patience, the recovery mechanism
     /// may reset the L-BFGS history to escape poor approximations.
     no_improvement_count: usize,
-    
+
     /// Previous parameters stored for potential recovery from numerical issues.
     ///
     /// If the current iteration produces non-finite values, optimization
     /// can revert to this previous state.
     #[serde(skip_serializing, skip_deserializing)]
     prev_params: Option<Vec<Tensor>>,
-    
+
     /// Flag to disable certain safety checks when used within QQN.
     ///
     /// When true, skips some numerical validation that QQN handles at a higher level,
     /// allowing for more aggressive local optimization behavior.
     disable_checks: bool,
-    
+
     /// Maximum allowed gradient norm before applying scaling for numerical stability.
     ///
     /// Gradients exceeding this threshold are scaled down to prevent overflow
@@ -539,10 +541,12 @@ impl LBFGSState {
         // Apply initial Hessian approximation scaling
         debug!("L-BFGS: Using gamma = {:.6e}", self.gamma);
 
-
         // Ensure gamma is valid
         if !self.gamma.is_finite() || self.gamma <= 0.0 {
-            warn!("L-BFGS: Invalid gamma detected: {}, resetting to 1.0", self.gamma);
+            warn!(
+                "L-BFGS: Invalid gamma detected: {}, resetting to 1.0",
+                self.gamma
+            );
             self.gamma = 1.0;
         }
         let safe_gamma = self.gamma.max(1e-12).min(1e12);
@@ -603,10 +607,7 @@ impl LBFGSState {
     }
     /// Compute the L-BFGS search direction without negation
     /// This is used by QQN which needs the actual direction, not the descent direction
-    pub fn compute_direction(
-        &mut self,
-        gradient: &[Tensor],
-    ) -> CandleResult<Vec<Tensor>> {
+    pub fn compute_direction(&mut self, gradient: &[Tensor]) -> CandleResult<Vec<Tensor>> {
         // Validate input
         if gradient.is_empty() {
             return Err(candle_core::Error::Msg("Empty gradient vector".into()));
@@ -688,11 +689,8 @@ impl LBFGSState {
             r = vector_add(&r, &correction)?;
         }
         // Return the negative of r as the direction (this gives us -H*g)
-        r.iter()
-            .map(|t| t.neg())
-            .collect::<CandleResult<Vec<_>>>()
+        r.iter().map(|t| t.neg()).collect::<CandleResult<Vec<_>>>()
     }
-
 
     /// Update the L-BFGS state with new gradient and step information.
     ///
@@ -759,8 +757,12 @@ impl LBFGSState {
 
             // Compute curvature condition: s_k^T y_k
             let s_dot_y = dot_product(&s_k, &y_k)?;
-            debug!("L-BFGS: s_dot_y = {:.6e}, s_k_norm = {:.6e}, y_k_norm = {:.6e}",
-                   s_dot_y, s_k_norm, compute_magnitude(&y_k)?);
+            debug!(
+                "L-BFGS: s_dot_y = {:.6e}, s_k_norm = {:.6e}, y_k_norm = {:.6e}",
+                s_dot_y,
+                s_k_norm,
+                compute_magnitude(&y_k)?
+            );
 
             // Implement Powell's damping for negative curvature
             let curvature_threshold = self.epsilon() * grad_norm.max(1.0);
@@ -913,10 +915,7 @@ impl LBFGSState {
         for (i, tensor) in tensors.iter().enumerate() {
             let values = tensor.flatten_all()?.to_vec1::<f64>()?;
             if values.iter().any(|&x| !x.is_finite()) {
-                warn!(
-                    "L-BFGS: Non-finite {} detected at index {}",
-                    context, i
-                );
+                warn!("L-BFGS: Non-finite {} detected at index {}", context, i);
                 return Ok(false);
             }
         }
@@ -1222,7 +1221,7 @@ impl Optimizer for LBFGSOptimizer {
                 Arc::new(objective_fn),
                 Arc::new(gradient_fn),
             )
-                .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
             // Perform line search
             line_search
                 .optimize_1d(&problem)
@@ -1263,7 +1262,10 @@ impl Optimizer for LBFGSOptimizer {
             *param = param.add(&step)?;
 
             // Check for NaN/Inf in updated parameters
-            if !self.state.check_finite_tensors(&[param.clone()], "updated parameter")? {
+            if !self
+                .state
+                .check_finite_tensors(&[param.clone()], "updated parameter")?
+            {
                 // Recovery: restore previous parameters if available
                 if let Some(prev_params) = &self.state.prev_params {
                     warn!("L-BFGS: Non-finite parameters detected, restoring previous state");

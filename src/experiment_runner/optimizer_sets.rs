@@ -1,6 +1,9 @@
-use std::sync::Arc;
-use crate::{AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod, Optimizer, QQNConfig, QQNOptimizer};
 use crate::optimizers::{GDConfig, GDOptimizer, TrustRegionConfig, TrustRegionOptimizer};
+use crate::{
+    AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod,
+    Optimizer, QQNConfig, QQNOptimizer,
+};
+use std::sync::Arc;
 
 pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
@@ -155,8 +158,8 @@ pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
             Arc::new(LBFGSOptimizer::new(LBFGSConfig {
                 history_size: 20,
                 line_search: LineSearchConfig {
-                    c1: 1e-6,  // Very strict Armijo condition
-                    c2: 0.99,  // Very loose curvature condition
+                    c1: 1e-6, // Very strict Armijo condition
+                    c2: 0.99, // Very loose curvature condition
                     initial_step: 0.1,
                     max_step: 1.0,
                     method: LineSearchMethod::StrongWolfe,
@@ -401,65 +404,72 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
                 subproblem_tolerance: 1e-6,
                 use_cauchy_fallback: true,
                 verbose: false,
-            }))
+            })),
         ),
-        ("Trust Region-Standard".to_string(),
-         Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
-             initial_radius: 1.0,
-             max_radius: 100.0,
-             min_radius: 1e-10,
-             eta_1: 0.2,
-             eta_2: 0.8,
-             gamma_1: 0.5,
-             gamma_2: 3.0,
-             max_subproblem_iterations: 100,
-             subproblem_tolerance: 1e-8,
-             use_cauchy_fallback: false,
-             verbose: false,
-         }))),
-        ("Trust Region-Conservative".to_string(),
-         Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
-             initial_radius: 0.1,
-             max_radius: 10.0,
-             min_radius: 1e-12,
-             eta_1: 0.1,
-             eta_2: 0.5,
-             gamma_1: 0.2,
-             gamma_2: 2.0,
-             max_subproblem_iterations: 30,
-             subproblem_tolerance: 1e-5,
-             use_cauchy_fallback: true,
-             verbose: false,
-         })),
-         ),
-        ("Trust Region-Aggressive".to_string(),
-         Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
-             initial_radius: 2.0,
-             max_radius: 200.0,
-             min_radius: 1e-6,
-             eta_1: 0.25,
-             eta_2: 0.9,
-             gamma_1: 0.8,
-             gamma_2: 4.0,
-             max_subproblem_iterations: 75,
-             subproblem_tolerance: 1e-7,
-             use_cauchy_fallback: false,
-             verbose: false,
-         }))),
-        ("Trust Region-Precise".to_string(),
-         Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
-             initial_radius: 0.25,
-             max_radius: 25.0,
-             min_radius: 1e-15,
-             eta_1: 0.05,
-             eta_2: 0.6,
-             gamma_1: 0.1,
-             gamma_2: 1.5,
-             max_subproblem_iterations: 150,
-             subproblem_tolerance: 1e-10,
-             use_cauchy_fallback: true,
-             verbose: false,
-         }))),
+        (
+            "Trust Region-Standard".to_string(),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 1.0,
+                max_radius: 100.0,
+                min_radius: 1e-10,
+                eta_1: 0.2,
+                eta_2: 0.8,
+                gamma_1: 0.5,
+                gamma_2: 3.0,
+                max_subproblem_iterations: 100,
+                subproblem_tolerance: 1e-8,
+                use_cauchy_fallback: false,
+                verbose: false,
+            })),
+        ),
+        (
+            "Trust Region-Conservative".to_string(),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 0.1,
+                max_radius: 10.0,
+                min_radius: 1e-12,
+                eta_1: 0.1,
+                eta_2: 0.5,
+                gamma_1: 0.2,
+                gamma_2: 2.0,
+                max_subproblem_iterations: 30,
+                subproblem_tolerance: 1e-5,
+                use_cauchy_fallback: true,
+                verbose: false,
+            })),
+        ),
+        (
+            "Trust Region-Aggressive".to_string(),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 2.0,
+                max_radius: 200.0,
+                min_radius: 1e-6,
+                eta_1: 0.25,
+                eta_2: 0.9,
+                gamma_1: 0.8,
+                gamma_2: 4.0,
+                max_subproblem_iterations: 75,
+                subproblem_tolerance: 1e-7,
+                use_cauchy_fallback: false,
+                verbose: false,
+            })),
+        ),
+        (
+            "Trust Region-Precise".to_string(),
+            Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                initial_radius: 0.25,
+                max_radius: 25.0,
+                min_radius: 1e-15,
+                eta_1: 0.05,
+                eta_2: 0.6,
+                gamma_1: 0.1,
+                gamma_2: 1.5,
+                max_subproblem_iterations: 150,
+                subproblem_tolerance: 1e-10,
+                use_cauchy_fallback: true,
+                verbose: false,
+            })),
+        ),
     ]
 }
 // Add a new function for comprehensive testing

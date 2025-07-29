@@ -44,9 +44,7 @@ pub mod gd;
 pub mod trust_region;
 
 pub use gd::{GDConfig, GDOptimizer, GDState};
-pub use trust_region::{
-    TrustRegionConfig, TrustRegionOptimizer, TrustRegionState
-};
+pub use trust_region::{TrustRegionConfig, TrustRegionOptimizer, TrustRegionState};
 
 #[cfg(test)]
 mod tests {

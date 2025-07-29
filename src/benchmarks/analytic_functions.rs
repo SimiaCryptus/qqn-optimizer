@@ -1,8 +1,8 @@
-use std::f64::consts::PI;
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
 use crate::OptimizationProblem;
+use rand::Rng;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+use std::f64::consts::PI;
 
 /// Matyas function: f(x, y) = 0.26(x² + y²) - 0.48xy
 /// Global minimum: f(0, 0) = 0
@@ -153,10 +153,10 @@ impl OptimizationProblem for GoldsteinPriceFunction {
         let x2 = x[1];
         let term1 = 1.0
             + (x1 + x2 + 1.0).powi(2)
-            * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
+                * (19.0 - 14.0 * x1 + 3.0 * x1 * x1 - 14.0 * x2 + 6.0 * x1 * x2 + 3.0 * x2 * x2);
         let term2 = 30.0
             + (2.0 * x1 - 3.0 * x2).powi(2)
-            * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
+                * (18.0 - 32.0 * x1 + 12.0 * x1 * x1 + 48.0 * x2 - 36.0 * x1 * x2 + 27.0 * x2 * x2);
         Ok(term1 * term2)
     }
     fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
@@ -409,12 +409,11 @@ impl OptimizationProblem for RosenbrockFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(8.45e-3),  // Already set in problem_sets.rs
-            5 => Some(3.98e-1),  // Already set in problem_sets.rs
-            10 => Some(9.70e0),  // Already set in problem_sets.rs
+            2 => Some(8.45e-3), // Already set in problem_sets.rs
+            5 => Some(3.98e-1), // Already set in problem_sets.rs
+            10 => Some(9.70e0), // Already set in problem_sets.rs
             _ => None,
         }
-
     }
 }
 
@@ -476,9 +475,9 @@ impl OptimizationProblem for RastriginFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(7.96e0),   // Already set in problem_sets.rs
-            5 => Some(2.04e1),   // Already set in problem_sets.rs
-            10 => Some(4.18e1),  // Already set in problem_sets.rs
+            2 => Some(7.96e0),  // Already set in problem_sets.rs
+            5 => Some(2.04e1),  // Already set in problem_sets.rs
+            10 => Some(4.18e1), // Already set in problem_sets.rs
             _ => None,
         }
     }
@@ -771,9 +770,9 @@ impl OptimizationProblem for AckleyFunction {
     }
     fn optimal_value(&self) -> Option<f64> {
         match self.dimension {
-            2 => Some(3.57e0),   // Already set in problem_sets.rs
-            5 => Some(3.57e0),   // Already set in problem_sets.rs
-            10 => Some(3.57e0),  // Already set in problem_sets.rs
+            2 => Some(3.57e0),  // Already set in problem_sets.rs
+            5 => Some(3.57e0),  // Already set in problem_sets.rs
+            10 => Some(3.57e0), // Already set in problem_sets.rs
             _ => None,
         }
     }
@@ -1304,7 +1303,8 @@ impl OptimizationProblem for PenaltyFunctionI {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
         let objective: f64 = x.iter().map(|&xi| (xi - 1.0).powi(2)).sum();
-        let penalty: f64 = x.iter()
+        let penalty: f64 = x
+            .iter()
             .map(|&xi| self.alpha * (xi - 0.25).max(0.0).powi(2))
             .sum();
         Ok(objective + penalty)
@@ -1313,7 +1313,8 @@ impl OptimizationProblem for PenaltyFunctionI {
         if x.len() != self.dimension {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
-        let grad: Vec<f64> = x.iter()
+        let grad: Vec<f64> = x
+            .iter()
             .map(|&xi| {
                 let obj_grad = 2.0 * (xi - 1.0);
                 let penalty_grad = if xi > 0.25 {
@@ -1383,9 +1384,7 @@ impl OptimizationProblem for BarrierFunction {
         if x.iter().any(|&xi| xi <= 0.0) {
             return Err(anyhow::anyhow!("Barrier function requires x > 0"));
         }
-        let grad: Vec<f64> = x.iter()
-            .map(|&xi| 2.0 * xi - self.mu / xi)
-            .collect();
+        let grad: Vec<f64> = x.iter().map(|&xi| 2.0 * xi - self.mu / xi).collect();
         Ok(grad)
     }
     fn optimal_value(&self) -> Option<f64> {
@@ -1551,7 +1550,10 @@ impl SparseQuadratic {
         Self {
             dimension,
             sparsity_pattern: sparsity_pattern.clone(),
-            name: format!("SparseQuadratic_{}D_pattern{:?}", dimension, sparsity_pattern),
+            name: format!(
+                "SparseQuadratic_{}D_pattern{:?}",
+                dimension, sparsity_pattern
+            ),
         }
     }
 }
@@ -1609,13 +1611,17 @@ impl OptimizationProblem for SparseQuadratic {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::benchmarks::analytic_functions::{
+        AckleyFunction, BarrierFunction, BealeFunction, BoothFunction, GoldsteinPriceFunction,
+        GriewankFunction, HimmelblauFunction, IllConditionedRosenbrock, LeviFunction, LevyFunction,
+        MatyasFunction, MichalewiczFunction, NoisySphere, PenaltyFunctionI, RastriginFunction,
+        RosenbrockFunction, SchwefelFunction, SparseQuadratic, SparseRosenbrock, SphereFunction,
+        StyblinskiTangFunction, TrigonometricFunction, ZakharovFunction,
+    };
     use approx::assert_relative_eq;
-    use crate::benchmarks::analytic_functions::{AckleyFunction, BealeFunction, BoothFunction, GoldsteinPriceFunction, GriewankFunction, HimmelblauFunction, LeviFunction, LevyFunction, MatyasFunction, MichalewiczFunction, RastriginFunction, RosenbrockFunction, SchwefelFunction, SphereFunction, StyblinskiTangFunction, ZakharovFunction, IllConditionedRosenbrock, TrigonometricFunction, PenaltyFunctionI, BarrierFunction, NoisySphere, SparseRosenbrock, SparseQuadratic};
 
     const EPSILON: f64 = 1e-10;
     const GRADIENT_EPSILON: f64 = 1e-6;

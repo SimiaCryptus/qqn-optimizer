@@ -26,10 +26,7 @@
 //! - **Conservative**: May take smaller steps than necessary on well-behaved problems
 
 use crate::optimizers::optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
-use crate::utils::math::{
-    compute_magnitude, dot_product,
-    DifferentiableFunction,
-};
+use crate::utils::math::{compute_magnitude, dot_product, DifferentiableFunction};
 use candle_core::{Result as CandleResult, Tensor};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -508,7 +505,6 @@ impl Optimizer for TrustRegionOptimizer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
     use candle_core::Device;
 
     struct QuadraticFunction;

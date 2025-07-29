@@ -1,9 +1,9 @@
 pub mod analysis;
 pub mod benchmarks;
+pub mod experiment_runner;
+pub mod line_search;
 pub mod optimizers;
 pub mod utils;
-pub mod line_search;
-pub mod experiment_runner;
 
 // Re-export commonly used types
 pub use optimizers::{
@@ -16,9 +16,7 @@ pub use line_search::{
     LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, TerminationReason,
 };
 
-pub use experiment_runner::{
-    problem_sets, optimizer_sets
-};
+pub use experiment_runner::{optimizer_sets, problem_sets};
 
 pub use benchmarks::functions::OptimizationProblem;
 
@@ -30,8 +28,7 @@ pub use analysis::{
 
 // Re-export ML problems for easier access
 pub use crate::benchmarks::ml_problems::{
-    LinearRegression, LogisticRegression,
-    NeuralNetworkTraining, SupportVectorMachine,
+    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
 };
 
 // Re-export commonly used types
@@ -63,7 +60,7 @@ pub fn init_logging_with_mode(compact: bool, debug: bool) -> Result<()> {
     let env_filter = if debug {
         tracing_subscriber::EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| "qqn_optimizer=debug".into())
-    } else { 
+    } else {
         tracing_subscriber::EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| "qqn_optimizer=info".into())
     };
