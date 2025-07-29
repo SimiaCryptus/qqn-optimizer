@@ -4,6 +4,7 @@ pub mod plotting_manager;
 pub mod problem_sets;
 pub mod report_generator;
 pub mod statistical_analysis;
+mod reports;
 
 pub use experiment_runner::ExperimentRunner;
 pub use plotting_manager::PlottingManager;

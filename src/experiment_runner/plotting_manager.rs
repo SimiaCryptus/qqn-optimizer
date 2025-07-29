@@ -68,7 +68,7 @@ impl PlottingManager {
                     traces.len()
                 );
 
-                let filename = format!("convergence_{}", problem_name.replace(" ", "_"));
+                let filename = format!("convergence/{}", problem_name.replace(" ", "_"));
                 self.generate_plot_with_fallback(
                     || self.plotting_engine.convergence_plot(&traces, &filename),
                     &format!("convergence plot for {}", problem_name),
