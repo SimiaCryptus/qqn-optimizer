@@ -373,7 +373,6 @@ impl BenchmarkRunner {
         let mut trace = OptimizationTrace::new();
         // Create a single problem wrapper that will track evaluations across the entire run
         // Clone the problem to create an owned version
-        let problem_clone: ProblemSpec = problem.clone();
         let problem_wrapper = Arc::new(ProblemWrapper::new(problem));
         // Main optimization loop with timeout
         let time_limit: Duration = self.config.time_limit.clone().into();

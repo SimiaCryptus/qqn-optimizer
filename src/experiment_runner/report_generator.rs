@@ -1,5 +1,5 @@
 use super::experiment_runner;
-use super::{ExperimentRunner, StatisticalAnalysis};
+use super::{StatisticalAnalysis};
 use crate::benchmarks::evaluation::{
     is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
     SingleResult,
@@ -11,7 +11,6 @@ use log::warn;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -85,7 +84,6 @@ impl ReportGenerator {
             &self.output_dir,
             all_results,
             use_optimizer_families,
-            self,
         )
         .await?;
 
@@ -102,7 +100,6 @@ impl ReportGenerator {
         // Add optimizer family vs problem family comparison
         html_content.push_str(&Self::generate_family_vs_family_comparison_table(
             all_results,
-            self,
         )?);
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
@@ -127,7 +124,6 @@ impl ReportGenerator {
         // Generate LaTeX tables
         Self::generate_latex_tables(
             &self.output_dir,
-            &self.statistical_analysis,
             all_results,
             self,
         )
@@ -135,7 +131,6 @@ impl ReportGenerator {
         // Generate comprehensive LaTeX document
         Self::generate_comprehensive_latex_document(
             &self.config,
-            &self.statistical_analysis,
             all_results,
             &Path::new(&self.output_dir).join("latex"),
             self,
@@ -258,7 +253,6 @@ impl ReportGenerator {
     }
     fn generate_family_vs_family_comparison_table(
         all_results: &[(&ProblemSpec, BenchmarkResults)],
-        slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
         let mut content = String::from(
             r#"## Optimizer Family vs Problem Family Performance Matrix
@@ -1270,7 +1264,6 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     /// Generate LaTeX tables for all results
     async fn generate_latex_tables(
         output_dir: &str,
-        statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
@@ -1286,10 +1279,9 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
             Self::generate_problem_latex_table(problem, results, &latex_dir)?;
         }
         // Generate summary statistics table
-        Self::generate_summary_statistics_latex_table(all_results, &latex_dir, slf)?;
+        Self::generate_summary_statistics_latex_table(all_results, &latex_dir)?;
         // Generate comparison matrix table
         Self::generate_comparison_matrix_latex_table(
-            statistical_analysis,
             all_results,
             &latex_dir,
             slf,
@@ -1297,7 +1289,7 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
         // Generate family comparison matrix table
         Self::generate_family_comparison_matrix_latex_table(slf, all_results, &latex_dir)?;
         // Generate family vs family comparison matrix table
-        Self::generate_family_vs_family_latex_table(all_results, &latex_dir, slf).await?;
+        Self::generate_family_vs_family_latex_table(all_results, &latex_dir).await?;
         // Generate efficiency matrix table
         Self::generate_efficiency_matrix_latex_table(all_results, &latex_dir)?;
         // Generate success rate heatmap table
@@ -1619,7 +1611,6 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     fn generate_summary_statistics_latex_table(
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
-        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         let mut latex_content = String::from(
             r#"\documentclass{article}
@@ -1758,7 +1749,6 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     }
     /// Generate comparison matrix LaTeX table
     fn generate_comparison_matrix_latex_table(
-        statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
         slf: &ReportGenerator,
@@ -2075,7 +2065,6 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
     async fn generate_family_vs_family_latex_table(
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
-        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         // Collect all optimizer families and problem families
         let mut all_optimizer_families = std::collections::HashSet::new();
@@ -2204,7 +2193,6 @@ QQN family cells are highlighted in green for easy identification.
     /// Generate comprehensive LaTeX document with all tables
     fn generate_comprehensive_latex_document(
         config: &BenchmarkConfig,
-        statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         latex_dir: &Path,
         slf: &ReportGenerator,
@@ -2276,7 +2264,6 @@ The following sections present detailed performance comparisons across all teste
         );
         // Include comparison matrix content
         latex_content.push_str(&Self::generate_comparison_matrix_table_content(
-            statistical_analysis,
             all_results,
             slf,
         )?);
@@ -2287,7 +2274,6 @@ The following sections present detailed performance comparisons across all teste
         );
         // Include family comparison matrix content
         latex_content.push_str(&Self::generate_family_comparison_matrix_table_content(
-            statistical_analysis,
             all_results,
             slf,
         )?);
@@ -2299,7 +2285,6 @@ The following sections present detailed performance comparisons across all teste
         // Include family vs family comparison matrix content
         latex_content.push_str(&Self::generate_family_vs_family_table_content(
             all_results,
-            slf,
         )?);
         latex_content.push_str(
             r#"
@@ -2643,7 +2628,6 @@ All raw experimental data, convergence plots, and additional analysis files are 
     }
     /// Generate comparison matrix table content (without document wrapper)
     fn generate_comparison_matrix_table_content(
-        statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
@@ -2776,7 +2760,6 @@ All raw experimental data, convergence plots, and additional analysis files are 
     }
     /// Generate family comparison matrix table content (without document wrapper)
     fn generate_family_comparison_matrix_table_content(
-        statistical_analysis: &StatisticalAnalysis,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
@@ -2911,7 +2894,6 @@ All raw experimental data, convergence plots, and additional analysis files are 
     /// Generate family vs family table content (without document wrapper)
     fn generate_family_vs_family_table_content(
         all_results: &[(&ProblemSpec, BenchmarkResults)],
-        slf: &ReportGenerator,
     ) -> anyhow::Result<String> {
         // Collect all optimizer families and problem families
         let mut all_optimizer_families = std::collections::HashSet::new();
@@ -3836,7 +3818,6 @@ Quickly identifies which optimizers work on which problem types.
         output_dir: &str,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         use_optimizer_families: bool,
-        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         for (problem, results) in all_results {
             let mut optimizer_results = std::collections::HashMap::new();
@@ -3858,7 +3839,6 @@ Quickly identifies which optimizers work on which problem types.
                     problem.problem.as_ref(),
                     &optimizer_name,
                     &optimizer_runs,
-                    slf,
                 )
                 .await?;
             }
@@ -3871,7 +3851,6 @@ Quickly identifies which optimizers work on which problem types.
         problem: &dyn OptimizationProblem,
         optimizer_name: &str,
         runs: &[&SingleResult],
-        slf: &ReportGenerator,
     ) -> anyhow::Result<()> {
         let problem_name = problem.name();
         let problem_filename = problem_name.replace(" ", "_");

@@ -37,8 +37,7 @@ impl ExperimentRunner {
         // Ensure output directory exists
         fs::create_dir_all(&self.output_dir)?;
         // Run benchmarks for each problem with its specific optimizers
-        let mut all_results: Vec<(ProblemSpec, BenchmarkResults)> = Vec::new();
-        for (problem_name, optimizers) in &problem_optimizer_map {
+        for (problem_name, _optimizers) in &problem_optimizer_map {
             // Find the problem by name (we'll need to pass problems separately or store them)
             info!(
                 "Running championship benchmarks for problem: {}",

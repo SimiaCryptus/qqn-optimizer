@@ -363,7 +363,6 @@ impl StatisticalAnalysis {
         self.generate_pairwise_statistical_matrix(
             &optimizer_results,
             output_dir,
-            use_optimizer_families,
         )
         .context("Failed to generate pairwise statistical matrix")?;
         self.generate_problem_difficulty_ranking(all_results, output_dir)
@@ -958,7 +957,6 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
         &self,
         optimizer_results: &HashMap<String, Vec<(f64, f64, String)>>,
         output_dir: &str,
-        use_optimizer_families: bool,
     ) -> Result<()> {
         // Collect optimizer names and sort for consistent ordering
         let mut optimizers: Vec<String> = optimizer_results.keys().cloned().collect();

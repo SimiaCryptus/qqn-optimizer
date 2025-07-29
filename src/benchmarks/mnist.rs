@@ -66,35 +66,6 @@ impl MLP {
             ActivationType::Sinewave => xs.sin(),
         }
     }
-
-    fn forward_with_dropout(
-        &self,
-        xs: &Tensor,
-        dropout_rate: f64,
-        training: bool,
-    ) -> candle_core::Result<Tensor> {
-        let mut xs = xs.clone();
-
-        // Apply all layers except the last one with activation and dropout
-        for (i, layer) in self.layers.iter().enumerate() {
-            xs = layer.forward(&xs)?;
-
-            // Apply activation to all but the last layer
-            if i < self.layers.len() - 1 {
-                xs = self.apply_activation(&xs)?;
-
-                // Apply dropout during training (not on the last layer)
-                if training && dropout_rate > 0.0 {
-                    let keep_prob = 1.0 - dropout_rate;
-                    let mask = Tensor::rand(0.0, 1.0, xs.shape(), &xs.device())?;
-                    let mask = mask.ge(dropout_rate)?;
-                    xs = (xs.broadcast_mul(&mask)? / keep_prob)?;
-                }
-            }
-        }
-
-        Ok(xs)
-    }
 }
 
 impl Module for MLP {
@@ -331,15 +302,6 @@ impl MnistNeuralNetwork {
             if output.status.success() {
                 return Ok(());
             }
-        }
-
-        // If both fail, try using reqwest in blocking mode
-        #[cfg(feature = "download")]
-        {
-            let response = reqwest::blocking::get(url)?;
-            let mut file = std::fs::File::create(path)?;
-            file.write_all(&response.bytes()?)?;
-            return Ok(());
         }
 
         Err(anyhow::anyhow!(

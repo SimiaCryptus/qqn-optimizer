@@ -2,7 +2,6 @@ use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 use log::{info, warn};
 use std::fs;
-use std::sync::Arc;
 
 /// Manages plot generation with error handling
 pub struct PlottingManager {

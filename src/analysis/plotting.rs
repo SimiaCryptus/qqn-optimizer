@@ -1064,67 +1064,6 @@ impl PlottingEngine {
         println!("Performance boxplot data exported to: {}", csv_path);
         Ok(())
     }
-    /// Helper function to add legend to plots
-    fn add_legend<DB: DrawingBackend>(
-        &self,
-        root: &DrawingArea<DB, Shift>,
-        traces: &[ExtendedOptimizationTrace],
-        colors: &[&RGBColor],
-    ) -> Result<()> {
-        if !self.has_fonts {
-            return Ok(());
-        }
-
-        let legend_x = self.width as i32 - 200;
-        let legend_y = 50;
-        let line_height = 20;
-
-        // Draw legend background
-        let _ = root.draw(&Rectangle::new(
-            [
-                (legend_x - 10, legend_y - 10),
-                (
-                    legend_x + 180,
-                    legend_y + traces.len() as i32 * line_height + 10,
-                ),
-            ],
-            WHITE.mix(0.8).filled(),
-        ));
-
-        // Draw legend border
-        let _ = root.draw(&Rectangle::new(
-            [
-                (legend_x - 10, legend_y - 10),
-                (
-                    legend_x + 180,
-                    legend_y + traces.len() as i32 * line_height + 10,
-                ),
-            ],
-            BLACK,
-        ));
-
-        // Draw legend entries
-        for (i, trace) in traces.iter().enumerate() {
-            let color = colors[i % colors.len()];
-            let y_pos = legend_y + i as i32 * line_height;
-            // Draw color line
-            let _ = root.draw(&PathElement::new(
-                vec![(legend_x, y_pos), (legend_x + 30, y_pos)],
-                color.stroke_width(2),
-            ));
-            // Try to draw text label (ignore errors)
-            let _ = root.draw(&Text::new(
-                trace.optimizer_name.as_str(),
-                (legend_x + 40, y_pos),
-                ("sans-serif", 15)
-                    .into_font()
-                    .color(&BLACK)
-                    .pos(Pos::new(HPos::Left, VPos::Center)),
-            ));
-        }
-
-        Ok(())
-    }
     /// Helper function to add legend for unique optimizers
     fn add_legend_for_optimizers<DB: DrawingBackend>(
         &self,
