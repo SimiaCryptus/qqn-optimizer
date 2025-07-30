@@ -1,8 +1,5 @@
 use super::{optimizer_problems, StatisticalAnalysis};
-use crate::benchmarks::evaluation::{
-    BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
-    SingleResult,
-};
+use crate::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::reports::comparison_matrix;
 use crate::experiment_runner::reports::comparison_matrix::{
@@ -11,8 +8,7 @@ use crate::experiment_runner::reports::comparison_matrix::{
 };
 use crate::experiment_runner::reports::convergence_analysis::ConvergenceAnalysisReport;
 use crate::experiment_runner::reports::convergence_analysis::{
-    generate_convergence_speed_latex_table,
-    generate_convergence_speed_table_content,
+    generate_convergence_speed_latex_table, generate_convergence_speed_table_content,
 };
 use crate::experiment_runner::reports::efficiency_matrix::generate_efficiency_matrix_latex_table;
 use crate::experiment_runner::reports::efficiency_matrix::EfficiencyMatrixReport;
@@ -115,10 +111,8 @@ impl ReportGenerator {
             ReportFormat::Markdown,
             ReportFormat::Csv,
         ];
-        generate_unified_reports(all_results, &unified_formats, output_dir.as_str())
-            .await?;
-        generate_report_index(all_results, &unified_formats, output_dir.clone())
-            .await?;
+        generate_unified_reports(all_results, &unified_formats, output_dir.as_str()).await?;
+        generate_report_index(all_results, &unified_formats, output_dir.clone()).await?;
 
         // Create hierarchical directory structure
         let reports_dir = Path::new(&output_dir).join("reports");
@@ -181,10 +175,7 @@ impl ReportGenerator {
         println!("Report generation complete!");
         println!("  - Unified reports: {}/unified_reports/", output_dir);
         println!("  - Report index: {}/report_index.html", output_dir);
-        println!(
-            "  - Legacy reports: {}/benchmark_report.md",
-            output_dir
-        );
+        println!("  - Legacy reports: {}/benchmark_report.md", output_dir);
         println!("  - LaTeX tables: {}/latex/", output_dir);
         println!("  - Raw data: {}/data/", output_dir);
 
@@ -244,7 +235,8 @@ impl ReportGenerator {
 /// Generate a comprehensive report index that links to all unified reports
 pub async fn generate_report_index(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
-    formats: &[ReportFormat], path: String,
+    formats: &[ReportFormat],
+    path: String,
 ) -> anyhow::Result<()> {
     let index_path = Path::new(&path).join("report_index.html");
     let mut html_content = String::from(
@@ -372,9 +364,8 @@ pub async fn generate_report_index(
 </html>
 "#,
     );
-    fs::write(&index_path, html_content).with_context(|| {
-        format!("Failed to write report index to: {}", index_path.display())
-    })?;
+    fs::write(&index_path, html_content)
+        .with_context(|| format!("Failed to write report index to: {}", index_path.display()))?;
     println!("Generated report index: {}", index_path.display());
     Ok(())
 }
@@ -511,7 +502,6 @@ pub async fn generate_unified_reports(
     Ok(())
 }
 
-
 /// Escape special LaTeX characters
 pub(crate) fn escape_latex_safe(text: &str) -> String {
     // More conservative escaping to avoid LaTeX compilation errors
@@ -630,229 +620,6 @@ pub(crate) fn generate_detailed_report_header(
         mean_value,
         success_rate
     )
-}
-pub(crate) fn generate_run_by_run_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
-    let mut content = String::from(
-        r#"## Run-by-Run Analysis
-<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 12px;">
-<tr style="background-color: #f2f2f2;">
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Run</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Final Value</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Gradient Norm</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Iterations</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Func Evals</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Grad Evals</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Time (s)</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Converged</th>
-<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">Reason</th>
-</tr>
-"#,
-    );
-    for (i, run) in runs.iter().enumerate() {
-        let style = if run.convergence_achieved {
-            "background-color: #d4edda;"
-        } else {
-            "background-color: #f8d7da;"
-        };
-        let convergence_reason = format!("{:?}", run.convergence_reason)
-            .replace("GradientTolerance", "Grad Tol")
-            .replace("FunctionTolerance", "Func Tol")
-            .replace("MaxIterations", "Max Iter")
-            .replace("MaxFunctionEvaluations", "Max Func")
-            .replace("TimeLimit", "Time")
-            .replace("NumericalError", "Num Err")
-            .replace("\"", "");
-        content.push_str(&format!(
-            r#"<tr style="{}">
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{:.3e}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{:.3e}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{:.3}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
-<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">{}</td>
-</tr>
-"#,
-            style,
-            i + 1,
-            run.final_value,
-            run.final_gradient_norm,
-            run.iterations,
-            run.function_evaluations,
-            run.gradient_evaluations,
-            run.execution_time.as_secs_f64(),
-            if run.convergence_achieved {
-                "Yes"
-            } else {
-                "No"
-            },
-            convergence_reason
-        ));
-    }
-    content.push_str("</table>\n\n");
-    Ok(content)
-}
-pub(crate) fn generate_parameter_evolution_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
-    let mut content = String::from("## Parameter Evolution Analysis\n\n");
-    // Find the run with the best final value for detailed analysis
-    let best_run = runs
-        .iter()
-        .filter(|r| r.final_value.is_finite())
-        .min_by(|a, b| {
-            a.final_value
-                .partial_cmp(&b.final_value)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-    if let Some(best_run) = best_run {
-        content.push_str(&format!(
-            r#"### Best Run Analysis (Run {})
-**Final Value:** {:.6e}
-**Final Gradient Norm:** {:.6e}
-**Iterations:** {}
-**Convergence Reason:** {:?}
-"#,
-            best_run.run_id + 1,
-            best_run.final_value,
-            best_run.final_gradient_norm,
-            best_run.iterations,
-            best_run.convergence_reason
-        ));
-        // Show parameter evolution for first few and last few iterations
-        if !best_run.trace.iterations.is_empty() {
-            content.push_str("\n#### Parameter Evolution (Selected Iterations)\n\n");
-            content.push_str(r#"<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
-"#);
-            content.push_str(
-                r#"<tr style="background-color: #f2f2f2;">
-"#,
-            );
-            content.push_str(
-                r#"<th style="border: 1px solid #ddd; padding: 4px;">Iteration</th>
-"#,
-            );
-            content.push_str(
-                r#"<th style="border: 1px solid #ddd; padding: 4px;">Function Value</th>
-"#,
-            );
-            content.push_str(
-                r#"<th style="border: 1px solid #ddd; padding: 4px;">Gradient Norm</th>
-"#,
-            );
-            content.push_str(
-                r#"<th style="border: 1px solid #ddd; padding: 4px;">Step Size</th>
-"#,
-            );
-            content.push_str(
-                r#"<th style="border: 1px solid #ddd; padding: 4px;">Parameters (first 5)</th>
-"#,
-            );
-            content.push_str("</tr>\n");
-            let iterations_to_show = if best_run.trace.iterations.len() <= 10 {
-                best_run.trace.iterations.iter().collect::<Vec<_>>()
-            } else {
-                let mut selected = Vec::new();
-                // First 5 iterations
-                for i in 0..5.min(best_run.trace.iterations.len()) {
-                    selected.push(&best_run.trace.iterations[i]);
-                }
-                // Last 5 iterations
-                let start_idx = (best_run.trace.iterations.len() - 5).max(5);
-                for i in start_idx..best_run.trace.iterations.len() {
-                    selected.push(&best_run.trace.iterations[i]);
-                }
-                selected
-            };
-            for iter_data in iterations_to_show {
-                let params_str = iter_data
-                    .parameters
-                    .iter()
-                    .take(5)
-                    .map(|p| format!("{p:.3e}"))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let params_display = if iter_data.parameters.len() > 5 {
-                    format!("{params_str}, ...")
-                } else {
-                    params_str
-                };
-                content.push_str(&format!(
-                    r#"<tr><td style="border: 1px solid #ddd; padding: 4px;">{}</td><td style="border: 1px solid #ddd; padding: 4px;">{:.3e}</td><td style="border: 1px solid #ddd; padding: 4px;">{:.3e}</td><td style="border: 1px solid #ddd; padding: 4px;">{:.3e}</td><td style="border: 1px solid #ddd; padding: 4px;">[{}]</td></tr>
-"#,
-                    iter_data.iteration,
-                    iter_data.function_value,
-                    iter_data.gradient_norm,
-                    iter_data.step_size,
-                    params_display
-                ));
-            }
-            content.push_str("</table>\n\n");
-        }
-    }
-    Ok(content)
-}
-pub(crate) fn generate_failure_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
-    let failed_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
-    if failed_runs.is_empty() {
-        return Ok("## Failure Analysis\n\n*No failed runs to analyze.*\n\n".to_string());
-    }
-    let mut content = String::from("## Failure Analysis\n\n");
-    // Analyze failure patterns
-    let mut early_failures = 0;
-    let mut timeout_failures = 0;
-    let mut numerical_failures = 0;
-    let mut max_iter_failures = 0;
-    for run in &failed_runs {
-        match &run.convergence_reason {
-            ConvergenceReason::TimeLimit => timeout_failures += 1,
-            ConvergenceReason::NumericalError => numerical_failures += 1,
-            ConvergenceReason::MaxIterations => max_iter_failures += 1,
-            ConvergenceReason::MaxFunctionEvaluations => {
-                if run.iterations < 10 {
-                    early_failures += 1;
-                }
-            }
-            _ => {}
-        }
-    }
-    content.push_str(&format!(
-        r#"### Failure Patterns
-- **Early Failures (< 10 iterations):** {early_failures}
-- **Timeout Failures:** {timeout_failures}
-- **Numerical Errors:** {numerical_failures}
-- **Maximum Iterations Reached:** {max_iter_failures}
-"#
-    ));
-    // Show details of failed runs
-    if failed_runs.len() <= 5 {
-        content.push_str("### Failed Run Details\n\n");
-        for (i, run) in failed_runs.iter().enumerate() {
-            content.push_str(&format!(
-                r#"**Run {} (ID: {})**
-- Final Value: {:.6e}
-- Final Gradient Norm: {:.6e}
-- Iterations: {}
-- Function Evaluations: {}
-- Reason: {:?}
-{}
-"#,
-                i + 1,
-                run.run_id + 1,
-                run.final_value,
-                run.final_gradient_norm,
-                run.iterations,
-                run.function_evaluations,
-                run.convergence_reason,
-                if let Some(ref error) = run.error_message {
-                    format!("- Error: {error}")
-                } else {
-                    String::new()
-                }
-            ));
-        }
-    }
-    Ok(content)
 }
 pub(crate) fn generate_detailed_report_footer(problem_name: &str, optimizer_name: &str) -> String {
     format!(
@@ -1514,7 +1281,9 @@ The following subsections present detailed results for each individual problem.
 "#,
             escape_latex(&problem_name)
         ));
-        latex_content.push_str(&optimizer_problems::generate_problem_table_content(problem, results)?);
+        latex_content.push_str(&optimizer_problems::generate_problem_table_content(
+            problem, results,
+        )?);
     }
     latex_content.push_str(
         r#"

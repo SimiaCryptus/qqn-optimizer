@@ -1,13 +1,16 @@
-use std::path::Path;
-use std::collections::HashMap;
-use std::fs;
-use log::warn;
-use anyhow::Context;
-use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult};
-use crate::{experiment_runner, OptimizationProblem};
+use crate::benchmarks::evaluation::{
+    is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult,
+};
 use crate::experiment_runner::report_generator;
 use crate::experiment_runner::reports::convergence_analysis::generate_convergence_analysis;
 use crate::experiment_runner::reports::performance_analysis::generate_performance_analysis;
+use crate::experiment_runner::reports::{failure_analysis, parameter_evolution, run_by_run};
+use crate::{experiment_runner, OptimizationProblem};
+use anyhow::Context;
+use log::warn;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 /// Generate problem table content (without document wrapper)
 pub fn generate_problem_table_content(
@@ -135,12 +138,15 @@ pub async fn generate_optimizer_problem_report(
     let optimizer_filename = optimizer_name.replace(" ", "_");
     let filename = format!("detailed_{problem_filename}_{optimizer_filename}.md");
     let filepath = Path::new(output_dir).join(&filename);
-    let mut content = report_generator::generate_detailed_report_header(problem, optimizer_name, runs);
-    content.push_str(&report_generator::generate_run_by_run_analysis(runs)?);
+    let mut content =
+        report_generator::generate_detailed_report_header(problem, optimizer_name, runs);
+    content.push_str(&run_by_run::generate_run_by_run_analysis(runs)?);
     content.push_str(&generate_convergence_analysis(runs)?);
-    content.push_str(&report_generator::generate_parameter_evolution_analysis(runs)?);
+    content.push_str(&parameter_evolution::generate_parameter_evolution_analysis(
+        runs,
+    )?);
     content.push_str(&generate_performance_analysis(runs)?);
-    content.push_str(&report_generator::generate_failure_analysis(runs)?);
+    content.push_str(&failure_analysis::generate_failure_analysis(runs)?);
     content.push_str(&report_generator::generate_detailed_report_footer(
         problem_name,
         optimizer_name,

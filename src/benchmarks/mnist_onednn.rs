@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 //! OneDNN-based MNIST neural network implementation
-//! 
+//!
 //! This module provides an alternate implementation of MNIST neural network training
 //! that leverages Intel's OneDNN (Deep Neural Network Library) for optimized performance.
 
@@ -150,13 +150,13 @@ impl MnistOneDnnNeuralNetwork {
         let n_samples = x_data.len();
         let batch_size = batch_size.unwrap_or(32).min(n_samples);
         let activation = activation.unwrap_or(ActivationType::ReLU);
-        
+
         let activation_name = match activation {
             ActivationType::ReLU => "relu",
             ActivationType::Logistic => "logistic",
             ActivationType::Tanh => "tanh",
         };
-        
+
         let hidden_str = hidden_sizes
             .iter()
             .map(|s| s.to_string())
@@ -245,7 +245,7 @@ impl MnistOneDnnNeuralNetwork {
         }
         let mnist_data = Self::try_load_mnist_files()?;
         let actual_samples = n_samples.unwrap_or(1000).min(mnist_data.images.len());
-        
+
         // Shuffle indices for better training
         let mut indices: Vec<usize> = (0..actual_samples).collect();
         use rand::seq::SliceRandom;
@@ -511,7 +511,7 @@ impl MnistOneDnnNeuralNetwork {
         if params.iter().any(|&p| !p.is_finite()) {
             return Err(anyhow::anyhow!("Non-finite parameters detected"));
         }
-        
+
         // Check for extreme values that might cause numerical instability
         let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f64::max);
         if max_abs > 1e6 {
@@ -533,26 +533,28 @@ impl MnistOneDnnNeuralNetwork {
             for (i, layer) in layers.iter_mut().enumerate() {
                 let input_size = self.layer_sizes[i];
                 let output_size = self.layer_sizes[i + 1];
-                
+
                 // Set weights
                 let weights_count = input_size * output_size;
                 if param_idx + weights_count > params.len() {
-                    return Err(anyhow::anyhow!("Not enough parameters provided for weights"));
+                    return Err(anyhow::anyhow!(
+                        "Not enough parameters provided for weights"
+                    ));
                 }
-                
+
                 let weights: Vec<f32> = params[param_idx..param_idx + weights_count]
                     .iter()
                     .map(|&p| p as f32)
                     .collect();
                 layer.set_weights(&weights)?;
                 param_idx += weights_count;
-                
+
                 // Set bias
                 let bias_count = output_size;
                 if param_idx + bias_count > params.len() {
                     return Err(anyhow::anyhow!("Not enough parameters provided for bias"));
                 }
-                
+
                 let bias: Vec<f32> = params[param_idx..param_idx + bias_count]
                     .iter()
                     .map(|&p| p as f32)
@@ -580,7 +582,7 @@ impl MnistOneDnnNeuralNetwork {
         // For now, return zeros - in a full implementation, this would
         // extract parameters from OneDNN layers
         let params = vec![0.0; self.param_count];
-        
+
         // Cache the parameters
         *self.param_cache.write() = Some(params.clone());
 
@@ -595,7 +597,7 @@ impl MnistOneDnnNeuralNetwork {
             for (i, _layer) in self.layers.iter().enumerate() {
                 let input_size = self.layer_sizes[i];
                 let output_size = self.layer_sizes[i + 1];
-                
+
                 // Choose initialization based on activation function
                 let std_dev = match self.activation {
                     ActivationType::ReLU => {
@@ -652,18 +654,18 @@ impl MnistOneDnnNeuralNetwork {
         let batch_size = batch_x.len();
         let mut results = Vec::with_capacity(batch_size);
         let layers = self.layers.read();
-        
+
         // Process each sample in the batch
         for sample in batch_x {
             let mut current_input = sample.clone();
-            
+
             // Forward pass through all layers
             for layer in layers.iter() {
                 let mut output = vec![0.0f32; layer.output_size];
                 layer.forward(&current_input, &mut output)?;
                 current_input = output;
             }
-            
+
             results.push(current_input);
         }
 
@@ -801,11 +803,11 @@ mod tests {
     #[test]
     fn test_onednn_mnist_creation() {
         let mut rng = StdRng::seed_from_u64(42);
-        
+
         // Create synthetic data for testing
         let x_data = vec![vec![0.5; 784]; 10]; // 10 samples, 784 features
         let y_data = vec![vec![0.1; 10]; 10]; // 10 samples, 10 classes
-        
+
         let network = MnistOneDnnNeuralNetwork::new(
             x_data,
             y_data,
@@ -814,9 +816,9 @@ mod tests {
             &mut rng,
             Some(ActivationType::ReLU),
         );
-        
+
         assert!(network.is_ok(), "Should create OneDNN network successfully");
-        
+
         if let Ok(net) = network {
             assert_eq!(net.dimension(), 20 * 784 + 20 + 10 * 20 + 10); // weights + biases
             assert!(net.name().contains("OneDNN"));
@@ -829,7 +831,7 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(42);
         let x_data = vec![vec![0.5; 784]; 5];
         let y_data = vec![vec![0.1; 10]; 5];
-        
+
         let network = MnistOneDnnNeuralNetwork::new(
             x_data,
             y_data,
@@ -837,7 +839,8 @@ mod tests {
             Some(5),
             &mut rng,
             Some(ActivationType::ReLU),
-        ).unwrap();
+        )
+        .unwrap();
 
         // Test with non-finite parameters
         let bad_params = vec![f64::NAN; network.dimension()];

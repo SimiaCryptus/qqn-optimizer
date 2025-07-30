@@ -12,13 +12,13 @@ use crate::benchmarks::{
     BoothFunction, GriewankFunction, HimmelblauFunction, LevyFunction, MichalewiczFunction,
     SchwefelFunction, ZakharovFunction,
 };
+#[cfg(feature = "onednn")]
+use crate::MnistOneDnnNeuralNetwork;
 use crate::{
     AckleyFunction, BealeFunction, LinearRegression, LogisticRegression, MnistNeuralNetwork,
     NeuralNetworkTraining, RastriginFunction, RosenbrockFunction, SphereFunction,
     SupportVectorMachine,
 };
-#[cfg(feature = "onednn")]
-use crate::MnistOneDnnNeuralNetwork;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::sync::Arc;

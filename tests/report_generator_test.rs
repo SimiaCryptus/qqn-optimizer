@@ -15,7 +15,7 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
 
     // Create test data using the existing test suite
     let test_data = UnifiedReportTestSuite::create_test_data();
-    
+
     // Verify we have test data
     assert!(!test_data.is_empty(), "Test data should not be empty");
     assert!(test_data.len() >= 3, "Should have at least 3 test problems");
@@ -54,7 +54,11 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
             for entry in fs::read_dir(dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                println!("{}{}", "  ".repeat(indent), path.file_name().unwrap().to_string_lossy());
+                println!(
+                    "{}{}",
+                    "  ".repeat(indent),
+                    path.file_name().unwrap().to_string_lossy()
+                );
                 if path.is_dir() {
                     list_files(&path, indent + 1)?;
                 }
@@ -78,18 +82,27 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
     let csv_dir = unified_dir.join("csv");
     let latex_dir = unified_dir.join("latex");
     let markdown_dir = unified_dir.join("markdown");
-    
+
     assert!(html_dir.exists(), "HTML reports directory should exist");
     assert!(csv_dir.exists(), "CSV reports directory should exist");
     assert!(latex_dir.exists(), "LaTeX reports directory should exist");
-    assert!(markdown_dir.exists(), "Markdown reports directory should exist");
+    assert!(
+        markdown_dir.exists(),
+        "Markdown reports directory should exist"
+    );
 
     // Check specific report files exist in HTML format
     let html_summary = html_dir.join("summary_statistics.html");
-    assert!(html_summary.exists(), "HTML summary statistics should exist");
-    
+    assert!(
+        html_summary.exists(),
+        "HTML summary statistics should exist"
+    );
+
     let html_performance = html_dir.join("performance_table.html");
-    assert!(html_performance.exists(), "HTML performance table should exist");
+    assert!(
+        html_performance.exists(),
+        "HTML performance table should exist"
+    );
 
     // Check CSV format files
     let csv_summary = csv_dir.join("summary_statistics.csv");
@@ -139,15 +152,24 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
     // Verify data files exist
     let data_dir = output_dir.join("data");
     let detailed_results = data_dir.join("detailed_results.csv");
-    assert!(detailed_results.exists(), "Detailed results CSV should exist");
+    assert!(
+        detailed_results.exists(),
+        "Detailed results CSV should exist"
+    );
 
     let summary_stats = data_dir.join("summary_statistics.csv");
-    assert!(summary_stats.exists(), "Summary statistics CSV should exist");
+    assert!(
+        summary_stats.exists(),
+        "Summary statistics CSV should exist"
+    );
 
     // Verify LaTeX files exist
     let latex_dir = output_dir.join("latex");
     let comprehensive_tex = latex_dir.join("comprehensive_benchmark_report.tex");
-    assert!(comprehensive_tex.exists(), "Comprehensive LaTeX report should exist");
+    assert!(
+        comprehensive_tex.exists(),
+        "Comprehensive LaTeX report should exist"
+    );
 
     println!("✓ All expected directories created");
     println!("✓ Report files generated successfully");
@@ -182,7 +204,10 @@ async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
 
     // Verify unified reports directory exists
     let unified_dir = output_dir.join("unified_reports");
-    assert!(unified_dir.exists(), "Unified reports directory should exist");
+    assert!(
+        unified_dir.exists(),
+        "Unified reports directory should exist"
+    );
 
     println!("✓ Family mode report generation test passed");
 
@@ -194,7 +219,7 @@ fn test_report_generator_creation() {
     // Test basic ReportGenerator creation
     let config = BenchmarkConfig::default();
     let _report_generator = ReportGenerator::new("test_output".to_string(), config);
-    
+
     // This is a simple validation that the struct can be created
     // More detailed testing happens in the async tests above
     // Note: output_dir field is private, so we just test successful creation

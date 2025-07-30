@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use super::ReportGenerator;
 #[cfg(feature = "plotting")]
 use super::PlottingManager;
+use super::ReportGenerator;
 use crate::benchmarks::evaluation::{
     enable_no_threshold_mode, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper,
     ProblemSpec, SingleResult,
@@ -89,7 +89,8 @@ impl ExperimentRunner {
                 .generate_all_plots(&results_refs)
                 .await?;
         }
-        self.report_generator.generate_main_report(&results_refs, false)
+        self.report_generator
+            .generate_main_report(&results_refs, false)
             .await?;
 
         info!(
