@@ -1,7 +1,7 @@
 use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::report_generator;
-use crate::experiment_runner::report_generator::FamilyPerformanceData;
+use crate::experiment_runner::report_generator::{escape_latex_safe, FamilyPerformanceData};
 use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
@@ -882,7 +882,7 @@ Generated on: {}
 ## Test Data:
 The test uses mock benchmark results for the following problem families:
 - **rosenbrock**: rosenbrock_2d, rosenbrock_10d
-- **sphere**: sphere_2d, sphere_10d  
+- **sphere**: sphere_2d, sphere_10d
 - **rastrigin**: rastrigin_2d
 And the following optimizer families:
 - **lbfgs**: lbfgs_default, lbfgs_aggressive
