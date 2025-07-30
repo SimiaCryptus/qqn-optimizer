@@ -892,7 +892,7 @@ impl BenchmarkResults {
 
                 if !results.is_empty() {
                     let avg =
-                        results.iter().map(|r| r.best_value).sum::<f64>() / results.len() as f64;
+                        results.iter().map(|r| r.final_value).sum::<f64>() / results.len() as f64;
                     averages.insert((problem_name.clone(), optimizer_name.clone()), avg);
                 }
             }

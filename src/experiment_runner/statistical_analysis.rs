@@ -553,6 +553,11 @@ impl StatisticalAnalysis {
     /// - Less precise for intermediate p-values, but sufficient for hypothesis testing
 
     fn t_distribution_p_value(&self, t_abs: f64, df: f64) -> f64 {
+        // Special case: t = 0 means no difference, p = 1.0
+        if t_abs == 0.0 {
+            return 1.0;
+        }
+        
         // For large df, t-distribution approaches normal distribution
         if df > 30.0 {
             let z = t_abs;
@@ -1252,16 +1257,22 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
     /// Helper function to escape LaTeX special characters
     fn escape_latex(&self, text: &str) -> String {
-        text.replace('&', "\\&")
-            .replace('%', "\\%")
-            .replace('$', "\\$")
-            .replace('#', "\\#")
-            .replace('^', "\\textasciicircum{}")
-            .replace('_', "\\_")
-            .replace('{', "\\{")
-            .replace('}', "\\}")
-            .replace('~', "\\textasciitilde{}")
-            .replace('\\', "\\textbackslash{}")
+        // Handle each character individually to avoid replacement conflicts
+        text.chars()
+            .map(|c| match c {
+                '\\' => "\\textbackslash{}".to_string(),
+                '&' => "\\&".to_string(),
+                '%' => "\\%".to_string(),
+                '$' => "\\$".to_string(),
+                '#' => "\\#".to_string(),
+                '^' => "\\textasciicircum{}".to_string(),
+                '_' => "\\_".to_string(),
+                '{' => "\\{".to_string(),
+                '}' => "\\}".to_string(),
+                '~' => "\\textasciitilde{}".to_string(),
+                _ => c.to_string(),
+            })
+            .collect()
     }
 }
 #[cfg(test)]
