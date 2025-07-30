@@ -2183,11 +2183,16 @@ mod tests {
         // Test sparsity structure
         let point = vec![0.0, 0.0, 1.0, 1.0];
         let grad = problem.gradient_f64(&point).unwrap();
-        // Variables 0,1 should not affect gradients of 2,3
-        assert_ne!(grad[0], 0.0);
-        assert_ne!(grad[1], 0.0);
-        assert_eq!(grad[2], 0.0);
-        assert_eq!(grad[3], 0.0);
+        // For SparseRosenbrock, pairs are (0,1) and (2,3)
+        // At point [0.0, 0.0, 1.0, 1.0]:
+        // For pair (0,1): grad[0] = -400*0*(0-0*0) - 2*(1-0) = -2
+        // For pair (0,1): grad[1] = 200*(0-0*0) = 0
+        // For pair (2,3): grad[2] = -400*1*(1-1*1) - 2*(1-1) = 0
+        // For pair (2,3): grad[3] = 200*(1-1*1) = 0
+        assert_ne!(grad[0], 0.0); // Should be -2.0
+        assert_eq!(grad[1], 0.0); // Should be 0.0
+        assert_eq!(grad[2], 0.0); // Should be 0.0
+        assert_eq!(grad[3], 0.0); // Should be 0.0
     }
     #[test]
     fn test_sparse_quadratic() {
@@ -2204,9 +2209,9 @@ mod tests {
         test_gradient_numerical(&problem, &point, GRADIENT_EPSILON);
         // Test custom sparsity pattern
         let custom = SparseQuadratic::with_pattern(4, vec![2]);
-        let grad = custom.gradient_f64(&vec![1.0, 0.0, 0.0, 0.0]).unwrap();
+        let grad = custom.gradient_f64(&vec![1.0, 0.0, 1.0, 0.0]).unwrap();
         // Only x[0] and x[2] should interact
-        assert_ne!(grad[0], 2.0); // Not just diagonal
+        assert_ne!(grad[0], 2.0); // Not just diagonal - should be 2.0 + 0.1*1.0 = 2.1
         assert_eq!(grad[1], 0.0); // No interaction
     }
     #[test]
