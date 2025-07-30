@@ -129,10 +129,9 @@ pub struct BisectionLineSearch {
 impl LineSearch for BisectionLineSearch {
     fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
-        self.log_verbose(&format!("Starting bisection line search"));
+        self.log_verbose("Starting bisection line search");
         self.log_verbose(&format!(
-            "Initial directional derivative: {:.3e}",
-            directional_derivative
+            "Initial directional derivative: {directional_derivative:.3e}"
         ));
 
         if directional_derivative >= 0.0 {
@@ -171,8 +170,7 @@ impl LineSearch for BisectionLineSearch {
         let grad_far = (problem.gradient)(far_point)?;
 
         self.log_verbose(&format!(
-            "Bracket: grad(0)={:.3e}, grad({:.3e})={:.3e}",
-            grad_0, far_point, grad_far
+            "Bracket: grad(0)={grad_0:.3e}, grad({far_point:.3e})={grad_far:.3e}"
         ));
 
         // Step 3: Perform bisection search for zero gradient
@@ -184,9 +182,7 @@ impl LineSearch for BisectionLineSearch {
             let f0 = (problem.objective)(0.0)?;
             let f_far = (problem.objective)(far_point)?;
             if f_far < f0 {
-                self.log_verbose(&format!(
-                    "No gradient sign change, but far point provides improvement"
-                ));
+                self.log_verbose("No gradient sign change, but far point provides improvement");
                 far_point
             } else {
                 // Use a small step that provides some improvement
@@ -209,8 +205,7 @@ impl LineSearch for BisectionLineSearch {
 
                 if best_step > 0.0 {
                     self.log_verbose(&format!(
-                        "Found improvement with small step: {:.3e}",
-                        best_step
+                        "Found improvement with small step: {best_step:.3e}"
                     ));
                     best_step
                 } else {
@@ -290,7 +285,7 @@ impl BisectionLineSearch {
     /// Log line search details if verbose mode is enabled
     pub(crate) fn log_verbose(&self, message: &str) {
         if self.config.verbose {
-            debug!("Bisection: {}", message);
+            debug!("Bisection: {message}");
         }
     }
 
@@ -312,16 +307,14 @@ impl BisectionLineSearch {
         let mut b = right;
 
         self.log_verbose(&format!(
-            "Finding zero gradient in interval [{:.3e}, {:.3e}]",
-            a, b
+            "Finding zero gradient in interval [{a:.3e}, {b:.3e}]"
         ));
         // Verify we have a proper bracket with opposite gradient signs
         let grad_a = (problem.gradient)(a)?;
         let grad_b = (problem.gradient)(b)?;
         if grad_a * grad_b > 0.0 {
             self.log_verbose(&format!(
-                "Warning: gradients have same sign at endpoints: grad({:.3e})={:.3e}, grad({:.3e})={:.3e}",
-                a, grad_a, b, grad_b
+                "Warning: gradients have same sign at endpoints: grad({a:.3e})={grad_a:.3e}, grad({b:.3e})={grad_b:.3e}"
             ));
             // Return the point with smaller absolute gradient
             return Ok(if grad_a.abs() < grad_b.abs() { a } else { b });
@@ -332,17 +325,16 @@ impl BisectionLineSearch {
             // Evaluate gradient at midpoint
             let grad_mid = (problem.gradient)(mid)?;
             self.log_verbose(&format!(
-                "  Line Search Iteration {}: mid={:.3e}, grad={:.3e}",
-                i, mid, grad_mid
+                "  Line Search Iteration {i}: mid={mid:.3e}, grad={grad_mid:.3e}"
             ));
             // Check if gradient is close enough to zero
             if grad_mid.abs() <= self.config.gradient_tolerance {
-                self.log_verbose(&format!("Found zero gradient at alpha={:.3e}", mid));
+                self.log_verbose(&format!("Found zero gradient at alpha={mid:.3e}"));
                 return Ok(mid);
             }
             // Check if interval is too small
             if (b - a) < self.config.min_step {
-                self.log_verbose(&format!("Interval too small, returning mid={:.3e}", mid));
+                self.log_verbose(&format!("Interval too small, returning mid={mid:.3e}"));
                 return Ok(mid);
             }
             // Update interval based on sign of gradient
@@ -358,8 +350,7 @@ impl BisectionLineSearch {
         // Return midpoint if max iterations reached
         let final_alpha = 0.5 * (a + b);
         self.log_verbose(&format!(
-            "Max iterations reached, returning alpha={:.3e}",
-            final_alpha
+            "Max iterations reached, returning alpha={final_alpha:.3e}"
         ));
         Ok(final_alpha)
     }
@@ -389,23 +380,22 @@ pub(crate) fn find_far_point_1(
 ) -> anyhow::Result<f64, Error> {
     let mut t = initial_step;
     let mut iteration = 0;
-    debug!("Finding far point starting from t={:.3e}", t);
+    debug!("Finding far point starting from t={t:.3e}");
     while iteration < max_iterations {
         let f_t = (problem.objective)(t)?;
         let grad_t = (problem.gradient)(t)?;
         debug!(
-            "  Line Search Iteration {}: t={:.3e}, f={:.3e}, grad={:.3e}, f0={:.3e}",
-            iteration, t, f_t, grad_t, f0
+            "  Line Search Iteration {iteration}: t={t:.3e}, f={f_t:.3e}, grad={grad_t:.3e}, f0={f0:.3e}"
         );
         // Check if this point satisfies our far point criteria:
         // 1. Function value is still better than f(0)
         // 2. Gradient is positive (function is increasing)
         if f_t < f0 && grad_t > 0.0 {
-            debug!("Found far point at t={:.3e}", t);
+            debug!("Found far point at t={t:.3e}");
             return Ok(t);
         }
         if f_t >= f0 {
-            debug!("Function value too high at t={:.3e}, reducing step", t);
+            debug!("Function value too high at t={t:.3e}, reducing step");
             t *= 0.5;
             if t < min_step {
                 debug!("Step size too small, using minimum step");
@@ -414,7 +404,7 @@ pub(crate) fn find_far_point_1(
         }
         // If gradient is still negative, step is too small
         else if grad_t < 0.0 {
-            debug!("Gradient still negative at t={:.3e}, increasing step", t);
+            debug!("Gradient still negative at t={t:.3e}, increasing step");
             t *= 2.0;
             if t > max_step {
                 debug!("Step size too large, using maximum step");
@@ -423,13 +413,13 @@ pub(crate) fn find_far_point_1(
         }
         // If gradient is approximately zero, we found our point
         else if grad_t.abs() <= gradient_tolerance {
-            debug!("Found zero gradient at t={:.3e}", t);
+            debug!("Found zero gradient at t={t:.3e}");
             return Ok(t);
         }
         iteration += 1;
     }
     // If we can't find a proper far point, return the last valid step
-    debug!("Max iterations reached, returning t={:.3e}", t);
+    debug!("Max iterations reached, returning t={t:.3e}");
     Ok(t)
 }
 
@@ -453,26 +443,20 @@ pub(crate) fn find_far_point_2(
 ) -> anyhow::Result<f64, Error> {
     let mut t = initial_steop;
     let mut iteration = 0;
-    debug!("Finding far point starting from t={:.3e}", t);
+    debug!("Finding far point starting from t={t:.3e}");
     while iteration < max_iterations {
         let f_t = (problem.objective)(t)?;
-        debug!(
-            "  Line Search Iteration {}: t={:.3e}, f={:.3e}, f0={:.3e}",
-            iteration, t, f_t, f0
-        );
+        debug!("  Line Search Iteration {iteration}: t={t:.3e}, f={f_t:.3e}, f0={f0:.3e}");
         // Check if this point satisfies our far point criteria:
         // 1. Function value is worse than f(0)
         if f_t > f0 {
-            debug!("Found far point at t={:.3e}", t);
+            debug!("Found far point at t={t:.3e}");
             return Ok(t);
         }
 
         // If function value is still better than f(0), increase step size
         if f_t <= f0 {
-            debug!(
-                "Function value still better at t={:.3e}, increasing step",
-                t
-            );
+            debug!("Function value still better at t={t:.3e}, increasing step");
             t *= 2.0;
             if t > max_step {
                 debug!("Step size too large, using maximum step");
@@ -483,7 +467,7 @@ pub(crate) fn find_far_point_2(
         iteration += 1;
     }
     // If we can't find a proper far point, return the last valid step
-    debug!("Max iterations reached, returning t={:.3e}", t);
+    debug!("Max iterations reached, returning t={t:.3e}");
     Ok(t)
 }
 
@@ -651,7 +635,7 @@ mod tests {
         .unwrap();
         let result = line_search.find_zero_gradient(0.3, 0.4, &problem).unwrap();
         // Should terminate when interval becomes smaller than min_step
-        assert!(result >= 0.3 && result <= 0.4);
+        assert!((0.3..=0.4).contains(&result));
     }
     #[test]
     fn test_find_zero_gradient_max_iterations() {
@@ -675,7 +659,7 @@ mod tests {
         .unwrap();
         let result = line_search.find_zero_gradient(0.2, 0.5, &problem).unwrap();
         // Should return midpoint after max iterations
-        assert!(result >= 0.2 && result <= 0.5);
+        assert!((0.2..=0.5).contains(&result));
     }
     #[test]
     fn test_bisection_with_different_bracket_methods() {

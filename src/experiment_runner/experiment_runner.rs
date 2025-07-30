@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use super::{PlottingManager, ReportGenerator};
 use crate::benchmarks::evaluation::{
     enable_no_threshold_mode, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper,
@@ -37,12 +39,9 @@ impl ExperimentRunner {
         // Ensure output directory exists
         fs::create_dir_all(&self.output_dir)?;
         // Run benchmarks for each problem with its specific optimizers
-        for (problem_name, _optimizers) in &problem_optimizer_map {
+        for problem_name in problem_optimizer_map.keys() {
             // Find the problem by name (we'll need to pass problems separately or store them)
-            info!(
-                "Running championship benchmarks for problem: {}",
-                problem_name
-            );
+            info!("Running championship benchmarks for problem: {problem_name}");
             // This will be handled by the calling function
         }
         Ok(())
@@ -159,7 +158,7 @@ impl ExperimentRunner {
                         problem,
                         &mut optimizer.clone_box(),
                         run_id,
-                        &opt_name,
+                        opt_name,
                         self.config.initial_point_noise,
                     )
                     .await
@@ -176,7 +175,7 @@ impl ExperimentRunner {
                         let mut failed_result = SingleResult::new(opt_name.clone(), run_id);
                         failed_result.convergence_achieved = false;
                         failed_result.final_value = f64::INFINITY;
-                        failed_result.error_message = Some(format!("Evaluation error: {}", e));
+                        failed_result.error_message = Some(format!("Evaluation error: {e}"));
                         results.add_result(failed_result);
                         continue;
                     }
@@ -224,7 +223,7 @@ pub async fn run_benchmark(
     enable_no_threshold_mode();
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let output_dir_name = format!("{}{}", report_path_prefix, timestamp);
+    let output_dir_name = format!("{report_path_prefix}{timestamp}");
     let output_dir = std::path::PathBuf::from(&output_dir_name);
     fs::create_dir_all(&output_dir)?;
     println!("Creating benchmark results in: {}", output_dir.display());
@@ -248,7 +247,7 @@ pub async fn run_benchmark(
             println!("Benchmark completed successfully");
         }
         Ok(Err(e)) => {
-            eprintln!("Benchmark failed: {}", e);
+            eprintln!("Benchmark failed: {e}");
             return Err(e.into());
         }
         Err(_) => {
@@ -287,10 +286,7 @@ pub fn get_optimizer_family(optimizer_name: &str) -> String {
     } else if optimizer_name.starts_with("Adam") {
         "Adam".to_string()
     } else {
-        warn!(
-            "Unknown optimizer family for '{}', using full name",
-            optimizer_name
-        );
+        warn!("Unknown optimizer family for '{optimizer_name}', using full name");
         optimizer_name.to_string()
     }
 }

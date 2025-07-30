@@ -308,6 +308,12 @@ pub struct GDState {
     pub momentum_buffer: Option<Vec<Tensor>>,
 }
 
+impl Default for GDState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GDState {
     /// Create a new GD state.
     ///
@@ -419,7 +425,7 @@ impl GDOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== GD: {} ===", name);
+        debug!("=== GD: {name} ===");
         for (i, tensor) in tensors.iter().enumerate() {
             match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
                 Ok(values) => {
@@ -430,7 +436,7 @@ impl GDOptimizer {
                         values.len()
                     );
                     if values.len() <= 10 {
-                        debug!("    Full data: {:?}", values);
+                        debug!("    Full data: {values:?}");
                     } else {
                         debug!(
                             "    First 5: {:?}, Last 5: {:?}",
@@ -467,7 +473,7 @@ impl GDOptimizer {
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
         if self.config.verbose {
-            debug!("  GD {}: {:.12e}", name, value);
+            debug!("  GD {name}: {value:.12e}");
         }
     }
 
@@ -677,7 +683,7 @@ impl Optimizer for GDOptimizer {
             crate::utils::math::compute_magnitude(&changes)?
         };
         if self.config.verbose {
-            debug!("Parameter change norm: {:.6e}", param_change_norm);
+            debug!("Parameter change norm: {param_change_norm:.6e}");
         }
 
         // Check for NaN/Inf in updated parameters
@@ -685,8 +691,7 @@ impl Optimizer for GDOptimizer {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
                 return Err(candle_core::Error::Msg(format!(
-                    "Non-finite parameter detected at index {} after update",
-                    i
+                    "Non-finite parameter detected at index {i} after update"
                 )));
             }
         }
@@ -700,7 +705,7 @@ impl Optimizer for GDOptimizer {
 
         if self.config.verbose {
             debug!("=== GD Step {} Completed ===", self.state.iteration - 1);
-            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Step Duration: {step_duration:?}");
             debug!("  Converged: {}", convergence_info.converged);
         }
 
@@ -1139,8 +1144,7 @@ mod tests {
             for val in values {
                 assert!(
                     val.abs() < 2.0,
-                    "Value {} should be less than 2.0 in absolute value",
-                    val
+                    "Value {val} should be less than 2.0 in absolute value"
                 );
             }
         }

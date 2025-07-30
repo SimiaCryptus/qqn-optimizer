@@ -200,7 +200,7 @@ impl StatisticalAnalysis {
         for result in &results.results {
             grouped_results
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -296,14 +296,14 @@ impl StatisticalAnalysis {
         for result in results_a {
             problems_a
                 .entry(result.problem_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
         for result in results_b {
             problems_b
                 .entry(result.problem_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -413,7 +413,7 @@ impl StatisticalAnalysis {
         for result in &results.results {
             grouped_results
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -528,7 +528,7 @@ impl StatisticalAnalysis {
         for result in &results.results {
             grouped_results
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
 
@@ -770,7 +770,7 @@ impl StatisticalAnalysis {
                     } else {
                         t_dist.cdf(abs_t)
                     };
-                    if cdf_result.is_finite() && cdf_result >= 0.0 && cdf_result <= 1.0 {
+                    if cdf_result.is_finite() && (0.0..=1.0).contains(&cdf_result) {
                         2.0 * (1.0 - cdf_result)
                     } else {
                         0.5 // Fallback for invalid CDF result

@@ -1,3 +1,5 @@
+#![allow(clippy::module_inception)]
+
 pub mod experiment_runner;
 pub mod optimizer_sets;
 pub mod plotting_manager;

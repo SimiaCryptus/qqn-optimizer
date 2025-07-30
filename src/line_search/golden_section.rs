@@ -197,7 +197,7 @@ impl GoldenSectionLineSearch {
     }
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
-            debug!("GoldenSection: {}", message);
+            debug!("GoldenSection: {message}");
         }
     }
     /// Golden ratio constant
@@ -211,10 +211,7 @@ impl GoldenSectionLineSearch {
     fn find_minimum(&self, problem: &OneDimensionalProblem) -> anyhow::Result<f64> {
         // First, establish a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c)
         let (a, b, c) = self.find_bracket(problem)?;
-        self.log_verbose(&format!(
-            "Initial bracket: [{:.6e}, {:.6e}, {:.6e}]",
-            a, b, c
-        ));
+        self.log_verbose(&format!("Initial bracket: [{a:.6e}, {b:.6e}, {c:.6e}]"));
         // Golden section search
         let mut left = a;
         let mut right = c;
@@ -224,8 +221,7 @@ impl GoldenSectionLineSearch {
         let mut f2 = (problem.objective)(x2)?;
         for i in 0..self.config.max_iterations {
             self.log_verbose(&format!(
-                "Line Search Iteration {}: interval=[{:.3e}, {:.3e}], x1={:.3e}, x2={:.3e}, f1={:.3e}, f2={:.3e}",
-                i, left, right, x1, x2, f1, f2
+                "Line Search Iteration {i}: interval=[{left:.3e}, {right:.3e}], x1={x1:.3e}, x2={x2:.3e}, f1={f1:.3e}, f2={f2:.3e}"
             ));
             if (right - left) < self.config.tolerance {
                 break;
@@ -247,7 +243,7 @@ impl GoldenSectionLineSearch {
             }
         }
         let final_x = if f1 < f2 { x1 } else { x2 };
-        self.log_verbose(&format!("Golden section completed with x={:.3e}", final_x));
+        self.log_verbose(&format!("Golden section completed with x={final_x:.3e}"));
         Ok(final_x)
     }
 
@@ -326,7 +322,7 @@ impl GoldenSectionLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
+
     use crate::line_search::line_search::create_1d_problem_linear;
     use crate::line_search::TerminationReason;
     use approx::assert_abs_diff_eq;

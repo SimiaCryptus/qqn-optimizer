@@ -59,7 +59,7 @@ impl QuadraticProblem {
         }
 
         Self {
-            name: format!("Quadratic{}D_Cond{:.1}", dimension, condition_number),
+            name: format!("Quadratic{dimension}D_Cond{condition_number:.1}"),
             dimension,
             matrix_a,
             vector_b,
@@ -140,7 +140,7 @@ impl DifferentiableFunction for QuadraticProblem {
         // Evaluate using f64 implementation
         let result = self
             .evaluate_f64(&x)
-            .map_err(|e| candle_core::Error::Msg(format!("Evaluation error: {}", e)))?;
+            .map_err(|e| candle_core::Error::Msg(format!("Evaluation error: {e}")))?;
         Ok(result)
     }
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
@@ -150,7 +150,7 @@ impl DifferentiableFunction for QuadraticProblem {
         // Compute gradient using f64 implementation
         let grad = self
             .gradient_f64(&x)
-            .map_err(|e| candle_core::Error::Msg(format!("Gradient error: {}", e)))?;
+            .map_err(|e| candle_core::Error::Msg(format!("Gradient error: {e}")))?;
         // Convert back to tensors
         grad.iter()
             .map(|&g| Tensor::from_slice(&[g], (1,), &Device::Cpu))
@@ -196,8 +196,8 @@ fn main() -> Result<()> {
     );
     let qqn_error = (qqn_result.1 - problem.optimal_value().unwrap()).abs();
     let lbfgs_error = (lbfgs_result.1 - problem.optimal_value().unwrap()).abs();
-    println!("QQN error:    {:.2e}", qqn_error);
-    println!("L-BFGS error: {:.2e}", lbfgs_error);
+    println!("QQN error:    {qqn_error:.2e}");
+    println!("L-BFGS error: {lbfgs_error:.2e}");
     if qqn_result.0 < lbfgs_result.0 {
         println!("✓ QQN converged faster!");
     } else if qqn_result.0 == lbfgs_result.0 {
@@ -222,7 +222,7 @@ fn run_optimizer(
         .map_err(|e| anyhow::anyhow!("Failed to create tensors: {}", e))?;
     let mut iteration = 0;
     let max_iterations = 1000;
-    println!("Starting {} optimization...", name);
+    println!("Starting {name} optimization...");
     while iteration < max_iterations {
         // Convert tensors back to f64 for convergence checking
         let x: Vec<f64> = params
@@ -245,10 +245,7 @@ fn run_optimizer(
                 .collect::<candle_core::Result<Vec<_>>>()
                 .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
             let f_val = problem.evaluate_f64(&x)?;
-            println!(
-                "  Iteration {}: f = {:.6}, ||∇f|| = {:.2e}",
-                iteration, f_val, grad_norm
-            );
+            println!("  Iteration {iteration}: f = {f_val:.6}, ||∇f|| = {grad_norm:.2e}");
         }
     }
     // Convert final parameters back to f64 for evaluation

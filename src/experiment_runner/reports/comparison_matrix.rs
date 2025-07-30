@@ -74,9 +74,9 @@ pub fn generate_comparison_matrix_latex_table(
         for result in &results.results {
             problem_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -89,7 +89,7 @@ pub fn generate_comparison_matrix_latex_table(
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, optimizers) in &problem_results {
+            for optimizers in problem_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
                 {
@@ -130,19 +130,13 @@ pub fn generate_comparison_matrix_latex_table(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            latex_content.push_str(&format!("& {} ", cell_content));
+            latex_content.push_str(&format!("& {cell_content} "));
         }
         latex_content.push_str("\\\\\n");
     }
@@ -217,9 +211,9 @@ pub fn generate_comparison_matrix_table_content(
         for result in &results.results {
             problem_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -232,7 +226,7 @@ pub fn generate_comparison_matrix_table_content(
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, optimizers) in &problem_results {
+            for optimizers in problem_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
                 {
@@ -273,19 +267,13 @@ pub fn generate_comparison_matrix_table_content(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            content.push_str(&format!("& {} ", cell_content));
+            content.push_str(&format!("& {cell_content} "));
         }
         content.push_str("\\\\\n");
     }
@@ -354,9 +342,9 @@ pub fn generate_family_comparison_matrix_table_content(
             let family = get_optimizer_family(&result.optimizer_name);
             problem_family_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(family)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -369,7 +357,7 @@ pub fn generate_family_comparison_matrix_table_content(
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, families) in &problem_family_results {
+            for families in problem_family_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
@@ -410,19 +398,13 @@ pub fn generate_family_comparison_matrix_table_content(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            content.push_str(&format!("& {} ", cell_content));
+            content.push_str(&format!("& {cell_content} "));
         }
         content.push_str("\\\\\n");
     }
@@ -505,9 +487,9 @@ pub fn generate_family_comparison_matrix_latex_table(
             let family = get_optimizer_family(&result.optimizer_name);
             problem_family_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(family)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -520,7 +502,7 @@ pub fn generate_family_comparison_matrix_latex_table(
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, families) in &problem_family_results {
+            for families in problem_family_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
@@ -561,19 +543,13 @@ pub fn generate_family_comparison_matrix_latex_table(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            latex_content.push_str(&format!("& {} ", cell_content));
+            latex_content.push_str(&format!("& {cell_content} "));
         }
         latex_content.push_str("\\\\\n");
     }

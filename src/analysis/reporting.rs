@@ -34,6 +34,12 @@ pub struct ReportSection {
 /// LaTeX exporter
 pub struct LaTeXExporter;
 
+impl Default for LaTeXExporter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LaTeXExporter {
     pub fn new() -> Self {
         Self
@@ -49,6 +55,12 @@ impl LaTeXExporter {
 
 /// CSV exporter
 pub struct CSVExporter;
+
+impl Default for CSVExporter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl CSVExporter {
     pub fn new() -> Self {

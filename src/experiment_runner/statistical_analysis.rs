@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use super::experiment_runner::get_optimizer_family;
 use crate::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, ProblemSpec};
 use anyhow::{Context, Result};
@@ -36,21 +38,14 @@ const COHEN_D_LARGE: f64 = 0.8;
 /// - **Bonferroni correction**: Should be applied externally for multiple comparisons
 /// - **Effect size**: Cohen's d provides practical significance beyond statistical significance
 ///
-/// # Usage Patterns
-///
-/// ```rust
-/// use qqn_optimizer::experiment_runner::StatisticalAnalysis;
-///
-/// let analysis = StatisticalAnalysis::new();
-/// let report = analysis.generate_statistical_analysis(
-///     &benchmark_results,
-///     &config,
-///     "output/",
-///     true  // use optimizer families
-/// )?;
-/// ```
 #[derive(Debug, Clone)]
 pub struct StatisticalAnalysis;
+
+impl Default for StatisticalAnalysis {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl StatisticalAnalysis {
     /// Creates a new StatisticalAnalysis instance
@@ -101,7 +96,6 @@ impl StatisticalAnalysis {
     /// ```
     ///
     /// This indicates QQN found better solutions but required more function evaluations.
-
     pub fn generate_statistical_analysis(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
@@ -135,10 +129,11 @@ impl StatisticalAnalysis {
                     result.optimizer_name.clone()
                 };
 
-                optimizer_results
-                    .entry(optimizer_key)
-                    .or_insert_with(Vec::new)
-                    .push((result.final_value, cost, problem_name.to_string()));
+                optimizer_results.entry(optimizer_key).or_default().push((
+                    result.final_value,
+                    cost,
+                    problem_name.to_string(),
+                ));
             }
         }
 
@@ -196,9 +191,9 @@ impl StatisticalAnalysis {
                 grouped_optimizer_results
                     // Note: Could group by problem family instead of individual problems
                     .entry(problem.to_string())
-                    .or_insert_with(HashMap::new)
+                    .or_default()
                     .entry(optimizer_key)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push((*final_value, *cost));
             }
         }
@@ -271,24 +266,12 @@ impl StatisticalAnalysis {
                             };
 
                             csv_data.push(format!(
-                                "{},{},{},Final_Objective_Value,{},{:.6},{:.6},{},{:.3}",
-                                family_name,
-                                qqn_opt,
-                                non_qqn_opt,
-                                winner,
-                                t_stat,
-                                p_value,
-                                significant,
-                                effect_size
+                                "{family_name},{qqn_opt},{non_qqn_opt},Final_Objective_Value,{winner},{t_stat:.6},{p_value:.6},{significant},{effect_size:.3}"
                             ));
                         }
                         Err(e) => {
                             log::warn!(
-                                "Statistical test failed for {} vs {} on {}: {}",
-                                qqn_opt,
-                                non_qqn_opt,
-                                family_name,
-                                e
+                                "Statistical test failed for {qqn_opt} vs {non_qqn_opt} on {family_name}: {e}"
                             );
                         }
                     }
@@ -319,24 +302,12 @@ impl StatisticalAnalysis {
                             };
 
                             csv_data.push(format!(
-                                "{},{},{},Computational_Cost,{},{:.6},{:.6},{},{:.3}",
-                                family_name,
-                                qqn_opt,
-                                non_qqn_opt,
-                                winner_name,
-                                t_stat,
-                                p_value,
-                                significant,
-                                effect_size
+                                "{family_name},{qqn_opt},{non_qqn_opt},Computational_Cost,{winner_name},{t_stat:.6},{p_value:.6},{significant},{effect_size:.3}"
                             ));
                         }
                         Err(e) => {
                             log::warn!(
-                                "Cost comparison test failed for {} vs {} on {}: {}",
-                                qqn_opt,
-                                non_qqn_opt,
-                                family_name,
-                                e
+                                "Cost comparison test failed for {qqn_opt} vs {non_qqn_opt} on {family_name}: {e}"
                             );
                         }
                     }
@@ -421,12 +392,11 @@ impl StatisticalAnalysis {
     /// - P_Value: Statistical significance level
     /// - Significant: Boolean indicating p < 0.05
     /// - Effect_Size: Cohen's d effect size measure
-
     fn save_statistical_analysis_csv(&self, csv_data: &[String], output_dir: &str) -> Result<()> {
         let csv_content = csv_data.join("\n");
         let csv_path = Path::new(output_dir).join("statistical_analysis_raw_data.csv");
         fs::write(&csv_path, csv_content)
-            .with_context(|| format!("Failed to write CSV to {:?}", csv_path))?;
+            .with_context(|| format!("Failed to write CSV to {csv_path:?}"))?;
         Ok(())
     }
     /// Performs Welch's t-test for comparing two independent samples
@@ -464,15 +434,6 @@ impl StatisticalAnalysis {
     /// - Zero variance with different means: returns error
     /// - Zero standard error: returns error
     ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let qqn_results = vec![1.2, 1.5, 1.1, 1.3];
-    /// let bfgs_results = vec![2.1, 2.3, 1.9, 2.2];
-    /// let (t_stat, p_val) = analysis.welch_t_test(&qqn_results, &bfgs_results)?;
-    /// println!("t = {:.3}, p = {:.3}", t_stat, p_val);
-    /// ```
-
     fn welch_t_test(&self, sample_a: &[f64], sample_b: &[f64]) -> Result<(f64, f64)> {
         if sample_a.len() < MIN_SAMPLE_SIZE || sample_b.len() < MIN_SAMPLE_SIZE {
             return Err(anyhow::anyhow!("Insufficient sample size for t-test"));
@@ -548,8 +509,12 @@ impl StatisticalAnalysis {
     /// The approximation is most accurate for common significance levels:
     /// - p < 0.001, p < 0.01, p < 0.05, p < 0.10
     /// - Less precise for intermediate p-values, but sufficient for hypothesis testing
-
     fn t_distribution_p_value(&self, t_abs: f64, df: f64) -> f64 {
+        // Special case: if t = 0, p-value should be 1.0
+        if t_abs == 0.0 {
+            return 1.0;
+        }
+
         // For large df, t-distribution approaches normal distribution
         if df > 30.0 {
             let z = t_abs;
@@ -634,7 +599,6 @@ impl StatisticalAnalysis {
     /// d = 0.8: QQN is 0.8 standard deviations better (large effect)
     /// d = 1.2: QQN is 1.2 standard deviations better (very large effect)
     /// ```
-
     fn cohens_d(&self, sample_a: &[f64], sample_b: &[f64]) -> f64 {
         if sample_a.len() < MIN_SAMPLE_SIZE || sample_b.len() < MIN_SAMPLE_SIZE {
             return 0.0;
@@ -727,7 +691,6 @@ impl StatisticalAnalysis {
     ///
     /// This indicates QQN found better solutions (green, negative delta)
     /// but used more function evaluations (red, positive delta).
-
     fn generate_comparison_matrix(
         &self,
         grouped_results: &HashMap<String, HashMap<String, Vec<(f64, f64)>>>,
@@ -779,13 +742,13 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
         // Create header row with non-QQN optimizer names
         for non_qqn in &non_qqn_optimizers {
-            matrix_section.push_str(&format!("    <th>{}</th>\n", non_qqn));
+            matrix_section.push_str(&format!("    <th>{non_qqn}</th>\n"));
         }
         matrix_section.push_str("  </tr>\n");
 
         // Generate data rows (one per QQN optimizer)
         for qqn_opt in &qqn_optimizers {
-            matrix_section.push_str(&format!("  <tr>\n    <th>{}</th>\n", qqn_opt));
+            matrix_section.push_str(&format!("  <tr>\n    <th>{qqn_opt}</th>\n"));
             // Generate cells for each QQN vs non-QQN comparison
             for non_qqn_opt in &non_qqn_optimizers {
                 matrix_section.push_str("    <td>");
@@ -803,8 +766,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                         {
                             if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
                                 let mut problem_section = format!(
-                                    "<div class='problem-comparison'><strong>{}</strong>",
-                                    problem_name
+                                    "<div class='problem-comparison'><strong>{problem_name}</strong>"
                                 );
 
                                 // Analyze objective function performance
@@ -836,16 +798,15 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                                 // Format delta value with appropriate precision
 
                                 let delta_obj_str = if delta_obj.abs() >= 1000.0 {
-                                    format!("{:.1e}", delta_obj)
+                                    format!("{delta_obj:.1e}")
                                 } else if delta_obj.abs() >= 1.0 {
-                                    format!("{:.2}", delta_obj)
+                                    format!("{delta_obj:.2}")
                                 } else {
-                                    format!("{:.3}", delta_obj)
+                                    format!("{delta_obj:.3}")
                                 };
 
                                 problem_section.push_str(&format!(
-                                    "<br><span style='color: {}; font-size: 0.85em;'>obj: {}</span>",
-                                    obj_color, delta_obj_str
+                                    "<br><span style='color: {obj_color}; font-size: 0.85em;'>obj: {delta_obj_str}</span>"
                                 ));
 
                                 // Analyze computational efficiency
@@ -877,16 +838,15 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                                 // Format cost delta with appropriate precision
 
                                 let delta_cost_str = if delta_cost.abs() >= 1000.0 {
-                                    format!("{:.1e}", delta_cost)
+                                    format!("{delta_cost:.1e}")
                                 } else if delta_cost.abs() >= 1.0 {
-                                    format!("{:.2}", delta_cost)
+                                    format!("{delta_cost:.2}")
                                 } else {
-                                    format!("{:.3}", delta_cost)
+                                    format!("{delta_cost:.3}")
                                 };
 
                                 problem_section.push_str(&format!(
-                                    "<br><span style='color: {}; font-size: 0.85em;'>cost: {}</span>",
-                                    cost_color, delta_cost_str
+                                    "<br><span style='color: {cost_color}; font-size: 0.85em;'>cost: {delta_cost_str}</span>"
                                 ));
 
                                 problem_section.push_str("</div>");
@@ -899,7 +859,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                 if !cell_content.is_empty() {
                     matrix_section.push_str(&cell_content.join(""));
                 } else {
-                    matrix_section.push_str("—");
+                    matrix_section.push('—');
                 }
                 matrix_section.push_str("</td>\n");
             }
@@ -965,13 +925,13 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
         let latex_dir = Path::new(output_dir).join("latex");
         fs::create_dir_all(&latex_dir)
-            .with_context(|| format!("Failed to create LaTeX directory: {:?}", latex_dir))?;
+            .with_context(|| format!("Failed to create LaTeX directory: {latex_dir:?}"))?;
 
         let mut latex_content = String::new();
 
         // LaTeX table header with dynamic column count
         let col_spec = "l".repeat(optimizers.len() + 1);
-        latex_content.push_str(&format!("\\begin{{tabular}}{{{}}}\n\\toprule\n", col_spec));
+        latex_content.push_str(&format!("\\begin{{tabular}}{{{col_spec}}}\n\\toprule\n"));
         // Header row
         latex_content.push_str("Optimizer");
         for opt in &optimizers {
@@ -998,22 +958,22 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                         &optimizer_results[opt_j],
                     );
                     let (color, p_str) = if p_value < 0.001 {
-                        ("red!30", format!("{:.3e}", p_value))
+                        ("red!30", format!("{p_value:.3e}"))
                     } else if p_value < 0.01 {
-                        ("orange!30", format!("{:.3e}", p_value))
+                        ("orange!30", format!("{p_value:.3e}"))
                     } else if p_value < 0.05 {
-                        ("yellow!30", format!("{:.3e}", p_value))
+                        ("yellow!30", format!("{p_value:.3e}"))
                     } else {
-                        ("white", format!("{:.3e}", p_value))
+                        ("white", format!("{p_value:.3e}"))
                     };
-                    latex_content.push_str(&format!(" & \\cellcolor{{{}}}{}", color, p_str));
+                    latex_content.push_str(&format!(" & \\cellcolor{{{color}}}{p_str}"));
                 } else {
                     // Lower triangle: Cohen's d effect sizes
                     let effect_size = self.calculate_pairwise_cohens_d(
                         &optimizer_results[opt_i],
                         &optimizer_results[opt_j],
                     );
-                    latex_content.push_str(&format!(" & {:.2e}", effect_size));
+                    latex_content.push_str(&format!(" & {effect_size:.2e}"));
                 }
             }
             latex_content.push_str(" \\\\\n");
@@ -1030,7 +990,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
         let latex_path = latex_dir.join("statistical_pairwise_matrix.tex");
         fs::write(&latex_path, latex_content)
-            .with_context(|| format!("Failed to write LaTeX file: {:?}", latex_path))?;
+            .with_context(|| format!("Failed to write LaTeX file: {latex_path:?}"))?;
 
         Ok(())
     }
@@ -1068,7 +1028,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
     ) -> Result<()> {
         let latex_dir = Path::new(output_dir).join("latex");
         fs::create_dir_all(&latex_dir)
-            .with_context(|| format!("Failed to create LaTeX directory: {:?}", latex_dir))?;
+            .with_context(|| format!("Failed to create LaTeX directory: {latex_dir:?}"))?;
 
         // Analyze each problem's difficulty metrics
         let mut problem_stats = Vec::new();
@@ -1207,7 +1167,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
         let latex_path = latex_dir.join("problem_difficulty_ranking.tex");
         fs::write(&latex_path, latex_content)
-            .with_context(|| format!("Failed to write LaTeX file: {:?}", latex_path))?;
+            .with_context(|| format!("Failed to write LaTeX file: {latex_path:?}"))?;
 
         Ok(())
     }
@@ -1249,16 +1209,21 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
     /// Helper function to escape LaTeX special characters
     fn escape_latex(&self, text: &str) -> String {
-        text.replace('&', "\\&")
-            .replace('%', "\\%")
-            .replace('$', "\\$")
-            .replace('#', "\\#")
-            .replace('^', "\\textasciicircum{}")
-            .replace('_', "\\_")
-            .replace('{', "\\{")
-            .replace('}', "\\}")
-            .replace('~', "\\textasciitilde{}")
-            .replace('\\', "\\textbackslash{}")
+        text.chars()
+            .map(|c| match c {
+                '\\' => "\\textbackslash{}".to_string(),
+                '&' => "\\&".to_string(),
+                '%' => "\\%".to_string(),
+                '$' => "\\$".to_string(),
+                '#' => "\\#".to_string(),
+                '^' => "\\textasciicircum{}".to_string(),
+                '_' => "\\_".to_string(),
+                '{' => "\\{".to_string(),
+                '}' => "\\}".to_string(),
+                '~' => "\\textasciitilde{}".to_string(),
+                _ => c.to_string(),
+            })
+            .collect()
     }
 }
 #[cfg(test)]

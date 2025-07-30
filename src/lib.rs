@@ -1,3 +1,6 @@
+#![allow(clippy::doc_overindented_list_items)]
+#![allow(clippy::doc_lazy_continuation)]
+
 pub mod analysis;
 pub mod benchmarks;
 pub mod experiment_runner;
@@ -97,7 +100,11 @@ mod tests {
 
     #[test]
     fn test_version_constant() {
-        assert!(!VERSION.is_empty());
-        assert!(VERSION.contains('.'));
+        // VERSION is a const string, so this check ensures it's properly defined
+        assert!(!VERSION.is_empty(), "VERSION should not be empty");
+        assert!(
+            VERSION.contains('.'),
+            "VERSION should contain a dot for version format"
+        );
     }
 }

@@ -259,10 +259,7 @@ impl LineSearch for BacktrackingLineSearch {
     /// 4. If α becomes smaller than min_step, try the minimum step
     /// 5. If max iterations reached, return the best point found
     /// 6. As a last resort, try machine epsilon step size
-    fn optimize_1d<'a>(
-        &mut self,
-        problem: &'a OneDimensionalProblem,
-    ) -> anyhow::Result<LineSearchResult> {
+    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let directional_derivative = problem.initial_directional_derivative;
 
@@ -336,7 +333,6 @@ impl LineSearch for BacktrackingLineSearch {
     ///
     /// For backtracking line search, this is a no-op since the algorithm is stateless.
     /// Each call to `optimize_1d` is independent of previous calls.
-
     fn reset(&mut self) {
         // Backtracking line search is stateless, nothing to reset
     }
@@ -351,7 +347,6 @@ impl LineSearch for BacktrackingLineSearch {
     ///
     /// This allows users to access backtracking-specific methods like
     /// `set_initial_step` when they have a `Box<dyn LineSearch>`.
-
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -532,13 +527,12 @@ mod tests {
             )
             .unwrap();
             let result = line_search.optimize_1d(&problem);
-            assert!(result.is_ok(), "Failed with {}: {:?}", description, result);
+            assert!(result.is_ok(), "Failed with {description}: {result:?}");
             let result = result.unwrap();
-            assert!(result.success, "Not successful with {}", description);
+            assert!(result.success, "Not successful with {description}");
             assert!(
                 result.step_size > 0.0,
-                "Invalid step size with {}",
-                description
+                "Invalid step size with {description}"
             );
         }
     }
@@ -627,18 +621,15 @@ mod tests {
             Arc::new(difficult_gradient),
         )
         .unwrap();
-        let result = line_search.optimize_1d(&problem).map_or_else(
-            |e| {
-                debug!("Line search failed: {}", e);
-                // If it fails, we expect it to be due to step size being too small
-                LineSearchResult {
-                    step_size: 0.0,
-                    success: false,
-                    termination_reason: TerminationReason::StepSizeTooSmall,
-                }
-            },
-            |res| res,
-        );
+        let result = line_search.optimize_1d(&problem).unwrap_or_else(|e| {
+            debug!("Line search failed: {e}");
+            // If it fails, we expect it to be due to step size being too small
+            LineSearchResult {
+                step_size: 0.0,
+                success: false,
+                termination_reason: TerminationReason::StepSizeTooSmall,
+            }
+        });
         if result.success {
             // If it succeeded, the step size should be small (but we'll be more lenient)
             // The key is that it found *some* acceptable step
@@ -738,13 +729,12 @@ mod tests {
             )
             .unwrap();
             let result = line_search.optimize_1d(&problem);
-            assert!(result.is_ok(), "{} constructor failed: {:?}", name, result);
+            assert!(result.is_ok(), "{name} constructor failed: {result:?}");
             let result = result.unwrap();
-            assert!(result.success, "{} constructor did not succeed", name);
+            assert!(result.success, "{name} constructor did not succeed");
             assert!(
                 result.step_size > 0.0,
-                "{} constructor returned invalid step size",
-                name
+                "{name} constructor returned invalid step size"
             );
         }
     }

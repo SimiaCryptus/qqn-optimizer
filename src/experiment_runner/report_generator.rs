@@ -231,9 +231,9 @@ fn generate_efficiency_matrix_table_content(
                     .sum::<f64>()
                     / successful_evaluations.len() as f64;
                 let std_dev = variance.sqrt();
-                format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
+                format!("{mean:.0} $\\pm$ {std_dev:.0}")
             };
-            content.push_str(&format!("& {} ", cell_content));
+            content.push_str(&format!("& {cell_content} "));
         }
         content.push_str("\\\\\n");
     }
@@ -350,15 +350,7 @@ fn generate_problem_table_content(
             escape_latex(optimizer)
         };
         content.push_str(&format!(
-            "{} & {:.2e} & {:.2e} & {:.2e} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-            optimizer_style,
-            mean_final,
-            std_final,
-            best_final,
-            worst_final,
-            mean_func_evals,
-            success_rate,
-            mean_time
+            "{optimizer_style} & {mean_final:.2e} & {std_final:.2e} & {best_final:.2e} & {worst_final:.2e} & {mean_func_evals:.1} & {success_rate:.1} & {mean_time:.3} \\\\\n"
         ));
     }
     content.push_str(
@@ -438,7 +430,7 @@ async fn generate_optimizer_problem_report(
     let problem_name = problem.name();
     let problem_filename = problem_name.replace(" ", "_");
     let optimizer_filename = optimizer_name.replace(" ", "_");
-    let filename = format!("detailed_{}_{}.md", problem_filename, optimizer_filename);
+    let filename = format!("detailed_{problem_filename}_{optimizer_filename}.md");
     let filepath = Path::new(output_dir).join(&filename);
     let mut content = generate_detailed_report_header(problem, optimizer_name, runs);
     content.push_str(&generate_run_by_run_analysis(runs)?);
@@ -653,11 +645,11 @@ fn generate_parameter_evolution_analysis(runs: &[&SingleResult]) -> anyhow::Resu
                     .parameters
                     .iter()
                     .take(5)
-                    .map(|p| format!("{:.3e}", p))
+                    .map(|p| format!("{p:.3e}"))
                     .collect::<Vec<_>>()
                     .join(", ");
                 let params_display = if iter_data.parameters.len() > 5 {
-                    format!("{}, ...", params_str)
+                    format!("{params_str}, ...")
                 } else {
                     params_str
                 };
@@ -702,12 +694,11 @@ fn generate_failure_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
     }
     content.push_str(&format!(
         r#"### Failure Patterns
-- **Early Failures (< 10 iterations):** {}
-- **Timeout Failures:** {}
-- **Numerical Errors:** {}
-- **Maximum Iterations Reached:** {}
-"#,
-        early_failures, timeout_failures, numerical_failures, max_iter_failures
+- **Early Failures (< 10 iterations):** {early_failures}
+- **Timeout Failures:** {timeout_failures}
+- **Numerical Errors:** {numerical_failures}
+- **Maximum Iterations Reached:** {max_iter_failures}
+"#
     ));
     // Show details of failed runs
     if failed_runs.len() <= 5 {
@@ -730,7 +721,7 @@ fn generate_failure_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
                 run.function_evaluations,
                 run.convergence_reason,
                 if let Some(ref error) = run.error_message {
-                    format!("- Error: {}", error)
+                    format!("- Error: {error}")
                 } else {
                     String::new()
                 }
@@ -846,8 +837,7 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
             // Create link to detailed problem analysis
             let problem_filename = problem_name.replace(" ", "_");
             let problem_link = format!(
-                r#"<a href="reports/problem_analysis_{}.md" title="View detailed analysis">{}</a>"#,
-                problem_filename, problem_name
+                r#"<a href="reports/problem_analysis_{problem_filename}.md" title="View detailed analysis">{problem_name}</a>"#
             );
 
             summary.push_str(&format!(
@@ -954,7 +944,7 @@ fn generate_problem_section(
 "#,
         problem_name,
         problem.family,
-        dimension.or(Some(0)).unwrap(),
+        dimension.unwrap_or(0),
         optimal_value,
         results.results.len(),
         problem_name.replace(" ", "_")
@@ -993,8 +983,7 @@ fn generate_problem_section(
         );
         for (optimizer, evaluations, final_value) in suspicious_results {
             section.push_str(&format!(
-                "> {} claimed convergence with {} function evaluations (final_value: {:.2e})  \n",
-                optimizer, evaluations, final_value
+                "> {optimizer} claimed convergence with {evaluations} function evaluations (final_value: {final_value:.2e})  \n"
             ));
         }
         section.push_str(r#">
@@ -1046,8 +1035,7 @@ fn generate_problem_section(
         let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
         if !mean_final.is_finite() {
             warn!(
-                "Mean final value for optimizer '{}' is not finite (mean: {})",
-                optimizer, mean_final
+                "Mean final value for optimizer '{optimizer}' is not finite (mean: {mean_final})"
             );
             continue;
         }
@@ -1193,63 +1181,54 @@ fn generate_problem_section(
         // Create hyperlink to detailed report
         let problem_filename = problem_name.replace(" ", "_");
         let optimizer_filename = optimizer.replace(" ", "_");
-        let detailed_report_filename = format!(
-            "reports/detailed_{}_{}.md",
-            problem_filename, optimizer_filename
-        );
+        let detailed_report_filename =
+            format!("reports/detailed_{problem_filename}_{optimizer_filename}.md");
         let optimizer_link = format!(
-            r#"<a href="{}" title="Click for detailed analysis">{}</a>"#,
-            detailed_report_filename, optimizer
+            r#"<a href="{detailed_report_filename}" title="Click for detailed analysis">{optimizer}</a>"#
         );
 
         // Create formatted strings for success/fail values
         let success_str = if mean_final_success.is_nan() || !mean_final_success.is_finite() {
             "-".to_string()
         } else {
-            format!("{:.2e}", mean_final_success)
+            format!("{mean_final_success:.2e}")
         };
         let fail_str = if mean_final_fail.is_nan() || !mean_final_fail.is_finite() {
             "-".to_string()
         } else {
-            format!("{:.2e}", mean_final_fail)
+            format!("{mean_final_fail:.2e}")
         };
         let final_value_str = if mean_final.is_finite() {
-            format!("{:.2e} / {} / {}", mean_final, success_str, fail_str)
+            format!("{mean_final:.2e} / {success_str} / {fail_str}")
         } else {
-            format!("- / {} / {}", success_str, fail_str)
+            format!("- / {success_str} / {fail_str}")
         };
         // Create formatted strings for function evaluations
         let func_success_str =
             if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
                 "-".to_string()
             } else {
-                format!("{:.1}", mean_func_evals_success)
+                format!("{mean_func_evals_success:.1}")
             };
         let func_fail_str = if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
             "-".to_string()
         } else {
-            format!("{:.1}", mean_func_evals_fail)
+            format!("{mean_func_evals_fail:.1}")
         };
-        let func_evals_str = format!(
-            "{:.1} / {} / {}",
-            mean_func_evals, func_success_str, func_fail_str
-        );
+        let func_evals_str = format!("{mean_func_evals:.1} / {func_success_str} / {func_fail_str}");
         // Create formatted strings for gradient evaluations
         let grad_success_str =
             if mean_grad_evals_success.is_nan() || !mean_grad_evals_success.is_finite() {
                 "-".to_string()
             } else {
-                format!("{:.1}", mean_grad_evals_success)
+                format!("{mean_grad_evals_success:.1}")
             };
         let grad_fail_str = if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
             "-".to_string()
         } else {
-            format!("{:.1}", mean_grad_evals_fail)
+            format!("{mean_grad_evals_fail:.1}")
         };
-        let grad_evals_str = format!(
-            "{:.1} / {} / {}",
-            mean_grad_evals, grad_success_str, grad_fail_str
-        );
+        let grad_evals_str = format!("{mean_grad_evals:.1} / {grad_success_str} / {grad_fail_str}");
 
         section.push_str(&format!(
             r#"<tr style="{}">
@@ -1291,39 +1270,33 @@ fn generate_problem_section(
     );
     // Add convergence plots for this problem
     let problem_filename = problem_name.replace(" ", "_");
-    let convergence_plot = format!("plots/convergence/{}.png", problem_filename);
-    let log_convergence_plot = format!("plots/convergence/{}_log.png", problem_filename);
+    let convergence_plot = format!("plots/convergence/{problem_filename}.png");
+    let log_convergence_plot = format!("plots/convergence/{problem_filename}_log.png");
     // Check if convergence plot exists
-    let convergence_path =
-        Path::new(plots_dir).join(format!("convergence/{}.png", problem_filename));
+    let convergence_path = Path::new(plots_dir).join(format!("convergence/{problem_filename}.png"));
     if convergence_path.exists() {
         section.push_str(&format!(
-            r#"<img src="{}" alt="Convergence plot for {}" style="max-width: 48%; height: auto; margin: 1%;">
-"#,
-            convergence_plot, problem_name
+            r#"<img src="{convergence_plot}" alt="Convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">
+"#
         ));
     }
     // Check if log convergence plot exists
     let log_convergence_path =
-        Path::new(plots_dir).join(format!("convergence/{}_log.png", problem_filename));
+        Path::new(plots_dir).join(format!("convergence/{problem_filename}_log.png"));
     if log_convergence_path.exists() {
         section.push_str(&format!(
-            r#"<img src="{}" alt="Log convergence plot for {}" style="max-width: 48%; height: auto; margin: 1%;">
-"#,
-            log_convergence_plot, problem_name
+            r#"<img src="{log_convergence_plot}" alt="Log convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">
+"#
         ));
     }
     section.push_str(&format!(
         r#"
-**Figure:** Convergence plots for {} showing objective value vs iterations.
+**Figure:** Convergence plots for {problem_name} showing objective value vs iterations.
 Left: Linear scale, Right: Log scale for better visualization of convergence behavior.
 
-**Data:** [Linear scale data (CSV)](data/convergence/{}_data.csv) | [Log scale data (CSV)](data/convergence/{}_log_data.csv)
+**Data:** [Linear scale data (CSV)](data/convergence/{problem_filename}_data.csv) | [Log scale data (CSV)](data/convergence/{problem_filename}_log_data.csv)
 
-"#,
-        problem_name,
-        problem_filename,
-        problem_filename
+"#
     ));
     Ok(section)
 }
@@ -1445,8 +1418,8 @@ fn generate_csv_exports(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<()> {
     fs::create_dir_all(output_dir)
-        .with_context(|| format!("Failed to create output directory: {}", output_dir))?;
-    println!("Exporting CSV files to: {}", output_dir);
+        .with_context(|| format!("Failed to create output directory: {output_dir}"))?;
+    println!("Exporting CSV files to: {output_dir}");
 
     // Enhanced CSV with more fields
     let mut csv_content = String::from("Problem,ProblemFamily,Dimension,Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged,ConvergenceReason\n");
@@ -1654,7 +1627,7 @@ fn generate_problem_specific_csvs(
 
     for (problem, results) in all_results {
         let problem_name = problem.get_name().replace(" ", "_");
-        let csv_path = problems_dir.join(format!("{}_results.csv", problem_name));
+        let csv_path = problems_dir.join(format!("{problem_name}_results.csv"));
         let mut csv_content = String::from("Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
         for result in &results.results {
             csv_content.push_str(&format!(
@@ -1689,7 +1662,7 @@ fn generate_problem_analysis_report(
 ) -> anyhow::Result<()> {
     let problem_name = problem.get_name();
     let problem_filename = problem_name.replace(" ", "_");
-    let report_path = reports_dir.join(format!("problem_analysis_{}.md", problem_filename));
+    let report_path = reports_dir.join(format!("problem_analysis_{problem_filename}.md"));
 
     let mut content = format!(
         r#"# Comprehensive Analysis: {}
@@ -1857,29 +1830,29 @@ async fn generate_latex_tables(
     slf: &ReportGenerator,
 ) -> anyhow::Result<()> {
     let latex_dir = Path::new(output_dir);
-    fs::create_dir_all(&latex_dir)
+    fs::create_dir_all(latex_dir)
         .with_context(|| format!("Failed to create LaTeX directory: {}", latex_dir.display()))?;
     println!("Generating LaTeX tables in: {}", latex_dir.display());
     // Generate main performance table
-    generate_main_performance_latex_table(all_results, &latex_dir)?;
+    generate_main_performance_latex_table(all_results, latex_dir)?;
     // Generate problem-specific tables
     for (problem, results) in all_results {
-        generate_problem_latex_table(problem, results, &latex_dir)?;
+        generate_problem_latex_table(problem, results, latex_dir)?;
     }
     // Generate summary statistics table
-    generate_summary_statistics_latex_table(all_results, &latex_dir)?;
+    generate_summary_statistics_latex_table(all_results, latex_dir)?;
     // Generate comparison matrix table
-    generate_comparison_matrix_latex_table(all_results, &latex_dir, slf)?;
+    generate_comparison_matrix_latex_table(all_results, latex_dir, slf)?;
     // Generate family comparison matrix table
-    comparison_matrix::generate_family_comparison_matrix_latex_table(all_results, &latex_dir, slf)?;
+    comparison_matrix::generate_family_comparison_matrix_latex_table(all_results, latex_dir, slf)?;
     // Generate family vs family comparison matrix table
-    generate_family_vs_family_latex_table(all_results, &latex_dir).await?;
+    generate_family_vs_family_latex_table(all_results, latex_dir).await?;
     // Generate efficiency matrix table
-    generate_efficiency_matrix_latex_table(all_results, &latex_dir)?;
+    generate_efficiency_matrix_latex_table(all_results, latex_dir)?;
     // Generate success rate heatmap table
-    generate_success_rate_heatmap_latex_table(all_results, &latex_dir)?;
+    generate_success_rate_heatmap_latex_table(all_results, latex_dir)?;
     // Generate convergence speed analysis table
-    generate_convergence_speed_latex_table(all_results, &latex_dir)?;
+    generate_convergence_speed_latex_table(all_results, latex_dir)?;
 
     Ok(())
 }
@@ -2000,15 +1973,7 @@ fn generate_problem_latex_table(
             escape_latex(optimizer)
         };
         latex_content.push_str(&format!(
-            "{} & {:.2e} & {:.2e} & {:.2e} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-            optimizer_style,
-            mean_final,
-            std_final,
-            best_final,
-            worst_final,
-            mean_func_evals,
-            success_rate,
-            mean_time
+            "{optimizer_style} & {mean_final:.2e} & {std_final:.2e} & {best_final:.2e} & {worst_final:.2e} & {mean_func_evals:.1} & {success_rate:.1} & {mean_time:.3} \\\\\n"
         ));
     }
     latex_content.push_str(
@@ -2019,7 +1984,7 @@ fn generate_problem_latex_table(
 \end{document}
 "#,
     );
-    let latex_path = latex_dir.join(format!("{}_performance.tex", problem_filename));
+    let latex_path = latex_dir.join(format!("{problem_filename}_performance.tex"));
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
     Ok(())
@@ -2148,7 +2113,7 @@ The following subsections present detailed results for each individual problem.
         latex_content.push_str(&format!(
             r#"\subsection{{{}}}
 "#,
-            escape_latex(&*problem_name)
+            escape_latex(&problem_name)
         ));
         latex_content.push_str(&generate_problem_table_content(problem, results)?);
     }

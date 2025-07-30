@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 use crate::OptimizationProblem;
 use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
@@ -40,7 +42,7 @@ impl MLP {
 
         // Create hidden layers
         for (i, &hidden_dim) in hidden_dims.iter().enumerate() {
-            layers.push(linear(prev_dim, hidden_dim, vs.pp(format!("ln{}", i)))?);
+            layers.push(linear(prev_dim, hidden_dim, vs.pp(format!("ln{i}")))?);
             prev_dim = hidden_dim;
         }
 
@@ -100,10 +102,13 @@ pub struct MnistNeuralNetwork {
     param_count: usize,
     param_cache: Arc<RwLock<Option<Vec<f64>>>>,
     gradient_cache: Arc<RwLock<Option<Vec<f64>>>>,
+    #[allow(dead_code)]
     batch_tensors: Arc<RwLock<Option<(Tensor, Tensor)>>>, // Cache for batch tensors
+    #[allow(dead_code)]
     dropout_rate: f64,
     l2_regularization: f64,
     activation: ActivationType,
+    #[allow(dead_code)]
     precision: candle_core::DType,
 }
 
@@ -137,10 +142,7 @@ impl MnistNeuralNetwork {
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
             .join("x");
-        let name = format!(
-            "MNIST_NN_{}samples_hidden{}_{}",
-            n_samples, hidden_str, activation_name
-        );
+        let name = format!("MNIST_NN_{n_samples}samples_hidden{hidden_str}_{activation_name}");
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
@@ -265,7 +267,7 @@ impl MnistNeuralNetwork {
         // Download files if they don't exist
         for (url, path) in &urls {
             if !Path::new(path).exists() {
-                println!("Downloading {}...", url);
+                println!("Downloading {url}...");
                 Self::download_file(url, path)?;
             }
         }
@@ -286,7 +288,7 @@ impl MnistNeuralNetwork {
     fn download_file(url: &str, path: &str) -> anyhow::Result<()> {
         // Try curl first
         if let Ok(output) = std::process::Command::new("curl")
-            .args(&["-L", "-f", "-s", "-o", path, url])
+            .args(["-L", "-f", "-s", "-o", path, url])
             .output()
         {
             if output.status.success() {
@@ -296,7 +298,7 @@ impl MnistNeuralNetwork {
 
         // Fallback to wget
         if let Ok(output) = std::process::Command::new("wget")
-            .args(&["-q", "-O", path, url])
+            .args(["-q", "-O", path, url])
             .output()
         {
             if output.status.success() {
@@ -336,7 +338,7 @@ impl MnistNeuralNetwork {
 
         for (gz_path, out_path) in &files {
             if Path::new(gz_path).exists() && !Path::new(out_path).exists() {
-                println!("Decompressing {}...", gz_path);
+                println!("Decompressing {gz_path}...");
                 let gz_file = File::open(gz_path)?;
                 let mut decoder = GzDecoder::new(BufReader::new(gz_file));
                 let mut out_file = File::create(out_path)?;
@@ -582,16 +584,13 @@ impl MnistNeuralNetwork {
                 .filter(|&&x| x.abs() > 3.0 * std_dev + mean.abs())
                 .count();
             let extreme_percentage = (extreme_count as f64 / values.len() as f64) * 100.0;
-            println!("\nParameter: {}", name);
+            println!("\nParameter: {name}");
             println!("  Shape: {:?}", tensor.shape());
-            println!("  Mean: {:.6}", mean);
-            println!("  Std Dev: {:.6}", std_dev);
-            println!("  Min/Max: {:.6} / {:.6}", min, max);
-            println!("  Zero values: {} ({:.2}%)", zero_count, zero_percentage);
-            println!(
-                "  Extreme values (>3σ): {} ({:.2}%)",
-                extreme_count, extreme_percentage
-            );
+            println!("  Mean: {mean:.6}");
+            println!("  Std Dev: {std_dev:.6}");
+            println!("  Min/Max: {min:.6} / {max:.6}");
+            println!("  Zero values: {zero_count} ({zero_percentage:.2}%)");
+            println!("  Extreme values (>3σ): {extreme_count} ({extreme_percentage:.2}%)");
             // Determine if this is a weight or bias based on shape
             let dims = tensor.shape().dims();
             if dims.len() == 2 {
@@ -609,10 +608,10 @@ impl MnistNeuralNetwork {
                     ActivationType::Logistic => "Xavier/Glorot",
                     ActivationType::Sinewave => "Small Xavier",
                 };
-                println!("  Expected std ({}): {:.6}", init_name, expected_std);
-                println!("  Actual/Expected ratio: {:.3}", std_ratio);
-                if std_ratio < 0.8 || std_ratio > 1.2 {
-                    println!("  ⚠️  Warning: Standard deviation deviates significantly from {} initialization", init_name);
+                println!("  Expected std ({init_name}): {expected_std:.6}");
+                println!("  Actual/Expected ratio: {std_ratio:.3}");
+                if !(0.8..=1.2).contains(&std_ratio) {
+                    println!("  ⚠️  Warning: Standard deviation deviates significantly from {init_name} initialization");
                 } else {
                     println!("  ✓ Standard deviation is within expected range");
                 }
@@ -662,7 +661,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         self.set_parameters(params)?;
 
         let n_samples = self.x_data.len();
-        let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
+        let n_batches = n_samples.div_ceil(self.batch_size);
         let mut total_loss = 0.0;
 
         // Process batches in parallel using rayon
@@ -744,7 +743,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         // Set parameters
         self.set_parameters(params)?;
         let n_samples = self.x_data.len();
-        let n_batches = (n_samples + self.batch_size - 1) / self.batch_size;
+        let n_batches = n_samples.div_ceil(self.batch_size);
 
         // Accumulate gradients across batches
         let mut accumulated_grads = vec![0.0; self.param_count];

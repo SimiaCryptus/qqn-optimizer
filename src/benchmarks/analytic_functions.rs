@@ -195,7 +195,7 @@ impl StyblinskiTangFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("StyblinskiTang_{}D", dimension),
+            name: format!("StyblinskiTang_{dimension}D"),
         }
     }
 }
@@ -260,7 +260,7 @@ impl MichalewiczFunction {
         Self {
             dimension,
             m,
-            name: format!("Michalewicz_{}D_m{}", dimension, m),
+            name: format!("Michalewicz_{dimension}D_m{m}"),
         }
     }
 }
@@ -358,7 +358,7 @@ impl RosenbrockFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Rosenbrock_{}D", dimension),
+            name: format!("Rosenbrock_{dimension}D"),
         }
     }
 }
@@ -431,7 +431,7 @@ impl RastriginFunction {
         Self {
             dimension,
             a: 10.0,
-            name: format!("Rastrigin_{}D", dimension),
+            name: format!("Rastrigin_{dimension}D"),
         }
     }
 }
@@ -495,7 +495,7 @@ impl SphereFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Sphere_{}D", dimension),
+            name: format!("Sphere_{dimension}D"),
         }
     }
 }
@@ -719,7 +719,7 @@ impl AckleyFunction {
             a,
             b,
             c,
-            name: format!("Ackley_{}D_a{}_b{}_c{:0.2e}", dimension, a, b, c),
+            name: format!("Ackley_{dimension}D_a{a}_b{b}_c{c:0.2e}"),
         }
     }
 }
@@ -808,7 +808,7 @@ impl GriewankFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Griewank_{}D", dimension),
+            name: format!("Griewank_{dimension}D"),
         }
     }
 }
@@ -891,7 +891,7 @@ impl SchwefelFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Schwefel_{}D", dimension),
+            name: format!("Schwefel_{dimension}D"),
         }
     }
 }
@@ -965,7 +965,7 @@ impl LevyFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Levy_{}D", dimension),
+            name: format!("Levy_{dimension}D"),
         }
     }
 }
@@ -1075,7 +1075,7 @@ impl ZakharovFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Zakharov_{}D", dimension),
+            name: format!("Zakharov_{dimension}D"),
         }
     }
 }
@@ -1152,7 +1152,7 @@ impl IllConditionedRosenbrock {
         Self {
             dimension,
             alpha,
-            name: format!("IllConditionedRosenbrock_{}D_alpha{}", dimension, alpha),
+            name: format!("IllConditionedRosenbrock_{dimension}D_alpha{alpha}"),
         }
     }
 }
@@ -1211,7 +1211,7 @@ impl TrigonometricFunction {
     pub fn new(dimension: usize) -> Self {
         Self {
             dimension,
-            name: format!("Trigonometric_{}D", dimension),
+            name: format!("Trigonometric_{dimension}D"),
         }
     }
 }
@@ -1235,6 +1235,7 @@ impl OptimizationProblem for TrigonometricFunction {
         let n = self.dimension as f64;
         let cos_sum: f64 = x.iter().map(|&xi| xi.cos()).sum();
         let mut total = 0.0;
+        #[allow(clippy::needless_range_loop)]
         for i in 0..self.dimension {
             let term = n - cos_sum + (i + 1) as f64 * (1.0 - x[i].cos() - x[i].sin());
             total += term * term;
@@ -1281,7 +1282,7 @@ impl PenaltyFunctionI {
         Self {
             dimension,
             alpha,
-            name: format!("PenaltyI_{}D_alpha{:.0e}", dimension, alpha),
+            name: format!("PenaltyI_{dimension}D_alpha{alpha:.0e}"),
         }
     }
 }
@@ -1347,7 +1348,7 @@ impl BarrierFunction {
         Self {
             dimension,
             mu,
-            name: format!("Barrier_{}D_mu{}", dimension, mu),
+            name: format!("Barrier_{dimension}D_mu{mu}"),
         }
     }
 }
@@ -1409,7 +1410,7 @@ impl NoisySphere {
             dimension,
             noise_level,
             seed,
-            name: format!("NoisySphere_{}D_sigma{}", dimension, noise_level),
+            name: format!("NoisySphere_{dimension}D_sigma{noise_level}"),
         }
     }
 }
@@ -1484,7 +1485,7 @@ impl SparseRosenbrock {
         }
         Self {
             dimension,
-            name: format!("SparseRosenbrock_{}D", dimension),
+            name: format!("SparseRosenbrock_{dimension}D"),
         }
     }
 }
@@ -1550,10 +1551,7 @@ impl SparseQuadratic {
         Self {
             dimension,
             sparsity_pattern: sparsity_pattern.clone(),
-            name: format!(
-                "SparseQuadratic_{}D_pattern{:?}",
-                dimension, sparsity_pattern
-            ),
+            name: format!("SparseQuadratic_{dimension}D_pattern{sparsity_pattern:?}"),
         }
     }
 }
@@ -1679,7 +1677,7 @@ mod tests {
             epsilon = EPSILON
         );
 
-        let expected_grad = vec![2.0, 4.0, 6.0];
+        let expected_grad = [2.0, 4.0, 6.0];
         let grad = problem.gradient_f64(&point).unwrap();
         for i in 0..grad.len() {
             assert_relative_eq!(grad[i], expected_grad[i], epsilon = EPSILON);
@@ -1807,7 +1805,7 @@ mod tests {
             epsilon = EPSILON
         );
 
-        let expected_grad = vec![0.52 * 1.0 - 0.48 * 2.0, 0.52 * 2.0 - 0.48 * 1.0];
+        let expected_grad = [0.52 * 1.0 - 0.48 * 2.0, 0.52 * 2.0 - 0.48 * 1.0];
         let grad = problem.gradient_f64(&point).unwrap();
         for i in 0..grad.len() {
             assert_relative_eq!(grad[i], expected_grad[i], epsilon = EPSILON);
@@ -2183,11 +2181,16 @@ mod tests {
         // Test sparsity structure
         let point = vec![0.0, 0.0, 1.0, 1.0];
         let grad = problem.gradient_f64(&point).unwrap();
-        // Variables 0,1 should not affect gradients of 2,3
-        assert_ne!(grad[0], 0.0);
-        assert_ne!(grad[1], 0.0);
-        assert_eq!(grad[2], 0.0);
-        assert_eq!(grad[3], 0.0);
+        // For SparseRosenbrock, pairs are (0,1) and (2,3)
+        // At point [0.0, 0.0, 1.0, 1.0]:
+        // For pair (0,1): grad[0] = -400*0*(0-0*0) - 2*(1-0) = -2
+        // For pair (0,1): grad[1] = 200*(0-0*0) = 0
+        // For pair (2,3): grad[2] = -400*1*(1-1*1) - 2*(1-1) = 0
+        // For pair (2,3): grad[3] = 200*(1-1*1) = 0
+        assert_ne!(grad[0], 0.0); // Should be -2.0
+        assert_eq!(grad[1], 0.0); // Should be 0.0
+        assert_eq!(grad[2], 0.0); // Should be 0.0
+        assert_eq!(grad[3], 0.0); // Should be 0.0
     }
     #[test]
     fn test_sparse_quadratic() {
@@ -2204,9 +2207,9 @@ mod tests {
         test_gradient_numerical(&problem, &point, GRADIENT_EPSILON);
         // Test custom sparsity pattern
         let custom = SparseQuadratic::with_pattern(4, vec![2]);
-        let grad = custom.gradient_f64(&vec![1.0, 0.0, 0.0, 0.0]).unwrap();
+        let grad = custom.gradient_f64(&[1.0, 0.0, 1.0, 0.0]).unwrap();
         // Only x[0] and x[2] should interact
-        assert_ne!(grad[0], 2.0); // Not just diagonal
+        assert_ne!(grad[0], 2.0); // Not just diagonal - should be 2.0 + 0.1*1.0 = 2.1
         assert_eq!(grad[1], 0.0); // No interaction
     }
     #[test]

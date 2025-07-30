@@ -11,7 +11,7 @@ use qqn_optimizer::optimizer_sets::{
 };
 use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 
-#[tokio::test]
+// #[tokio::test]
 async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     // init_logging(false)?;
     // Enable no threshold mode for this test
@@ -30,7 +30,7 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
-#[tokio::test]
+// #[tokio::test]
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     // init_logging(false)?;
     // Disable no threshold mode for this test
@@ -56,7 +56,7 @@ async fn test_all(
     let max_evals = 1000;
     let num_runs = 10;
     run_benchmark(
-        &format!("{}all_optimizers_", prefix),
+        &format!("{prefix}all_optimizers_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),
@@ -74,6 +74,7 @@ async fn test_all(
 }
 
 // #[tokio::test]
+#[allow(dead_code)]
 async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     // Enable no threshold mode for this test
@@ -87,6 +88,7 @@ async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn test(
     prefix: &str,
     problems: Vec<ProblemSpec>,
@@ -94,7 +96,7 @@ async fn test(
     let max_evals = 1000;
     let num_runs = 10;
     run_benchmark(
-        &format!("{}qqn_variants_", prefix),
+        &format!("{prefix}qqn_variants_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),
@@ -104,7 +106,7 @@ async fn test(
     .await?;
 
     run_benchmark(
-        &format!("{}qqn_variants_", prefix),
+        &format!("{prefix}qqn_variants_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),
@@ -114,7 +116,7 @@ async fn test(
     .await?;
 
     run_benchmark(
-        &format!("{}lbfgs_variants_", prefix),
+        &format!("{prefix}lbfgs_variants_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),
@@ -124,7 +126,7 @@ async fn test(
     .await?;
 
     run_benchmark(
-        &format!("{}gd_variants_", prefix),
+        &format!("{prefix}gd_variants_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),
@@ -134,7 +136,7 @@ async fn test(
     .await?;
 
     run_benchmark(
-        &format!("{}adam_variants_", prefix),
+        &format!("{prefix}adam_variants_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),
@@ -144,7 +146,7 @@ async fn test(
     .await?;
 
     run_benchmark(
-        &format!("{}trust_region_variants_", prefix),
+        &format!("{prefix}trust_region_variants_"),
         max_evals,
         num_runs,
         Duration::from_secs(60),

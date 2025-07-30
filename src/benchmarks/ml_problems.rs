@@ -13,6 +13,7 @@ pub struct LogisticRegression {
     regularization: f64,
     name: String,
     n_samples: usize,
+    #[allow(dead_code)]
     n_features: usize,
     optimal_value: Option<f64>,
 }
@@ -23,8 +24,7 @@ impl LogisticRegression {
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
         let name = format!(
-            "LogisticRegression_{}samples_{}features_reg{}",
-            n_samples, n_features, regularization
+            "LogisticRegression_{n_samples}samples_{n_features}features_reg{regularization}"
         );
 
         // Convert to tensors
@@ -182,7 +182,7 @@ impl NeuralNetworkTraining {
             .map(|&s| s.to_string())
             .collect::<Vec<_>>()
             .join("_");
-        let name = format!("NeuralNetwork_{}samples_layers_{}", n_samples, layer_str);
+        let name = format!("NeuralNetwork_{n_samples}samples_layers_{layer_str}");
 
         // Convert to tensors
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(0);
@@ -406,10 +406,8 @@ impl LinearRegression {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
-        let name = format!(
-            "LinearRegression_{}samples_{}features_reg{}",
-            n_samples, n_features, regularization
-        );
+        let name =
+            format!("LinearRegression_{n_samples}samples_{n_features}features_reg{regularization}");
 
         // Convert to tensors
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
@@ -520,7 +518,7 @@ impl SupportVectorMachine {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
-        let name = format!("SVM_{}samples_{}features_C{}", n_samples, n_features, c);
+        let name = format!("SVM_{n_samples}samples_{n_features}features_C{c}");
 
         // Convert to tensors
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();

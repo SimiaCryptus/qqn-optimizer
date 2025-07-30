@@ -29,7 +29,7 @@ fn has_font_support() -> bool {
     });
 
     let ok = result.is_ok() && result.unwrap().is_ok();
-    println!("[Plotting] Font support available: {}", ok);
+    println!("[Plotting] Font support available: {ok}");
     ok
 }
 
@@ -172,7 +172,7 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in convergence_plot".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in convergence_plot: {}", msg);
+                eprintln!("[Plotting] Panic caught in convergence_plot: {msg}");
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
@@ -201,7 +201,7 @@ impl PlottingEngine {
         for trace in &sanitized_traces {
             optimizer_traces
                 .entry(trace.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(trace);
         }
         // Create a sorted list of unique optimizer names for consistent color assignment
@@ -232,10 +232,7 @@ impl PlottingEngine {
             });
         // Check if we have valid bounds
         if !min_obj.is_finite() || !max_obj.is_finite() || min_obj >= max_obj {
-            eprintln!(
-                "[Plotting] Warning: Invalid objective value bounds: [{}, {}]",
-                min_obj, max_obj
-            );
+            eprintln!("[Plotting] Warning: Invalid objective value bounds: [{min_obj}, {max_obj}]");
             return Ok(());
         }
 
@@ -334,7 +331,7 @@ impl PlottingEngine {
         }
 
         root.present()?;
-        println!("Convergence plot saved to: {}", output_path);
+        println!("Convergence plot saved to: {output_path}");
         Ok(())
     }
 
@@ -358,7 +355,7 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in log_convergence_plot".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in log_convergence_plot: {}", msg);
+                eprintln!("[Plotting] Panic caught in log_convergence_plot: {msg}");
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
@@ -387,7 +384,7 @@ impl PlottingEngine {
         for trace in &sanitized_traces {
             optimizer_traces
                 .entry(trace.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(trace);
         }
         // Create a sorted list of unique optimizer names for consistent color assignment
@@ -428,11 +425,11 @@ impl PlottingEngine {
         }
 
         // Safely calculate log bounds with overflow protection
-        let safe_min = min_positive_obj.max(1e-12).min(1e10);
-        let safe_max = max_obj.max(1.0).min(1e10);
+        let safe_min = min_positive_obj.clamp(1e-12, 1e10);
+        let safe_max = max_obj.clamp(1.0, 1e10);
 
-        let log_min = safe_min.log10().max(-15.0).min(15.0);
-        let log_max = safe_max.log10().max(-15.0).min(15.0);
+        let log_min = safe_min.log10().clamp(-15.0, 15.0);
+        let log_max = safe_max.log10().clamp(-15.0, 15.0);
 
         // Ensure we have a valid range
         let (final_log_min, final_log_max) = if (log_max - log_min).abs() < 1e-10 {
@@ -472,8 +469,8 @@ impl PlottingEngine {
                     .zip(trace.objective_values.iter())
                     .filter(|(_, &obj_val)| obj_val > 0.0 && obj_val.is_finite())
                     .map(|(&eval_count, &obj_val)| {
-                        let safe_val = obj_val.max(1e-15).min(1e10);
-                        let log_val = safe_val.log10().max(-15.0).min(15.0);
+                        let safe_val = obj_val.clamp(1e-15, 1e10);
+                        let log_val = safe_val.log10().clamp(-15.0, 15.0);
                         (eval_count, log_val)
                     })
                     .collect();
@@ -499,7 +496,7 @@ impl PlottingEngine {
         }
 
         root.present()?;
-        println!("Log convergence plot saved to: {}", output_path);
+        println!("Log convergence plot saved to: {output_path}");
         Ok(())
     }
 
@@ -519,7 +516,7 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in performance_comparison".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in performance_comparison: {}", msg);
+                eprintln!("[Plotting] Panic caught in performance_comparison: {msg}");
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
@@ -545,9 +542,9 @@ impl PlottingEngine {
         for result in &results.results {
             problem_results
                 .entry(result.problem_name.clone())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(if result.final_value.is_finite() {
                     result.final_value
                 } else {
@@ -680,7 +677,7 @@ impl PlottingEngine {
         }
 
         root.present()?;
-        println!("Performance comparison saved to: {}", output_path);
+        println!("Performance comparison saved to: {output_path}");
         Ok(())
     }
 
@@ -700,7 +697,7 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in performance_boxplot".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in performance_boxplot: {}", msg);
+                eprintln!("[Plotting] Panic caught in performance_boxplot: {msg}");
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
@@ -722,7 +719,7 @@ impl PlottingEngine {
         for result in &results.results {
             optimizer_results
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(if result.final_value.is_finite() {
                     result.final_value
                 } else {
@@ -741,10 +738,7 @@ impl PlottingEngine {
             // Filter out non-finite values
             values.retain(|&v| v.is_finite());
             if values.is_empty() {
-                eprintln!(
-                    "[Plotting] Warning: No finite values for optimizer {}",
-                    optimizer
-                );
+                eprintln!("[Plotting] Warning: No finite values for optimizer {optimizer}");
                 continue;
             }
 
@@ -819,8 +813,8 @@ impl PlottingEngine {
             // Draw box (Q1 to Q3)
             chart.draw_series(std::iter::once(Rectangle::new(
                 [
-                    (x as f64 - box_width / 2.0, data.q1),
-                    (x as f64 + box_width / 2.0, data.q3),
+                    (x - box_width / 2.0, data.q1),
+                    (x + box_width / 2.0, data.q3),
                 ],
                 BLUE.mix(0.3).filled(),
             )))?;
@@ -828,21 +822,21 @@ impl PlottingEngine {
             // Draw median line
             chart.draw_series(std::iter::once(PathElement::new(
                 vec![
-                    (x as f64 - box_width / 2.0, data.median),
-                    (x as f64 + box_width / 2.0, data.median),
+                    (x - box_width / 2.0, data.median),
+                    (x + box_width / 2.0, data.median),
                 ],
                 RED.stroke_width(2),
             )))?;
 
             // Draw whiskers
             chart.draw_series(std::iter::once(PathElement::new(
-                vec![(x as f64, data.min), (x as f64, data.q1)],
-                &BLACK,
+                vec![(x, data.min), (x, data.q1)],
+                BLACK,
             )))?;
 
             chart.draw_series(std::iter::once(PathElement::new(
-                vec![(x as f64, data.q3), (x as f64, data.max)],
-                &BLACK,
+                vec![(x, data.q3), (x, data.max)],
+                BLACK,
             )))?;
             // Draw whisker caps
             let cap_width = box_width / 3.0;
@@ -851,14 +845,14 @@ impl PlottingEngine {
                     (x - cap_width / 2.0, data.min),
                     (x + cap_width / 2.0, data.min),
                 ],
-                &BLACK,
+                BLACK,
             )))?;
             chart.draw_series(std::iter::once(PathElement::new(
                 vec![
                     (x - cap_width / 2.0, data.max),
                     (x + cap_width / 2.0, data.max),
                 ],
-                &BLACK,
+                BLACK,
             )))?;
 
             // Add optimizer names as x-axis labels if fonts are available
@@ -878,7 +872,7 @@ impl PlottingEngine {
         }
 
         root.present()?;
-        println!("Performance boxplot saved to: {}", output_path);
+        println!("Performance boxplot saved to: {output_path}");
         Ok(())
     }
 
@@ -907,7 +901,7 @@ impl PlottingEngine {
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Convergence data exported to: {}", csv_path);
+        println!("Convergence data exported to: {csv_path}");
         Ok(())
     }
     /// Export log convergence plot data to CSV
@@ -928,8 +922,8 @@ impl PlottingEngine {
                 if !obj_value.is_finite() || *obj_value <= 0.0 {
                     continue;
                 }
-                let safe_val = obj_value.max(1e-15).min(1e10);
-                let log_val = safe_val.log10().max(-15.0).min(15.0);
+                let safe_val = obj_value.clamp(1e-15, 1e10);
+                let log_val = safe_val.log10().clamp(-15.0, 15.0);
                 csv_content.push_str(&format!(
                     "{},{},{:.6e},{:.6e}\n",
                     trace.optimizer_name, eval_count, obj_value, log_val
@@ -938,7 +932,7 @@ impl PlottingEngine {
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Log convergence data exported to: {}", csv_path);
+        println!("Log convergence data exported to: {csv_path}");
         Ok(())
     }
     /// Export performance comparison data to CSV
@@ -954,9 +948,9 @@ impl PlottingEngine {
         for result in &results.results {
             problem_results
                 .entry(result.problem_name.clone())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result.final_value);
         }
         for (problem, optimizers) in problem_results {
@@ -1004,22 +998,14 @@ impl PlottingEngine {
                         .count();
                     let success_rate = success_count as f64 / optimizer_results.len() as f64;
                     csv_content.push_str(&format!(
-                        "{},{},{:.6e},{:.6e},{:.1},{:.1},{:.1},{:.3}\n",
-                        problem,
-                        optimizer,
-                        mean_final,
-                        std_final,
-                        mean_iterations,
-                        mean_function_evals,
-                        mean_gradient_evals,
-                        success_rate
+                        "{problem},{optimizer},{mean_final:.6e},{std_final:.6e},{mean_iterations:.1},{mean_function_evals:.1},{mean_gradient_evals:.1},{success_rate:.3}\n"
                     ));
                 }
             }
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Performance comparison data exported to: {}", csv_path);
+        println!("Performance comparison data exported to: {csv_path}");
         Ok(())
     }
     /// Export performance boxplot data to CSV
@@ -1035,7 +1021,7 @@ impl PlottingEngine {
         for result in &results.results {
             optimizer_results
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result.final_value);
         }
         for (optimizer, mut values) in optimizer_results {
@@ -1050,18 +1036,17 @@ impl PlottingEngine {
                 // Convert all values to a comma-separated string
                 let all_values_str = values
                     .iter()
-                    .map(|v| format!("{:.6e}", v))
+                    .map(|v| format!("{v:.6e}"))
                     .collect::<Vec<_>>()
                     .join(";"); // Use semicolon to avoid CSV parsing issues
                 csv_content.push_str(&format!(
-                    "{},{:.6e},{:.6e},{:.6e},{:.6e},{:.6e},\"{}\"\n",
-                    optimizer, min, q1, median, q3, max, all_values_str
+                    "{optimizer},{min:.6e},{q1:.6e},{median:.6e},{q3:.6e},{max:.6e},\"{all_values_str}\"\n"
                 ));
             }
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Performance boxplot data exported to: {}", csv_path);
+        println!("Performance boxplot data exported to: {csv_path}");
         Ok(())
     }
     /// Helper function to add legend for unique optimizers
