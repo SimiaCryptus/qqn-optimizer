@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 /// Generate summary statistics LaTeX table
 pub fn generate_summary_statistics_latex_table(
@@ -36,8 +36,7 @@ pub fn generate_summary_statistics_latex_table(
 "#,
     );
     // Group by problem family
-    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let family = report_generator::get_family(&problem.get_name());
         for result in &results.results {
@@ -165,8 +164,7 @@ pub fn generate_summary_statistics_table_content(
 "#,
     );
     // Group by problem family (same logic as before)
-    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let family = report_generator::get_family(&problem.get_name());
         for result in &results.results {

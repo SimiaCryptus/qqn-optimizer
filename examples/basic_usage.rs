@@ -8,19 +8,16 @@
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
-use qqn_optimizer::utils::math::SeparateFunctions;
-use qqn_optimizer::{
-    OptimizationProblem, Optimizer, QQNConfig,
-    QQNOptimizer,
-};
-use std::sync::Arc;
 use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 use qqn_optimizer::line_search::{LineSearchConfig, LineSearchMethod};
+use qqn_optimizer::utils::math::SeparateFunctions;
+use qqn_optimizer::{OptimizationProblem, Optimizer, QQNConfig, QQNOptimizer};
+use std::sync::Arc;
 
 fn main() -> Result<()> {
     // Configure the QQN optimizer
     let config = QQNConfig {
-        lbfgs_history: 10,         // L-BFGS history length
+        lbfgs_history: 10, // L-BFGS history length
         min_lbfgs_iterations: 2,
         line_search: LineSearchConfig {
             method: LineSearchMethod::StrongWolfe,
@@ -30,11 +27,11 @@ fn main() -> Result<()> {
             initial_step: 1.0,
             min_step: 1e-16,
             max_step: 1e16,
-            verbose: false, // Enable verbose output for line search
+            verbose: false,         // Enable verbose output for line search
             line_bracket_method: 1, // 1: gradient-based bracketing, 2: function-value-based bracketing
         },
-        epsilon: 1e-8,             // Numerical stability constant
-        verbose: false,          // Enable verbose output
+        epsilon: 1e-8,  // Numerical stability constant
+        verbose: false, // Enable verbose output
         min_step_persist: 0.0,
         min_step_size: 0.0,
         gradient_scale_factor: 1.0,
@@ -49,7 +46,10 @@ fn main() -> Result<()> {
 
     println!("Starting optimization of 2D Rosenbrock function");
     println!("Initial point: {:?}", initial_point);
-    println!("Initial value: {:.6}", problem.evaluate_f64(&initial_point)?);
+    println!(
+        "Initial value: {:.6}",
+        problem.evaluate_f64(&initial_point)?
+    );
 
     // Optimization loop
     let mut iteration = 0;
@@ -63,7 +63,10 @@ fn main() -> Result<()> {
         // Print progress
         if iteration % 10 == 0 {
             let f_val = problem.evaluate_f64(&initial_point)?;
-            println!("Iteration {}: f = {:.6}, ||∇f|| = {:.6}", iteration, f_val, grad_norm);
+            println!(
+                "Iteration {}: f = {:.6}, ||∇f|| = {:.6}",
+                iteration, f_val, grad_norm
+            );
         }
 
         // Check convergence
@@ -78,7 +81,9 @@ fn main() -> Result<()> {
                 let problem = problem.clone();
                 move |params: &[Tensor]| -> candle_core::Result<f64> {
                     let x_vec = params[0].to_vec1::<f64>()?;
-                    problem.evaluate_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))
+                    problem
+                        .evaluate_f64(&x_vec)
+                        .map_err(|e| candle_core::Error::Msg(e.to_string()))
                 }
             },
             {
@@ -86,14 +91,21 @@ fn main() -> Result<()> {
                 let device = device.clone();
                 move |params: &[Tensor]| -> candle_core::Result<Vec<Tensor>> {
                     let x_vec = params[0].to_vec1::<f64>()?;
-                    let grad = problem.gradient_f64(&x_vec).map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-                    Ok(vec![Tensor::from_slice(&grad, grad.len(), &device).map_err(|e| candle_core::Error::Msg(e.to_string()))?])
+                    let grad = problem
+                        .gradient_f64(&x_vec)
+                        .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
+                    Ok(vec![Tensor::from_slice(&grad, grad.len(), &device)
+                        .map_err(|e| candle_core::Error::Msg(e.to_string()))?])
                 }
             },
         ));
 
         // Convert Vec<f64> to Tensor for optimizer
-        let mut x_tensor = vec![Tensor::from_slice(&initial_point, initial_point.len(), &device)?];
+        let mut x_tensor = vec![Tensor::from_slice(
+            &initial_point,
+            initial_point.len(),
+            &device,
+        )?];
 
         // Perform optimization step
         let _step_result = optimizer.step(&mut x_tensor, function.clone())?;
@@ -122,7 +134,8 @@ fn main() -> Result<()> {
 
     // Compare with known optimum
     let optimum = vec![1.0, 1.0];
-    let distance_to_optimum = initial_point.iter()
+    let distance_to_optimum = initial_point
+        .iter()
         .zip(&optimum)
         .map(|(xi, opt)| (xi - opt).powi(2))
         .sum::<f64>()

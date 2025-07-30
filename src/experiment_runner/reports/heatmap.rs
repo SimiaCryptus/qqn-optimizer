@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::fs;
+use std::path::Path;
 
 /// Generate success rate heatmap table content (without document wrapper)
 pub fn generate_success_rate_heatmap_table_content(

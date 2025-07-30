@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::fs;
+use std::path::Path;
 
 /// Generate convergence speed table content (without document wrapper)
 pub fn generate_convergence_speed_table_content(

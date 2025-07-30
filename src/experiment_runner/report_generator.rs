@@ -3,22 +3,37 @@ use crate::benchmarks::evaluation::{
     is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec,
     SingleResult,
 };
+use crate::experiment_runner::experiment_runner::get_optimizer_family;
+use crate::experiment_runner::reports::comparison_matrix;
+use crate::experiment_runner::reports::comparison_matrix::{
+    generate_comparison_matrix_latex_table, generate_comparison_matrix_table_content,
+    generate_family_comparison_matrix_table_content,
+};
+use crate::experiment_runner::reports::convergence_analysis::{
+    generate_convergence_analysis, generate_convergence_speed_latex_table,
+    generate_convergence_speed_table_content,
+};
+use crate::experiment_runner::reports::efficiency_matrix::generate_efficiency_matrix_latex_table;
+use crate::experiment_runner::reports::family_vs_family::{
+    generate_family_vs_family_comparison_table, generate_family_vs_family_latex_table,
+    generate_family_vs_family_table_content,
+};
+use crate::experiment_runner::reports::heatmap::{
+    generate_success_rate_heatmap_latex_table, generate_success_rate_heatmap_table_content,
+};
+use crate::experiment_runner::reports::performance_analysis::generate_performance_analysis;
+use crate::experiment_runner::reports::performance_table::{
+    generate_main_performance_latex_table, generate_main_performance_table_content,
+};
+use crate::experiment_runner::reports::summary_statistics::{
+    generate_summary_statistics_latex_table, generate_summary_statistics_table_content,
+};
 use crate::OptimizationProblem;
 use anyhow::Context;
 use log::warn;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use crate::experiment_runner::experiment_runner::get_optimizer_family;
-use crate::experiment_runner::reports::comparison_matrix;
-use crate::experiment_runner::reports::comparison_matrix::{generate_comparison_matrix_latex_table, generate_comparison_matrix_table_content, generate_family_comparison_matrix_table_content};
-use crate::experiment_runner::reports::convergence_analysis::{generate_convergence_analysis, generate_convergence_speed_latex_table, generate_convergence_speed_table_content};
-use crate::experiment_runner::reports::efficiency_matrix::generate_efficiency_matrix_latex_table;
-use crate::experiment_runner::reports::family_vs_family::{generate_family_vs_family_comparison_table, generate_family_vs_family_latex_table, generate_family_vs_family_table_content};
-use crate::experiment_runner::reports::heatmap::{generate_success_rate_heatmap_latex_table, generate_success_rate_heatmap_table_content};
-use crate::experiment_runner::reports::performance_analysis::generate_performance_analysis;
-use crate::experiment_runner::reports::performance_table::{generate_main_performance_latex_table, generate_main_performance_table_content};
-use crate::experiment_runner::reports::summary_statistics::{generate_summary_statistics_latex_table, generate_summary_statistics_table_content};
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -85,23 +100,23 @@ impl ReportGenerator {
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)
             .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
-    // Create hierarchical directory structure
-    let reports_dir = Path::new(&self.output_dir).join("reports");
-    let data_dir = Path::new(&self.output_dir).join("data");
-    let convergence_dir = Path::new(&self.output_dir).join("convergence");
-    let plots_dir = Path::new(&self.output_dir).join("plots");
-    let latex_dir = Path::new(&self.output_dir).join("latex");
-    fs::create_dir_all(&reports_dir)?;
-    fs::create_dir_all(&data_dir)?;
-    fs::create_dir_all(&convergence_dir)?;
-    fs::create_dir_all(&plots_dir)?;
-    fs::create_dir_all(&latex_dir)?;
-    
+        // Create hierarchical directory structure
+        let reports_dir = Path::new(&self.output_dir).join("reports");
+        let data_dir = Path::new(&self.output_dir).join("data");
+        let convergence_dir = Path::new(&self.output_dir).join("convergence");
+        let plots_dir = Path::new(&self.output_dir).join("plots");
+        let latex_dir = Path::new(&self.output_dir).join("latex");
+        fs::create_dir_all(&reports_dir)?;
+        fs::create_dir_all(&data_dir)?;
+        fs::create_dir_all(&convergence_dir)?;
+        fs::create_dir_all(&plots_dir)?;
+        fs::create_dir_all(&latex_dir)?;
+
         println!("Generating report in directory: {}", self.output_dir);
 
         // Generate detailed optimizer-problem reports first
         generate_detailed_reports(
-        &reports_dir.to_string_lossy(),
+            &reports_dir.to_string_lossy(),
             all_results,
             use_optimizer_families,
         )
@@ -114,19 +129,17 @@ impl ReportGenerator {
             html_content.push_str(&generate_problem_section(
                 problem,
                 results,
-            &plots_dir.to_string_lossy(),
+                &plots_dir.to_string_lossy(),
             )?);
         }
         // Add optimizer family vs problem family comparison
-        html_content.push_str(&generate_family_vs_family_comparison_table(
-            all_results,
-        )?);
+        html_content.push_str(&generate_family_vs_family_comparison_table(all_results)?);
 
         if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
             html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(
                 all_results,
                 &self.config,
-            &data_dir.to_string_lossy(),
+                &data_dir.to_string_lossy(),
                 use_optimizer_families,
             )?);
         }
@@ -140,25 +153,14 @@ impl ReportGenerator {
             format!("Failed to write Markdown report to: {}", md_path.display())
         })?;
 
-    generate_csv_exports(&data_dir.to_string_lossy(), all_results)?;
+        generate_csv_exports(&data_dir.to_string_lossy(), all_results)?;
         // Generate LaTeX tables
-        generate_latex_tables(
-        &latex_dir.to_string_lossy(),
-            all_results,
-            self,
-        )
-        .await?;
+        generate_latex_tables(&latex_dir.to_string_lossy(), all_results, self).await?;
         // Generate comprehensive LaTeX document
-        generate_comprehensive_latex_document(
-            &self.config,
-            all_results,
-        &latex_dir,
-            self,
-        )?;
+        generate_comprehensive_latex_document(&self.config, all_results, &latex_dir, self)?;
 
         Ok(())
     }
-
 }
 
 /// Generate efficiency matrix table content (without document wrapper)
@@ -203,17 +205,13 @@ fn generate_efficiency_matrix_table_content(
     );
     // Same calculation logic as the standalone table
     for optimizer_family in &optimizer_families {
-        content.push_str(&format!(
-            "\\textbf{{{}}} ",
-            escape_latex(optimizer_family)
-        ));
+        content.push_str(&format!("\\textbf{{{}}} ", escape_latex(optimizer_family)));
         for problem_family in &problem_families {
             let mut successful_evaluations = Vec::new();
             for (problem, results) in all_results {
                 if get_family(&problem.get_name()) == *problem_family {
                     for result in &results.results {
-                        let result_optimizer_family =
-                            get_optimizer_family(&result.optimizer_name);
+                        let result_optimizer_family = get_optimizer_family(&result.optimizer_name);
                         if result_optimizer_family == *optimizer_family
                             && result.convergence_achieved
                         {
@@ -289,8 +287,7 @@ fn generate_problem_table_content(
         if final_values.is_empty() {
             continue;
         }
-        let function_evals: Vec<f64> =
-            runs.iter().map(|r| r.function_evaluations as f64).collect();
+        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
         let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
         let execution_times: Vec<f64> = runs
             .iter()
@@ -310,8 +307,7 @@ fn generate_problem_table_content(
             .iter()
             .cloned()
             .fold(f64::NEG_INFINITY, f64::max);
-        let mean_function_evals =
-            function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
         let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
         let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
         perf_data.push((
@@ -427,7 +423,7 @@ async fn generate_detailed_reports(
                 &optimizer_name,
                 &optimizer_runs,
             )
-                .await?;
+            .await?;
         }
     }
     Ok(())
@@ -454,9 +450,8 @@ async fn generate_optimizer_problem_report(
         problem_name,
         optimizer_name,
     ));
-    fs::write(&filepath, content).with_context(|| {
-        format!("Failed to write detailed report to: {}", filepath.display())
-    })?;
+    fs::write(&filepath, content)
+        .with_context(|| format!("Failed to write detailed report to: {}", filepath.display()))?;
     Ok(())
 }
 fn generate_detailed_report_header(
@@ -854,7 +849,7 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
                 r#"<a href="reports/problem_analysis_{}.md" title="View detailed analysis">{}</a>"#,
                 problem_filename, problem_name
             );
-            
+
             summary.push_str(&format!(
                 r#"<tr style="{}">
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
@@ -984,12 +979,9 @@ fn generate_problem_section(
         // Also check for NaN or infinite values
         if !result.final_value.is_finite() || !result.final_gradient_norm.is_finite() {
             warn!(
-                    "Non-finite values detected for {} on {}: final_value={}, gradient_norm={}",
-                    result.optimizer_name,
-                    problem_name,
-                    result.final_value,
-                    result.final_gradient_norm
-                );
+                "Non-finite values detected for {} on {}: final_value={}, gradient_norm={}",
+                result.optimizer_name, problem_name, result.final_value, result.final_gradient_norm
+            );
         }
     }
 
@@ -1039,10 +1031,8 @@ fn generate_problem_section(
             continue; // Skip optimizers with no valid results
         }
 
-        let function_evals: Vec<f64> =
-            runs.iter().map(|r| r.function_evaluations as f64).collect();
-        let gradient_evals: Vec<f64> =
-            runs.iter().map(|r| r.gradient_evaluations as f64).collect();
+        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
+        let gradient_evals: Vec<f64> = runs.iter().map(|r| r.gradient_evaluations as f64).collect();
         let success_count = if is_no_threshold_mode() {
             runs.iter().filter(|r| r.convergence_achieved).count()
         } else {
@@ -1056,15 +1046,14 @@ fn generate_problem_section(
         let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
         if !mean_final.is_finite() {
             warn!(
-                    "Mean final value for optimizer '{}' is not finite (mean: {})",
-                    optimizer, mean_final
-                );
+                "Mean final value for optimizer '{}' is not finite (mean: {})",
+                optimizer, mean_final
+            );
             continue;
         }
         // Separate statistics for successful and unsuccessful runs
         let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
-        let unsuccessful_runs: Vec<_> =
-            runs.iter().filter(|r| !r.convergence_achieved).collect();
+        let unsuccessful_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
         // Calculate separate statistics for successful runs
         let (mean_final_success, mean_func_evals_success, mean_grad_evals_success) =
             if !successful_runs.is_empty() {
@@ -1135,10 +1124,8 @@ fn generate_problem_section(
             .iter()
             .cloned()
             .fold(f64::NEG_INFINITY, f64::max);
-        let mean_function_evals =
-            function_evals.iter().sum::<f64>() / function_evals.len() as f64;
-        let mean_gradient_evals =
-            gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
+        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+        let mean_gradient_evals = gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
         let success_rate = success_count as f64 / runs.len() as f64;
         let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
 
@@ -1207,9 +1194,8 @@ fn generate_problem_section(
         let problem_filename = problem_name.replace(" ", "_");
         let optimizer_filename = optimizer.replace(" ", "_");
         let detailed_report_filename = format!(
-            "reports/detailed_{}_{}.md", 
-            problem_filename, 
-            optimizer_filename
+            "reports/detailed_{}_{}.md",
+            problem_filename, optimizer_filename
         );
         let optimizer_link = format!(
             r#"<a href="{}" title="Click for detailed analysis">{}</a>"#,
@@ -1239,12 +1225,11 @@ fn generate_problem_section(
             } else {
                 format!("{:.1}", mean_func_evals_success)
             };
-        let func_fail_str =
-            if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{:.1}", mean_func_evals_fail)
-            };
+        let func_fail_str = if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
+            "-".to_string()
+        } else {
+            format!("{:.1}", mean_func_evals_fail)
+        };
         let func_evals_str = format!(
             "{:.1} / {} / {}",
             mean_func_evals, func_success_str, func_fail_str
@@ -1256,12 +1241,11 @@ fn generate_problem_section(
             } else {
                 format!("{:.1}", mean_grad_evals_success)
             };
-        let grad_fail_str =
-            if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{:.1}", mean_grad_evals_fail)
-            };
+        let grad_fail_str = if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
+            "-".to_string()
+        } else {
+            format!("{:.1}", mean_grad_evals_fail)
+        };
         let grad_evals_str = format!(
             "{:.1} / {} / {}",
             mean_grad_evals, grad_success_str, grad_fail_str
@@ -1310,7 +1294,8 @@ fn generate_problem_section(
     let convergence_plot = format!("plots/convergence/{}.png", problem_filename);
     let log_convergence_plot = format!("plots/convergence/{}_log.png", problem_filename);
     // Check if convergence plot exists
-    let convergence_path = Path::new(plots_dir).join(format!("convergence/{}.png", problem_filename));
+    let convergence_path =
+        Path::new(plots_dir).join(format!("convergence/{}.png", problem_filename));
     if convergence_path.exists() {
         section.push_str(&format!(
             r#"<img src="{}" alt="Convergence plot for {}" style="max-width: 48%; height: auto; margin: 1%;">
@@ -1319,7 +1304,8 @@ fn generate_problem_section(
         ));
     }
     // Check if log convergence plot exists
-    let log_convergence_path = Path::new(plots_dir).join(format!("convergence/{}_log.png", problem_filename));
+    let log_convergence_path =
+        Path::new(plots_dir).join(format!("convergence/{}_log.png", problem_filename));
     if log_convergence_path.exists() {
         section.push_str(&format!(
             r#"<img src="{}" alt="Log convergence plot for {}" style="max-width: 48%; height: auto; margin: 1%;">
@@ -1518,8 +1504,7 @@ fn generate_csv_exports(
                 continue; // Skip if no valid results
             }
             // Separate successful and unsuccessful runs
-            let successful_runs: Vec<_> =
-                runs.iter().filter(|r| r.convergence_achieved).collect();
+            let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
             let unsuccessful_runs: Vec<_> =
                 runs.iter().filter(|r| !r.convergence_achieved).collect();
             // Calculate statistics for successful runs
@@ -1644,9 +1629,8 @@ fn generate_csv_exports(
 
     let summary_path = Path::new(output_dir).join("summary_statistics.csv");
     println!("Writing summary statistics to: {}", summary_path.display());
-    fs::write(&summary_path, summary_csv).with_context(|| {
-        format!("Failed to write summary CSV to: {}", summary_path.display())
-    })?;
+    fs::write(&summary_path, summary_csv)
+        .with_context(|| format!("Failed to write summary CSV to: {}", summary_path.display()))?;
 
     // Generate problem-specific CSV files for easier analysis
     generate_problem_specific_csvs(output_dir, all_results)?;
@@ -1667,7 +1651,7 @@ fn generate_problem_specific_csvs(
     // Also generate a problem analysis report for each problem
     let reports_dir = Path::new(output_dir).parent().unwrap().join("reports");
     fs::create_dir_all(&reports_dir)?;
-    
+
     for (problem, results) in all_results {
         let problem_name = problem.get_name().replace(" ", "_");
         let csv_path = problems_dir.join(format!("{}_results.csv", problem_name));
@@ -1706,7 +1690,7 @@ fn generate_problem_analysis_report(
     let problem_name = problem.get_name();
     let problem_filename = problem_name.replace(" ", "_");
     let report_path = reports_dir.join(format!("problem_analysis_{}.md", problem_filename));
-    
+
     let mut content = format!(
         r#"# Comprehensive Analysis: {}
 
@@ -1730,10 +1714,10 @@ fn generate_problem_analysis_report(
         problem.problem.optimal_value().unwrap_or(f64::NEG_INFINITY),
         results.results.len()
     );
-    
+
     // Add detailed performance table
     content.push_str(&generate_problem_performance_table(results)?);
-    
+
     // Add convergence analysis
     content.push_str(&format!(
         r#"
@@ -1758,7 +1742,7 @@ fn generate_problem_analysis_report(
         problem_filename,
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
     ));
-    
+
     fs::write(&report_path, content)?;
     Ok(())
 }
@@ -1802,21 +1786,35 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
         let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
         let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
         let success_rate = success_count as f64 / runs.len() as f64;
-        let mean_func_evals = runs.iter().map(|r| r.function_evaluations as f64).sum::<f64>() / runs.len() as f64;
-        let mean_time = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum::<f64>() / runs.len() as f64;
+        let mean_func_evals = runs
+            .iter()
+            .map(|r| r.function_evaluations as f64)
+            .sum::<f64>()
+            / runs.len() as f64;
+        let mean_time = runs
+            .iter()
+            .map(|r| r.execution_time.as_secs_f64())
+            .sum::<f64>()
+            / runs.len() as f64;
 
-        perf_data.push((optimizer.clone(), mean_final, success_rate, mean_func_evals, mean_time));
+        perf_data.push((
+            optimizer.clone(),
+            mean_final,
+            success_rate,
+            mean_func_evals,
+            mean_time,
+        ));
     }
 
     // Sort by success rate first, then by mean final value
-    perf_data.sort_by(|a, b| {
-        match b.2.total_cmp(&a.2) {
-            std::cmp::Ordering::Equal => a.1.total_cmp(&b.1),
-            other => other,
-        }
+    perf_data.sort_by(|a, b| match b.2.total_cmp(&a.2) {
+        std::cmp::Ordering::Equal => a.1.total_cmp(&b.1),
+        other => other,
     });
 
-    for (i, (optimizer, mean_final, success_rate, mean_func_evals, mean_time)) in perf_data.iter().enumerate() {
+    for (i, (optimizer, mean_final, success_rate, mean_func_evals, mean_time)) in
+        perf_data.iter().enumerate()
+    {
         let style = if i == 0 {
             "background-color: #d4edda; font-weight: bold;"
         } else if i == 1 {
@@ -1852,7 +1850,6 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
     Ok(content)
 }
 
-
 /// Generate LaTeX tables for all results
 async fn generate_latex_tables(
     output_dir: &str,
@@ -1860,9 +1857,8 @@ async fn generate_latex_tables(
     slf: &ReportGenerator,
 ) -> anyhow::Result<()> {
     let latex_dir = Path::new(output_dir);
-    fs::create_dir_all(&latex_dir).with_context(|| {
-        format!("Failed to create LaTeX directory: {}", latex_dir.display())
-    })?;
+    fs::create_dir_all(&latex_dir)
+        .with_context(|| format!("Failed to create LaTeX directory: {}", latex_dir.display()))?;
     println!("Generating LaTeX tables in: {}", latex_dir.display());
     // Generate main performance table
     generate_main_performance_latex_table(all_results, &latex_dir)?;
@@ -1873,11 +1869,7 @@ async fn generate_latex_tables(
     // Generate summary statistics table
     generate_summary_statistics_latex_table(all_results, &latex_dir)?;
     // Generate comparison matrix table
-    generate_comparison_matrix_latex_table(
-        all_results,
-        &latex_dir,
-        slf,
-    )?;
+    generate_comparison_matrix_latex_table(all_results, &latex_dir, slf)?;
     // Generate family comparison matrix table
     comparison_matrix::generate_family_comparison_matrix_latex_table(all_results, &latex_dir, slf)?;
     // Generate family vs family comparison matrix table
@@ -1945,8 +1937,7 @@ fn generate_problem_latex_table(
         if final_values.is_empty() {
             continue;
         }
-        let function_evals: Vec<f64> =
-            runs.iter().map(|r| r.function_evaluations as f64).collect();
+        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
         let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
         let execution_times: Vec<f64> = runs
             .iter()
@@ -1966,8 +1957,7 @@ fn generate_problem_latex_table(
             .iter()
             .cloned()
             .fold(f64::NEG_INFINITY, f64::max);
-        let mean_function_evals =
-            function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
         let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
         let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
         perf_data.push((
@@ -2035,7 +2025,6 @@ fn generate_problem_latex_table(
     Ok(())
 }
 
-
 /// Generate comprehensive LaTeX document with all tables
 fn generate_comprehensive_latex_document(
     config: &BenchmarkConfig,
@@ -2100,19 +2089,14 @@ The following sections present detailed performance comparisons across all teste
 "#,
     );
     // Include summary statistics table content
-    latex_content.push_str(&generate_summary_statistics_table_content(
-        all_results,
-    )?);
+    latex_content.push_str(&generate_summary_statistics_table_content(all_results)?);
     latex_content.push_str(
         r#"
 \subsection{QQN vs Non-QQN Comparison Matrix}
 "#,
     );
     // Include comparison matrix content
-    latex_content.push_str(&generate_comparison_matrix_table_content(
-        all_results,
-        slf,
-    )?);
+    latex_content.push_str(&generate_comparison_matrix_table_content(all_results, slf)?);
     latex_content.push_str(
         r#"
 \subsection{Optimizer Family Comparison Matrix}
@@ -2129,36 +2113,28 @@ The following sections present detailed performance comparisons across all teste
 "#,
     );
     // Include family vs family comparison matrix content
-    latex_content.push_str(&generate_family_vs_family_table_content(
-        all_results,
-    )?);
+    latex_content.push_str(&generate_family_vs_family_table_content(all_results)?);
     latex_content.push_str(
         r#"
 \subsection{Algorithm Efficiency Matrix}
 "#,
     );
     // Include efficiency matrix content
-    latex_content.push_str(&generate_efficiency_matrix_table_content(
-        all_results,
-    )?);
+    latex_content.push_str(&generate_efficiency_matrix_table_content(all_results)?);
     latex_content.push_str(
         r#"
 \subsection{Success Rate Heatmap}
 "#,
     );
     // Include success rate heatmap content
-    latex_content.push_str(&generate_success_rate_heatmap_table_content(
-        all_results,
-    )?);
+    latex_content.push_str(&generate_success_rate_heatmap_table_content(all_results)?);
     latex_content.push_str(
         r#"
 \subsection{Convergence Speed Analysis}
 "#,
     );
     // Include convergence speed analysis content
-    latex_content.push_str(&generate_convergence_speed_table_content(
-        all_results,
-    )?);
+    latex_content.push_str(&generate_convergence_speed_table_content(all_results)?);
 
     latex_content.push_str(
         r#"

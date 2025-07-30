@@ -360,11 +360,8 @@ impl StatisticalAnalysis {
             .context("Failed to save statistical analysis CSV")?;
 
         // Generate LaTeX tables for academic reporting
-        self.generate_pairwise_statistical_matrix(
-            &optimizer_results,
-            output_dir,
-        )
-        .context("Failed to generate pairwise statistical matrix")?;
+        self.generate_pairwise_statistical_matrix(&optimizer_results, output_dir)
+            .context("Failed to generate pairwise statistical matrix")?;
         self.generate_problem_difficulty_ranking(all_results, output_dir)
             .context("Failed to generate problem difficulty ranking")?;
 

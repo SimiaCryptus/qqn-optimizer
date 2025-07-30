@@ -1,9 +1,9 @@
-use std::path::Path;
-use std::collections::HashMap;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 /// Generate main performance LaTeX table
 pub fn generate_main_performance_latex_table(

@@ -1,10 +1,10 @@
-use std::path::Path;
+use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
+use crate::experiment_runner::experiment_runner::get_optimizer_family;
+use crate::experiment_runner::{report_generator, ReportGenerator};
+use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
-use anyhow::Context;
-use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
-use crate::experiment_runner::{report_generator, ReportGenerator};
-use crate::experiment_runner::experiment_runner::get_optimizer_family;
+use std::path::Path;
 
 /// Generate comparison matrix LaTeX table
 pub fn generate_comparison_matrix_latex_table(
@@ -68,8 +68,7 @@ pub fn generate_comparison_matrix_latex_table(
             .join(" ")
     ));
     // Group results by problem for comparison
-    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         for result in &results.results {
@@ -212,8 +211,7 @@ pub fn generate_comparison_matrix_table_content(
             .join(" ")
     );
     // Same comparison logic as before...
-    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         for result in &results.results {
@@ -226,7 +224,10 @@ pub fn generate_comparison_matrix_table_content(
         }
     }
     for qqn_opt in &qqn_optimizers {
-        content.push_str(&format!("\\textbf{{{}}} ", report_generator::escape_latex(qqn_opt)));
+        content.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(qqn_opt)
+        ));
         for non_qqn_opt in &non_qqn_optimizers {
             let mut wins = 0;
             let mut losses = 0;
@@ -360,7 +361,10 @@ pub fn generate_family_comparison_matrix_table_content(
         }
     }
     for qqn_fam in &qqn_families {
-        content.push_str(&format!("\\textbf{{{}}} ", report_generator::escape_latex(qqn_fam)));
+        content.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(qqn_fam)
+        ));
         for non_qqn_fam in &non_qqn_families {
             let mut wins = 0;
             let mut losses = 0;
@@ -508,7 +512,10 @@ pub fn generate_family_comparison_matrix_latex_table(
         }
     }
     for qqn_fam in &qqn_families {
-        latex_content.push_str(&format!("\\textbf{{{}}} ", report_generator::escape_latex(qqn_fam)));
+        latex_content.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(qqn_fam)
+        ));
         for non_qqn_fam in &non_qqn_families {
             let mut wins = 0;
             let mut losses = 0;
