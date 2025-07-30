@@ -5,7 +5,7 @@ pub mod optimizer_sets;
 pub mod plotting_manager;
 pub mod problem_sets;
 pub mod report_generator;
-mod reports;
+pub mod reports;
 pub mod statistical_analysis;
 pub mod unified_report;
 pub mod unified_report_tests;
