@@ -100,8 +100,7 @@ pub fn generate_convergence_speed_table_content(
             report_generator::escape_latex(optimizer)
         };
         content.push_str(&format!(
-            "{} & {:.1} & {:.1} & {:.1} \\\\\n",
-            optimizer_style, avg_50, avg_90, avg_final
+            "{optimizer_style} & {avg_50:.1} & {avg_90:.1} & {avg_final:.1} \\\\\n"
         ));
     }
     content.push_str(
@@ -179,9 +178,9 @@ pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<S
             runs.len()
         ));
         for (reason, count) in failure_reasons {
-            content.push_str(&format!("- {}: {} runs\n", reason, count));
+            content.push_str(&format!("- {reason}: {count} runs\n"));
         }
-        content.push_str("\n");
+        content.push('\n');
     }
     Ok(content)
 }
@@ -293,8 +292,7 @@ pub fn generate_convergence_speed_latex_table(
             report_generator::escape_latex(optimizer)
         };
         latex_content.push_str(&format!(
-            "{} & {:.1} & {:.1} & {:.1} \\\\\n",
-            optimizer_style, avg_50, avg_90, avg_final
+            "{optimizer_style} & {avg_50:.1} & {avg_90:.1} & {avg_final:.1} \\\\\n"
         ));
     }
     latex_content.push_str(

@@ -172,14 +172,14 @@ impl QQNOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== QQN: {} ===", name);
+        debug!("=== QQN: {name} ===");
         log_tensor(tensors);
     }
 
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
         if self.config.verbose {
-            debug!("  {}: {:.3e}", name, value);
+            debug!("  {name}: {value:.3e}");
         }
     }
 
@@ -188,13 +188,13 @@ impl QQNOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== QQN Optimization State (Iteration {}) ===", iteration);
+        debug!("=== QQN Optimization State (Iteration {iteration}) ===");
         debug!(
             "  L-BFGS History Length: {}",
             self.state.lbfgs_state.history_length()
         );
         debug!("  L-BFGS Gamma: {:.6e}", self.state.lbfgs_state.gamma());
-        debug!("  Additional Info: {}", additional_info);
+        debug!("  Additional Info: {additional_info}");
     }
 
     /// Log line search details if verbose mode is enabled
@@ -203,7 +203,7 @@ impl QQNOptimizer {
             return;
         }
         debug!("=== Line Search Results ===");
-        debug!("  Optimal t: {:.3e}", optimal_t);
+        debug!("  Optimal t: {optimal_t:.3e}");
     }
 
     pub fn create_quadratic_path(
@@ -245,8 +245,7 @@ impl QQNOptimizer {
         for (i, tensor) in start_point.iter().enumerate() {
             if tensor.elem_count() == 0 {
                 return Err(Error::Msg(format!(
-                    "Empty tensor at index {} in start_point",
-                    i
+                    "Empty tensor at index {i} in start_point"
                 )));
             }
         }
@@ -264,8 +263,7 @@ impl QQNOptimizer {
         let grad_norm = compute_magnitude(&negative_gradient)?;
         let lbfgs_norm = compute_magnitude(lbfgs_direction)?;
         debug!(
-            "Quadratic path created: ||gradient||={:.3e}, ||lbfgs_dir||={:.3e}",
-            grad_norm, lbfgs_norm
+            "Quadratic path created: ||gradient||={grad_norm:.3e}, ||lbfgs_dir||={lbfgs_norm:.3e}"
         );
         self.log_scalar("Gradient Norm", grad_norm);
         self.log_scalar("L-BFGS Direction Norm", lbfgs_norm);
@@ -324,7 +322,7 @@ impl QQNOptimizer {
             Arc::new(value_fn),
             Arc::new(gradient_fn),
         )
-        .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)));
+        .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {e}")));
         if problem.is_err() {
             warn!(
                 "Failed to create 1D problem for line search: {}",
@@ -338,7 +336,7 @@ impl QQNOptimizer {
         // Perform line search
         let mut line_search: Box<dyn LineSearch> = self.line_search.clone_box();
         let result = line_search.optimize_1d(&problem?).unwrap_or_else(|e| {
-            warn!("Line search failed: {}", e);
+            warn!("Line search failed: {e}");
             LineSearchResult {
                 step_size: 1.0, // Default to 1.0 if search fails
                 success: false,
@@ -360,7 +358,7 @@ impl QQNOptimizer {
         function: Arc<dyn DifferentiableFunction + Send + Sync>,
         reason: &str,
     ) -> CandleResult<StepResult> {
-        info!("Using steepest descent: {}", reason);
+        info!("Using steepest descent: {reason}");
         // Check for convergence before attempting steepest descent
         let grad_norm = compute_magnitude(gradients)?;
         if grad_norm < self.config.epsilon {
@@ -389,8 +387,7 @@ impl QQNOptimizer {
         // Evaluate function at current parameters to check for increasing steps
         let initial_function_value = function.evaluate(nd_params)?;
         debug!(
-            "Initial function value (steepest descent): {:.6e}",
-            initial_function_value
+            "Initial function value (steepest descent): {initial_function_value:.6e}"
         );
 
         // Create steepest descent direction (negative gradient) with scaling factor
@@ -405,8 +402,7 @@ impl QQNOptimizer {
         let direction_norm = compute_magnitude(&direction)?;
         if direction_norm < self.config.epsilon {
             warn!(
-                "Direction norm {:.3e} is too small, indicating convergence",
-                direction_norm
+                "Direction norm {direction_norm:.3e} is too small, indicating convergence"
             );
             return Ok(StepResult {
                 step_size: 0.0,
@@ -502,12 +498,12 @@ impl QQNOptimizer {
                 Arc::new(objective_fn),
                 Arc::new(gradient_fn),
             )
-            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            .map_err(|e| Error::Msg(format!("Failed to create 1D problem: {e}")))?;
 
             // Perform line search
             self.line_search.optimize_1d(&problem).map_err(|e| {
-                warn!("Line search failed: {}", e);
-                Error::Msg(format!("Line search failed: {}", e))
+                warn!("Line search failed: {e}");
+                Error::Msg(format!("Line search failed: {e}"))
             })
         };
 
@@ -549,24 +545,20 @@ impl QQNOptimizer {
         // FATAL ERROR CHECK: Verify that the steepest descent step decreased the function value
         let final_function_value = function.evaluate(nd_params)?;
         debug!(
-            "Final function value (steepest descent): {:.6e}",
-            final_function_value
+            "Final function value (steepest descent): {final_function_value:.6e}"
         );
         if final_function_value > initial_function_value {
             let increase = final_function_value - initial_function_value;
             error!(
-                "FATAL ERROR: Steepest descent step increased function value by {:.6e} (from {:.6e} to {:.6e}). This should never happen!",
-                increase, initial_function_value, final_function_value
+                "FATAL ERROR: Steepest descent step increased function value by {increase:.6e} (from {initial_function_value:.6e} to {final_function_value:.6e}). This should never happen!"
             );
             return Err(Error::Msg(format!(
-                "FATAL ERROR: Steepest descent step increased function value by {:.6e} (from {:.6e} to {:.6e}). This violates the descent property and should never happen.",
-                increase, initial_function_value, final_function_value
+                "FATAL ERROR: Steepest descent step increased function value by {increase:.6e} (from {initial_function_value:.6e} to {final_function_value:.6e}). This violates the descent property and should never happen."
             )));
         }
         let function_decrease = initial_function_value - final_function_value;
         debug!(
-            "Function decreased by (steepest descent): {:.6e}",
-            function_decrease
+            "Function decreased by (steepest descent): {function_decrease:.6e}"
         );
         self.log_scalar("Function Decrease (Steepest Descent)", function_decrease);
 
@@ -676,7 +668,7 @@ impl Optimizer for QQNOptimizer {
         self.log_tensor_data("Initial Parameters", params);
 
         let initial_function_value = function.evaluate(params)?;
-        debug!("Initial function value: {:.6e}", initial_function_value);
+        debug!("Initial function value: {initial_function_value:.6e}");
         let initial_gradients = function.gradient(params)?;
         self.log_tensor_data("Computed Gradients", &initial_gradients);
         // Check for convergence based on gradient norm
@@ -709,8 +701,7 @@ impl Optimizer for QQNOptimizer {
             let grad_vec = grad.flatten_all()?.to_vec1::<f64>()?;
             if grad_vec.iter().any(|&x| !x.is_finite()) {
                 return Err(Error::Msg(format!(
-                    "Non-finite gradient detected at index {}",
-                    i
+                    "Non-finite gradient detected at index {i}"
                 )));
             }
         }
@@ -732,7 +723,7 @@ impl Optimizer for QQNOptimizer {
             let new_gradient = function.gradient(params)?;
             self.state
                 .lbfgs_state
-                .update(&params, params, &new_gradient)?;
+                .update(params, params, &new_gradient)?;
             return Ok(result);
         }
 
@@ -757,8 +748,7 @@ impl Optimizer for QQNOptimizer {
         }
 
         debug!(
-            "L-BFGS direction computed successfully: {:?}->{:?}",
-            params, lbfgs_direction
+            "L-BFGS direction computed successfully: {params:?}->{lbfgs_direction:?}"
         );
         let quadratic_path = self.create_quadratic_path(
             params,
@@ -769,8 +759,7 @@ impl Optimizer for QQNOptimizer {
         // Configure line search with previous step size if available
         if let Some(prev_step) = self.state.previous_step_size {
             debug!(
-                "Using previous step size {:.3e} as initial step for line search",
-                prev_step
+                "Using previous step size {prev_step:.3e} as initial step for line search"
             );
             self.set_initial_step(prev_step);
         }
@@ -810,7 +799,7 @@ impl Optimizer for QQNOptimizer {
             );
             let grad_norm = compute_magnitude(&initial_gradients)?;
             if grad_norm < 1e-3 {
-                info!("Converged with small gradient norm {:.3e}", grad_norm);
+                info!("Converged with small gradient norm {grad_norm:.3e}");
                 self.state.iteration += 1;
                 return Ok(StepResult {
                     step_size: line_search_result.step_size,
@@ -829,7 +818,7 @@ impl Optimizer for QQNOptimizer {
             if line_search_result.step_size > self.config.min_step_persist {
                 let step_size = line_search_result.step_size;
                 self.state.previous_step_size = Some(step_size);
-                debug!("Persisted step size {:.3e} for next iteration", step_size);
+                debug!("Persisted step size {step_size:.3e} for next iteration");
             } else {
                 debug!(
                     "Line search returned step size {:.3e}, below persistence threshold",
@@ -850,7 +839,7 @@ impl Optimizer for QQNOptimizer {
         }
         // Calculate function decrease before L-BFGS update
         let final_function_value = function.evaluate(params)?;
-        debug!("Final function value: {:.6e}", final_function_value);
+        debug!("Final function value: {final_function_value:.6e}");
         let function_decrease = initial_function_value - final_function_value;
 
         debug!("Updating L-BFGS history");
@@ -871,23 +860,21 @@ impl Optimizer for QQNOptimizer {
         if final_function_value > initial_function_value {
             let increase = final_function_value - initial_function_value;
             error!(
-                "FATAL ERROR: QQN step increased function value by {:.6e} (from {:.6e} to {:.6e}). This should never happen!",
-                increase, initial_function_value, final_function_value
+                "FATAL ERROR: QQN step increased function value by {increase:.6e} (from {initial_function_value:.6e} to {final_function_value:.6e}). This should never happen!"
             );
             return Err(Error::Msg(format!(
-                "FATAL ERROR: QQN step increased function value by {:.6e} (from {:.6e} to {:.6e}). This violates the descent property and should never happen.",
-                increase, initial_function_value, final_function_value
+                "FATAL ERROR: QQN step increased function value by {increase:.6e} (from {initial_function_value:.6e} to {final_function_value:.6e}). This violates the descent property and should never happen."
             )));
         }
 
-        debug!("Function decreased by: {:.6e}", function_decrease);
+        debug!("Function decreased by: {function_decrease:.6e}");
         self.log_scalar("Function Decrease", function_decrease);
 
         // Check for NaN/Inf in updated parameters
         for (i, param) in params.iter().enumerate() {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
-                warn!("Non-finite parameter detected at index {} after update", i);
+                warn!("Non-finite parameter detected at index {i} after update");
                 return Err(Error::Msg(
                     "Non-finite parameter detected after update".into(),
                 ));
@@ -895,8 +882,7 @@ impl Optimizer for QQNOptimizer {
             // Also check for extremely large values
             if param_vec.iter().any(|&x| x.abs() > 1e10) {
                 warn!(
-                    "Extremely large parameter detected at index {} after update",
-                    i
+                    "Extremely large parameter detected at index {i} after update"
                 );
                 return Err(Error::Msg("Parameter values too large after update".into()));
             }
@@ -957,7 +943,7 @@ impl Optimizer for QQNOptimizer {
 }
 /// Wrapper to make DifferentiableFunction compatible with Arc<dyn ... + Send + Sync>
 // Remove the FunctionWrapper struct entirely since we'll change the approach
-
+///
 /// Represents a quadratic interpolation path between two search directions
 #[derive(Clone)]
 pub struct QuadraticPath {
@@ -1029,9 +1015,7 @@ impl QuadraticPath {
         let t_clamped = t.max(0.0).min(1.0);
         if (t - t_clamped).abs() > 1e-10 {
             trace!(
-                "QuadraticPath::evaluate_direction: clamped t from {} to {}",
-                t,
-                t_clamped
+                "QuadraticPath::evaluate_direction: clamped t from {t} to {t_clamped}"
             );
         }
         let t = t_clamped;
@@ -1040,10 +1024,7 @@ impl QuadraticPath {
         let gradient_coeff = t * (1.0 - t);
         let lbfgs_coeff = t * t;
         trace!(
-            "QuadraticPath::evaluate_direction(t={}): gradient_coeff={}, lbfgs_coeff={}",
-            t,
-            gradient_coeff,
-            lbfgs_coeff
+            "QuadraticPath::evaluate_direction(t={t}): gradient_coeff={gradient_coeff}, lbfgs_coeff={lbfgs_coeff}"
         );
 
         let tensors = &self.negative_gradient;
@@ -1069,14 +1050,12 @@ impl QuadraticPath {
     ///
     /// d'(t) = (1-2t) * (-g) + 2t * d_lbfgs
     pub fn derivative(&self, t: f64) -> CandleResult<Vec<Tensor>> {
-        trace!("QuadraticPath::derivative(t={})", t);
+        trace!("QuadraticPath::derivative(t={t})");
 
         let gradient_coeff = 1.0 - 2.0 * t;
         let lbfgs_coeff = 2.0 * t;
         trace!(
-            "QuadraticPath::derivative: gradient_coeff={}, lbfgs_coeff={}",
-            gradient_coeff,
-            lbfgs_coeff
+            "QuadraticPath::derivative: gradient_coeff={gradient_coeff}, lbfgs_coeff={lbfgs_coeff}"
         );
 
         let tensors = &self.negative_gradient;
@@ -1106,7 +1085,7 @@ impl QuadraticPath {
             (position_cache.get(&key), gradient_cache.get(&key))
         {
             // We have both position and gradient for this t, update L-BFGS
-            trace!("Updating L-BFGS state for t={}", t);
+            trace!("Updating L-BFGS state for t={t}");
             // Convert f64 vectors back to tensors
             let device = self.start_point[0].device();
             let mut position_tensors = Vec::new();
@@ -1133,7 +1112,7 @@ impl QuadraticPath {
                 if let Err(e) =
                     lbfgs_state.update(&self.start_point, &position_tensors, &gradient_tensors)
                 {
-                    warn!("Failed to update L-BFGS state: {}", e);
+                    warn!("Failed to update L-BFGS state: {e}");
                 }
             }
         }
@@ -1147,7 +1126,7 @@ impl<'a> ParametricCurve for QuadraticPath {
         {
             let cache = self.position_cache.lock().unwrap();
             if let Some(cached_position) = cache.get(&key) {
-                trace!("Using cached position for t={}", t);
+                trace!("Using cached position for t={t}");
                 self.cache_hits.fetch_add(1, Ordering::Relaxed);
                 return Ok(cached_position.clone());
             }
@@ -1170,7 +1149,7 @@ impl<'a> ParametricCurve for QuadraticPath {
 
         // Check if we can update L-BFGS
         if let Err(e) = self.maybe_update_lbfgs(t) {
-            warn!("Failed to update L-BFGS in position evaluation: {}", e);
+            warn!("Failed to update L-BFGS in position evaluation: {e}");
         }
 
         Ok(position_f64)
@@ -1182,7 +1161,7 @@ impl<'a> ParametricCurve for QuadraticPath {
         {
             let cache = self.gradient_cache.lock().unwrap();
             if let Some(cached_gradient) = cache.get(&key) {
-                trace!("Using cached gradient for t={}", t);
+                trace!("Using cached gradient for t={t}");
                 self.cache_hits.fetch_add(1, Ordering::Relaxed);
                 return Ok(cached_gradient.clone());
             }
@@ -1224,7 +1203,7 @@ impl<'a> ParametricCurve for QuadraticPath {
 
         // Check if we can update L-BFGS
         if let Err(e) = self.maybe_update_lbfgs(t) {
-            warn!("Failed to update L-BFGS in gradient evaluation: {}", e);
+            warn!("Failed to update L-BFGS in gradient evaluation: {e}");
         }
 
         Ok(gradient_f64)
@@ -1234,7 +1213,7 @@ impl<'a> ParametricCurve for QuadraticPath {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_logging;
+    
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;
@@ -1541,7 +1520,7 @@ mod tests {
             let _ = optimizer.step(&mut params, function.clone())?;
             // Function value should generally decrease
             let f_val = function.evaluate(&params)?;
-            println!("Step {}: f = {:.6e}", i, f_val);
+            println!("Step {i}: f = {f_val:.6e}");
         }
         // Should make progress towards optimum at (1, 1)
         let values = params[0].to_vec1::<f64>()?;

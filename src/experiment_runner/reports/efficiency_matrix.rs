@@ -109,9 +109,9 @@ pub fn generate_efficiency_matrix_latex_table(
                     .sum::<f64>()
                     / successful_evaluations.len() as f64;
                 let std_dev = variance.sqrt();
-                format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
+                format!("{mean:.0} $\\pm$ {std_dev:.0}")
             };
-            latex_content.push_str(&format!("& {} ", cell_content));
+            latex_content.push_str(&format!("& {cell_content} "));
         }
         latex_content.push_str("\\\\\n");
     }

@@ -231,10 +231,10 @@ impl TrustRegionOptimizer {
 
         if grad_norm < 1e-12 {
             // Zero gradient, return zero step
-            return Ok(gradient
+            return gradient
                 .iter()
-                .map(|g| Tensor::zeros_like(g))
-                .collect::<CandleResult<Vec<_>>>()?);
+                .map(Tensor::zeros_like)
+                .collect::<CandleResult<Vec<_>>>();
         }
 
         // Cauchy point: p = -τ * (radius / ||g||) * g
@@ -276,8 +276,7 @@ impl TrustRegionOptimizer {
         let newton_norm = compute_magnitude(&newton_step)?;
         if self.config.verbose {
             debug!(
-                "Newton step norm: {:.6e}, trust region radius: {:.6e}",
-                newton_norm, radius
+                "Newton step norm: {newton_norm:.6e}, trust region radius: {radius:.6e}"
             );
         }
 
@@ -291,7 +290,7 @@ impl TrustRegionOptimizer {
             // Scale Newton step to trust region boundary
             let scale = radius / newton_norm;
             if self.config.verbose {
-                debug!("Scaling Newton step by factor: {:.6e}", scale);
+                debug!("Scaling Newton step by factor: {scale:.6e}");
             }
             newton_step
                 .iter()
@@ -337,8 +336,7 @@ impl Optimizer for TrustRegionOptimizer {
 
         if self.config.verbose {
             debug!(
-                "Current function value: {:.6e}, gradient norm: {:.6e}",
-                current_value, grad_norm
+                "Current function value: {current_value:.6e}, gradient norm: {grad_norm:.6e}"
             );
         }
 
@@ -404,8 +402,7 @@ impl Optimizer for TrustRegionOptimizer {
 
         if self.config.verbose {
             debug!(
-                "Step norm: {:.6e}, model reduction: {:.6e}, actual reduction: {:.6e}, rho: {:.6e}",
-                step_norm, model_reduction, actual_reduction, rho
+                "Step norm: {step_norm:.6e}, model reduction: {model_reduction:.6e}, actual reduction: {actual_reduction:.6e}, rho: {rho:.6e}"
             );
         }
 
@@ -594,16 +591,16 @@ mod tests {
             );
 
             if result.convergence_info.converged {
-                println!("Converged at iteration {}", i);
+                println!("Converged at iteration {i}");
                 break;
             }
         }
 
         // Should converge close to [0, 0]
         let final_params = params[0].to_vec1::<f64>()?;
-        println!("Final params: {:?}", final_params);
+        println!("Final params: {final_params:?}");
         let final_value = function.evaluate(&params)?;
-        println!("Final function value: {:.6e}", final_value);
+        println!("Final function value: {final_value:.6e}");
 
         Ok(())
     }

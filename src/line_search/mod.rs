@@ -1,3 +1,5 @@
+#![allow(clippy::module_inception)]
+
 pub mod line_search;
 pub use line_search::{
     LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, TerminationReason,

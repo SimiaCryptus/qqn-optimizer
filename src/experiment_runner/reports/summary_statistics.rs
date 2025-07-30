@@ -42,9 +42,9 @@ pub fn generate_summary_statistics_latex_table(
         for result in &results.results {
             family_results
                 .entry(family.clone())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -112,14 +112,7 @@ pub fn generate_summary_statistics_latex_table(
                     report_generator::escape_latex(optimizer)
                 };
                 latex_content.push_str(&format!(
-                    "{} & {} & {:.1} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-                    family_cell,
-                    optimizer_style,
-                    success_rate,
-                    avg_final,
-                    avg_func_evals,
-                    avg_grad_evals,
-                    avg_time
+                    "{family_cell} & {optimizer_style} & {success_rate:.1} & {avg_final:.2e} & {avg_func_evals:.1} & {avg_grad_evals:.1} & {avg_time:.3} \\\\\n"
                 ));
             }
             if !optimizer_data.is_empty() {
@@ -170,9 +163,9 @@ pub fn generate_summary_statistics_table_content(
         for result in &results.results {
             family_results
                 .entry(family.clone())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -240,14 +233,7 @@ pub fn generate_summary_statistics_table_content(
                     report_generator::escape_latex(optimizer)
                 };
                 content.push_str(&format!(
-                    "{} & {} & {:.1} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-                    family_cell,
-                    optimizer_style,
-                    success_rate,
-                    avg_final,
-                    avg_func_evals,
-                    avg_grad_evals,
-                    avg_time
+                    "{family_cell} & {optimizer_style} & {success_rate:.1} & {avg_final:.2e} & {avg_func_evals:.1} & {avg_grad_evals:.1} & {avg_time:.3} \\\\\n"
                 ));
             }
             if !optimizer_data.is_empty() {

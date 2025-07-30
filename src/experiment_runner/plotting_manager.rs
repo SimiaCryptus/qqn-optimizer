@@ -71,7 +71,7 @@ impl PlottingManager {
                 let filename = format!("convergence/{}", problem_name.replace(" ", "_"));
                 self.generate_plot_with_fallback(
                     || self.plotting_engine.convergence_plot(&traces, &filename),
-                    &format!("convergence plot for {}", problem_name),
+                    &format!("convergence plot for {problem_name}"),
                 )
                 .await;
 
@@ -79,9 +79,9 @@ impl PlottingManager {
                     self.generate_plot_with_fallback(
                         || {
                             self.plotting_engine
-                                .log_convergence_plot(&traces, &format!("{}_log", filename))
+                                .log_convergence_plot(&traces, &format!("{filename}_log"))
                         },
-                        &format!("log convergence plot for {}", problem_name),
+                        &format!("log convergence plot for {problem_name}"),
                     )
                     .await;
                 }
@@ -127,14 +127,13 @@ impl PlottingManager {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(plot_fn));
 
         match result {
-            Ok(Ok(_)) => info!("Generated {}", plot_description),
+            Ok(Ok(_)) => info!("Generated {plot_description}"),
             Ok(Err(e)) => {
-                warn!("Failed to generate {}: {}", plot_description, e);
+                warn!("Failed to generate {plot_description}: {e}");
             }
             Err(_) => {
                 warn!(
-                    "Skipping {} due to panic in plotting library",
-                    plot_description
+                    "Skipping {plot_description} due to panic in plotting library"
                 );
             }
         }

@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use crate::line_search::{
     BacktrackingConfig, BacktrackingLineSearch, BisectionConfig, BisectionLineSearch,
     CubicQuadraticConfig, CubicQuadraticLineSearch, GoldenSectionConfig, GoldenSectionLineSearch,
@@ -69,8 +71,7 @@ pub fn create_1d_problem(
         .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
     let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
     let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
-    debug!("create_1d_problem: initial_derivative={:?}, initial_direction={:?}, initial_directional_derivative={:.3e}",
-          initial_gradient, initial_direction, initial_directional_derivative);
+    debug!("create_1d_problem: initial_derivative={initial_gradient:?}, initial_direction={initial_direction:?}, initial_directional_derivative={initial_directional_derivative:.3e}");
     // Check for zero direction
     let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
     if direction_norm < 1e-16 {
@@ -84,8 +85,7 @@ pub fn create_1d_problem(
     if initial_directional_derivative > 0.0 {
         // Warn and flip the direction of the gradient fn
         warn!(
-            "Initial directional derivative is positive ({:.3e}), flipping direction",
-            initial_directional_derivative
+            "Initial directional derivative is positive ({initial_directional_derivative:.3e}), flipping direction"
         );
         let negative_gradient_fn = {
             let gradient_fn = gradient_fn.clone();
@@ -141,8 +141,7 @@ pub fn create_1d_problem(
             dot_product_f64(&g, &curve_derivative)
         })?;
         debug!(
-            "1-D gradient result at t={:.3e}; p={:?} = {:.3e}",
-            t, result_vec, result
+            "1-D gradient result at t={t:.3e}; p={result_vec:?} = {result:.3e}"
         );
         Ok(result)
     });
@@ -165,12 +164,11 @@ pub fn create_1d_problem_linear(
     let test_val_0 = curve.position(0.0)?;
     let test_val_1 = curve.position(1.0)?;
     debug!(
-        "Curve test: f(t=0) -> {:?}, f(t=1) -> {:?}",
-        test_val_0, test_val_1
+        "Curve test: f(t=0) -> {test_val_0:?}, f(t=1) -> {test_val_1:?}"
     );
 
-    let result = create_1d_problem(Box::new(curve), objective_fn, gradient_fn);
-    result
+    
+    create_1d_problem(Box::new(curve), objective_fn, gradient_fn)
 }
 
 /// Linear parametric curve: x(t) = x0 + t * direction

@@ -45,7 +45,7 @@ fn main() -> Result<()> {
     let device = Device::Cpu;
 
     println!("Starting optimization of 2D Rosenbrock function");
-    println!("Initial point: {:?}", initial_point);
+    println!("Initial point: {initial_point:?}");
     println!(
         "Initial value: {:.6}",
         problem.evaluate_f64(&initial_point)?
@@ -64,14 +64,13 @@ fn main() -> Result<()> {
         if iteration % 10 == 0 {
             let f_val = problem.evaluate_f64(&initial_point)?;
             println!(
-                "Iteration {}: f = {:.6}, ||∇f|| = {:.6}",
-                iteration, f_val, grad_norm
+                "Iteration {iteration}: f = {f_val:.6}, ||∇f|| = {grad_norm:.6}"
             );
         }
 
         // Check convergence
         if grad_norm < 1e-6 {
-            println!("Converged! Gradient norm: {:.2e}", grad_norm);
+            println!("Converged! Gradient norm: {grad_norm:.2e}");
             break;
         }
 
@@ -127,10 +126,10 @@ fn main() -> Result<()> {
     let final_grad_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
 
     println!("\nOptimization completed!");
-    println!("Final point: {:?}", initial_point);
-    println!("Final value: {:.6}", final_value);
-    println!("Final gradient norm: {:.2e}", final_grad_norm);
-    println!("Total iterations: {}", iteration);
+    println!("Final point: {initial_point:?}");
+    println!("Final value: {final_value:.6}");
+    println!("Final gradient norm: {final_grad_norm:.2e}");
+    println!("Total iterations: {iteration}");
 
     // Compare with known optimum
     let optimum = vec![1.0, 1.0];
@@ -141,7 +140,7 @@ fn main() -> Result<()> {
         .sum::<f64>()
         .sqrt();
 
-    println!("Distance to optimum [1, 1]: {:.6}", distance_to_optimum);
+    println!("Distance to optimum [1, 1]: {distance_to_optimum:.6}");
 
     if distance_to_optimum < 1e-3 {
         println!("✓ Successfully found the global minimum!");

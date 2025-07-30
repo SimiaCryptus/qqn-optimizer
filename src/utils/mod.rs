@@ -38,7 +38,7 @@ pub mod paths {
     /// Generate timestamped filename
     pub fn timestamped_filename(base: &str, extension: &str) -> String {
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-        format!("{}_{}.{}", base, timestamp, extension)
+        format!("{base}_{timestamp}.{extension}")
     }
 
     /// Get results directory path
@@ -61,8 +61,7 @@ pub mod validation {
         for (i, &val) in values.iter().enumerate() {
             if !val.is_finite() {
                 return Err(crate::optimizers::OptError::InvalidInput(format!(
-                    "Non-finite value {} at index {}",
-                    val, i
+                    "Non-finite value {val} at index {i}"
                 )));
             }
         }
@@ -73,8 +72,7 @@ pub mod validation {
     pub fn validate_bounds(value: f64, min: f64, max: f64) -> OptResult<()> {
         if value < min || value > max {
             return Err(crate::optimizers::OptError::InvalidInput(format!(
-                "Value {} outside bounds [{}, {}]",
-                value, min, max
+                "Value {value} outside bounds [{min}, {max}]"
             )));
         }
         Ok(())

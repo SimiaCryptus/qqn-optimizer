@@ -319,6 +319,12 @@ pub struct AdamState {
     pub v_max: Option<Vec<Tensor>>,
 }
 
+impl Default for AdamState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdamState {
     /// Create a new Adam state with default initialization.
     ///
@@ -430,7 +436,7 @@ impl AdamOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== Adam: {} ===", name);
+        debug!("=== Adam: {name} ===");
         for (i, tensor) in tensors.iter().enumerate() {
             match tensor.flatten_all().and_then(|t| t.to_vec1::<f64>()) {
                 Ok(values) => {
@@ -441,7 +447,7 @@ impl AdamOptimizer {
                         values.len()
                     );
                     if values.len() <= 10 {
-                        debug!("    Full data: {:?}", values);
+                        debug!("    Full data: {values:?}");
                     } else {
                         debug!(
                             "    First 5: {:?}, Last 5: {:?}",
@@ -478,7 +484,7 @@ impl AdamOptimizer {
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
         if self.config.verbose {
-            debug!("  Adam {}: {:.12e}", name, value);
+            debug!("  Adam {name}: {value:.12e}");
         }
     }
 
@@ -668,13 +674,7 @@ impl AdamOptimizer {
 
         if self.config.verbose && (grad_converged || func_converged) {
             debug!(
-                "Convergence check: grad_norm={:.6e} < {:.6e} = {}, func_change={:?} < {:.6e} = {}",
-                gradient_norm,
-                grad_tolerance,
-                grad_converged,
-                function_change,
-                func_tolerance,
-                func_converged
+                "Convergence check: grad_norm={gradient_norm:.6e} < {grad_tolerance:.6e} = {grad_converged}, func_change={function_change:?} < {func_tolerance:.6e} = {func_converged}"
             );
         }
 
@@ -768,8 +768,7 @@ impl Optimizer for AdamOptimizer {
             let param_vec = param.flatten_all()?.to_vec1::<f64>()?;
             if param_vec.iter().any(|&x| !x.is_finite()) {
                 return Err(candle_core::Error::Msg(format!(
-                    "Non-finite parameter detected at index {} after update",
-                    i
+                    "Non-finite parameter detected at index {i} after update"
                 )));
             }
         }
@@ -783,13 +782,13 @@ impl Optimizer for AdamOptimizer {
 
         if self.config.verbose {
             debug!("=== Adam Step {} Completed ===", self.state.iteration - 1);
-            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Step Duration: {step_duration:?}");
             debug!("  Converged: {}", convergence_info.converged);
             debug!("  Current LR: {:.6e}", self.current_lr);
-            debug!("  Line Search Alpha: {:.3}", step_size);
-            debug!("  Function Value: {:.6e}", current_value);
+            debug!("  Line Search Alpha: {step_size:.3}");
+            debug!("  Function Value: {current_value:.6e}");
             if let Some(change) = function_change {
-                debug!("  Function Change: {:.6e}", change);
+                debug!("  Function Change: {change:.6e}");
             }
         }
 
@@ -1235,7 +1234,7 @@ mod tests {
             }
 
             if result.convergence_info.converged {
-                println!("Converged at step {}", i);
+                println!("Converged at step {i}");
                 converged = true;
                 break;
             }
@@ -1258,7 +1257,7 @@ mod tests {
         let mut params = vec![Tensor::from_vec(vec![0.0, 0.0], &[2], &device)?];
         let function = Arc::new(RosenbrockFunction);
         let initial_value = function.evaluate(&params)?;
-        println!("Initial Rosenbrock value: {:.6e}", initial_value);
+        println!("Initial Rosenbrock value: {initial_value:.6e}");
 
         // Run optimization
         for i in 0..500 {
@@ -1285,9 +1284,7 @@ mod tests {
         // Rosenbrock is difficult, so we're lenient with convergence
         assert!(
             final_value < initial_value * 0.1,
-            "Function value should have decreased significantly: initial={:.6e}, final={:.6e}",
-            initial_value,
-            final_value
+            "Function value should have decreased significantly: initial={initial_value:.6e}, final={final_value:.6e}"
         );
         Ok(())
     }

@@ -35,7 +35,7 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
         let values = tensor.flatten_all()?.to_vec1::<f64>()?;
         for &val in &values {
             if !val.is_finite() {
-                warn!("Tensor contains non-finite value: {}", val);
+                warn!("Tensor contains non-finite value: {val}");
                 return Ok(f64::INFINITY);
             }
             max_abs = max_abs.max(val.abs());
@@ -241,7 +241,7 @@ pub fn log_tensor(tensors: &[Tensor]) {
                     tensor.device()
                 );
                 if values.len() <= 10 {
-                    debug!("    Full data: {:?}", values);
+                    debug!("    Full data: {values:?}");
                 } else {
                     debug!(
                         "    First 5: {:?}, Last 5: {:?}",

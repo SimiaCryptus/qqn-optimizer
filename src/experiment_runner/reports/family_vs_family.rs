@@ -67,7 +67,7 @@ pub async fn generate_family_vs_family_latex_table(
         for optimizer_family in &optimizer_families {
             let cell_data =
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-            let key = format!("{}_{}", problem_family, optimizer_family);
+            let key = format!("{problem_family}_{optimizer_family}");
             family_scores.insert(
                 key,
                 vec![cell_data.average_ranking, cell_data.best_rank_average],
@@ -251,7 +251,7 @@ pub fn generate_family_vs_family_table_content(
         for optimizer_family in &optimizer_families {
             let cell_data =
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-            let key = format!("{}_{}", problem_family, optimizer_family);
+            let key = format!("{problem_family}_{optimizer_family}");
             family_scores.insert(
                 key,
                 vec![cell_data.average_ranking, cell_data.best_rank_average],
@@ -415,9 +415,8 @@ This table shows how different optimizer families perform across different probl
 "#);
     for optimizer_family in &optimizer_families {
         content.push_str(&format!(
-            r#"<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">{}</th>
-"#,
-            optimizer_family
+            r#"<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">{optimizer_family}</th>
+"#
         ));
     }
     content.push_str("</tr>\n");
@@ -425,9 +424,8 @@ This table shows how different optimizer families perform across different probl
     for problem_family in &problem_families {
         content.push_str(&format!(
             r#"<tr>
-<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">{}</td>
-"#,
-            problem_family
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">{problem_family}</td>
+"#
         ));
         // Get all problems in this family
         let problems_in_family: Vec<_> = all_results
