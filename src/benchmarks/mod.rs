@@ -8,6 +8,7 @@
 
 pub mod analytic_functions;
 pub mod evaluation;
+pub mod fashion_mnist;
 pub mod functions;
 pub mod ml_problems;
 pub mod mnist;

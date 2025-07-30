@@ -6,14 +6,15 @@ use crate::benchmarks::analytic_functions::{
 use crate::benchmarks::evaluation::ProblemSpec;
 use crate::benchmarks::ml_problems::{generate_linear_regression_data, generate_svm_data};
 use crate::benchmarks::mnist::ActivationType;
+use crate::benchmarks::fashion_mnist::ActivationType as FashionActivationType;
 use crate::benchmarks::{
     BoothFunction, GriewankFunction, HimmelblauFunction, LevyFunction, MichalewiczFunction,
     SchwefelFunction, ZakharovFunction,
 };
 use crate::{
     AckleyFunction, BealeFunction, LinearRegression, LogisticRegression, MnistNeuralNetwork,
-    NeuralNetworkTraining, RastriginFunction, RosenbrockFunction, SphereFunction,
-    SupportVectorMachine,
+    FashionMnistNeuralNetwork, NeuralNetworkTraining, RastriginFunction, RosenbrockFunction, 
+    SphereFunction, SupportVectorMachine,
 };
 use rand::prelude::StdRng;
 use rand::SeedableRng;
@@ -558,5 +559,119 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
             42,
         )
         .with_name("MNIST_Logistic_20x5".to_string()),
+    ]
+}
+
+pub fn fashion_mnist_problems(samples: usize) -> Vec<ProblemSpec> {
+    let mut rng = StdRng::seed_from_u64(42);
+    vec![
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = FashionMnistNeuralNetwork::create(
+                    Some(samples),
+                    &[20],
+                    Some(samples),
+                    &mut rng,
+                    Some(FashionActivationType::ReLU),
+                )
+                .expect("Failed to create Fashion-MNIST neural network");
+                network.set_optimal_value(Option::from(0.08));
+                network
+            }),
+            "FashionMNIST".to_string(),
+            None,
+            42,
+        )
+        .with_name("FashionMNIST_ReLU_20".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = FashionMnistNeuralNetwork::create(
+                    Some(samples),
+                    &[20],
+                    Some(samples),
+                    &mut rng,
+                    Some(FashionActivationType::Logistic),
+                )
+                .expect("Failed to create Fashion-MNIST neural network");
+                network.set_optimal_value(Option::from(0.08));
+                network
+            }),
+            "FashionMNIST".to_string(),
+            None,
+            42,
+        )
+        .with_name("FashionMNIST_Logistic_20".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = FashionMnistNeuralNetwork::create(
+                    Some(samples),
+                    &[30],
+                    Some(samples),
+                    &mut rng,
+                    Some(FashionActivationType::ReLU),
+                )
+                .expect("Failed to create Fashion-MNIST neural network");
+                network.set_optimal_value(Option::from(0.07));
+                network
+            }),
+            "FashionMNIST".to_string(),
+            None,
+            42,
+        )
+        .with_name("FashionMNIST_ReLU_30".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = FashionMnistNeuralNetwork::create(
+                    Some(samples),
+                    &[20, 20, 20],
+                    Some(samples),
+                    &mut rng,
+                    Some(FashionActivationType::ReLU),
+                )
+                .expect("Failed to create Fashion-MNIST neural network");
+                network.set_optimal_value(Option::from(0.06));
+                network
+            }),
+            "FashionMNIST".to_string(),
+            None,
+            42,
+        )
+        .with_name("FashionMNIST_ReLU_20x3".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = FashionMnistNeuralNetwork::create(
+                    Some(samples),
+                    &[20, 20, 20],
+                    Some(samples),
+                    &mut rng,
+                    Some(FashionActivationType::Logistic),
+                )
+                .expect("Failed to create Fashion-MNIST neural network");
+                network.set_optimal_value(Option::from(0.06));
+                network
+            }),
+            "FashionMNIST".to_string(),
+            None,
+            42,
+        )
+        .with_name("FashionMNIST_Logistic_20x3".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = FashionMnistNeuralNetwork::create(
+                    Some(samples),
+                    &[15, 25, 15],
+                    Some(samples),
+                    &mut rng,
+                    Some(FashionActivationType::Sinewave),
+                )
+                .expect("Failed to create Fashion-MNIST neural network");
+                network.set_optimal_value(Option::from(0.09));
+                network
+            }),
+            "FashionMNIST".to_string(),
+            None,
+            42,
+        )
+        .with_name("FashionMNIST_Sinewave_15x25x15".to_string()),
     ]
 }
