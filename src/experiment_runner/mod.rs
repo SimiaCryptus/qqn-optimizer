@@ -2,6 +2,7 @@
 
 pub mod experiment_runner;
 pub mod optimizer_sets;
+#[cfg(feature = "plotting")]
 pub mod plotting_manager;
 pub mod problem_sets;
 pub mod report_generator;
@@ -23,6 +24,7 @@ pub mod unified_report_example;
 mod optimizer_problems;
 
 pub use experiment_runner::ExperimentRunner;
+#[cfg(feature = "plotting")]
 pub use plotting_manager::PlottingManager;
 pub use report_generator::ReportGenerator;
 pub use statistical_analysis::StatisticalAnalysis;

@@ -6,6 +6,8 @@ use crate::benchmarks::analytic_functions::{
 use crate::benchmarks::evaluation::ProblemSpec;
 use crate::benchmarks::ml_problems::{generate_linear_regression_data, generate_svm_data};
 use crate::benchmarks::mnist::ActivationType;
+#[cfg(feature = "onednn")]
+use crate::benchmarks::mnist_onednn;
 use crate::benchmarks::{
     BoothFunction, GriewankFunction, HimmelblauFunction, LevyFunction, MichalewiczFunction,
     SchwefelFunction, ZakharovFunction,
@@ -15,6 +17,8 @@ use crate::{
     NeuralNetworkTraining, RastriginFunction, RosenbrockFunction, SphereFunction,
     SupportVectorMachine,
 };
+#[cfg(feature = "onednn")]
+use crate::MnistOneDnnNeuralNetwork;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::sync::Arc;
@@ -559,4 +563,106 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
         )
         .with_name("MNIST_Logistic_20x5".to_string()),
     ]
+}
+
+#[cfg(feature = "onednn")]
+pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
+    let mut rng = StdRng::seed_from_u64(42);
+    vec![
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = MnistOneDnnNeuralNetwork::create(
+                    Some(samples),
+                    &[20],
+                    Some(samples),
+                    &mut rng,
+                    Some(mnist_onednn::ActivationType::ReLU),
+                )
+                .expect("Failed to create OneDNN MNIST neural network");
+                network.set_optimal_value(Option::from(0.05));
+                network
+            }),
+            "MNIST_OneDNN".to_string(),
+            None,
+            42,
+        )
+        .with_name("MNIST_OneDNN_ReLU_20".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = MnistOneDnnNeuralNetwork::create(
+                    Some(samples),
+                    &[20],
+                    Some(samples),
+                    &mut rng,
+                    Some(mnist_onednn::ActivationType::Logistic),
+                )
+                .expect("Failed to create OneDNN MNIST neural network");
+                network.set_optimal_value(Option::from(0.05));
+                network
+            }),
+            "MNIST_OneDNN".to_string(),
+            None,
+            42,
+        )
+        .with_name("MNIST_OneDNN_Logistic_20".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = MnistOneDnnNeuralNetwork::create(
+                    Some(samples),
+                    &[20, 20, 20],
+                    Some(samples),
+                    &mut rng,
+                    Some(mnist_onednn::ActivationType::ReLU),
+                )
+                .expect("Failed to create OneDNN MNIST neural network");
+                network.set_optimal_value(Option::from(0.05));
+                network
+            }),
+            "MNIST_OneDNN".to_string(),
+            None,
+            42,
+        )
+        .with_name("MNIST_OneDNN_ReLU_20x3".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = MnistOneDnnNeuralNetwork::create(
+                    Some(samples),
+                    &[20, 20, 20],
+                    Some(samples),
+                    &mut rng,
+                    Some(mnist_onednn::ActivationType::Tanh),
+                )
+                .expect("Failed to create OneDNN MNIST neural network");
+                network.set_optimal_value(Option::from(0.05));
+                network
+            }),
+            "MNIST_OneDNN".to_string(),
+            None,
+            42,
+        )
+        .with_name("MNIST_OneDNN_Tanh_20x3".to_string()),
+        ProblemSpec::new(
+            Arc::new({
+                let mut network = MnistOneDnnNeuralNetwork::create(
+                    Some(samples),
+                    &[20, 20, 20, 20, 20],
+                    Some(samples),
+                    &mut rng,
+                    Some(mnist_onednn::ActivationType::Tanh),
+                )
+                .expect("Failed to create OneDNN MNIST neural network");
+                network.set_optimal_value(Option::from(0.05));
+                network
+            }),
+            "MNIST_OneDNN".to_string(),
+            None,
+            42,
+        )
+        .with_name("MNIST_OneDNN_Tanh_20x5".to_string()),
+    ]
+}
+
+#[cfg(not(feature = "onednn"))]
+pub fn mnist_onednn_problems(_samples: usize) -> Vec<ProblemSpec> {
+    vec![] // Return empty vector when OneDNN feature is not enabled
 }

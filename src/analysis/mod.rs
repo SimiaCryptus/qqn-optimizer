@@ -6,6 +6,7 @@
 //! - Visualization and plotting capabilities
 //! - Academic report generation
 
+#[cfg(feature = "plotting")]
 pub mod plotting;
 pub mod reporting;
 pub mod statistics;
@@ -14,6 +15,7 @@ pub mod statistics;
 
 use crate::benchmarks::evaluation::BenchmarkResults;
 use crate::optimizers::OptResult;
+#[cfg(feature = "plotting")]
 pub use plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 pub use reporting::{AcademicReport, CSVExporter, LaTeXExporter};
 pub use statistics::{

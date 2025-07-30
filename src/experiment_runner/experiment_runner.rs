@@ -1,6 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use super::{PlottingManager, ReportGenerator};
+use super::ReportGenerator;
+#[cfg(feature = "plotting")]
+use super::PlottingManager;
 use crate::benchmarks::evaluation::{
     enable_no_threshold_mode, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper,
     ProblemSpec, SingleResult,
@@ -17,6 +19,7 @@ pub struct ExperimentRunner {
     output_dir: String,
     config: BenchmarkConfig,
     report_generator: ReportGenerator,
+    #[cfg(feature = "plotting")]
     plotting_manager: PlottingManager,
 }
 
@@ -26,6 +29,7 @@ impl ExperimentRunner {
             output_dir: output_dir.clone(),
             config: config.clone(),
             report_generator: ReportGenerator::new(output_dir.clone(), config.clone()),
+            #[cfg(feature = "plotting")]
             plotting_manager: PlottingManager::new(output_dir),
         }
     }
@@ -79,9 +83,12 @@ impl ExperimentRunner {
             .map(|(problem, results)| (*problem, results.clone()))
             .collect();
 
-        self.plotting_manager
-            .generate_all_plots(&results_refs)
-            .await?;
+        #[cfg(feature = "plotting")]
+        {
+            self.plotting_manager
+                .generate_all_plots(&results_refs)
+                .await?;
+        }
         self.report_generator.generate_main_report(&results_refs, false)
             .await?;
 
