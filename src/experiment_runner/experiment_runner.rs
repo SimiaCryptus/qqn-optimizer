@@ -82,8 +82,7 @@ impl ExperimentRunner {
         self.plotting_manager
             .generate_all_plots(&results_refs)
             .await?;
-        self.report_generator
-            .generate_main_report(&results_refs, false)
+        self.report_generator.generate_main_report(&results_refs, false)
             .await?;
 
         info!(

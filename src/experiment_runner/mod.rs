@@ -20,6 +20,7 @@ pub use reports::unified_summary_statistics::SummaryStatisticsReport;
 pub use statistical_analysis::*;
 pub use unified_report::*;
 pub mod unified_report_example;
+mod optimizer_problems;
 
 pub use experiment_runner::ExperimentRunner;
 pub use plotting_manager::PlottingManager;
