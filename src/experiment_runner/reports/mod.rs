@@ -7,3 +7,4 @@ pub mod performance_analysis;
 pub mod performance_table;
 pub mod summary_statistics;
 pub mod unified_summary_statistics;
+pub mod unified_performance_table;

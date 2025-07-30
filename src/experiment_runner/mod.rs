@@ -9,6 +9,7 @@ mod reports;
 pub mod statistical_analysis;
 pub mod unified_report;
 pub mod unified_report_tests;
+pub mod unified_report_example;
 
 pub use experiment_runner::ExperimentRunner;
 pub use plotting_manager::PlottingManager;
