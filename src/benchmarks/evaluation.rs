@@ -221,6 +221,17 @@ pub struct PerformanceMetrics {
     pub convergence_rate: f64,
 }
 
+impl PerformanceMetrics {
+    pub(crate) fn default() -> PerformanceMetrics {
+        PerformanceMetrics {
+            iterations_per_second: 0.0,
+            function_evaluations_per_second: 0.0,
+            gradient_evaluations_per_second: 0.0,
+            convergence_rate: 0.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ConvergenceReason {
     GradientTolerance,

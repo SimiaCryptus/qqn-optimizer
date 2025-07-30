@@ -50,7 +50,7 @@ impl ConvergenceAnalysisReport {
 \maketitle
 "#);
         if config.include_detailed_stats {
-            content.push_str(&self.generate_convergence_speed_table_content(data)?);
+            content.push_str(&self.generate_convergence_speed_latex_table(data)?);
         }
         content.push_str(r#"\end{document}"#);
         Ok(content)
@@ -197,6 +197,24 @@ impl ConvergenceAnalysisReport {
         content.push_str("\n**Purpose:** Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average).\n\n");
         Ok(content)
     }
+
+
+    fn generate_convergence_speed_latex_table(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
+        // Convert HTML table to LaTeX format
+        let html_content = self.generate_convergence_speed_html_table(data)?;
+        // Simple conversion - you might want to make this more sophisticated
+        let latex_content = html_content
+            .replace("<table>", "\\begin{tabular}{|l|c|c|c|}\n\\hline")
+            .replace("</table>", "\\end{tabular}")
+            .replace("<tr>", "")
+            .replace("</tr>", " \\\\\n\\hline")
+            .replace("<th>", "")
+            .replace("</th>", " & ")
+            .replace("<td>", "")
+            .replace("</td>", " & ");
+        Ok(latex_content)
+    }
+
 }
 impl Report for ConvergenceAnalysisReport {
     fn name(&self) -> &'static str {

@@ -4,6 +4,8 @@ use anyhow::Context;
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
+use html_escape::encode_text;
+
 /// Success Rate Heatmap Report
 pub struct SuccessRateHeatmapReport;
 impl SuccessRateHeatmapReport {

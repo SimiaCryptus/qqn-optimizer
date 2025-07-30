@@ -29,7 +29,7 @@ impl UnifiedReportTestSuite {
     }
     
     /// Test basic functionality of a report
-    pub fn test_basic_functionality<R: Report>(report: &R) -> Result<()> {
+    pub fn test_basic_functionality<R: Report + ?Sized>(report: &R) -> Result<()> {
         // Test name is not empty
         assert!(!report.name().is_empty(), "Report name should not be empty");
         
@@ -45,7 +45,7 @@ impl UnifiedReportTestSuite {
     }
     
     /// Test content generation for different formats
-    pub fn test_content_generation<R: Report>(report: &R) -> Result<()> {
+    pub fn test_content_generation<R: Report + ?Sized>(report: &R) -> Result<()> {
         let test_data = Self::create_test_data();
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
         
@@ -84,7 +84,7 @@ impl UnifiedReportTestSuite {
     }
     
     /// Test data validation
-    pub fn test_data_validation<R: Report>(report: &R) -> Result<()> {
+    pub fn test_data_validation<R: Report + ?Sized>(report: &R) -> Result<()> {
         // Test empty data validation
         let empty_data = vec![];
         assert!(report.validate_data(&empty_data).is_err(), 
@@ -107,7 +107,7 @@ impl UnifiedReportTestSuite {
     }
     
     /// Test metadata generation
-    pub fn test_metadata_generation<R: Report>(report: &R) -> Result<()> {
+    pub fn test_metadata_generation<R: Report + ?Sized>(report: &R) -> Result<()> {
         let test_data = Self::create_test_data();
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
         
@@ -123,7 +123,7 @@ impl UnifiedReportTestSuite {
     }
     
     /// Test file export functionality
-    pub fn test_file_export<R: Report>(report: &R) -> Result<()> {
+    pub fn test_file_export<R: Report + ?Sized>(report: &R) -> Result<()> {
         let test_data = Self::create_test_data();
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
         
@@ -158,7 +158,7 @@ impl UnifiedReportTestSuite {
     }
     
     /// Test all supported formats work
-    pub fn test_all_formats<R: Report>(report: &R) -> Result<()> {
+    pub fn test_all_formats<R: Report + ?Sized>(report: &R) -> Result<()> {
         let test_data = Self::create_test_data();
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
         
@@ -224,7 +224,7 @@ impl UnifiedReportTestSuite {
                         best_value: 1e-6 * (i + 1) as f64,
                         trace: OptimizationTrace::default(),
                         error_message: None,
-                        performance_metrics: PerformanceMetrics {},
+                        performance_metrics: PerformanceMetrics::default(),
                     };
                     results.push(result);
                 }
@@ -306,9 +306,9 @@ mod tests {
         let metadata_list = collection.generate_all(&data_refs, &config, temp_dir.path()).unwrap();
         assert_eq!(metadata_list.len(), 2);
         
-        let report_types: Vec<_> = metadata_list.iter().map(|m| &m.report_type).collect();
-        assert!(report_types.contains(&"summary_statistics".to_string()));
-        assert!(report_types.contains(&"family_vs_family".to_string()));
+       let report_types: Vec<_> = metadata_list.iter().map(|m| m.report_type.as_str()).collect();
+       assert!(report_types.contains(&"summary_statistics"));
+       assert!(report_types.contains(&"family_vs_family"));
     }
     
     #[test]

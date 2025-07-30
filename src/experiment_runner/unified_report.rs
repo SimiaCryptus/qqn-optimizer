@@ -23,7 +23,7 @@ pub struct ReportConfig {
 }
 
 /// Supported report output formats
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub enum ReportFormat {
     Html,
     Latex,

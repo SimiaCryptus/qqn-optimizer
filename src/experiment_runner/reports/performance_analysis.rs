@@ -1,4 +1,4 @@
-use crate::benchmarks::evaluation::{SingleResult, BenchmarkResults, ProblemSpec};
+use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::{Report, ReportConfig, ReportFormat, ReportMetadata};
 use anyhow::Result;
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ impl PerformanceAnalysisReport {
         let avg_grad_evals = total_grad_evals as f64 / runs.len() as f64;
         let avg_time = total_time / runs.len() as f64;
         let avg_iterations = total_iterations as f64 / runs.len() as f64;
-        
+
         content.push_str(&format!(
             r#"### Computational Efficiency
 - **Average Function Evaluations per Run:** {:.1}
@@ -62,8 +62,13 @@ impl PerformanceAnalysisReport {
         content
     }
 
-    fn generate_html(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String> {
-        let mut html = String::from(r#"<!DOCTYPE html>
+    fn generate_html(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> Result<String> {
+        let mut html = String::from(
+            r#"<!DOCTYPE html>
 <html>
 <head>
     <title>Performance Analysis Report</title>
@@ -77,17 +82,26 @@ impl PerformanceAnalysisReport {
     </style>
 </head>
 <body>
-"#);
+"#,
+        );
 
         for (problem_spec, results) in data {
-            html.push_str(&format!(r#"<div class="problem-section">
+            html.push_str(&format!(
+                r#"<div class="problem-section">
 <h2>Problem: {}</h2>
-"#, problem_spec.name.unwrap()));
-            
-            for (optimizer_name, runs) in &results.results {
+"#,
+                problem_spec.name.as_deref().unwrap_or("Unknown")
+            ));
+
+            // Group results by optimizer
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            for result in &results.results {
+                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+            }
+
+            for (optimizer_name, runs) in optimizer_results {
                 html.push_str(&format!("<h3>Optimizer: {}</h3>\n", optimizer_name));
-                let run_refs: Vec<_> = runs.iter().collect();
-                let analysis = self.generate_analysis_content(&run_refs);
+                let analysis = self.generate_analysis_content(&runs);
                 // Convert markdown to basic HTML
                 let html_analysis = analysis
                     .replace("## ", "<h2>")
@@ -105,8 +119,13 @@ impl PerformanceAnalysisReport {
         Ok(html)
     }
 
-    fn generate_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String> {
-        let mut latex = String::from(r#"\documentclass{article}
+    fn generate_latex(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> Result<String> {
+        let mut latex = String::from(
+            r#"\documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{booktabs}
@@ -117,15 +136,22 @@ impl PerformanceAnalysisReport {
 \begin{document}
 \maketitle
 
-"#);
+"#,
+        );
 
         for (problem_spec, results) in data {
-            latex.push_str(&format!("\\section{{Problem: {}}}\n\n", problem_spec.name));
-            
-            for (optimizer_name, runs) in &results.results {
+            latex.push_str(&format!("\\section{{Problem: {}}}\n\n", 
+                problem_spec.name.as_deref().unwrap_or("Unknown")));
+
+            // Group results by optimizer
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            for result in &results.results {
+                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+            }
+
+            for (optimizer_name, runs) in optimizer_results {
                 latex.push_str(&format!("\\subsection{{Optimizer: {}}}\n\n", optimizer_name));
-                let run_refs: Vec<_> = runs.iter().collect();
-                let analysis = self.generate_analysis_content(&run_refs);
+                let analysis = self.generate_analysis_content(&runs);
                 // Convert markdown to LaTeX
                 let latex_analysis = analysis
                     .replace("## ", "\\section{")
@@ -134,7 +160,10 @@ impl PerformanceAnalysisReport {
                     .replace(":**", ":}")
                     .replace("\n\n", "}\n\n\\begin{itemize}\n")
                     .replace("\n", "}\n");
-                latex.push_str(&format!("\\begin{{itemize}}\n{}\\end{{itemize}}\n\n", latex_analysis));
+                latex.push_str(&format!(
+                    "\\begin{{itemize}}\n{}\\end{{itemize}}\n\n",
+                    latex_analysis
+                ));
             }
         }
 
@@ -142,16 +171,26 @@ impl PerformanceAnalysisReport {
         Ok(latex)
     }
 
-    fn generate_markdown(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String> {
+    fn generate_markdown(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> Result<String> {
         let mut markdown = String::from("# Performance Analysis Report\n\n");
 
         for (problem_spec, results) in data {
-            markdown.push_str(&format!("## Problem: {}\n\n", problem_spec.name));
-            
-            for (optimizer_name, runs) in &results.results {
+            markdown.push_str(&format!("## Problem: {}\n\n", 
+                problem_spec.name.as_deref().unwrap_or("Unknown")));
+
+            // Group results by optimizer
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            for result in &results.results {
+                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+            }
+
+            for (optimizer_name, runs) in optimizer_results {
                 markdown.push_str(&format!("### Optimizer: {}\n\n", optimizer_name));
-                let run_refs: Vec<_> = runs.iter().collect();
-                let analysis = self.generate_analysis_content(&run_refs);
+                let analysis = self.generate_analysis_content(&runs);
                 markdown.push_str(&analysis);
                 markdown.push_str("\n\n");
             }
@@ -160,20 +199,29 @@ impl PerformanceAnalysisReport {
         Ok(markdown)
     }
 
-    fn generate_csv(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String> {
+    fn generate_csv(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> Result<String> {
         let mut csv = String::from("Problem,Optimizer,Avg_Function_Evals,Avg_Gradient_Evals,Avg_Iterations,Avg_Time_Sec,Total_Function_Evals,Total_Gradient_Evals,Total_Time_Sec,Function_Gradient_Ratio\n");
 
         for (problem_spec, results) in data {
-            for (optimizer_name, runs) in &results.results {
-                let run_refs: Vec<_> = runs.iter().collect();
-                let total_func_evals: usize = run_refs.iter().map(|r| r.function_evaluations).sum();
-                let total_grad_evals: usize = run_refs.iter().map(|r| r.gradient_evaluations).sum();
-                let total_time: f64 = run_refs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
-                let total_iterations: usize = run_refs.iter().map(|r| r.iterations).sum();
-                let avg_func_evals = total_func_evals as f64 / run_refs.len() as f64;
-                let avg_grad_evals = total_grad_evals as f64 / run_refs.len() as f64;
-                let avg_time = total_time / run_refs.len() as f64;
-                let avg_iterations = total_iterations as f64 / run_refs.len() as f64;
+            // Group results by optimizer
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            for result in &results.results {
+                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+            }
+
+            for (optimizer_name, runs) in optimizer_results {
+                let total_func_evals: usize = runs.iter().map(|r| r.function_evaluations).sum();
+                let total_grad_evals: usize = runs.iter().map(|r| r.gradient_evaluations).sum();
+                let total_time: f64 = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
+                let total_iterations: usize = runs.iter().map(|r| r.iterations).sum();
+                let avg_func_evals = total_func_evals as f64 / runs.len() as f64;
+                let avg_grad_evals = total_grad_evals as f64 / runs.len() as f64;
+                let avg_time = total_time / runs.len() as f64;
+                let avg_iterations = total_iterations as f64 / runs.len() as f64;
                 let func_grad_ratio = if total_grad_evals > 0 {
                     total_func_evals as f64 / total_grad_evals as f64
                 } else {
@@ -182,8 +230,8 @@ impl PerformanceAnalysisReport {
 
                 csv.push_str(&format!(
                     "{},{},{:.1},{:.1},{:.1},{:.3},{},{},{:.1},{:.2}\n",
-                    problem_spec.name,
-                    optimizer_name,
+                    problem_spec.name.as_deref().unwrap_or("Unknown"),
+                    &optimizer_name,
                     avg_func_evals,
                     avg_grad_evals,
                     avg_iterations,
@@ -209,7 +257,11 @@ impl Report for PerformanceAnalysisReport {
         "Detailed performance analysis including computational efficiency and resource utilization metrics"
     }
 
-    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String> {
+    fn generate_content(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> Result<String> {
         match config.format {
             ReportFormat::Html => self.generate_html(data, config),
             ReportFormat::Latex => self.generate_latex(data, config),
@@ -218,7 +270,12 @@ impl Report for PerformanceAnalysisReport {
         }
     }
 
-    fn export_to_file(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig, output_path: &Path) -> Result<()> {
+    fn export_to_file(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+        output_path: &Path,
+    ) -> Result<()> {
         let content = self.generate_content(data, config)?;
         std::fs::write(output_path, content)?;
         Ok(())
@@ -230,19 +287,14 @@ impl Report for PerformanceAnalysisReport {
         }
 
         for (problem_spec, results) in data {
-            if problem_spec.name.is_empty() {
+            if problem_spec.name.is_none() {
                 return Err(anyhow::anyhow!("Problem spec has empty name"));
             }
             if results.results.is_empty() {
-                return Err(anyhow::anyhow!("No results for problem: {}", problem_spec.name));
-            }
-            for (optimizer_name, runs) in &results.results {
-                if optimizer_name.is_empty() {
-                    return Err(anyhow::anyhow!("Optimizer has empty name"));
-                }
-                if runs.is_empty() {
-                    return Err(anyhow::anyhow!("No runs for optimizer: {}", optimizer_name));
-                }
+                return Err(anyhow::anyhow!(
+                    "No results for problem: {}",
+                    problem_spec.name.as_deref().unwrap_or("Unknown")
+                ));
             }
         }
         Ok(())
@@ -250,32 +302,39 @@ impl Report for PerformanceAnalysisReport {
 
     fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
         let total_problems = data.len();
-        let total_optimizers: usize = data.iter().map(|(_, results)| results.results.len()).sum();
-        let total_runs: usize = data.iter()
-            .flat_map(|(_, results)| results.results.values())
-            .map(|runs| runs.len())
-            .sum();
+        let total_optimizers: usize = data
+            .iter()
+            .flat_map(|(_, results)| &results.results)
+            .map(|r| &r.optimizer_name)
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        let total_runs: usize = data.iter().map(|(_, results)| results.results.len()).sum();
 
         let mut metadata = HashMap::new();
         metadata.insert("total_problems".to_string(), total_problems.to_string());
         metadata.insert("total_optimizers".to_string(), total_optimizers.to_string());
         metadata.insert("total_runs".to_string(), total_runs.to_string());
-        metadata.insert("report_type".to_string(), "performance_analysis".to_string());
+        metadata.insert(
+            "report_type".to_string(),
+            "performance_analysis".to_string(),
+        );
 
         ReportMetadata {
-            // title: "Performance Analysis Report".to_string(),
-            // description: self.description().to_string(),
-            report_type: "".to_string(),
+            report_type: "performance_analysis".to_string(),
             generated_at: chrono::Utc::now(),
-            // data_summary: metadata,
-            problem_count: 0,
-            optimizer_count: 0,
-            data_points: 0,
+            problem_count: total_problems,
+            optimizer_count: total_optimizers,
+            data_points: total_runs,
         }
     }
 
     fn supported_formats(&self) -> Vec<ReportFormat> {
-        vec![ReportFormat::Html, ReportFormat::Latex, ReportFormat::Markdown, ReportFormat::Csv]
+        vec![
+            ReportFormat::Html,
+            ReportFormat::Latex,
+            ReportFormat::Markdown,
+            ReportFormat::Csv,
+        ]
     }
 }
 
@@ -325,5 +384,4 @@ mod tests {
         let report = PerformanceAnalysisReport::new();
         UnifiedReportTestSuite::test_file_export(&report).unwrap();
     }
-
 }

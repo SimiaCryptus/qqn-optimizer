@@ -47,7 +47,6 @@ impl UnifiedReportingExample {
             };
             
             let metadata_list = reports.generate_all(&data_refs, &config, &format_dir)?;
-            
             println!("Generated {} reports in {:?} format", metadata_list.len(), config.format);
             for metadata in metadata_list {
                 println!("  - {} ({})", metadata.report_type, metadata.data_points);
