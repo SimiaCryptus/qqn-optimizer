@@ -103,6 +103,12 @@ impl IterationData {
     }
 }
 
+impl Default for OptimizationTrace {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OptimizationTrace {
     pub fn new() -> Self {
         Self {
@@ -355,9 +361,9 @@ impl BenchmarkRunner {
         let mut x = problem.problem.initial_point();
         // Validate initial point
         if x.iter().any(|&xi| !xi.is_finite()) {
-            return Err(BenchmarkError::ProblemError(format!(
-                "Initial point contains non-finite values"
-            )));
+            return Err(BenchmarkError::ProblemError(
+                "Initial point contains non-finite values".to_string(),
+            ));
         }
         // Randomize initial point to ensure variability
         let mut rng = rand::rng();
@@ -424,8 +430,7 @@ impl BenchmarkRunner {
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         if !final_value.is_finite() {
             return Err(BenchmarkError::ProblemError(format!(
-                "Final function value is not finite: {}",
-                final_value
+                "Final function value is not finite: {final_value}"
             )));
         }
         let final_gradient = problem
@@ -464,10 +469,7 @@ impl BenchmarkRunner {
             },
         };
         if iteration == 0 {
-            warn!(
-                "No iterations performed, convergence reason: {:?}",
-                convergence_reason
-            );
+            warn!("No iterations performed, convergence reason: {convergence_reason:?}");
             Err(BenchmarkError::ProblemError(
                 "No iterations performed, likely due to initial evaluation failure".to_string(),
             ))
@@ -517,8 +519,7 @@ impl BenchmarkRunner {
             Ok(val) => val,
             Err(e) => {
                 return Err(BenchmarkError::ProblemError(format!(
-                    "Initial function evaluation failed: {}",
-                    e
+                    "Initial function evaluation failed: {e}"
                 )));
             }
         };
@@ -527,8 +528,7 @@ impl BenchmarkRunner {
             Ok(grad) => grad,
             Err(e) => {
                 return Err(BenchmarkError::ProblemError(format!(
-                    "Initial gradient evaluation failed: {}",
-                    e
+                    "Initial gradient evaluation failed: {e}"
                 )));
             }
         };
@@ -563,10 +563,7 @@ impl BenchmarkRunner {
             let f_val = match problem.problem.evaluate_f64(input_floats) {
                 Ok(val) => val,
                 Err(e) => {
-                    warn!(
-                        "Function evaluation failed at iteration {}: {}",
-                        iteration, e
-                    );
+                    warn!("Function evaluation failed at iteration {iteration}: {e}");
                     numerical_error_count += 1;
                     if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                         return Ok(ConvergenceReason::NumericalError);
@@ -577,10 +574,7 @@ impl BenchmarkRunner {
             *function_evaluations += 1;
 
             if !f_val.is_finite() {
-                warn!(
-                    "Non-finite function value at iteration {}: {}",
-                    iteration, f_val
-                );
+                warn!("Non-finite function value at iteration {iteration}: {f_val}");
                 numerical_error_count += 1;
                 if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                     return Ok(ConvergenceReason::NumericalError);
@@ -602,16 +596,14 @@ impl BenchmarkRunner {
             if (improvement_percent / stagnation_multiplier) >= self.config.min_improvement_percent
             {
                 debug!(
-                    "Iteration {}: Improvement {:.3e}%, best value updated to {:.6e}",
-                    iteration, improvement_percent, f_val
+                    "Iteration {iteration}: Improvement {improvement_percent:.3e}%, best value updated to {f_val:.6e}"
                 );
                 best_f_val = f_val;
                 no_improvement_count = 0;
             } else {
                 no_improvement_count += 1;
                 debug!(
-                    "Iteration {}: Improvement {:.3e}%, no improvement count: {}",
-                    iteration, improvement_percent, no_improvement_count
+                    "Iteration {iteration}: Improvement {improvement_percent:.3e}%, no improvement count: {no_improvement_count}"
                 );
                 if no_improvement_count >= (MAX_NO_IMPROVEMENT + stagnation_tolerance) {
                     info!(
@@ -625,10 +617,7 @@ impl BenchmarkRunner {
             let gradient = match problem.problem.gradient_f64(input_floats) {
                 Ok(grad) => grad,
                 Err(e) => {
-                    warn!(
-                        "Gradient evaluation failed at iteration {}: {}",
-                        iteration, e
-                    );
+                    warn!("Gradient evaluation failed at iteration {iteration}: {e}");
                     numerical_error_count += 1;
                     if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                         return Ok(ConvergenceReason::NumericalError);
@@ -640,7 +629,7 @@ impl BenchmarkRunner {
 
             // Check for non-finite gradients
             if gradient.iter().any(|&g| !g.is_finite()) {
-                warn!("Non-finite gradient at iteration {}", iteration);
+                warn!("Non-finite gradient at iteration {iteration}");
                 numerical_error_count += 1;
                 if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                     return Ok(ConvergenceReason::NumericalError);
@@ -652,16 +641,13 @@ impl BenchmarkRunner {
 
             // Check convergence
             let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
-            debug!(
-                "Iteration {}: f_val={:.6e}, grad_norm={:.6e}",
-                iteration, f_val, gradient_norm
-            );
+            debug!("Iteration {iteration}: f_val={f_val:.6e}, grad_norm={gradient_norm:.6e}");
             // Use the more lenient of the two tolerances to ensure convergence is achievable
             // Check function value convergence if optimal value is known
             if !is_no_threshold_mode() {
                 if let Some(optimal_value) = problem.problem.optimal_value() {
                     if f_val < optimal_value {
-                        info!("Converged by function tolerance at iteration {}", iteration);
+                        info!("Converged by function tolerance at iteration {iteration}");
                         // Record final iteration data before returning
                         trace.check_convergence_with_optimizer(
                             *iteration,
@@ -748,7 +734,7 @@ impl BenchmarkRunner {
                     }
                     for (i, &value) in values.iter().enumerate() {
                         if !value.is_finite() {
-                            warn!("Non-finite parameter detected at iteration {}", iteration);
+                            warn!("Non-finite parameter detected at iteration {iteration}");
                             numerical_error_count += 1;
                             if numerical_error_count >= MAX_NUMERICAL_ERRORS {
                                 return Ok(ConvergenceReason::NumericalError);
@@ -778,7 +764,7 @@ impl BenchmarkRunner {
 
             // Check for numerical errors
             if input_floats.iter().any(|&xi| !xi.is_finite()) {
-                warn!("Non-finite parameter detected at iteration {}", iteration);
+                warn!("Non-finite parameter detected at iteration {iteration}");
                 return Ok(ConvergenceReason::NumericalError);
             }
         }

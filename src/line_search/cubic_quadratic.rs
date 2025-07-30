@@ -167,7 +167,7 @@ impl CubicQuadraticLineSearch {
     /// Log a message if verbose mode is enabled
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
-            debug!("CubicQuadratic: {}", message);
+            debug!("CubicQuadratic: {message}");
         }
     }
 
@@ -348,8 +348,7 @@ impl LineSearch for CubicQuadraticLineSearch {
         let mut bracket_high = self.config.max_step;
 
         self.log_verbose(&format!(
-            "Starting with f(0)={:.3e}, g(0)={:.3e}, initial_step={:.3e}",
-            f0, g0, alpha
+            "Starting with f(0)={f0:.3e}, g(0)={g0:.3e}, initial_step={alpha:.3e}"
         ));
         for iter in 0..self.config.max_iterations {
             // Evaluate at current step
@@ -362,8 +361,7 @@ impl LineSearch for CubicQuadraticLineSearch {
             }
 
             self.log_verbose(&format!(
-                "Line Search Iteration {}: alpha={:.3e}, f={:.3e}, g={:.3e}",
-                iter, alpha, f_alpha, g_alpha
+                "Line Search Iteration {iter}: alpha={alpha:.3e}, f={f_alpha:.3e}, g={g_alpha:.3e}"
             ));
             // Check Wolfe conditions
             let (armijo, curvature) = self.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
@@ -409,7 +407,7 @@ impl LineSearch for CubicQuadraticLineSearch {
                     .max(self.config.min_step)
                     .min(self.config.max_step);
 
-                self.log_verbose(&format!("Interpolated new alpha: {:.3e}", alpha));
+                self.log_verbose(&format!("Interpolated new alpha: {alpha:.3e}"));
                 continue;
             }
             // If curvature condition fails but Armijo is satisfied
@@ -421,7 +419,7 @@ impl LineSearch for CubicQuadraticLineSearch {
                 g_prev = g_alpha;
                 alpha = (alpha * self.config.extrapolation_factor).min(self.config.max_step);
 
-                self.log_verbose(&format!("Extrapolated for curvature: {:.3e}", alpha));
+                self.log_verbose(&format!("Extrapolated for curvature: {alpha:.3e}"));
                 continue;
             }
         }

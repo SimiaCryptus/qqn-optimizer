@@ -1,10 +1,14 @@
 use std::error::Error;
 use std::time::Duration;
 
-use qqn_optimizer::benchmarks::evaluation::{disable_no_threshold_mode, enable_no_threshold_mode, ProblemSpec};
+use qqn_optimizer::benchmarks::evaluation::{
+    disable_no_threshold_mode, enable_no_threshold_mode, ProblemSpec,
+};
 use qqn_optimizer::experiment_runner::experiment_runner::run_benchmark;
 use qqn_optimizer::init_logging;
-use qqn_optimizer::optimizer_sets::{adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants};
+use qqn_optimizer::optimizer_sets::{
+    adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants,
+};
 use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 
 #[tokio::test]
@@ -13,11 +17,12 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    test_all("results/calibration_",{
+    test_all("results/calibration_", {
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems
-    }).await?;
+    })
+    .await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;
@@ -31,11 +36,12 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Disable no threshold mode for this test
     disable_no_threshold_mode();
 
-    test_all("results/full_",{
+    test_all("results/full_", {
         let mut problems = analytic_problems();
         problems.extend(ml_problems());
         problems
-    }).await?;
+    })
+    .await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;
@@ -45,7 +51,7 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
 
 async fn test_all(
     prefix: &str,
-    problems: Vec<ProblemSpec>
+    problems: Vec<ProblemSpec>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let max_evals = 1000;
     let num_runs = 10;
@@ -63,7 +69,8 @@ async fn test_all(
             optimizers.extend(trust_region_variants());
             optimizers
         },
-    ).await
+    )
+    .await
 }
 
 // #[tokio::test]
@@ -82,7 +89,7 @@ async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
 
 async fn test(
     prefix: &str,
-    problems: Vec<ProblemSpec>
+    problems: Vec<ProblemSpec>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let max_evals = 1000;
     let num_runs = 10;
@@ -93,7 +100,8 @@ async fn test(
         Duration::from_secs(60),
         problems.clone(),
         qqn_variants(),
-    ).await?;
+    )
+    .await?;
 
     run_benchmark(
         &format!("{}qqn_variants_", prefix),
@@ -102,7 +110,8 @@ async fn test(
         Duration::from_secs(60),
         problems.clone(),
         qqn_variants(),
-    ).await?;
+    )
+    .await?;
 
     run_benchmark(
         &format!("{}lbfgs_variants_", prefix),
@@ -111,7 +120,8 @@ async fn test(
         Duration::from_secs(60),
         problems.clone(),
         lbfgs_variants(),
-    ).await?;
+    )
+    .await?;
 
     run_benchmark(
         &format!("{}gd_variants_", prefix),
@@ -120,7 +130,8 @@ async fn test(
         Duration::from_secs(60),
         problems.clone(),
         gd_variants(),
-    ).await?;
+    )
+    .await?;
 
     run_benchmark(
         &format!("{}adam_variants_", prefix),
@@ -129,7 +140,8 @@ async fn test(
         Duration::from_secs(60),
         problems.clone(),
         adam_variants(),
-    ).await?;
+    )
+    .await?;
 
     run_benchmark(
         &format!("{}trust_region_variants_", prefix),
@@ -138,6 +150,7 @@ async fn test(
         Duration::from_secs(60),
         problems.clone(),
         trust_region_variants(),
-    ).await?;
+    )
+    .await?;
     Ok(())
 }

@@ -1,10 +1,10 @@
-use std::path::Path;
+use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
+use crate::experiment_runner::experiment_runner::get_optimizer_family;
+use crate::experiment_runner::{report_generator, ReportGenerator};
+use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
-use anyhow::Context;
-use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
-use crate::experiment_runner::{report_generator, ReportGenerator};
-use crate::experiment_runner::experiment_runner::get_optimizer_family;
+use std::path::Path;
 
 /// Generate comparison matrix LaTeX table
 pub fn generate_comparison_matrix_latex_table(
@@ -68,16 +68,15 @@ pub fn generate_comparison_matrix_latex_table(
             .join(" ")
     ));
     // Group results by problem for comparison
-    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         for result in &results.results {
             problem_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -90,7 +89,7 @@ pub fn generate_comparison_matrix_latex_table(
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, optimizers) in &problem_results {
+            for optimizers in problem_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
                 {
@@ -131,19 +130,13 @@ pub fn generate_comparison_matrix_latex_table(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            latex_content.push_str(&format!("& {} ", cell_content));
+            latex_content.push_str(&format!("& {cell_content} "));
         }
         latex_content.push_str("\\\\\n");
     }
@@ -212,26 +205,28 @@ pub fn generate_comparison_matrix_table_content(
             .join(" ")
     );
     // Same comparison logic as before...
-    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         for result in &results.results {
             problem_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
     for qqn_opt in &qqn_optimizers {
-        content.push_str(&format!("\\textbf{{{}}} ", report_generator::escape_latex(qqn_opt)));
+        content.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(qqn_opt)
+        ));
         for non_qqn_opt in &non_qqn_optimizers {
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, optimizers) in &problem_results {
+            for optimizers in problem_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
                 {
@@ -272,19 +267,13 @@ pub fn generate_comparison_matrix_table_content(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            content.push_str(&format!("& {} ", cell_content));
+            content.push_str(&format!("& {cell_content} "));
         }
         content.push_str("\\\\\n");
     }
@@ -353,19 +342,22 @@ pub fn generate_family_comparison_matrix_table_content(
             let family = get_optimizer_family(&result.optimizer_name);
             problem_family_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(family)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
     for qqn_fam in &qqn_families {
-        content.push_str(&format!("\\textbf{{{}}} ", report_generator::escape_latex(qqn_fam)));
+        content.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(qqn_fam)
+        ));
         for non_qqn_fam in &non_qqn_families {
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, families) in &problem_family_results {
+            for families in problem_family_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
@@ -406,19 +398,13 @@ pub fn generate_family_comparison_matrix_table_content(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            content.push_str(&format!("& {} ", cell_content));
+            content.push_str(&format!("& {cell_content} "));
         }
         content.push_str("\\\\\n");
     }
@@ -501,19 +487,22 @@ pub fn generate_family_comparison_matrix_latex_table(
             let family = get_optimizer_family(&result.optimizer_name);
             problem_family_results
                 .entry(problem_name.to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(family)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
     for qqn_fam in &qqn_families {
-        latex_content.push_str(&format!("\\textbf{{{}}} ", report_generator::escape_latex(qqn_fam)));
+        latex_content.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(qqn_fam)
+        ));
         for non_qqn_fam in &non_qqn_families {
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
-            for (_, families) in &problem_family_results {
+            for families in problem_family_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
@@ -554,19 +543,13 @@ pub fn generate_family_comparison_matrix_latex_table(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{}W-{}L-{}T}}",
-                    wins, losses, ties
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
-                format!("{}W-{}L-{}T", wins, losses, ties)
+                format!("{wins}W-{losses}L-{ties}T")
             };
-            latex_content.push_str(&format!("& {} ", cell_content));
+            latex_content.push_str(&format!("& {cell_content} "));
         }
         latex_content.push_str("\\\\\n");
     }

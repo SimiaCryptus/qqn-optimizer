@@ -1,8 +1,8 @@
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::fs;
+use std::path::Path;
 
 /// Generate success rate heatmap table content (without document wrapper)
 pub fn generate_success_rate_heatmap_table_content(
@@ -75,11 +75,10 @@ pub fn generate_success_rate_heatmap_table_content(
                 ("red!70", "white")
             };
             let cell_content = if optimizer_results.is_empty() {
-                format!("& \\cellcolor{{gray!30}}\\textcolor{{white}}{{N/A}}")
+                "& \\cellcolor{gray!30}\\textcolor{white}{N/A}".to_string()
             } else {
                 format!(
-                    "& \\cellcolor{{{}}}\\textcolor{{{}}}{{{:.0}\\%}}",
-                    color, text_color, success_rate
+                    "& \\cellcolor{{{color}}}\\textcolor{{{text_color}}}{{{success_rate:.0}\\%}}"
                 )
             };
             content.push_str(&cell_content);
@@ -186,11 +185,10 @@ pub fn generate_success_rate_heatmap_latex_table(
                 ("red!70", "white")
             };
             let cell_content = if optimizer_results.is_empty() {
-                format!("& \\cellcolor{{gray!30}}\\textcolor{{white}}{{N/A}}")
+                "& \\cellcolor{gray!30}\\textcolor{white}{N/A}".to_string()
             } else {
                 format!(
-                    "& \\cellcolor{{{}}}\\textcolor{{{}}}{{{:.0}\\%}}",
-                    color, text_color, success_rate
+                    "& \\cellcolor{{{color}}}\\textcolor{{{text_color}}}{{{success_rate:.0}\\%}}"
                 )
             };
             latex_content.push_str(&cell_content);

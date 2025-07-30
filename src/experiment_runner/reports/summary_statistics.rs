@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 /// Generate summary statistics LaTeX table
 pub fn generate_summary_statistics_latex_table(
@@ -36,16 +36,15 @@ pub fn generate_summary_statistics_latex_table(
 "#,
     );
     // Group by problem family
-    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let family = report_generator::get_family(&problem.get_name());
         for result in &results.results {
             family_results
                 .entry(family.clone())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -113,14 +112,7 @@ pub fn generate_summary_statistics_latex_table(
                     report_generator::escape_latex(optimizer)
                 };
                 latex_content.push_str(&format!(
-                    "{} & {} & {:.1} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-                    family_cell,
-                    optimizer_style,
-                    success_rate,
-                    avg_final,
-                    avg_func_evals,
-                    avg_grad_evals,
-                    avg_time
+                    "{family_cell} & {optimizer_style} & {success_rate:.1} & {avg_final:.2e} & {avg_func_evals:.1} & {avg_grad_evals:.1} & {avg_time:.3} \\\\\n"
                 ));
             }
             if !optimizer_data.is_empty() {
@@ -165,16 +157,15 @@ pub fn generate_summary_statistics_table_content(
 "#,
     );
     // Group by problem family (same logic as before)
-    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let mut family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let family = report_generator::get_family(&problem.get_name());
         for result in &results.results {
             family_results
                 .entry(family.clone())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(result.optimizer_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(result);
         }
     }
@@ -242,14 +233,7 @@ pub fn generate_summary_statistics_table_content(
                     report_generator::escape_latex(optimizer)
                 };
                 content.push_str(&format!(
-                    "{} & {} & {:.1} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-                    family_cell,
-                    optimizer_style,
-                    success_rate,
-                    avg_final,
-                    avg_func_evals,
-                    avg_grad_evals,
-                    avg_time
+                    "{family_cell} & {optimizer_style} & {success_rate:.1} & {avg_final:.2e} & {avg_func_evals:.1} & {avg_grad_evals:.1} & {avg_time:.3} \\\\\n"
                 ));
             }
             if !optimizer_data.is_empty() {

@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Additional metadata that optimizers can provide
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OptimizationMetadata {
     /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
     pub optimizer_data: std::collections::HashMap<String, f64>,
@@ -21,15 +21,6 @@ pub struct OptimizationMetadata {
     pub timing_info: TimingInfo,
     /// Memory usage information
     pub memory_info: MemoryInfo,
-}
-impl Default for OptimizationMetadata {
-    fn default() -> Self {
-        Self {
-            optimizer_data: std::collections::HashMap::new(),
-            timing_info: TimingInfo::default(),
-            memory_info: MemoryInfo::default(),
-        }
-    }
 }
 /// Core trait that all optimization algorithms must implement.
 ///
@@ -40,7 +31,7 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
     fn clone_box(&self) -> Box<dyn Optimizer>;
     /// Get optimizer configuration as a string for serialization
     fn config_string(&self) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 
     /// Perform a single optimization step using a differentiable function
@@ -99,22 +90,13 @@ pub struct StepResult {
 }
 
 /// Information about convergence status and criteria
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConvergenceInfo {
     /// Whether the optimizer has converged
     pub converged: bool,
 
     /// Change in function value from previous iteration
     pub function_change: Option<f64>,
-}
-
-impl Default for ConvergenceInfo {
-    fn default() -> Self {
-        Self {
-            converged: false,
-            function_change: None,
-        }
-    }
 }
 
 impl ConvergenceInfo {
@@ -179,7 +161,7 @@ impl Default for TimingInfo {
 }
 
 /// Memory usage information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryInfo {
     /// Peak memory usage during this step (in bytes)
     pub peak_memory: Option<usize>,
@@ -189,16 +171,6 @@ pub struct MemoryInfo {
 
     /// Memory allocated for temporary computations (in bytes)
     pub temp_memory: Option<usize>,
-}
-
-impl Default for MemoryInfo {
-    fn default() -> Self {
-        Self {
-            peak_memory: None,
-            state_memory: None,
-            temp_memory: None,
-        }
-    }
 }
 
 /// Configuration for convergence checking

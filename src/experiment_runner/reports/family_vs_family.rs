@@ -1,17 +1,16 @@
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
-use std::collections::HashMap;
 use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::report_generator;
 use crate::experiment_runner::report_generator::FamilyPerformanceData;
+use anyhow::Context;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 // Define consistent colors
 const BEST_COLOR_LATEX: &str = "\\cellcolor{bestgreen!30}";
 const WORST_COLOR_LATEX: &str = "\\cellcolor{worstred!20}";
 const BEST_COLOR_LATEX_INLINE: &str = "\\cellcolor{green!20}";
 const WORST_COLOR_LATEX_INLINE: &str = "\\cellcolor{red!15}";
-
 
 /// Generate family vs family comparison LaTeX table
 pub async fn generate_family_vs_family_latex_table(
@@ -33,9 +32,6 @@ pub async fn generate_family_vs_family_latex_table(
     let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
     optimizer_families.sort();
     problem_families.sort();
-
-
-
 
     if optimizer_families.is_empty() || problem_families.is_empty() {
         return Ok(());
@@ -64,15 +60,21 @@ pub async fn generate_family_vs_family_latex_table(
     for problem_family in &problem_families {
         let problems_in_family: Vec<_> = all_results
             .iter()
-            .filter(|(problem, _)| report_generator::get_family(&problem.get_name()) == *problem_family)
+            .filter(|(problem, _)| {
+                report_generator::get_family(&problem.get_name()) == *problem_family
+            })
             .collect();
         for optimizer_family in &optimizer_families {
-            let cell_data = calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-            let key = format!("{}_{}", problem_family, optimizer_family);
-            family_scores.insert(key, vec![cell_data.average_ranking, cell_data.best_rank_average]);
+            let cell_data =
+                calculate_family_performance_data(&problems_in_family, optimizer_family)?;
+            let key = format!("{problem_family}_{optimizer_family}");
+            family_scores.insert(
+                key,
+                vec![cell_data.average_ranking, cell_data.best_rank_average],
+            );
         }
     }
-    
+
     latex_content.push_str(&format!(
         r#"\begin{{longtable}}{{{col_spec}}}
 \caption{{Optimizer Family vs Problem Family Performance Matrix}}
@@ -111,18 +113,20 @@ pub async fn generate_family_vs_family_latex_table(
             .join(" "),
         optimizer_families.len() + 1
     ));
-    
+
     // For each problem family, calculate statistics
     for problem_family in &problem_families {
         latex_content.push_str(&format!(
             "\\textbf{{{}}} ",
             report_generator::escape_latex(problem_family)
         ));
-        
+
         // Get all problems in this family
         let problems_in_family: Vec<_> = all_results
             .iter()
-            .filter(|(problem, _)| report_generator::get_family(&problem.get_name()) == *problem_family)
+            .filter(|(problem, _)| {
+                report_generator::get_family(&problem.get_name()) == *problem_family
+            })
             .collect();
         // Collect scores for this row to find best/worst
         let mut row_scores = Vec::new();
@@ -131,21 +135,23 @@ pub async fn generate_family_vs_family_latex_table(
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
             row_scores.push((optimizer_family.clone(), cell_data.average_ranking));
         }
-        
+
         // Find best and worst in this row
-        let best_family = row_scores.iter()
+        let best_family = row_scores
+            .iter()
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(f, _)| f.clone())
             .unwrap_or_default();
-        let worst_family = row_scores.iter()
+        let worst_family = row_scores
+            .iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(f, _)| f.clone())
             .unwrap_or_default();
-            
+
         for optimizer_family in &optimizer_families {
             let cell_data =
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-                
+
             // Determine cell color
             let color_cmd = if cell_data.average_ranking.is_finite() {
                 if optimizer_family == &best_family {
@@ -158,7 +164,7 @@ pub async fn generate_family_vs_family_latex_table(
             } else {
                 ""
             };
-            
+
             let cell_content = format!(
                 "& {} \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} / {:.1} \\\\ \\scriptsize{{{}}} \\\\ \\scriptsize{{{}}} \\end{{tabular}}",
                 color_cmd,
@@ -211,7 +217,6 @@ fn truncate_name(name: &str, max_len: usize) -> String {
     }
 }
 
-
 /// Generate family vs family table content (without document wrapper)
 pub fn generate_family_vs_family_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
@@ -239,15 +244,21 @@ pub fn generate_family_vs_family_table_content(
     for problem_family in &problem_families {
         let problems_in_family: Vec<_> = all_results
             .iter()
-            .filter(|(problem, _)| report_generator::get_family(&problem.get_name()) == *problem_family)
+            .filter(|(problem, _)| {
+                report_generator::get_family(&problem.get_name()) == *problem_family
+            })
             .collect();
         for optimizer_family in &optimizer_families {
-            let cell_data = calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-            let key = format!("{}_{}", problem_family, optimizer_family);
-            family_scores.insert(key, vec![cell_data.average_ranking, cell_data.best_rank_average]);
+            let cell_data =
+                calculate_family_performance_data(&problems_in_family, optimizer_family)?;
+            let key = format!("{problem_family}_{optimizer_family}");
+            family_scores.insert(
+                key,
+                vec![cell_data.average_ranking, cell_data.best_rank_average],
+            );
         }
     }
-    
+
     let mut content = format!(
         r#"\begin{{longtable}}{{l{}}}
 \caption{{Optimizer Family vs Problem Family Performance Matrix}}
@@ -287,18 +298,20 @@ pub fn generate_family_vs_family_table_content(
             .join(" "),
         optimizer_families.len() + 1
     );
-    
+
     // For each problem family, calculate statistics
     for problem_family in &problem_families {
         content.push_str(&format!(
             "\\textbf{{{}}} ",
             report_generator::escape_latex(problem_family)
         ));
-        
+
         // Get all problems in this family
         let problems_in_family: Vec<_> = all_results
             .iter()
-            .filter(|(problem, _)| report_generator::get_family(&problem.get_name()) == *problem_family)
+            .filter(|(problem, _)| {
+                report_generator::get_family(&problem.get_name()) == *problem_family
+            })
             .collect();
         // Collect scores for this row to find best/worst
         let mut row_scores = Vec::new();
@@ -307,21 +320,23 @@ pub fn generate_family_vs_family_table_content(
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
             row_scores.push((optimizer_family.clone(), cell_data.average_ranking));
         }
-        
+
         // Find best and worst in this row
-        let best_family = row_scores.iter()
+        let best_family = row_scores
+            .iter()
             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(f, _)| f.clone())
             .unwrap_or_default();
-        let worst_family = row_scores.iter()
+        let worst_family = row_scores
+            .iter()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
             .map(|(f, _)| f.clone())
             .unwrap_or_default();
-            
+
         for optimizer_family in &optimizer_families {
             let cell_data =
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-                
+
             // Determine cell color
             let color_cmd = if cell_data.average_ranking.is_finite() {
                 if optimizer_family == &best_family {
@@ -334,7 +349,7 @@ pub fn generate_family_vs_family_table_content(
             } else {
                 ""
             };
-            
+
             let cell_content = format!(
                 "& {} \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} / {:.1} \\\\ \\scriptsize{{{}}} \\\\ \\scriptsize{{{}}} \\end{{tabular}}",
                 color_cmd,
@@ -400,9 +415,8 @@ This table shows how different optimizer families perform across different probl
 "#);
     for optimizer_family in &optimizer_families {
         content.push_str(&format!(
-            r#"<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">{}</th>
-"#,
-            optimizer_family
+            r#"<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">{optimizer_family}</th>
+"#
         ));
     }
     content.push_str("</tr>\n");
@@ -410,23 +424,24 @@ This table shows how different optimizer families perform across different probl
     for problem_family in &problem_families {
         content.push_str(&format!(
             r#"<tr>
-<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">{}</td>
-"#,
-            problem_family
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">{problem_family}</td>
+"#
         ));
         // Get all problems in this family
         let problems_in_family: Vec<_> = all_results
             .iter()
-            .filter(|(problem, _)| report_generator::get_family(&problem.get_name()) == *problem_family)
+            .filter(|(problem, _)| {
+                report_generator::get_family(&problem.get_name()) == *problem_family
+            })
             .collect();
         if problems_in_family.is_empty() {
             continue;
         }
-        
+
         for optimizer_family in &optimizer_families {
             let cell_data =
                 calculate_family_performance_data(&problems_in_family, optimizer_family)?;
-            
+
             // Collect scores for this row to find best/worst
             let mut row_scores = Vec::new();
             for opt_fam in &optimizer_families {
@@ -435,15 +450,17 @@ This table shows how different optimizer families perform across different probl
                     row_scores.push((opt_fam.clone(), data.average_ranking));
                 }
             }
-            
+
             // Find best and worst in this row
-            let best_family = row_scores.iter()
+            let best_family = row_scores
+                .iter()
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(f, _)| f.as_str());
-            let worst_family = row_scores.iter()
+            let worst_family = row_scores
+                .iter()
                 .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(f, _)| f.as_str());
-            
+
             let cell_style = if cell_data.average_ranking.is_finite() {
                 if Some(optimizer_family.as_str()) == best_family {
                     "border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;"
@@ -455,7 +472,7 @@ This table shows how different optimizer families perform across different probl
             } else {
                 "border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;"
             };
-            
+
             content.push_str(&format!(
                 r#"<td style="{}">
 <div><strong>Avg Rank:</strong> {:.1}</div>
@@ -496,7 +513,7 @@ pub(crate) fn calculate_family_performance_data(
             worst_variant: "N/A".to_string(),
         });
     }
-    
+
     let mut all_rankings = Vec::new();
     let mut best_ranks_per_problem = Vec::new();
     let mut variant_performance = std::collections::HashMap::new();
@@ -520,7 +537,7 @@ pub(crate) fn calculate_family_performance_data(
                 continue;
             }
             let success_count = if is_no_threshold_mode() {
-                0  // In no-threshold mode, we don't use convergence_achieved
+                0 // In no-threshold mode, we don't use convergence_achieved
             } else {
                 runs.iter().filter(|r| r.convergence_achieved).count()
             };

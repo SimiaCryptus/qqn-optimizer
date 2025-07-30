@@ -1,9 +1,9 @@
-use std::path::Path;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::fs;
+use std::path::Path;
 
 /// Generate efficiency matrix LaTeX table
 pub fn generate_efficiency_matrix_latex_table(
@@ -89,8 +89,7 @@ pub fn generate_efficiency_matrix_latex_table(
             for (problem, results) in all_results {
                 if report_generator::get_family(&problem.get_name()) == *problem_family {
                     for result in &results.results {
-                        let result_optimizer_family =
-                            get_optimizer_family(&result.optimizer_name);
+                        let result_optimizer_family = get_optimizer_family(&result.optimizer_name);
                         if result_optimizer_family == *optimizer_family
                             && result.convergence_achieved
                         {
@@ -110,9 +109,9 @@ pub fn generate_efficiency_matrix_latex_table(
                     .sum::<f64>()
                     / successful_evaluations.len() as f64;
                 let std_dev = variance.sqrt();
-                format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
+                format!("{mean:.0} $\\pm$ {std_dev:.0}")
             };
-            latex_content.push_str(&format!("& {} ", cell_content));
+            latex_content.push_str(&format!("& {cell_content} "));
         }
         latex_content.push_str("\\\\\n");
     }

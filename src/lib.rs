@@ -1,3 +1,18 @@
+#![allow(clippy::manual_clamp)]
+#![allow(clippy::empty_line_after_doc_comments)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::ptr_arg)]
+#![allow(clippy::upper_case_acronyms)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::doc_overindented_list_items)]
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::legacy_numeric_constants)]
+#![allow(clippy::never_loop)]
+#![allow(dead_code)]
+#![allow(unused_assignments)]
+
 pub mod analysis;
 pub mod benchmarks;
 pub mod experiment_runner;

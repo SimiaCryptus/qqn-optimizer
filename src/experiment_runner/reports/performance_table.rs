@@ -1,9 +1,9 @@
-use std::path::Path;
-use std::collections::HashMap;
-use std::fs;
-use anyhow::Context;
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::report_generator;
+use anyhow::Context;
+use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 /// Generate main performance LaTeX table
 pub fn generate_main_performance_latex_table(
@@ -139,16 +139,7 @@ pub fn generate_main_performance_latex_table(
                 report_generator::escape_latex(optimizer)
             };
             latex_content.push_str(&format!(
-                "{} & {} & {:.2e} & {:.2e} & {:.2e} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-                problem_cell,
-                optimizer_style,
-                mean_final,
-                std_final,
-                best_final,
-                worst_final,
-                mean_func_evals,
-                success_rate,
-                mean_time
+                "{problem_cell} & {optimizer_style} & {mean_final:.2e} & {std_final:.2e} & {best_final:.2e} & {worst_final:.2e} & {mean_func_evals:.1} & {success_rate:.1} & {mean_time:.3} \\\\\n"
             ));
         }
         if !perf_data.is_empty() {
@@ -293,16 +284,7 @@ pub fn generate_main_performance_table_content(
                 report_generator::escape_latex(optimizer)
             };
             content.push_str(&format!(
-                "{} & {} & {:.2e} & {:.2e} & {:.2e} & {:.2e} & {:.1} & {:.1} & {:.3} \\\\\n",
-                problem_cell,
-                optimizer_style,
-                mean_final,
-                std_final,
-                best_final,
-                worst_final,
-                mean_func_evals,
-                success_rate,
-                mean_time
+                "{problem_cell} & {optimizer_style} & {mean_final:.2e} & {std_final:.2e} & {best_final:.2e} & {worst_final:.2e} & {mean_func_evals:.1} & {success_rate:.1} & {mean_time:.3} \\\\\n"
             ));
         }
         if !perf_data.is_empty() {

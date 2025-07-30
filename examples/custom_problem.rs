@@ -10,8 +10,7 @@ use anyhow::Result;
 use candle_core::{Device, Tensor};
 use qqn_optimizer::utils::math::DifferentiableFunction;
 use qqn_optimizer::{
-    LBFGSConfig, LBFGSOptimizer, OptimizationProblem, Optimizer,
-    QQNConfig, QQNOptimizer,
+    LBFGSConfig, LBFGSOptimizer, OptimizationProblem, Optimizer, QQNConfig, QQNOptimizer,
 };
 use std::sync::Arc;
 
@@ -20,11 +19,11 @@ use std::sync::Arc;
 pub struct QuadraticProblem {
     name: String,
     dimension: usize,
-    matrix_a: Vec<Vec<f64>>,  // Positive definite matrix
-    vector_b: Vec<f64>,       // Linear term
-    constant_c: f64,          // Constant term
-    optimal_point: Vec<f64>,  // Known optimal point: x* = -A^(-1) * b
-    optimal_value: f64,       // Known optimal value
+    matrix_a: Vec<Vec<f64>>, // Positive definite matrix
+    vector_b: Vec<f64>,      // Linear term
+    constant_c: f64,         // Constant term
+    optimal_point: Vec<f64>, // Known optimal point: x* = -A^(-1) * b
+    optimal_value: f64,      // Known optimal value
 }
 
 impl QuadraticProblem {
@@ -40,15 +39,14 @@ impl QuadraticProblem {
         }
 
         // Create a random linear term
-        let vector_b: Vec<f64> = (0..dimension)
-            .map(|i| (i as f64 + 1.0) * 0.1)
-            .collect();
+        let vector_b: Vec<f64> = (0..dimension).map(|i| (i as f64 + 1.0) * 0.1).collect();
 
         let constant_c = 5.0;
 
         // Compute optimal point: x* = -A^(-1) * b
         // For diagonal A, this is simple: x*[i] = -b[i] / A[i][i]
-        let optimal_point: Vec<f64> = vector_b.iter()
+        let optimal_point: Vec<f64> = vector_b
+            .iter()
             .enumerate()
             .map(|(i, &bi)| -bi / matrix_a[i][i])
             .collect();
@@ -137,23 +135,21 @@ impl OptimizationProblem for QuadraticProblem {
 impl DifferentiableFunction for QuadraticProblem {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         // Convert tensors to f64 vector
-        let x: Result<Vec<f64>, _> = params.iter()
-            .map(|t| t.to_scalar::<f64>())
-            .collect();
+        let x: Result<Vec<f64>, _> = params.iter().map(|t| t.to_scalar::<f64>()).collect();
         let x = x?;
         // Evaluate using f64 implementation
-        let result = self.evaluate_f64(&x)
+        let result = self
+            .evaluate_f64(&x)
             .map_err(|e| candle_core::Error::Msg(format!("Evaluation error: {}", e)))?;
         Ok(result)
     }
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         // Convert tensors to f64 vector
-        let x: Result<Vec<f64>, _> = params.iter()
-            .map(|t| t.to_scalar::<f64>())
-            .collect();
+        let x: Result<Vec<f64>, _> = params.iter().map(|t| t.to_scalar::<f64>()).collect();
         let x = x?;
         // Compute gradient using f64 implementation
-        let grad = self.gradient_f64(&x)
+        let grad = self
+            .gradient_f64(&x)
             .map_err(|e| candle_core::Error::Msg(format!("Gradient error: {}", e)))?;
         // Convert back to tensors
         grad.iter()
@@ -161,7 +157,6 @@ impl DifferentiableFunction for QuadraticProblem {
             .collect()
     }
 }
-
 
 fn main() -> Result<()> {
     println!("Custom Optimization Problem Example");
@@ -191,8 +186,14 @@ fn main() -> Result<()> {
     )?;
     // Compare results
     println!("\n--- Comparison ---");
-    println!("QQN:    {} iterations, final value: {:.6}", qqn_result.0, qqn_result.1);
-    println!("L-BFGS: {} iterations, final value: {:.6}", lbfgs_result.0, lbfgs_result.1);
+    println!(
+        "QQN:    {} iterations, final value: {:.6}",
+        qqn_result.0, qqn_result.1
+    );
+    println!(
+        "L-BFGS: {} iterations, final value: {:.6}",
+        lbfgs_result.0, lbfgs_result.1
+    );
     let qqn_error = (qqn_result.1 - problem.optimal_value().unwrap()).abs();
     let lbfgs_error = (lbfgs_result.1 - problem.optimal_value().unwrap()).abs();
     println!("QQN error:    {:.2e}", qqn_error);
@@ -214,7 +215,8 @@ fn run_optimizer(
     let initial_point = problem.initial_point();
     let device = Device::Cpu;
     // Convert initial point to tensors
-    let mut params: Vec<Tensor> = initial_point.iter()
+    let mut params: Vec<Tensor> = initial_point
+        .iter()
         .map(|&val| Tensor::from_slice(&[val], (1,), &device))
         .collect::<candle_core::Result<Vec<_>>>()
         .map_err(|e| anyhow::anyhow!("Failed to create tensors: {}", e))?;
@@ -223,28 +225,35 @@ fn run_optimizer(
     println!("Starting {} optimization...", name);
     while iteration < max_iterations {
         // Convert tensors back to f64 for convergence checking
-        let x: Vec<f64> = params.iter()
+        let x: Vec<f64> = params
+            .iter()
             .map(|t| t.to_scalar::<f64>())
             .collect::<candle_core::Result<Vec<_>>>()
             .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
         let gradient = problem.gradient_f64(&x)?;
         let grad_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
         // Perform optimization step
-        let _step_result = optimizer.step(&mut params, problem.clone())
+        let _step_result = optimizer
+            .step(&mut params, problem.clone())
             .map_err(|e| anyhow::anyhow!("Optimizer step failed: {}", e))?;
         iteration += 1;
         // Print progress occasionally
         if iteration % 50 == 0 {
-            let x: Vec<f64> = params.iter()
+            let x: Vec<f64> = params
+                .iter()
                 .map(|t| t.to_scalar::<f64>())
                 .collect::<candle_core::Result<Vec<_>>>()
                 .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
             let f_val = problem.evaluate_f64(&x)?;
-            println!("  Iteration {}: f = {:.6}, ||∇f|| = {:.2e}", iteration, f_val, grad_norm);
+            println!(
+                "  Iteration {}: f = {:.6}, ||∇f|| = {:.2e}",
+                iteration, f_val, grad_norm
+            );
         }
     }
     // Convert final parameters back to f64 for evaluation
-    let final_x: Vec<f64> = params.iter()
+    let final_x: Vec<f64> = params
+        .iter()
         .map(|t| t.to_scalar::<f64>())
         .collect::<candle_core::Result<Vec<_>>>()
         .map_err(|e| anyhow::anyhow!("Failed to extract final values: {}", e))?;

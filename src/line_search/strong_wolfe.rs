@@ -21,7 +21,6 @@ use serde::{Deserialize, Serialize};
 /// - **Strong curvature**: |f'(αₖ)| ≤ c₂|f'(0)|
 ///
 /// where c₁ and c₂ are parameters with 0 < c₁ < c₂ < 1.
-
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrongWolfeConfig {
@@ -194,7 +193,7 @@ impl StrongWolfeLineSearch {
     /// Log line search details if verbose mode is enabled
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
-            debug!("StrongWolfe: {}", message);
+            debug!("StrongWolfe: {message}");
         }
     }
 
@@ -366,10 +365,9 @@ impl LineSearch for StrongWolfeLineSearch {
         let f0 = (problem.objective)(0.0)?;
         let directional_derivative = problem.initial_directional_derivative;
 
-        self.log_verbose(&format!("Starting 1D optimization with f(0)={:.3e}", f0));
+        self.log_verbose(&format!("Starting 1D optimization with f(0)={f0:.3e}"));
         self.log_verbose(&format!(
-            "Directional derivative: {:.3e}",
-            directional_derivative
+            "Directional derivative: {directional_derivative:.3e}"
         ));
 
         if directional_derivative >= 0.0 {
@@ -382,17 +380,16 @@ impl LineSearch for StrongWolfeLineSearch {
         let mut best_alpha = 0.0;
         let mut best_f = f0;
 
-        self.log_verbose(&format!("Initial step size: {:.3e}", alpha));
+        self.log_verbose(&format!("Initial step size: {alpha:.3e}"));
 
         for i in 0..self.config.max_iterations {
             self.log_verbose(&format!(
-                "Line Search Iteration {}: trying alpha={:.3e}",
-                i, alpha
+                "Line Search Iteration {i}: trying alpha={alpha:.3e}"
             ));
 
             // Evaluate function at current step size
             let f_alpha = (problem.objective)(alpha)?;
-            self.log_verbose(&format!("  f({:.3e}) = {:.3e}", alpha, f_alpha));
+            self.log_verbose(&format!("  f({alpha:.3e}) = {f_alpha:.3e}"));
             // Track best point found
             if f_alpha < best_f {
                 best_f = f_alpha;
@@ -404,13 +401,12 @@ impl LineSearch for StrongWolfeLineSearch {
                 || (i > 0 && f_alpha >= f_prev)
             {
                 self.log_verbose(&format!(
-                    "  Armijo failed or insufficient decrease, zooming between {:.3e} and {:.3e}",
-                    alpha_prev, alpha
+                    "  Armijo failed or insufficient decrease, zooming between {alpha_prev:.3e} and {alpha:.3e}"
                 ));
                 // Zoom between alpha_prev and alpha
                 let final_alpha =
-                    self.zoom(alpha_prev, alpha, f0, directional_derivative, &problem)?;
-                self.log_verbose(&format!("Zoom completed with alpha={:.3e}", final_alpha));
+                    self.zoom(alpha_prev, alpha, f0, directional_derivative, problem)?;
+                self.log_verbose(&format!("Zoom completed with alpha={final_alpha:.3e}"));
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -425,8 +421,7 @@ impl LineSearch for StrongWolfeLineSearch {
             // Check curvature condition
             if self.curvature_condition(grad_alpha, directional_derivative) {
                 self.log_verbose(&format!(
-                    "Both Wolfe conditions satisfied at alpha={:.3e}",
-                    alpha
+                    "Both Wolfe conditions satisfied at alpha={alpha:.3e}"
                 ));
                 return Ok(LineSearchResult {
                     step_size: alpha,
@@ -438,11 +433,10 @@ impl LineSearch for StrongWolfeLineSearch {
             // Check if gradient indicates we should look further
             if grad_alpha >= 0.0 {
                 self.log_verbose(&format!(
-                    "  Gradient indicates overshoot, zooming between {:.3e} and {:.3e}",
-                    alpha, alpha_prev
+                    "  Gradient indicates overshoot, zooming between {alpha:.3e} and {alpha_prev:.3e}"
                 ));
                 let final_alpha =
-                    self.zoom(alpha, alpha_prev, f0, directional_derivative, &problem)?;
+                    self.zoom(alpha, alpha_prev, f0, directional_derivative, problem)?;
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -458,8 +452,7 @@ impl LineSearch for StrongWolfeLineSearch {
         // If we have any improvement, use it
         if best_alpha > 0.0 && best_f < f0 {
             self.log_verbose(&format!(
-                "Returning best point found: alpha={:.3e}, f={:.3e}",
-                best_alpha, best_f
+                "Returning best point found: alpha={best_alpha:.3e}, f={best_f:.3e}"
             ));
             return Ok(LineSearchResult {
                 step_size: best_alpha,
@@ -472,7 +465,7 @@ impl LineSearch for StrongWolfeLineSearch {
         let eps_step = f64::EPSILON.sqrt();
         let f_eps = (problem.objective)(eps_step)?;
         if f_eps < f0 {
-            self.log_verbose(&format!("Using machine epsilon step {:.3e}", eps_step));
+            self.log_verbose(&format!("Using machine epsilon step {eps_step:.3e}"));
             return Ok(LineSearchResult {
                 step_size: eps_step,
                 success: true,

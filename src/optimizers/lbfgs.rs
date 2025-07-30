@@ -453,44 +453,38 @@ impl LBFGSState {
             // Check gradient magnitude to avoid numerical issues
             let grad_norm = compute_magnitude(gradient)?;
             if grad_norm < self.epsilon {
-                debug!(
-                    "L-BFGS: Very small gradient norm {:.6e}, using steepest descent",
-                    grad_norm
-                );
-                return Ok(gradient
+                debug!("L-BFGS: Very small gradient norm {grad_norm:.6e}, using steepest descent");
+                return gradient
                     .iter()
                     .map(|g| g.neg())
-                    .collect::<CandleResult<Vec<_>>>()?);
+                    .collect::<CandleResult<Vec<_>>>();
             }
             // Check for extremely large gradients
             if grad_norm > self.max_gradient_norm {
-                warn!(
-                    "L-BFGS: Extremely large gradient norm {:.6e}, scaling down",
-                    grad_norm
-                );
+                warn!("L-BFGS: Extremely large gradient norm {grad_norm:.6e}, scaling down");
                 let scale = self.max_gradient_norm / grad_norm;
-                return Ok(gradient
+                return gradient
                     .iter()
                     .map(|g| g.affine(-scale, 0.0))
-                    .collect::<CandleResult<Vec<_>>>()?);
+                    .collect::<CandleResult<Vec<_>>>();
             }
 
             // Check for NaN/Inf in gradient
             if !self.check_finite_tensors(gradient, "gradient")? {
                 warn!("L-BFGS: Non-finite gradient detected, using steepest descent");
-                return Ok(gradient
+                return gradient
                     .iter()
                     .map(|g| g.neg())
-                    .collect::<CandleResult<Vec<_>>>()?);
+                    .collect::<CandleResult<Vec<_>>>();
             }
         }
 
         if self.s_history.is_empty() {
             debug!("L-BFGS: No history, using steepest descent");
-            return Ok(gradient
+            return gradient
                 .iter()
                 .map(|g| g.neg())
-                .collect::<CandleResult<Vec<_>>>()?);
+                .collect::<CandleResult<Vec<_>>>();
         }
 
         let mut q = gradient.to_vec();
@@ -502,17 +496,14 @@ impl LBFGSState {
             let rho_i = self.rho_history[i];
             // Check for numerical issues
             if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
-                warn!(
-                    "L-BFGS: Skipping history pair {} due to numerical issues (rho={})",
-                    i, rho_i
-                );
+                warn!("L-BFGS: Skipping history pair {i} due to numerical issues (rho={rho_i})");
                 alpha.push(0.0); // Push zero alpha to maintain indexing
                 continue;
             }
 
             let alpha_i = rho_i * dot_product(s_i, &q)?;
             if !alpha_i.is_finite() {
-                warn!("L-BFGS: Non-finite alpha detected at iteration {}", i);
+                warn!("L-BFGS: Non-finite alpha detected at iteration {i}");
                 alpha.push(0.0); // Push zero alpha to maintain indexing
                 continue;
             }
@@ -527,10 +518,10 @@ impl LBFGSState {
             if !self.disable_checks {
                 // Check if q has become non-finite
                 if !self.check_finite_tensors(&q, "q (first loop)")? {
-                    return Ok(gradient
+                    return gradient
                         .iter()
                         .map(|g| g.neg())
-                        .collect::<CandleResult<Vec<_>>>()?);
+                        .collect::<CandleResult<Vec<_>>>();
                 }
             }
         }
@@ -567,7 +558,7 @@ impl LBFGSState {
             let beta = rho_i * dot_product(y_i, &r)?;
             let correction_factor = alpha_i - beta;
             if !correction_factor.is_finite() {
-                warn!("L-BFGS: Non-finite correction factor at iteration {}", i);
+                warn!("L-BFGS: Non-finite correction factor at iteration {i}");
                 continue;
             }
 
@@ -578,10 +569,10 @@ impl LBFGSState {
             if !self.disable_checks {
                 // Check if r has become non-finite
                 if !self.check_finite_tensors(&r, "r (second loop)")? {
-                    return Ok(gradient
+                    return gradient
                         .iter()
                         .map(|g| g.neg())
-                        .collect::<CandleResult<Vec<_>>>()?);
+                        .collect::<CandleResult<Vec<_>>>();
                 }
             }
         }
@@ -596,10 +587,10 @@ impl LBFGSState {
             // Final check on the direction
             // Verify the direction is finite
             if !self.check_finite_tensors(&direction, "final direction")? {
-                return Ok(gradient
+                return gradient
                     .iter()
                     .map(|g| g.neg())
-                    .collect::<CandleResult<Vec<_>>>()?);
+                    .collect::<CandleResult<Vec<_>>>();
             }
         }
 
@@ -617,21 +608,20 @@ impl LBFGSState {
             let grad_norm = compute_magnitude(gradient)?;
             if grad_norm < self.epsilon {
                 debug!(
-                    "L-BFGS: Very small gradient norm {:.6e}, returning negative gradient",
-                    grad_norm
+                    "L-BFGS: Very small gradient norm {grad_norm:.6e}, returning negative gradient"
                 );
-                return Ok(gradient
+                return gradient
                     .iter()
                     .map(|g| g.neg())
-                    .collect::<CandleResult<Vec<_>>>()?);
+                    .collect::<CandleResult<Vec<_>>>();
             }
         }
         if self.s_history.is_empty() {
             debug!("L-BFGS: No history, returning negative gradient");
-            return Ok(gradient
+            return gradient
                 .iter()
                 .map(|g| g.neg())
-                .collect::<CandleResult<Vec<_>>>()?);
+                .collect::<CandleResult<Vec<_>>>();
         }
         let mut q = gradient.to_vec();
         let mut alpha = Vec::with_capacity(self.s_history.len());
@@ -640,16 +630,13 @@ impl LBFGSState {
             let s_i = &self.s_history[i];
             let rho_i = self.rho_history[i];
             if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
-                warn!(
-                    "L-BFGS: Skipping history pair {} due to numerical issues (rho={})",
-                    i, rho_i
-                );
+                warn!("L-BFGS: Skipping history pair {i} due to numerical issues (rho={rho_i})");
                 alpha.push(0.0);
                 continue;
             }
             let alpha_i = rho_i * dot_product(s_i, &q)?;
             if !alpha_i.is_finite() {
-                warn!("L-BFGS: Non-finite alpha detected at iteration {}", i);
+                warn!("L-BFGS: Non-finite alpha detected at iteration {i}");
                 alpha.push(0.0);
                 continue;
             }
@@ -681,7 +668,7 @@ impl LBFGSState {
             let beta = rho_i * dot_product(y_i, &r)?;
             let correction_factor = alpha_i - beta;
             if !correction_factor.is_finite() {
-                warn!("L-BFGS: Non-finite correction factor at iteration {}", i);
+                warn!("L-BFGS: Non-finite correction factor at iteration {i}");
                 continue;
             }
             // r = r + (alpha_i - beta) * s_i
@@ -733,10 +720,7 @@ impl LBFGSState {
         let s_k_norm = compute_magnitude(&s_k)?;
         // Use epsilon-based threshold for consistency
         if s_k_norm < self.epsilon {
-            debug!(
-                "L-BFGS: Parameter change too small ({:.6e}), skipping update",
-                s_k_norm
-            );
+            debug!("L-BFGS: Parameter change too small ({s_k_norm:.6e}), skipping update");
             // Still update the previous gradient for next iteration
             self.prev_gradient = Some(new_gradient.to_vec());
             return Ok(());
@@ -779,7 +763,7 @@ impl LBFGSState {
                     };
 
                     if theta < 1.0 {
-                        debug!("L-BFGS: Applying Powell damping with theta = {:.6e}", theta);
+                        debug!("L-BFGS: Applying Powell damping with theta = {theta:.6e}");
                         // y_k_damped = theta * y_k + (1 - theta) * B_k * s_k
                         // For simplicity, we'll use a scaled identity approximation for B_k
                         let scaled_s = vector_scale(&s_k, self.gamma)?;
@@ -825,20 +809,18 @@ impl LBFGSState {
                     // Ensure gamma is finite before updating
                     if new_gamma.is_finite() && new_gamma > 0.0 {
                         // Less conservative gamma clamping for better performance
-                        self.gamma = new_gamma.max(1e-8).min(1e8);
+                        self.gamma = new_gamma.clamp(1e-8, 1e8);
                         if (new_gamma - self.gamma).abs() > 1e-10 {
                             debug!("L-BFGS: Gamma clamped from {} to {}", new_gamma, self.gamma);
                         }
                     } else {
                         debug!(
-                            "L-BFGS: Invalid gamma computed: {}, keeping current value",
-                            new_gamma
+                            "L-BFGS: Invalid gamma computed: {new_gamma}, keeping current value"
                         );
                     }
                 }
             } else {
-                debug!("L-BFGS: Curvature condition not satisfied even after damping (s_dot_y = {:.6e}, threshold = {:.6e}), skipping update", 
-                       s_dot_y_final, curvature_threshold);
+                debug!("L-BFGS: Curvature condition not satisfied even after damping (s_dot_y = {s_dot_y_final:.6e}, threshold = {curvature_threshold:.6e}), skipping update");
             }
         }
 
@@ -915,7 +897,7 @@ impl LBFGSState {
         for (i, tensor) in tensors.iter().enumerate() {
             let values = tensor.flatten_all()?.to_vec1::<f64>()?;
             if values.iter().any(|&x| !x.is_finite()) {
-                warn!("L-BFGS: Non-finite {} detected at index {}", context, i);
+                warn!("L-BFGS: Non-finite {context} detected at index {i}");
                 return Ok(false);
             }
         }
@@ -964,13 +946,13 @@ impl LBFGSOptimizer {
         if !self.config.verbose {
             return;
         }
-        debug!("=== L-BFGS: {} ===", name);
+        debug!("=== L-BFGS: {name} ===");
         log_tensor(tensors);
     }
     /// Log scalar value if verbose mode is enabled
     fn log_scalar(&self, name: &str, value: f64) {
         if self.config.verbose {
-            debug!("  L-BFGS {}: {:.12e}", name, value);
+            debug!("  L-BFGS {name}: {value:.12e}");
         }
     }
     /// Log L-BFGS state if verbose mode is enabled
@@ -982,7 +964,7 @@ impl LBFGSOptimizer {
         debug!("  Iteration: {}", self.state.iteration());
         debug!("  History Length: {}", self.state.history_length());
         debug!("  Gamma: {:.6e}", self.state.gamma());
-        debug!("  Additional Info: {}", additional_info);
+        debug!("  Additional Info: {additional_info}");
     }
 
     /// Get a reference to the internal L-BFGS state.
@@ -1065,8 +1047,7 @@ impl Optimizer for LBFGSOptimizer {
 
         if !direction_norm.is_finite() || direction_norm < self.config.epsilon {
             warn!(
-                "L-BFGS: Invalid search direction norm: {}, using steepest descent",
-                direction_norm
+                "L-BFGS: Invalid search direction norm: {direction_norm}, using steepest descent"
             );
             // Fall back to steepest descent
             let search_direction = gradients
@@ -1140,7 +1121,7 @@ impl Optimizer for LBFGSOptimizer {
             } else {
                 1.0
             };
-            initial_step.max(1e-4).min(10.0)
+            initial_step.clamp(1e-4, 10.0)
         } else {
             // Subsequent iterations: use gamma-based scaling
             let dir_norm = compute_magnitude(&search_direction)?;
@@ -1154,15 +1135,14 @@ impl Optimizer for LBFGSOptimizer {
                 self.config.min_step_size
             }
         };
-        debug!("L-BFGS: Initial step size = {:.6e}", step_size);
+        debug!("L-BFGS: Initial step size = {step_size:.6e}");
         // Use the configured line search
         let mut line_search = self.line_search.clone_box();
         // Create a more conservative line search configuration for problematic cases
         if grad_norm > 1e6 || direction_norm > 1e6 {
-            warn!("L-BFGS: Large gradients detected (grad_norm={:.2e}, dir_norm={:.2e}), using very conservative step size", 
-                  grad_norm, direction_norm);
+            warn!("L-BFGS: Large gradients detected (grad_norm={grad_norm:.2e}, dir_norm={direction_norm:.2e}), using very conservative step size");
             // For very large gradients, use an extremely conservative fixed step
-            let conservative_step = (1e-6 / (grad_norm + 1.0)).max(1e-12).min(1e-6);
+            let conservative_step = (1e-6 / (grad_norm + 1.0)).clamp(1e-12, 1e-6);
             // Update parameters with conservative step
             let old_params = params.to_vec();
             for (param, direction) in params.iter_mut().zip(&search_direction) {
@@ -1221,11 +1201,11 @@ impl Optimizer for LBFGSOptimizer {
                 Arc::new(objective_fn),
                 Arc::new(gradient_fn),
             )
-            .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {}", e)))?;
+            .map_err(|e| candle_core::Error::Msg(format!("Failed to create 1D problem: {e}")))?;
             // Perform line search
             line_search
                 .optimize_1d(&problem)
-                .map_err(|e| candle_core::Error::Msg(format!("Line search failed: {}", e)))?
+                .map_err(|e| candle_core::Error::Msg(format!("Line search failed: {e}")))?
         };
 
         if self.config.verbose {
@@ -1328,9 +1308,7 @@ impl Optimizer for LBFGSOptimizer {
                 .collect::<CandleResult<Vec<_>>>()?
                 .into_iter()
                 .fold(0.0_f64, |a, b| a.max(b));
-            self.state.gamma = (1.0 / (grad_norm / param_scale.max(1.0)))
-                .max(0.1)
-                .min(10.0);
+            self.state.gamma = (1.0 / (grad_norm / param_scale.max(1.0))).clamp(0.1, 10.0);
             self.state.no_improvement_count = 0;
             debug!(
                 "L-BFGS: Recovery triggered, new gamma = {:.6e}",
@@ -1350,7 +1328,7 @@ impl Optimizer for LBFGSOptimizer {
                 "=== L-BFGS Step {} Completed ===",
                 self.state.iteration() - 1
             );
-            debug!("  Step Duration: {:?}", step_duration);
+            debug!("  Step Duration: {step_duration:?}");
             debug!("  Converged: {}", convergence_info.converged);
         }
 

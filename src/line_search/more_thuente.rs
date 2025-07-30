@@ -215,7 +215,7 @@ impl MoreThuenteLineSearch {
     /// Uses the `log` crate's debug level for output
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
-            debug!("MoreThuente: {}", message);
+            debug!("MoreThuente: {message}");
         }
     }
     /// Check strong Wolfe conditions
@@ -367,39 +367,35 @@ impl MoreThuenteLineSearch {
                 } else {
                     stpq
                 }
+            } else if (stp - stpc).abs() > (stp - stpq).abs() {
+                stpc
             } else {
-                if (stp - stpc).abs() > (stp - stpq).abs() {
-                    stpc
-                } else {
-                    stpq
-                }
+                stpq
             };
             stpf.clamp(*bound.start(), *bound.end())
         }
         // Case 4: Lower function value, derivatives have same sign, not decreasing
-        else {
-            if *brackt {
-                let theta = 3.0 * (fp - *fy) / (*sty - stp) + *gy + gp;
-                let s = theta.abs().max(gy.abs()).max(gp.abs());
-                let discriminant = (theta / s).powi(2) - (*gy / s) * (gp / s);
-                let mut gamma = if discriminant > 0.0 {
-                    s * discriminant.sqrt()
-                } else {
-                    0.0
-                };
-                if stp > *sty {
-                    gamma = -gamma;
-                }
-                let p = (gamma - gp) + theta;
-                let q = ((gamma - gp) + gamma) + *gy;
-                let r = if q.abs() > EPSILON { p / q } else { 0.5 };
-                let stpc = stp + r * (*sty - stp);
-                stpc.clamp(*bound.start(), *bound.end())
-            } else if stp > *stx {
-                self.config.max_step
+        else if *brackt {
+            let theta = 3.0 * (fp - *fy) / (*sty - stp) + *gy + gp;
+            let s = theta.abs().max(gy.abs()).max(gp.abs());
+            let discriminant = (theta / s).powi(2) - (*gy / s) * (gp / s);
+            let mut gamma = if discriminant > 0.0 {
+                s * discriminant.sqrt()
             } else {
-                self.config.min_step
+                0.0
+            };
+            if stp > *sty {
+                gamma = -gamma;
             }
+            let p = (gamma - gp) + theta;
+            let q = ((gamma - gp) + gamma) + *gy;
+            let r = if q.abs() > EPSILON { p / q } else { 0.5 };
+            let stpc = stp + r * (*sty - stp);
+            stpc.clamp(*bound.start(), *bound.end())
+        } else if stp > *stx {
+            self.config.max_step
+        } else {
+            self.config.min_step
         }
     }
     /// Update the interval endpoints based on function values and gradients
@@ -485,8 +481,7 @@ impl LineSearch for MoreThuenteLineSearch {
         let mut best_f = f0;
 
         self.log_verbose(&format!(
-            "Starting More-Thuente with f(0)={:.3e}, g(0)={:.3e}",
-            f0, g0
+            "Starting More-Thuente with f(0)={f0:.3e}, g(0)={g0:.3e}"
         ));
 
         for iter in 0..self.config.max_iterations {
@@ -504,10 +499,7 @@ impl LineSearch for MoreThuenteLineSearch {
             let gp = (problem.gradient)(stp)?;
             // Check for NaN or infinite values
             if !fp.is_finite() || !gp.is_finite() {
-                self.log_verbose(&format!(
-                    "Non-finite values at step {}: f={}, g={}",
-                    stp, fp, gp
-                ));
+                self.log_verbose(&format!("Non-finite values at step {stp}: f={fp}, g={gp}"));
                 // Return best point found so far
                 if best_stp > 0.0 && best_f < f0 {
                     return Ok(LineSearchResult {
@@ -526,8 +518,7 @@ impl LineSearch for MoreThuenteLineSearch {
             }
 
             self.log_verbose(&format!(
-                "Line Search Iteration {}: stp={:.3e}, f={:.3e}, g={:.3e}",
-                iter, stp, fp, gp
+                "Line Search Iteration {iter}: stp={stp:.3e}, f={fp:.3e}, g={gp:.3e}"
             ));
 
             // Check Wolfe conditions
