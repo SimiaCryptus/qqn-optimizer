@@ -1,7 +1,7 @@
 use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::report_generator;
-use crate::experiment_runner::report_generator::FamilyPerformanceData;
+use crate::experiment_runner::report_generator::{FamilyPerformanceData, escape_latex_safe};
 use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
