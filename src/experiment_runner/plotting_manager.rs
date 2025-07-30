@@ -132,9 +132,7 @@ impl PlottingManager {
                 warn!("Failed to generate {plot_description}: {e}");
             }
             Err(_) => {
-                warn!(
-                    "Skipping {plot_description} due to panic in plotting library"
-                );
+                warn!("Skipping {plot_description} due to panic in plotting library");
             }
         }
     }

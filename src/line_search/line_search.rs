@@ -140,9 +140,7 @@ pub fn create_1d_problem(
             // Compute directional derivative: ∇f(x(t)) · dx/dt
             dot_product_f64(&g, &curve_derivative)
         })?;
-        debug!(
-            "1-D gradient result at t={t:.3e}; p={result_vec:?} = {result:.3e}"
-        );
+        debug!("1-D gradient result at t={t:.3e}; p={result_vec:?} = {result:.3e}");
         Ok(result)
     });
     Ok(OneDimensionalProblem::new(
@@ -163,11 +161,8 @@ pub fn create_1d_problem_linear(
     // Debug: let's verify the curve works correctly
     let test_val_0 = curve.position(0.0)?;
     let test_val_1 = curve.position(1.0)?;
-    debug!(
-        "Curve test: f(t=0) -> {test_val_0:?}, f(t=1) -> {test_val_1:?}"
-    );
+    debug!("Curve test: f(t=0) -> {test_val_0:?}, f(t=1) -> {test_val_1:?}");
 
-    
     create_1d_problem(Box::new(curve), objective_fn, gradient_fn)
 }
 

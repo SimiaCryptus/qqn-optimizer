@@ -211,9 +211,7 @@ impl GoldenSectionLineSearch {
     fn find_minimum(&self, problem: &OneDimensionalProblem) -> anyhow::Result<f64> {
         // First, establish a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c)
         let (a, b, c) = self.find_bracket(problem)?;
-        self.log_verbose(&format!(
-            "Initial bracket: [{a:.6e}, {b:.6e}, {c:.6e}]"
-        ));
+        self.log_verbose(&format!("Initial bracket: [{a:.6e}, {b:.6e}, {c:.6e}]"));
         // Golden section search
         let mut left = a;
         let mut right = c;
@@ -324,7 +322,7 @@ impl GoldenSectionLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use crate::line_search::line_search::create_1d_problem_linear;
     use crate::line_search::TerminationReason;
     use approx::assert_abs_diff_eq;

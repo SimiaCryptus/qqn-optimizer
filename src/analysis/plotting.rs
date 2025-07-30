@@ -232,9 +232,7 @@ impl PlottingEngine {
             });
         // Check if we have valid bounds
         if !min_obj.is_finite() || !max_obj.is_finite() || min_obj >= max_obj {
-            eprintln!(
-                "[Plotting] Warning: Invalid objective value bounds: [{min_obj}, {max_obj}]"
-            );
+            eprintln!("[Plotting] Warning: Invalid objective value bounds: [{min_obj}, {max_obj}]");
             return Ok(());
         }
 
@@ -740,9 +738,7 @@ impl PlottingEngine {
             // Filter out non-finite values
             values.retain(|&v| v.is_finite());
             if values.is_empty() {
-                eprintln!(
-                    "[Plotting] Warning: No finite values for optimizer {optimizer}"
-                );
+                eprintln!("[Plotting] Warning: No finite values for optimizer {optimizer}");
                 continue;
             }
 

@@ -386,9 +386,7 @@ impl QQNOptimizer {
 
         // Evaluate function at current parameters to check for increasing steps
         let initial_function_value = function.evaluate(nd_params)?;
-        debug!(
-            "Initial function value (steepest descent): {initial_function_value:.6e}"
-        );
+        debug!("Initial function value (steepest descent): {initial_function_value:.6e}");
 
         // Create steepest descent direction (negative gradient) with scaling factor
         // This allows line search to explore larger steps while operating in [0,1]
@@ -401,9 +399,7 @@ impl QQNOptimizer {
         // Check if direction is essentially zero (this should be caught above, but double-check)
         let direction_norm = compute_magnitude(&direction)?;
         if direction_norm < self.config.epsilon {
-            warn!(
-                "Direction norm {direction_norm:.3e} is too small, indicating convergence"
-            );
+            warn!("Direction norm {direction_norm:.3e} is too small, indicating convergence");
             return Ok(StepResult {
                 step_size: 0.0,
                 convergence_info: ConvergenceInfo {
@@ -544,9 +540,7 @@ impl QQNOptimizer {
 
         // FATAL ERROR CHECK: Verify that the steepest descent step decreased the function value
         let final_function_value = function.evaluate(nd_params)?;
-        debug!(
-            "Final function value (steepest descent): {final_function_value:.6e}"
-        );
+        debug!("Final function value (steepest descent): {final_function_value:.6e}");
         if final_function_value > initial_function_value {
             let increase = final_function_value - initial_function_value;
             error!(
@@ -557,9 +551,7 @@ impl QQNOptimizer {
             )));
         }
         let function_decrease = initial_function_value - final_function_value;
-        debug!(
-            "Function decreased by (steepest descent): {function_decrease:.6e}"
-        );
+        debug!("Function decreased by (steepest descent): {function_decrease:.6e}");
         self.log_scalar("Function Decrease (Steepest Descent)", function_decrease);
 
         // Update L-BFGS state with the new gradient at the updated position
@@ -747,9 +739,7 @@ impl Optimizer for QQNOptimizer {
             return Ok(result);
         }
 
-        debug!(
-            "L-BFGS direction computed successfully: {params:?}->{lbfgs_direction:?}"
-        );
+        debug!("L-BFGS direction computed successfully: {params:?}->{lbfgs_direction:?}");
         let quadratic_path = self.create_quadratic_path(
             params,
             &initial_gradients,
@@ -758,9 +748,7 @@ impl Optimizer for QQNOptimizer {
         )?;
         // Configure line search with previous step size if available
         if let Some(prev_step) = self.state.previous_step_size {
-            debug!(
-                "Using previous step size {prev_step:.3e} as initial step for line search"
-            );
+            debug!("Using previous step size {prev_step:.3e} as initial step for line search");
             self.set_initial_step(prev_step);
         }
         let line_search_result = self.find_optimal_t_line_search(quadratic_path.clone());
@@ -881,9 +869,7 @@ impl Optimizer for QQNOptimizer {
             }
             // Also check for extremely large values
             if param_vec.iter().any(|&x| x.abs() > 1e10) {
-                warn!(
-                    "Extremely large parameter detected at index {i} after update"
-                );
+                warn!("Extremely large parameter detected at index {i} after update");
                 return Err(Error::Msg("Parameter values too large after update".into()));
             }
         }
@@ -1014,9 +1000,7 @@ impl QuadraticPath {
         // Clamp t to valid range
         let t_clamped = t.max(0.0).min(1.0);
         if (t - t_clamped).abs() > 1e-10 {
-            trace!(
-                "QuadraticPath::evaluate_direction: clamped t from {t} to {t_clamped}"
-            );
+            trace!("QuadraticPath::evaluate_direction: clamped t from {t} to {t_clamped}");
         }
         let t = t_clamped;
 
@@ -1213,7 +1197,7 @@ impl<'a> ParametricCurve for QuadraticPath {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use approx::assert_relative_eq;
     use candle_core::Device;
     use std::sync::Arc;

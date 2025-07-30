@@ -130,13 +130,9 @@ pub fn generate_comparison_matrix_latex_table(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
                 format!("{wins}W-{losses}L-{ties}T")
             };
@@ -271,13 +267,9 @@ pub fn generate_comparison_matrix_table_content(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
                 format!("{wins}W-{losses}L-{ties}T")
             };
@@ -406,13 +398,9 @@ pub fn generate_family_comparison_matrix_table_content(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
                 format!("{wins}W-{losses}L-{ties}T")
             };
@@ -555,13 +543,9 @@ pub fn generate_family_comparison_matrix_latex_table(
                 }
             }
             let cell_content = if wins > losses {
-                format!(
-                    "\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else if losses > wins {
-                format!(
-                    "\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}"
-                )
+                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
             } else {
                 format!("{wins}W-{losses}L-{ties}T")
             };

@@ -41,9 +41,7 @@ impl ExperimentRunner {
         // Run benchmarks for each problem with its specific optimizers
         for problem_name in problem_optimizer_map.keys() {
             // Find the problem by name (we'll need to pass problems separately or store them)
-            info!(
-                "Running championship benchmarks for problem: {problem_name}"
-            );
+            info!("Running championship benchmarks for problem: {problem_name}");
             // This will be handled by the calling function
         }
         Ok(())
@@ -288,9 +286,7 @@ pub fn get_optimizer_family(optimizer_name: &str) -> String {
     } else if optimizer_name.starts_with("Adam") {
         "Adam".to_string()
     } else {
-        warn!(
-            "Unknown optimizer family for '{optimizer_name}', using full name"
-        );
+        warn!("Unknown optimizer family for '{optimizer_name}', using full name");
         optimizer_name.to_string()
     }
 }

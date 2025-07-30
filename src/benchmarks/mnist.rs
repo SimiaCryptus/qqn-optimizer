@@ -142,9 +142,7 @@ impl MnistNeuralNetwork {
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
             .join("x");
-        let name = format!(
-            "MNIST_NN_{n_samples}samples_hidden{hidden_str}_{activation_name}"
-        );
+        let name = format!("MNIST_NN_{n_samples}samples_hidden{hidden_str}_{activation_name}");
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
@@ -592,9 +590,7 @@ impl MnistNeuralNetwork {
             println!("  Std Dev: {std_dev:.6}");
             println!("  Min/Max: {min:.6} / {max:.6}");
             println!("  Zero values: {zero_count} ({zero_percentage:.2}%)");
-            println!(
-                "  Extreme values (>3σ): {extreme_count} ({extreme_percentage:.2}%)"
-            );
+            println!("  Extreme values (>3σ): {extreme_count} ({extreme_percentage:.2}%)");
             // Determine if this is a weight or bias based on shape
             let dims = tensor.shape().dims();
             if dims.len() == 2 {

@@ -259,10 +259,7 @@ impl LineSearch for BacktrackingLineSearch {
     /// 4. If α becomes smaller than min_step, try the minimum step
     /// 5. If max iterations reached, return the best point found
     /// 6. As a last resort, try machine epsilon step size
-    fn optimize_1d(
-        &mut self,
-        problem: &OneDimensionalProblem,
-    ) -> anyhow::Result<LineSearchResult> {
+    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let directional_derivative = problem.initial_directional_derivative;
 
@@ -625,14 +622,14 @@ mod tests {
         )
         .unwrap();
         let result = line_search.optimize_1d(&problem).unwrap_or_else(|e| {
-                debug!("Line search failed: {e}");
-                // If it fails, we expect it to be due to step size being too small
-                LineSearchResult {
-                    step_size: 0.0,
-                    success: false,
-                    termination_reason: TerminationReason::StepSizeTooSmall,
-                }
-            });
+            debug!("Line search failed: {e}");
+            // If it fails, we expect it to be due to step size being too small
+            LineSearchResult {
+                step_size: 0.0,
+                success: false,
+                termination_reason: TerminationReason::StepSizeTooSmall,
+            }
+        });
         if result.success {
             // If it succeeded, the step size should be small (but we'll be more lenient)
             // The key is that it found *some* acceptable step

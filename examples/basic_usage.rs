@@ -63,9 +63,7 @@ fn main() -> Result<()> {
         // Print progress
         if iteration % 10 == 0 {
             let f_val = problem.evaluate_f64(&initial_point)?;
-            println!(
-                "Iteration {iteration}: f = {f_val:.6}, ||∇f|| = {grad_norm:.6}"
-            );
+            println!("Iteration {iteration}: f = {f_val:.6}, ||∇f|| = {grad_norm:.6}");
         }
 
         // Check convergence

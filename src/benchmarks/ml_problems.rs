@@ -406,9 +406,8 @@ impl LinearRegression {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
-        let name = format!(
-            "LinearRegression_{n_samples}samples_{n_features}features_reg{regularization}"
-        );
+        let name =
+            format!("LinearRegression_{n_samples}samples_{n_features}features_reg{regularization}");
 
         // Convert to tensors
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();

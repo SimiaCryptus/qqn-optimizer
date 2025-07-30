@@ -453,9 +453,7 @@ impl LBFGSState {
             // Check gradient magnitude to avoid numerical issues
             let grad_norm = compute_magnitude(gradient)?;
             if grad_norm < self.epsilon {
-                debug!(
-                    "L-BFGS: Very small gradient norm {grad_norm:.6e}, using steepest descent"
-                );
+                debug!("L-BFGS: Very small gradient norm {grad_norm:.6e}, using steepest descent");
                 return gradient
                     .iter()
                     .map(|g| g.neg())
@@ -463,9 +461,7 @@ impl LBFGSState {
             }
             // Check for extremely large gradients
             if grad_norm > self.max_gradient_norm {
-                warn!(
-                    "L-BFGS: Extremely large gradient norm {grad_norm:.6e}, scaling down"
-                );
+                warn!("L-BFGS: Extremely large gradient norm {grad_norm:.6e}, scaling down");
                 let scale = self.max_gradient_norm / grad_norm;
                 return gradient
                     .iter()
@@ -500,9 +496,7 @@ impl LBFGSState {
             let rho_i = self.rho_history[i];
             // Check for numerical issues
             if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
-                warn!(
-                    "L-BFGS: Skipping history pair {i} due to numerical issues (rho={rho_i})"
-                );
+                warn!("L-BFGS: Skipping history pair {i} due to numerical issues (rho={rho_i})");
                 alpha.push(0.0); // Push zero alpha to maintain indexing
                 continue;
             }
@@ -636,9 +630,7 @@ impl LBFGSState {
             let s_i = &self.s_history[i];
             let rho_i = self.rho_history[i];
             if !rho_i.is_finite() || rho_i.abs() < 1e-16 {
-                warn!(
-                    "L-BFGS: Skipping history pair {i} due to numerical issues (rho={rho_i})"
-                );
+                warn!("L-BFGS: Skipping history pair {i} due to numerical issues (rho={rho_i})");
                 alpha.push(0.0);
                 continue;
             }
@@ -728,9 +720,7 @@ impl LBFGSState {
         let s_k_norm = compute_magnitude(&s_k)?;
         // Use epsilon-based threshold for consistency
         if s_k_norm < self.epsilon {
-            debug!(
-                "L-BFGS: Parameter change too small ({s_k_norm:.6e}), skipping update"
-            );
+            debug!("L-BFGS: Parameter change too small ({s_k_norm:.6e}), skipping update");
             // Still update the previous gradient for next iteration
             self.prev_gradient = Some(new_gradient.to_vec());
             return Ok(());

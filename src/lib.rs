@@ -102,6 +102,9 @@ mod tests {
     fn test_version_constant() {
         // VERSION is a const string, so this check ensures it's properly defined
         assert!(!VERSION.is_empty(), "VERSION should not be empty");
-        assert!(VERSION.contains('.'), "VERSION should contain a dot for version format");
+        assert!(
+            VERSION.contains('.'),
+            "VERSION should contain a dot for version format"
+        );
     }
 }

@@ -142,10 +142,11 @@ impl StatisticalAnalysis {
                     result.optimizer_name.clone()
                 };
 
-                optimizer_results
-                    .entry(optimizer_key)
-                    .or_default()
-                    .push((result.final_value, cost, problem_name.to_string()));
+                optimizer_results.entry(optimizer_key).or_default().push((
+                    result.final_value,
+                    cost,
+                    problem_name.to_string(),
+                ));
             }
         }
 

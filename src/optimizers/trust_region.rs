@@ -275,9 +275,7 @@ impl TrustRegionOptimizer {
 
         let newton_norm = compute_magnitude(&newton_step)?;
         if self.config.verbose {
-            debug!(
-                "Newton step norm: {newton_norm:.6e}, trust region radius: {radius:.6e}"
-            );
+            debug!("Newton step norm: {newton_norm:.6e}, trust region radius: {radius:.6e}");
         }
 
         if newton_norm <= radius {
@@ -335,9 +333,7 @@ impl Optimizer for TrustRegionOptimizer {
         let grad_norm = compute_magnitude(&gradient)?;
 
         if self.config.verbose {
-            debug!(
-                "Current function value: {current_value:.6e}, gradient norm: {grad_norm:.6e}"
-            );
+            debug!("Current function value: {current_value:.6e}, gradient norm: {grad_norm:.6e}");
         }
 
         // Update best function value

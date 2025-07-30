@@ -245,9 +245,7 @@ fn run_optimizer(
                 .collect::<candle_core::Result<Vec<_>>>()
                 .map_err(|e| anyhow::anyhow!("Failed to extract values: {}", e))?;
             let f_val = problem.evaluate_f64(&x)?;
-            println!(
-                "  Iteration {iteration}: f = {f_val:.6}, ||∇f|| = {grad_norm:.2e}"
-            );
+            println!("  Iteration {iteration}: f = {f_val:.6}, ||∇f|| = {grad_norm:.2e}");
         }
     }
     // Convert final parameters back to f64 for evaluation

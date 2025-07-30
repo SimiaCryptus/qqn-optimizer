@@ -799,10 +799,10 @@ mod tests {
         assert!(strict_result.success);
         assert!(lax_result.success);
         // Evaluate function values at the found steps
-        let f_strict = rosenbrock_1d(&[current_point[0] + strict_result.step_size * direction[0]])
-        .unwrap();
-        let f_lax = rosenbrock_1d(&[current_point[0] + lax_result.step_size * direction[0]])
-        .unwrap();
+        let f_strict =
+            rosenbrock_1d(&[current_point[0] + strict_result.step_size * direction[0]]).unwrap();
+        let f_lax =
+            rosenbrock_1d(&[current_point[0] + lax_result.step_size * direction[0]]).unwrap();
         let f_initial = rosenbrock_1d(&current_point).unwrap();
         // Both should improve the function
         assert!(f_strict < f_initial);

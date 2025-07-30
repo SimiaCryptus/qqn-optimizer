@@ -1551,9 +1551,7 @@ impl SparseQuadratic {
         Self {
             dimension,
             sparsity_pattern: sparsity_pattern.clone(),
-            name: format!(
-                "SparseQuadratic_{dimension}D_pattern{sparsity_pattern:?}"
-            ),
+            name: format!("SparseQuadratic_{dimension}D_pattern{sparsity_pattern:?}"),
         }
     }
 }

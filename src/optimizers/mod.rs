@@ -57,7 +57,7 @@ mod tests {
         const _: () = assert!(NUMERICAL_TOLERANCE < 1e-6);
         const _: () = assert!(MAX_LINE_SEARCH_ITERATIONS > 0);
         const _: () = assert!(DEFAULT_LBFGS_HISTORY > 0);
-        
+
         // These are runtime assertions to verify our constants are reasonable
         // (clippy complains about constant assertions, so we do runtime checks)
     }

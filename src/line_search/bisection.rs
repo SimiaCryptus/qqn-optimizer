@@ -446,9 +446,7 @@ pub(crate) fn find_far_point_2(
     debug!("Finding far point starting from t={t:.3e}");
     while iteration < max_iterations {
         let f_t = (problem.objective)(t)?;
-        debug!(
-            "  Line Search Iteration {iteration}: t={t:.3e}, f={f_t:.3e}, f0={f0:.3e}"
-        );
+        debug!("  Line Search Iteration {iteration}: t={t:.3e}, f={f_t:.3e}, f0={f0:.3e}");
         // Check if this point satisfies our far point criteria:
         // 1. Function value is worse than f(0)
         if f_t > f0 {
@@ -458,9 +456,7 @@ pub(crate) fn find_far_point_2(
 
         // If function value is still better than f(0), increase step size
         if f_t <= f0 {
-            debug!(
-                "Function value still better at t={t:.3e}, increasing step"
-            );
+            debug!("Function value still better at t={t:.3e}, increasing step");
             t *= 2.0;
             if t > max_step {
                 debug!("Step size too large, using maximum step");

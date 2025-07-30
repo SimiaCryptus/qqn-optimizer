@@ -1181,9 +1181,8 @@ fn generate_problem_section(
         // Create hyperlink to detailed report
         let problem_filename = problem_name.replace(" ", "_");
         let optimizer_filename = optimizer.replace(" ", "_");
-        let detailed_report_filename = format!(
-            "reports/detailed_{problem_filename}_{optimizer_filename}.md"
-        );
+        let detailed_report_filename =
+            format!("reports/detailed_{problem_filename}_{optimizer_filename}.md");
         let optimizer_link = format!(
             r#"<a href="{detailed_report_filename}" title="Click for detailed analysis">{optimizer}</a>"#
         );
@@ -1216,9 +1215,7 @@ fn generate_problem_section(
         } else {
             format!("{mean_func_evals_fail:.1}")
         };
-        let func_evals_str = format!(
-            "{mean_func_evals:.1} / {func_success_str} / {func_fail_str}"
-        );
+        let func_evals_str = format!("{mean_func_evals:.1} / {func_success_str} / {func_fail_str}");
         // Create formatted strings for gradient evaluations
         let grad_success_str =
             if mean_grad_evals_success.is_nan() || !mean_grad_evals_success.is_finite() {
@@ -1231,9 +1228,7 @@ fn generate_problem_section(
         } else {
             format!("{mean_grad_evals_fail:.1}")
         };
-        let grad_evals_str = format!(
-            "{mean_grad_evals:.1} / {grad_success_str} / {grad_fail_str}"
-        );
+        let grad_evals_str = format!("{mean_grad_evals:.1} / {grad_success_str} / {grad_fail_str}");
 
         section.push_str(&format!(
             r#"<tr style="{}">
@@ -1278,8 +1273,7 @@ fn generate_problem_section(
     let convergence_plot = format!("plots/convergence/{problem_filename}.png");
     let log_convergence_plot = format!("plots/convergence/{problem_filename}_log.png");
     // Check if convergence plot exists
-    let convergence_path =
-        Path::new(plots_dir).join(format!("convergence/{problem_filename}.png"));
+    let convergence_path = Path::new(plots_dir).join(format!("convergence/{problem_filename}.png"));
     if convergence_path.exists() {
         section.push_str(&format!(
             r#"<img src="{convergence_plot}" alt="Convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">

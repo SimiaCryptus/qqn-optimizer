@@ -499,9 +499,7 @@ impl LineSearch for MoreThuenteLineSearch {
             let gp = (problem.gradient)(stp)?;
             // Check for NaN or infinite values
             if !fp.is_finite() || !gp.is_finite() {
-                self.log_verbose(&format!(
-                    "Non-finite values at step {stp}: f={fp}, g={gp}"
-                ));
+                self.log_verbose(&format!("Non-finite values at step {stp}: f={fp}, g={gp}"));
                 // Return best point found so far
                 if best_stp > 0.0 && best_f < f0 {
                     return Ok(LineSearchResult {

@@ -13,8 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Additional metadata that optimizers can provide
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OptimizationMetadata {
     /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
     pub optimizer_data: std::collections::HashMap<String, f64>,
@@ -91,8 +90,7 @@ pub struct StepResult {
 }
 
 /// Information about convergence status and criteria
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ConvergenceInfo {
     /// Whether the optimizer has converged
     pub converged: bool,
@@ -100,7 +98,6 @@ pub struct ConvergenceInfo {
     /// Change in function value from previous iteration
     pub function_change: Option<f64>,
 }
-
 
 impl ConvergenceInfo {
     /// Create convergence info indicating convergence
@@ -164,8 +161,7 @@ impl Default for TimingInfo {
 }
 
 /// Memory usage information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryInfo {
     /// Peak memory usage during this step (in bytes)
     pub peak_memory: Option<usize>,
@@ -176,7 +172,6 @@ pub struct MemoryInfo {
     /// Memory allocated for temporary computations (in bytes)
     pub temp_memory: Option<usize>,
 }
-
 
 /// Configuration for convergence checking
 #[derive(Debug, Clone, Serialize, Deserialize)]
