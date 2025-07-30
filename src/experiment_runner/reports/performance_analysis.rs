@@ -94,9 +94,13 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
-                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+                optimizer_results
+                    .entry(result.optimizer_name.clone())
+                    .or_insert_with(Vec::new)
+                    .push(result);
             }
 
             for (optimizer_name, runs) in optimizer_results {
@@ -140,17 +144,26 @@ impl PerformanceAnalysisReport {
         );
 
         for (problem_spec, results) in data {
-            latex.push_str(&format!("\\section{{Problem: {}}}\n\n", 
-                problem_spec.name.as_deref().unwrap_or("Unknown")));
+            latex.push_str(&format!(
+                "\\section{{Problem: {}}}\n\n",
+                problem_spec.name.as_deref().unwrap_or("Unknown")
+            ));
 
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
-                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+                optimizer_results
+                    .entry(result.optimizer_name.clone())
+                    .or_insert_with(Vec::new)
+                    .push(result);
             }
 
             for (optimizer_name, runs) in optimizer_results {
-                latex.push_str(&format!("\\subsection{{Optimizer: {}}}\n\n", optimizer_name));
+                latex.push_str(&format!(
+                    "\\subsection{{Optimizer: {}}}\n\n",
+                    optimizer_name
+                ));
                 let analysis = self.generate_analysis_content(&runs);
                 // Convert markdown to LaTeX
                 let latex_analysis = analysis
@@ -179,13 +192,19 @@ impl PerformanceAnalysisReport {
         let mut markdown = String::from("# Performance Analysis Report\n\n");
 
         for (problem_spec, results) in data {
-            markdown.push_str(&format!("## Problem: {}\n\n", 
-                problem_spec.name.as_deref().unwrap_or("Unknown")));
+            markdown.push_str(&format!(
+                "## Problem: {}\n\n",
+                problem_spec.name.as_deref().unwrap_or("Unknown")
+            ));
 
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
-                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+                optimizer_results
+                    .entry(result.optimizer_name.clone())
+                    .or_insert_with(Vec::new)
+                    .push(result);
             }
 
             for (optimizer_name, runs) in optimizer_results {
@@ -208,9 +227,13 @@ impl PerformanceAnalysisReport {
 
         for (problem_spec, results) in data {
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> = std::collections::HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
-                optimizer_results.entry(result.optimizer_name.clone()).or_insert_with(Vec::new).push(result);
+                optimizer_results
+                    .entry(result.optimizer_name.clone())
+                    .or_insert_with(Vec::new)
+                    .push(result);
             }
 
             for (optimizer_name, runs) in optimizer_results {

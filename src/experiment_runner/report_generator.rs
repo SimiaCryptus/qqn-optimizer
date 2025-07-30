@@ -9,15 +9,19 @@ use crate::experiment_runner::reports::comparison_matrix::{
     generate_comparison_matrix_latex_table, generate_comparison_matrix_table_content,
     generate_family_comparison_matrix_table_content,
 };
+use crate::experiment_runner::reports::convergence_analysis::ConvergenceAnalysisReport;
 use crate::experiment_runner::reports::convergence_analysis::{
     generate_convergence_analysis, generate_convergence_speed_latex_table,
     generate_convergence_speed_table_content,
 };
 use crate::experiment_runner::reports::efficiency_matrix::generate_efficiency_matrix_latex_table;
+use crate::experiment_runner::reports::efficiency_matrix::EfficiencyMatrixReport;
 use crate::experiment_runner::reports::family_vs_family::{
     generate_family_vs_family_comparison_table, generate_family_vs_family_latex_table,
     generate_family_vs_family_table_content,
 };
+use crate::experiment_runner::reports::family_vs_family_report::FamilyVsFamilyReport;
+use crate::experiment_runner::reports::heatmap::SuccessRateHeatmapReport;
 use crate::experiment_runner::reports::heatmap::{
     generate_success_rate_heatmap_latex_table, generate_success_rate_heatmap_table_content,
 };
@@ -27,6 +31,11 @@ use crate::experiment_runner::reports::performance_table::{
 };
 use crate::experiment_runner::reports::summary_statistics::{
     generate_summary_statistics_latex_table, generate_summary_statistics_table_content,
+};
+use crate::experiment_runner::reports::unified_performance_table::PerformanceTableReport;
+use crate::experiment_runner::reports::unified_summary_statistics::SummaryStatisticsReport;
+use crate::experiment_runner::unified_report::{
+    Report, ReportCollection, ReportConfig, ReportFormat,
 };
 use crate::OptimizationProblem;
 use anyhow::Context;
@@ -92,6 +101,190 @@ impl ReportGenerator {
             statistical_analysis: StatisticalAnalysis::new(),
         }
     }
+    /// Generate reports using the unified reporting system
+    pub async fn generate_unified_reports(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        formats: &[ReportFormat],
+    ) -> anyhow::Result<()> {
+        let reports_dir = Path::new(&self.output_dir).join("unified_reports");
+        fs::create_dir_all(&reports_dir)?;
+        println!(
+            "Generating unified reports in directory: {}",
+            reports_dir.display()
+        );
+        // Create report collection with all available reports
+        let collection = ReportCollection::new()
+            .add_report(ConvergenceAnalysisReport::new())
+            .add_report(EfficiencyMatrixReport::new())
+            .add_report(SuccessRateHeatmapReport::new())
+            .add_report(PerformanceTableReport::new())
+            .add_report(SummaryStatisticsReport::new())
+            .add_report(FamilyVsFamilyReport::new());
+        // Generate reports in each requested format
+        for format in formats {
+            let format_dir = reports_dir.join(format!("{:?}", format).to_lowercase());
+            fs::create_dir_all(&format_dir)?;
+            let config = ReportConfig {
+                format: format.clone(),
+                include_detailed_stats: true,
+                include_plots: true,
+                style_options: std::collections::HashMap::new(),
+            };
+            let metadata = collection.generate_all(all_results, &config, &format_dir)?;
+            // Log generation results
+            println!(
+                "Generated {} reports in {:?} format:",
+                metadata.len(),
+                format
+            );
+            for meta in &metadata {
+                println!(
+                    "  - {}: {} problems, {} optimizers, {} data points",
+                    meta.report_type, meta.problem_count, meta.optimizer_count, meta.data_points
+                );
+            }
+        }
+        Ok(())
+    }
+    /// Generate a comprehensive report index that links to all unified reports
+    pub async fn generate_report_index(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        formats: &[ReportFormat],
+    ) -> anyhow::Result<()> {
+        let index_path = Path::new(&self.output_dir).join("report_index.html");
+        let mut html_content = String::from(
+            r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQN Benchmark Report Index</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1, h2 { color: #333; }
+        .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+        .report-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #f9f9f9; }
+        .report-card h3 { margin-top: 0; color: #2c5aa0; }
+        .format-links { margin: 10px 0; }
+        .format-links a { margin-right: 10px; padding: 5px 10px; background: #e7f3ff; text-decoration: none; border-radius: 4px; }
+        .format-links a:hover { background: #d0e7ff; }
+        .stats { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .legacy-section { background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>QQN Benchmark Report Index</h1>
+    <p>Generated on: "#,
+        );
+        html_content.push_str(
+            &chrono::Utc::now()
+                .format("%Y-%m-%d %H:%M:%S UTC")
+                .to_string(),
+        );
+        html_content.push_str("</p>");
+        // Add summary statistics
+        let total_problems = all_results.len();
+        let total_runs: usize = all_results.iter().map(|(_, r)| r.results.len()).sum();
+        let unique_optimizers: std::collections::HashSet<_> = all_results
+            .iter()
+            .flat_map(|(_, r)| &r.results)
+            .map(|result| &result.optimizer_name)
+            .collect();
+        html_content.push_str(&format!(
+            r#"<div class="stats">
+    <h2>Benchmark Summary</h2>
+    <ul>
+        <li><strong>Total Problems:</strong> {}</li>
+        <li><strong>Total Optimizers:</strong> {}</li>
+        <li><strong>Total Runs:</strong> {}</li>
+        <li><strong>Available Formats:</strong> {}</li>
+    </ul>
+</div>
+"#,
+            total_problems,
+            unique_optimizers.len(),
+            total_runs,
+            formats
+                .iter()
+                .map(|f| format!("{:?}", f))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        // Add unified reports section
+        html_content.push_str(
+            r#"<h2>Unified Reports</h2>
+<p>Modern, standardized reports with consistent formatting across all output types.</p>
+<div class="report-grid">
+"#,
+        );
+        let report_descriptions = vec![
+            ("convergence_analysis", "Convergence Analysis", "Analyzes convergence speed and patterns across optimizers, showing mean iterations to reach improvement milestones"),
+            ("efficiency_matrix", "Efficiency Matrix", "Algorithm efficiency matrix showing mean function evaluations for successful runs across problem families"),
+            ("success_rate_heatmap", "Success Rate Heatmap", "Color-coded heatmap showing success rates across optimizer-problem combinations"),
+            ("performance_table", "Performance Table", "Detailed performance table showing metrics for each optimizer-problem combination"),
+            ("summary_statistics", "Summary Statistics", "Summary statistics showing average performance metrics grouped by problem family and optimizer"),
+            ("family_vs_family", "Family vs Family", "Comparison matrix showing how different optimizer families perform across different problem families"),
+        ];
+        for (report_name, display_name, description) in report_descriptions {
+            html_content.push_str(&format!(
+                r#"    <div class="report-card">
+        <h3>{}</h3>
+        <p>{}</p>
+        <div class="format-links">
+"#,
+                display_name, description
+            ));
+            for format in formats {
+                let format_str = format!("{:?}", format).to_lowercase();
+                let extension = match format {
+                    ReportFormat::Html => "html",
+                    ReportFormat::Latex => "tex",
+                    ReportFormat::Markdown => "md",
+                    ReportFormat::Csv => "csv",
+                };
+                html_content.push_str(&format!(
+                    r#"            <a href="unified_reports/{}/{}.{}">{:?}</a>
+"#,
+                    format_str, report_name, extension, format
+                ));
+            }
+            html_content.push_str(
+                r#"        </div>
+    </div>
+"#,
+            );
+        }
+        html_content.push_str("</div>");
+        // Add legacy reports section
+        html_content.push_str(
+            r#"<div class="legacy-section">
+    <h2>Legacy Reports</h2>
+    <p>Traditional report formats for backward compatibility.</p>
+    <ul>
+        <li><a href="benchmark_report.md">Main Benchmark Report (Markdown)</a></li>
+        <li><a href="latex/">LaTeX Tables Directory</a></li>
+        <li><a href="data/">Raw Data (CSV)</a></li>
+        <li><a href="reports/">Detailed Problem Reports</a></li>
+    </ul>
+</div>
+"#,
+        );
+        html_content.push_str(
+            r#"<footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
+    <p>Generated by QQN Optimizer Benchmark Suite</p>
+</footer>
+</body>
+</html>
+"#,
+        );
+        fs::write(&index_path, html_content).with_context(|| {
+            format!("Failed to write report index to: {}", index_path.display())
+        })?;
+        println!("Generated report index: {}", index_path.display());
+        Ok(())
+    }
 
     pub async fn generate_main_report(
         &self,
@@ -100,6 +293,18 @@ impl ReportGenerator {
     ) -> anyhow::Result<()> {
         fs::create_dir_all(&self.output_dir)
             .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
+        // Generate unified reports in multiple formats
+        let unified_formats = vec![
+            ReportFormat::Html,
+            ReportFormat::Latex,
+            ReportFormat::Markdown,
+            ReportFormat::Csv,
+        ];
+        self.generate_unified_reports(all_results, &unified_formats)
+            .await?;
+        self.generate_report_index(all_results, &unified_formats)
+            .await?;
+
         // Create hierarchical directory structure
         let reports_dir = Path::new(&self.output_dir).join("reports");
         let data_dir = Path::new(&self.output_dir).join("data");
@@ -158,8 +363,67 @@ impl ReportGenerator {
         generate_latex_tables(&latex_dir.to_string_lossy(), all_results, self).await?;
         // Generate comprehensive LaTeX document
         generate_comprehensive_latex_document(&self.config, all_results, &latex_dir, self)?;
+        println!("Report generation complete!");
+        println!("  - Unified reports: {}/unified_reports/", self.output_dir);
+        println!("  - Report index: {}/report_index.html", self.output_dir);
+        println!(
+            "  - Legacy reports: {}/benchmark_report.md",
+            self.output_dir
+        );
+        println!("  - LaTeX tables: {}/latex/", self.output_dir);
+        println!("  - Raw data: {}/data/", self.output_dir);
 
         Ok(())
+    }
+    /// Generate only unified reports (for testing or when legacy reports are not needed)
+    pub async fn generate_unified_only(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        formats: Option<Vec<ReportFormat>>,
+    ) -> anyhow::Result<()> {
+        fs::create_dir_all(&self.output_dir)
+            .with_context(|| format!("Failed to create output directory: {}", self.output_dir))?;
+        let formats = formats.unwrap_or_else(|| {
+            vec![
+                ReportFormat::Html,
+                ReportFormat::Markdown,
+                ReportFormat::Csv,
+            ]
+        });
+        self.generate_unified_reports(all_results, &formats).await?;
+        self.generate_report_index(all_results, &formats).await?;
+        println!("Unified report generation complete!");
+        println!("  - Reports: {}/unified_reports/", self.output_dir);
+        println!("  - Index: {}/report_index.html", self.output_dir);
+        Ok(())
+    }
+    /// Get available unified report types
+    pub fn get_available_unified_reports() -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("convergence_analysis", "Convergence Analysis"),
+            ("efficiency_matrix", "Efficiency Matrix"),
+            ("success_rate_heatmap", "Success Rate Heatmap"),
+            ("performance_table", "Performance Table"),
+            ("summary_statistics", "Summary Statistics"),
+            ("family_vs_family", "Family vs Family Comparison"),
+        ]
+    }
+    /// Generate a specific unified report
+    pub async fn generate_specific_unified_report<R: Report + 'static>(
+        &self,
+        all_results: &[(&ProblemSpec, BenchmarkResults)],
+        report: R,
+        format: ReportFormat,
+    ) -> anyhow::Result<String> {
+        let config = ReportConfig {
+            format,
+            include_detailed_stats: true,
+            include_plots: true,
+            style_options: std::collections::HashMap::new(),
+        };
+        report.validate_data(all_results)?;
+        let content = report.generate_content(all_results, &config)?;
+        Ok(content)
     }
 }
 

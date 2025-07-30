@@ -72,10 +72,14 @@ impl PerformanceTableReport {
     <h1>Performance Table Report</h1>
     <p>Generated on: "#,
         );
-        
-        html.push_str(&chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string());
+
+        html.push_str(
+            &chrono::Utc::now()
+                .format("%Y-%m-%d %H:%M:%S UTC")
+                .to_string(),
+        );
         html.push_str("</p>");
-        
+
         for (problem, results) in data {
             html.push_str(&format!(
                 r#"<h2>Problem: {}</h2>
@@ -91,7 +95,7 @@ impl PerformanceTableReport {
 "#,
                 problem.get_name()
             ));
-            
+
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -99,36 +103,38 @@ impl PerformanceTableReport {
                     .or_insert(Vec::new());
                 stats.push(result);
             }
-            
+
             let mut perf_data = Vec::new();
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-                
+
                 let final_values: Vec<f64> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
-                    
+
                 let mean_final = if !final_values.is_empty() {
                     final_values.iter().sum::<f64>() / final_values.len() as f64
                 } else {
                     f64::INFINITY
                 };
-                
+
                 let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-                
+
                 let mean_func_evals = runs
                     .iter()
                     .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>() / runs.len() as f64;
-                    
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>() / runs.len() as f64;
-                
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 perf_data.push((
                     optimizer.clone(),
                     success_rate,
@@ -138,26 +144,32 @@ impl PerformanceTableReport {
                     mean_time,
                 ));
             }
-            
+
             // Sort by success rate, then by best value
             perf_data.sort_by(|a, b| {
                 match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {
-                    std::cmp::Ordering::Equal => a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal),
+                    std::cmp::Ordering::Equal => {
+                        a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+                    }
                     other => other,
                 }
             });
-            
-            for (i, (optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time)) in perf_data.iter().enumerate() {
+
+            for (
+                i,
+                (optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time),
+            ) in perf_data.iter().enumerate()
+            {
                 let class = if i == 0 { " class=\"best\"" } else { "" };
                 html.push_str(&format!(
                     "<tr{}><td>{}</td><td class=\"metric\">{:.1}</td><td class=\"metric\">{:.2e}</td><td class=\"metric\">{:.2e}</td><td class=\"metric\">{:.1}</td><td class=\"metric\">{:.3}</td></tr>\n",
                     class, optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time
                 ));
             }
-            
+
             html.push_str("</table>\n");
         }
-        
+
         html.push_str("</body></html>");
         Ok(html)
     }
@@ -182,7 +194,7 @@ impl PerformanceTableReport {
 
 "#,
         );
-        
+
         for (problem, results) in data {
             latex.push_str(&format!(
                 r#"\section{{Problem: {}}}
@@ -193,7 +205,7 @@ impl PerformanceTableReport {
 "#,
                 self.escape_latex(&problem.get_name())
             ));
-            
+
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -201,35 +213,37 @@ impl PerformanceTableReport {
                     .or_insert(Vec::new());
                 stats.push(result);
             }
-            
+
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-                
+
                 let final_values: Vec<f64> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
-                    
+
                 let mean_final = if !final_values.is_empty() {
                     final_values.iter().sum::<f64>() / final_values.len() as f64
                 } else {
                     f64::INFINITY
                 };
-                
+
                 let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-                
+
                 let mean_func_evals = runs
                     .iter()
                     .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>() / runs.len() as f64;
-                    
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>() / runs.len() as f64;
-                
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 latex.push_str(&format!(
                     "{} & {:.1} & {:.2e} & {:.2e} & {:.1} & {:.3} \\\\\n",
                     self.escape_latex(optimizer),
@@ -240,7 +254,7 @@ impl PerformanceTableReport {
                     mean_time
                 ));
             }
-            
+
             latex.push_str(
                 r#"\bottomrule
 \end{longtable}
@@ -248,7 +262,7 @@ impl PerformanceTableReport {
 "#,
             );
         }
-        
+
         latex.push_str("\\end{document}");
         Ok(latex)
     }
@@ -259,14 +273,16 @@ impl PerformanceTableReport {
         _config: &ReportConfig,
     ) -> Result<String> {
         let mut md = String::from("# Performance Table Report\n\n");
-        md.push_str(&format!("Generated on: {}\n\n", 
-            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")));
-        
+        md.push_str(&format!(
+            "Generated on: {}\n\n",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+        ));
+
         for (problem, results) in data {
             md.push_str(&format!("## Problem: {}\n\n", problem.get_name()));
             md.push_str("| Optimizer | Success Rate (%) | Mean Final Value | Best Value | Mean Func Evals | Mean Time (s) |\n");
             md.push_str("|-----------|------------------|------------------|------------|-----------------|---------------|\n");
-            
+
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -274,44 +290,46 @@ impl PerformanceTableReport {
                     .or_insert(Vec::new());
                 stats.push(result);
             }
-            
+
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-                
+
                 let final_values: Vec<f64> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
-                    
+
                 let mean_final = if !final_values.is_empty() {
                     final_values.iter().sum::<f64>() / final_values.len() as f64
                 } else {
                     f64::INFINITY
                 };
-                
+
                 let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-                
+
                 let mean_func_evals = runs
                     .iter()
                     .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>() / runs.len() as f64;
-                    
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>() / runs.len() as f64;
-                
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 md.push_str(&format!(
                     "| {} | {:.1} | {:.2e} | {:.2e} | {:.1} | {:.3} |\n",
                     optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time
                 ));
             }
-            
+
             md.push_str("\n");
         }
-        
+
         Ok(md)
     }
 
@@ -321,10 +339,10 @@ impl PerformanceTableReport {
         _config: &ReportConfig,
     ) -> Result<String> {
         let mut csv = String::from("Problem,Optimizer,Success_Rate,Mean_Final_Value,Best_Value,Mean_Func_Evals,Mean_Time\n");
-        
+
         for (problem, results) in data {
             let problem_name = problem.get_name();
-            
+
             let mut optimizer_stats = HashMap::new();
             for result in &results.results {
                 let stats = optimizer_stats
@@ -332,45 +350,53 @@ impl PerformanceTableReport {
                     .or_insert(Vec::new());
                 stats.push(result);
             }
-            
+
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-                
+
                 let final_values: Vec<f64> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
-                    
+
                 let mean_final = if !final_values.is_empty() {
                     final_values.iter().sum::<f64>() / final_values.len() as f64
                 } else {
                     f64::INFINITY
                 };
-                
+
                 let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-                
+
                 let mean_func_evals = runs
                     .iter()
                     .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>() / runs.len() as f64;
-                    
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>() / runs.len() as f64;
-                
+                    .sum::<f64>()
+                    / runs.len() as f64;
+
                 csv.push_str(&format!(
                     "{},{},{:.1},{:.2e},{:.2e},{:.1},{:.3}\n",
-                    problem_name, optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time
+                    problem_name,
+                    optimizer,
+                    success_rate,
+                    mean_final,
+                    best_final,
+                    mean_func_evals,
+                    mean_time
                 ));
             }
         }
-        
+
         Ok(csv)
     }
-    
+
     fn escape_latex(&self, text: &str) -> String {
         text.replace("_", "\\_")
             .replace("&", "\\&")
@@ -403,26 +429,38 @@ mod tests {
         let report = PerformanceTableReport::new();
         let test_data = UnifiedReportTestSuite::create_test_data();
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
-        
+
         // Test HTML
-        let html_config = ReportConfig { format: ReportFormat::Html, ..Default::default() };
+        let html_config = ReportConfig {
+            format: ReportFormat::Html,
+            ..Default::default()
+        };
         let html_content = report.generate_content(&data_refs, &html_config).unwrap();
         assert!(html_content.contains("<!DOCTYPE html>"));
         assert!(html_content.contains("Performance Table Report"));
-        
+
         // Test Markdown
-        let md_config = ReportConfig { format: ReportFormat::Markdown, ..Default::default() };
+        let md_config = ReportConfig {
+            format: ReportFormat::Markdown,
+            ..Default::default()
+        };
         let md_content = report.generate_content(&data_refs, &md_config).unwrap();
         assert!(md_content.contains("# Performance Table Report"));
         assert!(md_content.contains("| Optimizer |"));
-        
+
         // Test CSV
-        let csv_config = ReportConfig { format: ReportFormat::Csv, ..Default::default() };
+        let csv_config = ReportConfig {
+            format: ReportFormat::Csv,
+            ..Default::default()
+        };
         let csv_content = report.generate_content(&data_refs, &csv_config).unwrap();
         assert!(csv_content.contains("Problem,Optimizer"));
-        
+
         // Test LaTeX
-        let latex_config = ReportConfig { format: ReportFormat::Latex, ..Default::default() };
+        let latex_config = ReportConfig {
+            format: ReportFormat::Latex,
+            ..Default::default()
+        };
         let latex_content = report.generate_content(&data_refs, &latex_config).unwrap();
         assert!(latex_content.contains("\\documentclass"));
     }

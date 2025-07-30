@@ -12,8 +12,13 @@ impl ConvergenceAnalysisReport {
     pub fn new() -> Self {
         Self
     }
-    fn generate_html(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
-        let mut content = String::from(r#"<!DOCTYPE html>
+    fn generate_html(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> anyhow::Result<String> {
+        let mut content = String::from(
+            r#"<!DOCTYPE html>
 <html>
 <head>
     <title>Convergence Analysis Report</title>
@@ -29,15 +34,21 @@ impl ConvergenceAnalysisReport {
 </head>
 <body>
     <h1>Convergence Analysis Report</h1>
-"#);
+"#,
+        );
         if config.include_detailed_stats {
             content.push_str(&self.generate_convergence_speed_html_table(data)?);
         }
         content.push_str("</body></html>");
         Ok(content)
     }
-    fn generate_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
-        let mut content = String::from(r#"\documentclass{article}
+    fn generate_latex(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> anyhow::Result<String> {
+        let mut content = String::from(
+            r#"\documentclass{article}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage[table]{xcolor}
@@ -48,29 +59,46 @@ impl ConvergenceAnalysisReport {
 \begin{document}
 \title{Convergence Analysis Report}
 \maketitle
-"#);
+"#,
+        );
         if config.include_detailed_stats {
             content.push_str(&self.generate_convergence_speed_latex_table(data)?);
         }
         content.push_str(r#"\end{document}"#);
         Ok(content)
     }
-    fn generate_markdown(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_markdown(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         let mut content = String::from("# Convergence Analysis Report\n\n");
         if config.include_detailed_stats {
             content.push_str(&self.generate_convergence_speed_markdown_table(data)?);
         }
         Ok(content)
     }
-    fn generate_csv(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> anyhow::Result<String> {
-        let mut content = String::from("Optimizer,Mean_Iterations_50%,Mean_Iterations_90%,Final_Convergence_Iteration\n");
+    fn generate_csv(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        _config: &ReportConfig,
+    ) -> anyhow::Result<String> {
+        let mut content = String::from(
+            "Optimizer,Mean_Iterations_50%,Mean_Iterations_90%,Final_Convergence_Iteration\n",
+        );
         let optimizer_averages = self.calculate_convergence_averages(data)?;
         for (optimizer, avg_50, avg_90, avg_final) in optimizer_averages {
-            content.push_str(&format!("{},{:.1},{:.1},{:.1}\n", optimizer, avg_50, avg_90, avg_final));
+            content.push_str(&format!(
+                "{},{:.1},{:.1},{:.1}\n",
+                optimizer, avg_50, avg_90, avg_final
+            ));
         }
         Ok(content)
     }
-    fn calculate_convergence_averages(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<Vec<(String, f64, f64, f64)>> {
+    fn calculate_convergence_averages(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<Vec<(String, f64, f64, f64)>> {
         let mut optimizer_speed_data = HashMap::new();
         for (_, results) in data {
             for result in &results.results {
@@ -136,12 +164,16 @@ impl ConvergenceAnalysisReport {
         });
         Ok(optimizer_averages)
     }
-    fn generate_convergence_speed_html_table(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
+    fn generate_convergence_speed_html_table(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
         let optimizer_averages = self.calculate_convergence_averages(data)?;
         if optimizer_averages.is_empty() {
             return Ok(String::new());
         }
-        let mut content = String::from(r#"
+        let mut content = String::from(
+            r#"
     <h2>Convergence Speed Analysis</h2>
     <table>
         <thead>
@@ -153,7 +185,8 @@ impl ConvergenceAnalysisReport {
             </tr>
         </thead>
         <tbody>
-"#);
+"#,
+        );
         for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
             let class = if i == 0 {
                 "best"
@@ -179,15 +212,20 @@ impl ConvergenceAnalysisReport {
 "#);
         Ok(content)
     }
-    fn generate_convergence_speed_markdown_table(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
+    fn generate_convergence_speed_markdown_table(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
         let optimizer_averages = self.calculate_convergence_averages(data)?;
         if optimizer_averages.is_empty() {
             return Ok(String::new());
         }
-        let mut content = String::from(r#"## Convergence Speed Analysis
+        let mut content = String::from(
+            r#"## Convergence Speed Analysis
 | Optimizer | Mean Iterations to 50% Improvement | Mean Iterations to 90% Improvement | Final Convergence Iteration |
 |-----------|-------------------------------------|-------------------------------------|------------------------------|
-"#);
+"#,
+        );
         for (optimizer, avg_50, avg_90, avg_final) in optimizer_averages {
             content.push_str(&format!(
                 "| {} | {:.1} | {:.1} | {:.1} |\n",
@@ -198,8 +236,10 @@ impl ConvergenceAnalysisReport {
         Ok(content)
     }
 
-
-    fn generate_convergence_speed_latex_table(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
+    fn generate_convergence_speed_latex_table(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> anyhow::Result<String> {
         // Convert HTML table to LaTeX format
         let html_content = self.generate_convergence_speed_html_table(data)?;
         // Simple conversion - you might want to make this more sophisticated
@@ -214,7 +254,6 @@ impl ConvergenceAnalysisReport {
             .replace("</td>", " & ");
         Ok(latex_content)
     }
-
 }
 impl Report for ConvergenceAnalysisReport {
     fn name(&self) -> &'static str {
@@ -223,7 +262,11 @@ impl Report for ConvergenceAnalysisReport {
     fn description(&self) -> &'static str {
         "Analyzes convergence speed and patterns across optimizers, showing mean iterations to reach improvement milestones"
     }
-    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_content(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         match config.format {
             ReportFormat::Html => self.generate_html(data, config),
             ReportFormat::Latex => self.generate_latex(data, config),
@@ -231,10 +274,18 @@ impl Report for ConvergenceAnalysisReport {
             ReportFormat::Csv => self.generate_csv(data, config),
         }
     }
-    fn export_to_file(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig, output_path: &Path) -> anyhow::Result<()> {
+    fn export_to_file(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+        output_path: &Path,
+    ) -> anyhow::Result<()> {
         let content = self.generate_content(data, config)?;
         fs::write(output_path, content).with_context(|| {
-            format!("Failed to write convergence analysis report to: {}", output_path.display())
+            format!(
+                "Failed to write convergence analysis report to: {}",
+                output_path.display()
+            )
         })?;
         Ok(())
     }
@@ -243,34 +294,56 @@ impl Report for ConvergenceAnalysisReport {
             return Err(anyhow::anyhow!("No benchmark data provided"));
         }
         let has_convergence_data = data.iter().any(|(_, results)| {
-            results.results.iter().any(|r| r.convergence_achieved && !r.trace.iterations.is_empty())
+            results
+                .results
+                .iter()
+                .any(|r| r.convergence_achieved && !r.trace.iterations.is_empty())
         });
         if !has_convergence_data {
-            return Err(anyhow::anyhow!("No convergence data available for analysis"));
+            return Err(anyhow::anyhow!(
+                "No convergence data available for analysis"
+            ));
         }
         Ok(())
     }
     fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
         let total_problems = data.len();
         let total_runs: usize = data.iter().map(|(_, results)| results.results.len()).sum();
-        let convergent_runs: usize = data.iter()
-            .map(|(_, results)| results.results.iter().filter(|r| r.convergence_achieved).count())
+        let convergent_runs: usize = data
+            .iter()
+            .map(|(_, results)| {
+                results
+                    .results
+                    .iter()
+                    .filter(|r| r.convergence_achieved)
+                    .count()
+            })
             .sum();
         let mut metadata = HashMap::new();
         metadata.insert("total_problems".to_string(), total_problems.to_string());
         metadata.insert("total_runs".to_string(), total_runs.to_string());
         metadata.insert("convergent_runs".to_string(), convergent_runs.to_string());
-        metadata.insert("convergence_rate".to_string(), 
-            format!("{:.1}%", (convergent_runs as f64 / total_runs as f64) * 100.0));
+        metadata.insert(
+            "convergence_rate".to_string(),
+            format!(
+                "{:.1}%",
+                (convergent_runs as f64 / total_runs as f64) * 100.0
+            ),
+        );
+        let optimizer_count = data
+            .iter()
+            .flat_map(|(_, results)| &results.results)
+            .map(|r| &r.optimizer_name)
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        let data_points = data.iter().map(|(_, results)| results.results.len()).sum();
+
         ReportMetadata {
-            // title: "Convergence Analysis Report".to_string(),
-            // description: self.description().to_string(),
-            report_type: "".to_string(),
+            report_type: self.name().to_string(),
             generated_at: chrono::Utc::now(),
-            // data_summary: metadata,
-            problem_count: 0,
-            optimizer_count: 0,
-            data_points: 0,
+            problem_count: total_problems,
+            optimizer_count,
+            data_points,
         }
     }
     fn supported_formats(&self) -> Vec<ReportFormat> {

@@ -1,11 +1,11 @@
 pub mod comparison_matrix;
 pub mod convergence_analysis;
 pub mod efficiency_matrix;
-pub mod family_vs_family_report;
 pub mod family_vs_family;
+pub mod family_vs_family_report;
 pub mod heatmap;
 pub mod performance_analysis;
 pub mod performance_table;
 pub mod summary_statistics;
-pub mod unified_summary_statistics;
 pub mod unified_performance_table;
+pub mod unified_summary_statistics;

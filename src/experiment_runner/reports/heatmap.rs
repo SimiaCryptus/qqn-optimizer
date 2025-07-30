@@ -1,10 +1,12 @@
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
-use crate::experiment_runner::{report_generator, Report, ReportConfig, ReportFormat, ReportMetadata};
+use crate::experiment_runner::{
+    report_generator, Report, ReportConfig, ReportFormat, ReportMetadata,
+};
 use anyhow::Context;
+use html_escape::encode_text;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use std::collections::HashMap;
-use html_escape::encode_text;
 
 /// Success Rate Heatmap Report
 pub struct SuccessRateHeatmapReport;
@@ -20,7 +22,11 @@ impl Report for SuccessRateHeatmapReport {
     fn description(&self) -> &'static str {
         "Color-coded heatmap showing success rates across optimizer-problem combinations"
     }
-    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_content(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         match config.format {
             ReportFormat::Html => self.generate_html(data, config),
             ReportFormat::Latex => self.generate_latex(data, config),
@@ -28,10 +34,18 @@ impl Report for SuccessRateHeatmapReport {
             ReportFormat::Csv => self.generate_csv(data, config),
         }
     }
-    fn export_to_file(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig, output_path: &Path) -> anyhow::Result<()> {
+    fn export_to_file(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+        output_path: &Path,
+    ) -> anyhow::Result<()> {
         let content = self.generate_content(data, config)?;
         fs::write(output_path, content).with_context(|| {
-            format!("Failed to write success rate heatmap report to: {}", output_path.display())
+            format!(
+                "Failed to write success rate heatmap report to: {}",
+                output_path.display()
+            )
         })?;
         Ok(())
     }
@@ -42,7 +56,9 @@ impl Report for SuccessRateHeatmapReport {
         // Check that we have at least one optimizer result
         let has_results = data.iter().any(|(_, results)| !results.results.is_empty());
         if !has_results {
-            return Err(anyhow::anyhow!("No optimizer results found in benchmark data"));
+            return Err(anyhow::anyhow!(
+                "No optimizer results found in benchmark data"
+            ));
         }
         Ok(())
     }
@@ -55,28 +71,41 @@ impl Report for SuccessRateHeatmapReport {
             }
         }
         let mut metadata = HashMap::new();
-        metadata.insert("optimizer_count".to_string(), all_optimizers.len().to_string());
+        metadata.insert(
+            "optimizer_count".to_string(),
+            all_optimizers.len().to_string(),
+        );
         metadata.insert("problem_count".to_string(), problem_count.to_string());
         metadata.insert("report_type".to_string(), "heatmap".to_string());
         ReportMetadata {
-            report_type: "".to_string(),
+            report_type: "success_rate_heatmap".to_string(),
             generated_at: Default::default(),
             problem_count,
-            optimizer_count: 0,
-            data_points: 0,
+            optimizer_count: 10,
+            data_points: 10,
         }
     }
     fn supported_formats(&self) -> Vec<ReportFormat> {
-        vec![ReportFormat::Html, ReportFormat::Latex, ReportFormat::Markdown, ReportFormat::Csv]
+        vec![
+            ReportFormat::Html,
+            ReportFormat::Latex,
+            ReportFormat::Markdown,
+            ReportFormat::Csv,
+        ]
     }
 }
 impl SuccessRateHeatmapReport {
-    fn generate_html(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_html(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        _config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         let (optimizers, _) = self.collect_optimizers_and_problems(data);
         if optimizers.is_empty() {
             return Ok("<p>No data available for heatmap generation.</p>".to_string());
         }
-        let mut html = String::from(r#"<!DOCTYPE html>
+        let mut html = String::from(
+            r#"<!DOCTYPE html>
 <html>
 <head>
     <title>Success Rate Heatmap</title>
@@ -100,14 +129,18 @@ impl SuccessRateHeatmapReport {
     <table>
         <thead>
             <tr>
-                <th>Problem</th>"#);
+                <th>Problem</th>"#,
+        );
         for optimizer in &optimizers {
             html.push_str(&format!("<th>{}</th>", encode_text(optimizer)));
         }
         html.push_str("</tr></thead><tbody>");
         for (problem, results) in data {
             let problem_name = problem.get_name();
-            html.push_str(&format!("<tr><td><strong>{}</strong></td>", encode_text(&problem_name)));
+            html.push_str(&format!(
+                "<tr><td><strong>{}</strong></td>",
+                encode_text(&problem_name)
+            ));
             for optimizer in &optimizers {
                 let (success_rate, has_data) = self.calculate_success_rate(results, optimizer);
                 let (class, display_text) = self.get_html_cell_style(success_rate, has_data);
@@ -115,7 +148,8 @@ impl SuccessRateHeatmapReport {
             }
             html.push_str("</tr>");
         }
-        html.push_str(r#"</tbody></table>
+        html.push_str(
+            r#"</tbody></table>
     <div class="legend">
         <strong>Legend:</strong>
         <span class="legend-item excellent">90-100% Excellent</span>
@@ -125,10 +159,15 @@ impl SuccessRateHeatmapReport {
         <span class="legend-item no-data">N/A No Data</span>
     </div>
 </body>
-</html>"#);
+</html>"#,
+        );
         Ok(html)
     }
-    fn generate_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_latex(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        _config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         let (optimizers, _) = self.collect_optimizers_and_problems(data);
         if optimizers.is_empty() {
             return Ok(String::new());
@@ -193,7 +232,11 @@ Quickly identifies which optimizers work on which problem types.
         );
         Ok(latex_content)
     }
-    fn generate_markdown(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_markdown(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        _config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         let (optimizers, _) = self.collect_optimizers_and_problems(data);
         if optimizers.is_empty() {
             return Ok("No data available for heatmap generation.".to_string());
@@ -234,10 +277,16 @@ Quickly identifies which optimizers work on which problem types.
         markdown.push_str("- N/A: No Data\n");
         Ok(markdown)
     }
-    fn generate_csv(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> anyhow::Result<String> {
+    fn generate_csv(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        _config: &ReportConfig,
+    ) -> anyhow::Result<String> {
         let (optimizers, _) = self.collect_optimizers_and_problems(data);
         if optimizers.is_empty() {
-            return Ok("Problem,Message\nNo Data,No data available for heatmap generation".to_string());
+            return Ok(
+                "Problem,Message\nNo Data,No data available for heatmap generation".to_string(),
+            );
         }
         let mut csv = String::from("Problem");
         for optimizer in &optimizers {
@@ -260,7 +309,10 @@ Quickly identifies which optimizers work on which problem types.
         }
         Ok(csv)
     }
-    fn collect_optimizers_and_problems(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> (Vec<String>, Vec<String>) {
+    fn collect_optimizers_and_problems(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+    ) -> (Vec<String>, Vec<String>) {
         let mut all_optimizers = std::collections::HashSet::new();
         let mut all_problems = Vec::new();
         for (problem, results) in data {
@@ -316,9 +368,7 @@ Quickly identifies which optimizers work on which problem types.
             } else {
                 ("red!70", "white")
             };
-            format!(
-                "& \\cellcolor{{{color}}}\\textcolor{{{text_color}}}{{{success_rate:.0}\\%}}"
-            )
+            format!("& \\cellcolor{{{color}}}\\textcolor{{{text_color}}}{{{success_rate:.0}\\%}}")
         }
     }
 }

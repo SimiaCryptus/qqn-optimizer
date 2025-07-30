@@ -9,6 +9,16 @@ pub mod reports;
 pub mod statistical_analysis;
 pub mod unified_report;
 pub mod unified_report_tests;
+pub use experiment_runner::*;
+pub use report_generator::*;
+pub use reports::convergence_analysis::ConvergenceAnalysisReport;
+pub use reports::efficiency_matrix::EfficiencyMatrixReport;
+pub use reports::family_vs_family_report::FamilyVsFamilyReport;
+pub use reports::heatmap::SuccessRateHeatmapReport;
+pub use reports::unified_performance_table::PerformanceTableReport;
+pub use reports::unified_summary_statistics::SummaryStatisticsReport;
+pub use statistical_analysis::*;
+pub use unified_report::*;
 pub mod unified_report_example;
 
 pub use experiment_runner::ExperimentRunner;
