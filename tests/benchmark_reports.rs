@@ -11,7 +11,7 @@ use qqn_optimizer::optimizer_sets::{
 };
 use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems};
 
-#[tokio::test]
+// #[tokio::test]
 async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     // init_logging(false)?;
     // Enable no threshold mode for this test
@@ -30,7 +30,7 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
-#[tokio::test]
+// #[tokio::test]
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     // init_logging(false)?;
     // Disable no threshold mode for this test

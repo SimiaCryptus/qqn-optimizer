@@ -636,3 +636,305 @@ pub(crate) fn calculate_family_performance_data(
         worst_variant,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::benchmarks::evaluation::{BenchmarkResults, ConvergenceReason, PerformanceMetrics, ProblemSpec, SingleResult};
+    use std::fs;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+    use crate::OptimizationProblem;
+
+    // Mock optimization problem for testing
+    struct MockProblem {
+        name: String,
+        dimensions: usize,
+    }
+    impl OptimizationProblem for MockProblem {
+        fn name(&self) -> &str {
+            &self.name
+        }
+        fn dimension(&self) -> usize {
+            self.dimensions
+        }
+
+        fn initial_point(&self) -> Vec<f64> {
+            todo!()
+        }
+
+        fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+            todo!()
+        }
+
+        fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+            todo!()
+        }
+
+        fn optimal_value(&self) -> Option<f64> {
+            todo!()
+        }
+
+        fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+            todo!()
+        }
+    }
+
+    fn create_mock_problem_spec(name: &str) -> ProblemSpec {
+        let mock_problem = MockProblem {
+            name: name.to_string(),
+            dimensions: 2,
+        };
+        ProblemSpec::new(
+            Arc::new(mock_problem),
+            name.to_string(),
+            Some(2),
+            42
+        )
+    }
+
+    fn create_mock_benchmark_result(
+        optimizer_name: &str,
+        best_value: f64,
+        convergence_achieved: bool,
+        function_evaluations: u32,
+        gradient_evaluations: u32,
+    ) -> SingleResult {
+        SingleResult {
+            optimizer_name: optimizer_name.to_string(),
+            run_id: 0,
+            final_value: 0.0,
+            best_value,
+            final_gradient_norm: 0.0,
+            convergence_achieved,
+            function_evaluations: function_evaluations.try_into().unwrap(),
+            gradient_evaluations: gradient_evaluations.try_into().unwrap(),
+            execution_time: std::time::Duration::from_millis(100),
+            trace: Default::default(),
+            convergence_reason: ConvergenceReason::GradientTolerance,
+            memory_usage: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 0.0,
+                function_evaluations_per_second: 0.0,
+                gradient_evaluations_per_second: 0.0,
+                convergence_rate: 0.0,
+            },
+            problem_name: "mock_problem".to_string(),
+            iterations: 0,
+            error_message: None,
+        }
+    }
+    fn create_test_data() -> Vec<(ProblemSpec, BenchmarkResults)> {
+        vec![
+            // Rosenbrock family problems
+            (
+                create_mock_problem_spec("rosenbrock_2d"),
+                BenchmarkResults {
+                    results: vec![
+                        create_mock_benchmark_result("lbfgs_default", 0.001, true, 150, 50),
+                        create_mock_benchmark_result("lbfgs_aggressive", 0.0005, true, 120, 40),
+                        create_mock_benchmark_result("adam_default", 0.1, false, 1000, 0),
+                        create_mock_benchmark_result("adam_adaptive", 0.05, true, 800, 0),
+                        create_mock_benchmark_result("sgd_momentum", 0.5, false, 2000, 0),
+                        create_mock_benchmark_result("nelder_mead_standard", 0.01, true, 300, 0),
+                    ],
+                    config: Default::default(),
+                    timestamp: Default::default(),
+                    convergence_achieved: false,
+                    final_value: None,
+                    function_evaluations: 0,
+                    gradient_evaluations: 0,
+                },
+            ),
+            (
+                create_mock_problem_spec("rosenbrock_10d"),
+                BenchmarkResults {
+                    results: vec![
+                        create_mock_benchmark_result("lbfgs_default", 0.1, true, 500, 200),
+                        create_mock_benchmark_result("lbfgs_aggressive", 0.05, true, 400, 150),
+                        create_mock_benchmark_result("adam_default", 1.0, false, 5000, 0),
+                        create_mock_benchmark_result("adam_adaptive", 0.8, false, 4000, 0),
+                        create_mock_benchmark_result("sgd_momentum", 2.0, false, 8000, 0),
+                        create_mock_benchmark_result("nelder_mead_standard", 0.2, true, 1500, 0),
+                    ],
+                    config: Default::default(),
+                    timestamp: Default::default(),
+                    convergence_achieved: false,
+                    final_value: None,
+                    function_evaluations: 0,
+                    gradient_evaluations: 0,
+                },
+            ),
+            // Sphere family problems
+            (
+                create_mock_problem_spec("sphere_2d"),
+                BenchmarkResults {
+                    results: vec![
+                        create_mock_benchmark_result("lbfgs_default", 1e-8, true, 50, 20),
+                        create_mock_benchmark_result("lbfgs_aggressive", 1e-9, true, 40, 15),
+                        create_mock_benchmark_result("adam_default", 1e-4, true, 200, 0),
+                        create_mock_benchmark_result("adam_adaptive", 1e-5, true, 150, 0),
+                        create_mock_benchmark_result("sgd_momentum", 1e-3, true, 500, 0),
+                        create_mock_benchmark_result("nelder_mead_standard", 1e-6, true, 100, 0),
+                    ],
+                    config: Default::default(),
+                    timestamp: Default::default(),
+                    convergence_achieved: false,
+                    final_value: None,
+                    function_evaluations: 0,
+                    gradient_evaluations: 0,
+                },
+            ),
+            (
+                create_mock_problem_spec("sphere_10d"),
+                BenchmarkResults {
+                    results: vec![
+                        create_mock_benchmark_result("lbfgs_default", 1e-7, true, 100, 50),
+                        create_mock_benchmark_result("lbfgs_aggressive", 1e-8, true, 80, 40),
+                        create_mock_benchmark_result("adam_default", 1e-3, true, 400, 0),
+                        create_mock_benchmark_result("adam_adaptive", 1e-4, true, 300, 0),
+                        create_mock_benchmark_result("sgd_momentum", 1e-2, false, 1000, 0),
+                        create_mock_benchmark_result("nelder_mead_standard", 1e-5, true, 200, 0),
+                    ],
+                    config: Default::default(),
+                    timestamp: Default::default(),
+                    convergence_achieved: false,
+                    final_value: None,
+                    function_evaluations: 0,
+                    gradient_evaluations: 0,
+                },
+            ),
+            // Rastrigin family problems
+            (
+                create_mock_problem_spec("rastrigin_2d"),
+                BenchmarkResults {
+                    results: vec![
+                        create_mock_benchmark_result("lbfgs_default", 5.0, false, 1000, 300),
+                        create_mock_benchmark_result("lbfgs_aggressive", 3.0, false, 800, 250),
+                        create_mock_benchmark_result("adam_default", 2.0, true, 2000, 0),
+                        create_mock_benchmark_result("adam_adaptive", 1.5, true, 1500, 0),
+                        create_mock_benchmark_result("sgd_momentum", 8.0, false, 5000, 0),
+                        create_mock_benchmark_result("nelder_mead_standard", 4.0, false, 2000, 0),
+                    ],
+                    config: Default::default(),
+                    timestamp: Default::default(),
+                    convergence_achieved: false,
+                    final_value: None,
+                    function_evaluations: 0,
+                    gradient_evaluations: 0,
+                },
+            ),
+        ]
+    }
+    #[tokio::test]
+    async fn test_render_family_vs_family_examples() -> anyhow::Result<()> {
+        // Create a target directory for manual checking
+        let target_dir = std::path::Path::new("target/test_output/family_vs_family_examples");
+        fs::create_dir_all(target_dir)?;
+        // Create test data
+        let test_data = create_test_data();
+        let test_data_refs: Vec<(&ProblemSpec, BenchmarkResults)> = test_data
+            .iter()
+            .map(|(spec, results)| (spec, results.clone()))
+            .collect();
+        // Generate LaTeX table
+        generate_family_vs_family_latex_table(&test_data_refs, target_dir).await?;
+        // Generate HTML table content
+        let html_content = generate_family_vs_family_comparison_table(&test_data_refs)?;
+        let html_file_path = target_dir.join("family_vs_family_comparison.html");
+        // Wrap the content in a complete HTML document for better viewing
+        let full_html = format!(
+            r#"<!DOCTYPE html>
+<html>
+<head>
+    <title>Family vs Family Comparison Test</title>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; }}
+        h1, h2 {{ color: #333; }}
+        table {{ border-collapse: collapse; margin: 20px 0; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: center; }}
+        th {{ background-color: #f2f2f2; font-weight: bold; }}
+        .best {{ background-color: #90EE90; }}
+        .worst {{ background-color: #FFB6C1; }}
+    </style>
+</head>
+<body>
+    <h1>Family vs Family Comparison Test Output</h1>
+    <p>This is a test rendering of the family vs family comparison table with mock data.</p>
+    {}
+</body>
+</html>"#,
+            html_content
+        );
+        fs::write(&html_file_path, full_html)?;
+        // Generate table content only (for inclusion in larger documents)
+        let table_content = generate_family_vs_family_table_content(&test_data_refs)?;
+        let latex_content_path = target_dir.join("family_vs_family_table_content.tex");
+        fs::write(&latex_content_path, table_content)?;
+        // Create a README file explaining the test outputs
+        let readme_content = format!(
+            r#"# Family vs Family Comparison Test Output
+This directory contains test renderings of the family vs family comparison tables.
+Generated on: {}
+## Files:
+1. **family_vs_family_matrix.tex** - Complete LaTeX document with the comparison table
+2. **family_vs_family_comparison.html** - HTML version for web viewing
+3. **family_vs_family_table_content.tex** - LaTeX table content only (for inclusion)
+4. **README.md** - This file
+## Test Data:
+The test uses mock benchmark results for the following problem families:
+- **rosenbrock**: rosenbrock_2d, rosenbrock_10d
+- **sphere**: sphere_2d, sphere_10d  
+- **rastrigin**: rastrigin_2d
+And the following optimizer families:
+- **lbfgs**: lbfgs_default, lbfgs_aggressive
+- **adam**: adam_default, adam_adaptive
+- **sgd**: sgd_momentum
+- **nelder_mead**: nelder_mead_standard
+## Manual Verification:
+1. Open the HTML file in a web browser to check the visual formatting
+2. Compile the LaTeX file to verify the table renders correctly
+3. Check that best/worst performers are highlighted appropriately
+4. Verify that the table content can be included in other documents
+## Expected Behavior:
+- Green cells should highlight the best performing optimizer family for each problem family
+- Red cells should highlight the worst performing optimizer family
+- Each cell should contain average ranking, best rank average, and best/worst variants
+- The table should be properly formatted and readable
+"#,
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+        );
+        let readme_path = target_dir.join("README.md");
+        fs::write(&readme_path, readme_content)?;
+        println!("✅ Family vs family comparison examples rendered to: {}", target_dir.display());
+        println!("📁 Files generated:");
+        println!("   - family_vs_family_matrix.tex (complete LaTeX document)");
+        println!("   - family_vs_family_comparison.html (HTML version)");
+        println!("   - family_vs_family_table_content.tex (LaTeX content only)");
+        println!("   - README.md (documentation)");
+        println!("🔍 Open the HTML file in a browser for manual verification");
+        Ok(())
+    }
+    #[test]
+    fn test_truncate_name() {
+        assert_eq!(truncate_name("short", 10), "short");
+        assert_eq!(truncate_name("exactlyten", 10), "exactlyten");
+        assert_eq!(truncate_name("this_is_longer_than_ten", 10), "this_is...");
+        assert_eq!(truncate_name("test", 4), "test");
+        assert_eq!(truncate_name("test", 3), "...");
+        assert_eq!(truncate_name("test", 2), "...");
+        assert_eq!(truncate_name("test", 1), "...");
+        assert_eq!(truncate_name("test", 0), "");
+        assert_eq!(truncate_name("very_long_name", 5), "ve...");
+    }
+    #[test]
+    fn test_calculate_family_performance_data_empty() {
+        let empty_problems = vec![];
+        let result = calculate_family_performance_data(&empty_problems, "test_family").unwrap();
+        assert!(result.average_ranking.is_infinite());
+        assert!(result.best_rank_average.is_infinite());
+        assert_eq!(result.best_variant, "N/A");
+        assert_eq!(result.worst_variant, "N/A");
+    }
+}

@@ -38,19 +38,6 @@ const COHEN_D_LARGE: f64 = 0.8;
 /// - **Bonferroni correction**: Should be applied externally for multiple comparisons
 /// - **Effect size**: Cohen's d provides practical significance beyond statistical significance
 ///
-/// # Usage Patterns
-///
-/// ```rust
-/// use qqn_optimizer::experiment_runner::StatisticalAnalysis;
-///
-/// let analysis = StatisticalAnalysis::new();
-/// let report = analysis.generate_statistical_analysis(
-///     &benchmark_results,
-///     &config,
-///     "output/",
-///     true  // use optimizer families
-/// )?;
-/// ```
 #[derive(Debug, Clone)]
 pub struct StatisticalAnalysis;
 
@@ -447,14 +434,6 @@ impl StatisticalAnalysis {
     /// - Zero variance with different means: returns error
     /// - Zero standard error: returns error
     ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let qqn_results = vec![1.2, 1.5, 1.1, 1.3];
-    /// let bfgs_results = vec![2.1, 2.3, 1.9, 2.2];
-    /// let (t_stat, p_val) = analysis.welch_t_test(&qqn_results, &bfgs_results)?;
-    /// println!("t = {:.3}, p = {:.3}", t_stat, p_val);
-    /// ```
     fn welch_t_test(&self, sample_a: &[f64], sample_b: &[f64]) -> Result<(f64, f64)> {
         if sample_a.len() < MIN_SAMPLE_SIZE || sample_b.len() < MIN_SAMPLE_SIZE {
             return Err(anyhow::anyhow!("Insufficient sample size for t-test"));
