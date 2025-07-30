@@ -640,11 +640,13 @@ pub(crate) fn calculate_family_performance_data(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarks::evaluation::{BenchmarkResults, ConvergenceReason, PerformanceMetrics, ProblemSpec, SingleResult};
+    use crate::benchmarks::evaluation::{
+        BenchmarkResults, ConvergenceReason, PerformanceMetrics, ProblemSpec, SingleResult,
+    };
+    use crate::OptimizationProblem;
     use std::fs;
     use std::sync::Arc;
     use tempfile::TempDir;
-    use crate::OptimizationProblem;
 
     // Mock optimization problem for testing
     struct MockProblem {
@@ -685,12 +687,7 @@ mod tests {
             name: name.to_string(),
             dimensions: 2,
         };
-        ProblemSpec::new(
-            Arc::new(mock_problem),
-            name.to_string(),
-            Some(2),
-            42
-        )
+        ProblemSpec::new(Arc::new(mock_problem), name.to_string(), Some(2), 42)
     }
 
     fn create_mock_benchmark_result(
@@ -907,7 +904,10 @@ And the following optimizer families:
         );
         let readme_path = target_dir.join("README.md");
         fs::write(&readme_path, readme_content)?;
-        println!("✅ Family vs family comparison examples rendered to: {}", target_dir.display());
+        println!(
+            "✅ Family vs family comparison examples rendered to: {}",
+            target_dir.display()
+        );
         println!("📁 Files generated:");
         println!("   - family_vs_family_matrix.tex (complete LaTeX document)");
         println!("   - family_vs_family_comparison.html (HTML version)");
