@@ -11,6 +11,8 @@ pub mod evaluation;
 pub mod functions;
 pub mod ml_problems;
 pub mod mnist;
+#[cfg(feature = "onednn")]
+pub mod mnist_onednn;
 // Re-export commonly used types
 
 pub use analytic_functions::AckleyFunction;

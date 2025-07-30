@@ -31,3 +31,8 @@ html-escape = "0.2.13"
 [features]
 default = ["plotting"]
 plotting = ["plotters"]
+onednn = ["onednnl"]
+
+[dependencies.onednnl]
+version = "0.0.1"
+optional = true
