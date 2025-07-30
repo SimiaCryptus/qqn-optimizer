@@ -3,13 +3,15 @@
 //! This module provides unified testing patterns that can be applied to any
 //! report implementation using the unified Report trait.
 
-use crate::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, ConvergenceReason, ProblemSpec, SingleResult};
+use std::sync::Arc;
+use crate::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, ConvergenceReason, OptimizationTrace, PerformanceMetrics, ProblemSpec, SingleResult};
 use crate::experiment_runner::unified_report::{Report, ReportConfig, ReportFormat, ReportCollection};
 use crate::experiment_runner::reports::unified_summary_statistics::SummaryStatisticsReport;
-use crate::optimizers::OptimizationTrace;
+use crate::experiment_runner::reports::family_vs_family_report::FamilyVsFamilyReport;
 use anyhow::Result;
 use std::time::Duration;
 use tempfile::TempDir;
+use crate::SphereFunction;
 
 /// Test suite that validates any Report implementation
 pub struct UnifiedReportTestSuite;
@@ -191,9 +193,11 @@ impl UnifiedReportTestSuite {
         
         for (prob_name, family) in problems {
             let problem_spec = ProblemSpec {
-                problem: Box::new(crate::benchmarks::analytic_functions::Sphere::new(2)),
+                name: None,
+                problem: Arc::new(SphereFunction::new(2)),
                 dimensions: Some(2),
                 family: family.to_string(),
+                seed: 0,
             };
             
             let mut results = Vec::new();
@@ -201,6 +205,7 @@ impl UnifiedReportTestSuite {
             for (i, optimizer) in optimizers.iter().enumerate() {
                 for run_id in 0..3 {  // 3 runs per optimizer
                     let result = SingleResult {
+                        problem_name: "".to_string(),
                         optimizer_name: optimizer.to_string(),
                         run_id,
                         final_value: 1e-6 * (i + 1) as f64,  // Different performance
@@ -215,9 +220,11 @@ impl UnifiedReportTestSuite {
                         } else { 
                             ConvergenceReason::MaxIterations 
                         },
+                        memory_usage: None,
                         best_value: 1e-6 * (i + 1) as f64,
                         trace: OptimizationTrace::default(),
                         error_message: None,
+                        performance_metrics: PerformanceMetrics {},
                     };
                     results.push(result);
                 }
@@ -225,7 +232,12 @@ impl UnifiedReportTestSuite {
             
             let benchmark_results = BenchmarkResults {
                 config: BenchmarkConfig::default(),
+                timestamp: Default::default(),
+                convergence_achieved: false,
+                final_value: None,
+                function_evaluations: 0,
                 results,
+                gradient_evaluations: 0,
             };
             
             test_data.push((problem_spec, benchmark_results));
@@ -237,14 +249,21 @@ impl UnifiedReportTestSuite {
     /// Create test data with empty results (for validation testing)
     pub fn create_empty_results_data() -> Vec<(ProblemSpec, BenchmarkResults)> {
         let problem_spec = ProblemSpec {
-            problem: Box::new(crate::benchmarks::analytic_functions::Sphere::new(2)),
+            name: None,
+            problem: Arc::new(SphereFunction::new(2)),
             dimensions: Some(2),
             family: "Test".to_string(),
+            seed: 0,
         };
         
         let benchmark_results = BenchmarkResults {
             config: BenchmarkConfig::default(),
+            timestamp: Default::default(),
+            convergence_achieved: false,
+            final_value: None,
+            function_evaluations: 0,
             results: vec![],  // Empty results
+            gradient_evaluations: 0,
         };
         
         vec![(problem_spec, benchmark_results)]
@@ -261,13 +280,22 @@ mod tests {
         let report = SummaryStatisticsReport::new();
         UnifiedReportTestSuite::test_report(&report).unwrap();
     }
+    #[test]
+    fn test_family_vs_family_report_with_unified_suite() {
+        let report = FamilyVsFamilyReport::new();
+        UnifiedReportTestSuite::test_report(&report).unwrap();
+    }
+    
     
     #[test]
     fn test_report_collection() {
         let collection = ReportCollection::new()
-            .add_report(SummaryStatisticsReport::new());
+            .add_report(SummaryStatisticsReport::new())
+            .add_report(FamilyVsFamilyReport::new());
         
-        assert_eq!(collection.report_names(), vec!["summary_statistics"]);
+        let mut names = collection.report_names();
+        names.sort();
+        assert_eq!(names, vec!["family_vs_family", "summary_statistics"]);
         
         let test_data = UnifiedReportTestSuite::create_test_data();
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
@@ -276,8 +304,11 @@ mod tests {
         let config = ReportConfig::default();
         
         let metadata_list = collection.generate_all(&data_refs, &config, temp_dir.path()).unwrap();
-        assert_eq!(metadata_list.len(), 1);
-        assert_eq!(metadata_list[0].report_type, "summary_statistics");
+        assert_eq!(metadata_list.len(), 2);
+        
+        let report_types: Vec<_> = metadata_list.iter().map(|m| &m.report_type).collect();
+        assert!(report_types.contains(&"summary_statistics".to_string()));
+        assert!(report_types.contains(&"family_vs_family".to_string()));
     }
     
     #[test]

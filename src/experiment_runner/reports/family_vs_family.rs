@@ -882,7 +882,7 @@ Generated on: {}
 ## Test Data:
 The test uses mock benchmark results for the following problem families:
 - **rosenbrock**: rosenbrock_2d, rosenbrock_10d
-- **sphere**: sphere_2d, sphere_10d  
+- **sphere**: sphere_2d, sphere_10d
 - **rastrigin**: rastrigin_2d
 And the following optimizer families:
 - **lbfgs**: lbfgs_default, lbfgs_aggressive

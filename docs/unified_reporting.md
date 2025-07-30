@@ -61,17 +61,17 @@ let metadata = reports.generate_all(&data, &config, &output_dir)?;
 
 Provides aggregate performance metrics grouped by problem family and optimizer.
 
-- **Name**: `summary_statistics`
+### Family vs Family Report
+Shows a comparison matrix of how different optimizer families perform across different problem families.
+- **Name**: `family_vs_family`
 - **Formats**: HTML, LaTeX, Markdown, CSV
-- **Use case**: High-level performance overview
+- **Use case**: Cross-family performance comparison
+
 
 ### Performance Table Report
 
 Shows detailed performance metrics for each optimizer-problem combination.
 
-- **Name**: `performance_table` 
-- **Formats**: HTML, LaTeX, Markdown, CSV
-- **Use case**: Detailed performance comparison
 
 ## Usage Examples
 
@@ -97,7 +97,8 @@ use qqn_optimizer::experiment_runner::{ReportCollection, ReportConfig, ReportFor
 
 let reports = ReportCollection::new()
     .add_report(SummaryStatisticsReport::new())
-    .add_report(PerformanceTableReport::new());
+    .add_report(PerformanceTableReport::new())
+    .add_report(FamilyVsFamilyReport::new());
 
 let config = ReportConfig {
     format: ReportFormat::Html,

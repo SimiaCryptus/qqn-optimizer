@@ -191,10 +191,11 @@ impl ReportCollection {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
-    use crate::benchmarks::evaluation::{BenchmarkConfig, ConvergenceReason, SingleResult};
-    use crate::optimizers::OptimizationTrace;
+    use crate::benchmarks::evaluation::{BenchmarkConfig, ConvergenceReason, OptimizationTrace, PerformanceMetrics, SingleResult};
     use std::time::Duration;
+    use crate::SphereFunction;
 
     // Mock report implementation for testing
     struct MockReport {
@@ -233,12 +234,15 @@ mod tests {
     fn create_test_data() -> Vec<(ProblemSpec, BenchmarkResults)> {
         // Create minimal test data
         let problem_spec = ProblemSpec {
-            problem: Box::new(crate::benchmarks::analytic_functions::Sphere::new(2)),
+            name: None,
+            problem: Arc::new(SphereFunction::new(2)),
             dimensions: Some(2),
             family: "Test".to_string(),
+            seed: 0,
         };
         
         let result = SingleResult {
+            problem_name: "".to_string(),
             optimizer_name: "TestOptimizer".to_string(),
             run_id: 0,
             final_value: 1e-6,
@@ -249,14 +253,26 @@ mod tests {
             execution_time: Duration::from_millis(100),
             convergence_achieved: true,
             convergence_reason: ConvergenceReason::FunctionTolerance,
+            memory_usage: None,
             best_value: 1e-6,
             trace: OptimizationTrace::default(),
             error_message: None,
+            performance_metrics: PerformanceMetrics {
+                iterations_per_second: 0.0,
+                function_evaluations_per_second: 0.0,
+                gradient_evaluations_per_second: 0.0,
+                convergence_rate: 0.0,
+            },
         };
         
         let results = BenchmarkResults {
             config: BenchmarkConfig::default(),
+            timestamp: Default::default(),
+            convergence_achieved: false,
+            final_value: None,
+            function_evaluations: 0,
             results: vec![result],
+            gradient_evaluations: 0,
         };
         
         vec![(problem_spec, results)]

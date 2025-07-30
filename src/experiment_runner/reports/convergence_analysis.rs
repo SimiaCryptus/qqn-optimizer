@@ -1,11 +1,291 @@
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
-use crate::experiment_runner::report_generator;
+use crate::experiment_runner::{
+    report_generator, Report, ReportConfig, ReportFormat, ReportMetadata,
+};
 use anyhow::Context;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+/// Convergence Analysis Report
+pub struct ConvergenceAnalysisReport;
+impl ConvergenceAnalysisReport {
+    pub fn new() -> Self {
+        Self
+    }
+    fn generate_html(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+        let mut content = String::from(r#"<!DOCTYPE html>
+<html>
+<head>
+    <title>Convergence Analysis Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .best { font-weight: bold; }
+        .qqn { color: #2e7d32; }
+        .stats { background-color: #f9f9f9; padding: 15px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Convergence Analysis Report</h1>
+"#);
+        if config.include_detailed_stats {
+            content.push_str(&self.generate_convergence_speed_html_table(data)?);
+        }
+        content.push_str("</body></html>");
+        Ok(content)
+    }
+    fn generate_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+        let mut content = String::from(r#"\documentclass{article}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{siunitx}
+\usepackage{adjustbox}
+\usepackage[margin=1in]{geometry}
+\usepackage{float}
+\begin{document}
+\title{Convergence Analysis Report}
+\maketitle
+"#);
+        if config.include_detailed_stats {
+            content.push_str(&self.generate_convergence_speed_table_content(data)?);
+        }
+        content.push_str(r#"\end{document}"#);
+        Ok(content)
+    }
+    fn generate_markdown(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+        let mut content = String::from("# Convergence Analysis Report\n\n");
+        if config.include_detailed_stats {
+            content.push_str(&self.generate_convergence_speed_markdown_table(data)?);
+        }
+        Ok(content)
+    }
+    fn generate_csv(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> anyhow::Result<String> {
+        let mut content = String::from("Optimizer,Mean_Iterations_50%,Mean_Iterations_90%,Final_Convergence_Iteration\n");
+        let optimizer_averages = self.calculate_convergence_averages(data)?;
+        for (optimizer, avg_50, avg_90, avg_final) in optimizer_averages {
+            content.push_str(&format!("{},{:.1},{:.1},{:.1}\n", optimizer, avg_50, avg_90, avg_final));
+        }
+        Ok(content)
+    }
+    fn calculate_convergence_averages(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<Vec<(String, f64, f64, f64)>> {
+        let mut optimizer_speed_data = HashMap::new();
+        for (_, results) in data {
+            for result in &results.results {
+                if result.convergence_achieved && !result.trace.iterations.is_empty() {
+                    let speed_data = optimizer_speed_data
+                        .entry(result.optimizer_name.clone())
+                        .or_insert(Vec::new());
+                    let initial_value = result
+                        .trace
+                        .iterations
+                        .first()
+                        .map(|iter| iter.function_value)
+                        .unwrap_or(result.final_value);
+                    let final_value = result.final_value;
+                    let improvement_50 = initial_value - 0.5 * (initial_value - final_value);
+                    let improvement_90 = initial_value - 0.9 * (initial_value - final_value);
+                    let mut iter_to_50 = None;
+                    let mut iter_to_90 = None;
+                    for iter_data in &result.trace.iterations {
+                        if iter_to_50.is_none() && iter_data.function_value <= improvement_50 {
+                            iter_to_50 = Some(iter_data.iteration);
+                        }
+                        if iter_to_90.is_none() && iter_data.function_value <= improvement_90 {
+                            iter_to_90 = Some(iter_data.iteration);
+                        }
+                    }
+                    speed_data.push((
+                        iter_to_50.unwrap_or(result.iterations),
+                        iter_to_90.unwrap_or(result.iterations),
+                        result.iterations,
+                    ));
+                }
+            }
+        }
+        let mut optimizer_averages = Vec::new();
+        for (optimizer, speed_data) in optimizer_speed_data {
+            if !speed_data.is_empty() {
+                let avg_50 = speed_data
+                    .iter()
+                    .map(|(iter_50, _, _)| *iter_50 as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                let avg_90 = speed_data
+                    .iter()
+                    .map(|(_, iter_90, _)| *iter_90 as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                let avg_final = speed_data
+                    .iter()
+                    .map(|(_, _, final_iter)| *final_iter as f64)
+                    .sum::<f64>()
+                    / speed_data.len() as f64;
+                optimizer_averages.push((optimizer, avg_50, avg_90, avg_final));
+            }
+        }
+        // Sort by fastest overall convergence (weighted average of milestones)
+        optimizer_averages.sort_by(|a, b| {
+            let score_a = 0.3 * a.1 + 0.4 * a.2 + 0.3 * a.3;
+            let score_b = 0.3 * b.1 + 0.4 * b.2 + 0.3 * b.3;
+            score_a
+                .partial_cmp(&score_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        Ok(optimizer_averages)
+    }
+    fn generate_convergence_speed_html_table(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
+        let optimizer_averages = self.calculate_convergence_averages(data)?;
+        if optimizer_averages.is_empty() {
+            return Ok(String::new());
+        }
+        let mut content = String::from(r#"
+    <h2>Convergence Speed Analysis</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Optimizer</th>
+                <th>Mean Iterations to 50% Improvement</th>
+                <th>Mean Iterations to 90% Improvement</th>
+                <th>Final Convergence Iteration</th>
+            </tr>
+        </thead>
+        <tbody>
+"#);
+        for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
+            let class = if i == 0 {
+                "best"
+            } else if optimizer.contains("QQN") {
+                "qqn"
+            } else {
+                ""
+            };
+            content.push_str(&format!(
+                r#"            <tr>
+                <td class="{}">{}</td>
+                <td>{:.1}</td>
+                <td>{:.1}</td>
+                <td>{:.1}</td>
+            </tr>
+"#,
+                class, optimizer, avg_50, avg_90, avg_final
+            ));
+        }
+        content.push_str(r#"        </tbody>
+    </table>
+    <p><strong>Purpose:</strong> Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.</p>
+"#);
+        Ok(content)
+    }
+    fn generate_convergence_speed_markdown_table(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
+        let optimizer_averages = self.calculate_convergence_averages(data)?;
+        if optimizer_averages.is_empty() {
+            return Ok(String::new());
+        }
+        let mut content = String::from(r#"## Convergence Speed Analysis
+| Optimizer | Mean Iterations to 50% Improvement | Mean Iterations to 90% Improvement | Final Convergence Iteration |
+|-----------|-------------------------------------|-------------------------------------|------------------------------|
+"#);
+        for (optimizer, avg_50, avg_90, avg_final) in optimizer_averages {
+            content.push_str(&format!(
+                "| {} | {:.1} | {:.1} | {:.1} |\n",
+                optimizer, avg_50, avg_90, avg_final
+            ));
+        }
+        content.push_str("\n**Purpose:** Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average).\n\n");
+        Ok(content)
+    }
+}
+impl Report for ConvergenceAnalysisReport {
+    fn name(&self) -> &'static str {
+        "convergence_analysis"
+    }
+    fn description(&self) -> &'static str {
+        "Analyzes convergence speed and patterns across optimizers, showing mean iterations to reach improvement milestones"
+    }
+    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> anyhow::Result<String> {
+        match config.format {
+            ReportFormat::Html => self.generate_html(data, config),
+            ReportFormat::Latex => self.generate_latex(data, config),
+            ReportFormat::Markdown => self.generate_markdown(data, config),
+            ReportFormat::Csv => self.generate_csv(data, config),
+        }
+    }
+    fn export_to_file(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig, output_path: &Path) -> anyhow::Result<()> {
+        let content = self.generate_content(data, config)?;
+        fs::write(output_path, content).with_context(|| {
+            format!("Failed to write convergence analysis report to: {}", output_path.display())
+        })?;
+        Ok(())
+    }
+    fn validate_data(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<()> {
+        if data.is_empty() {
+            return Err(anyhow::anyhow!("No benchmark data provided"));
+        }
+        let has_convergence_data = data.iter().any(|(_, results)| {
+            results.results.iter().any(|r| r.convergence_achieved && !r.trace.iterations.is_empty())
+        });
+        if !has_convergence_data {
+            return Err(anyhow::anyhow!("No convergence data available for analysis"));
+        }
+        Ok(())
+    }
+    fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
+        let total_problems = data.len();
+        let total_runs: usize = data.iter().map(|(_, results)| results.results.len()).sum();
+        let convergent_runs: usize = data.iter()
+            .map(|(_, results)| results.results.iter().filter(|r| r.convergence_achieved).count())
+            .sum();
+        let mut metadata = HashMap::new();
+        metadata.insert("total_problems".to_string(), total_problems.to_string());
+        metadata.insert("total_runs".to_string(), total_runs.to_string());
+        metadata.insert("convergent_runs".to_string(), convergent_runs.to_string());
+        metadata.insert("convergence_rate".to_string(), 
+            format!("{:.1}%", (convergent_runs as f64 / total_runs as f64) * 100.0));
+        ReportMetadata {
+            // title: "Convergence Analysis Report".to_string(),
+            // description: self.description().to_string(),
+            report_type: "".to_string(),
+            generated_at: chrono::Utc::now(),
+            // data_summary: metadata,
+            problem_count: 0,
+            optimizer_count: 0,
+            data_points: 0,
+        }
+    }
+    fn supported_formats(&self) -> Vec<ReportFormat> {
+        vec![
+            ReportFormat::Html,
+            ReportFormat::Latex,
+            ReportFormat::Markdown,
+            ReportFormat::Csv,
+        ]
+    }
+}
+impl Default for ConvergenceAnalysisReport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+// Legacy function for backward compatibility - now uses the unified report
 
 /// Generate convergence speed table content (without document wrapper)
+#[deprecated(note = "Use ConvergenceAnalysisReport::new().generate_content() instead")]
 pub fn generate_convergence_speed_table_content(
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+) -> anyhow::Result<String> {
+    let report = ConvergenceAnalysisReport::new();
+    let config = ReportConfig {
+        format: ReportFormat::Latex,
+        include_detailed_stats: true,
+        ..Default::default()
+    };
+    report.generate_content(all_results, &config)
+}
+// Keep the original implementation for backward compatibility
+fn generate_convergence_speed_table_content_legacy(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<String> {
     // Similar logic as generate_convergence_speed_latex_table but return just the table content
@@ -113,6 +393,7 @@ pub fn generate_convergence_speed_table_content(
     );
     Ok(content)
 }
+#[deprecated(note = "Use ConvergenceAnalysisReport for unified reporting")]
 
 pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
     let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
@@ -186,6 +467,7 @@ pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<S
 }
 
 /// Generate convergence speed analysis LaTeX table
+#[deprecated(note = "Use ConvergenceAnalysisReport::export_to_file() instead")]
 pub fn generate_convergence_speed_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,
@@ -316,4 +598,23 @@ pub fn generate_convergence_speed_latex_table(
         latex_path.display()
     );
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::experiment_runner::UnifiedReportTestSuite;
+    #[test]
+    fn test_convergence_analysis_report() {
+        let report = ConvergenceAnalysisReport::new();
+        UnifiedReportTestSuite::test_report(&report).unwrap();
+    }
+    #[test]
+    fn test_convergence_analysis_basic_functionality() {
+        let report = ConvergenceAnalysisReport::new();
+        assert_eq!(report.name(), "convergence_analysis");
+        assert!(!report.description().is_empty());
+        assert_eq!(report.supported_formats().len(), 4);
+        assert!(report.supported_formats().contains(&ReportFormat::Html));
+        assert!(report.supported_formats().contains(&ReportFormat::Latex));
+    }
 }
