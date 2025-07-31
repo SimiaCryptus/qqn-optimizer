@@ -9,9 +9,11 @@ use qqn_optimizer::experiment_runner::{ReportGenerator, UnifiedReportTestSuite};
 
 #[tokio::test]
 async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
-    // Create a temporary directory for test output
-    let temp_dir = TempDir::new()?;
-    let output_path = temp_dir.path().to_str().unwrap().to_string();
+    let report_path_prefix = "results/test_report_generator_";
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let output_dir_name = format!("{report_path_prefix}{timestamp}");
+    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    fs::create_dir_all(&output_dir)?;
 
     // Create test data using the existing test suite
     let test_data = UnifiedReportTestSuite::create_test_data();
@@ -22,7 +24,7 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
 
     // Create ReportGenerator with test configuration
     let config = BenchmarkConfig::default();
-    let report_generator = ReportGenerator::new(output_path.clone(), config);
+    let report_generator = ReportGenerator::new(output_dir_name.clone(), config);
 
     // Convert test data to the format expected by generate_main_report
     let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
@@ -34,7 +36,7 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
         .await?;
 
     // Verify that the main output directory structure was created
-    let output_dir = Path::new(&output_path);
+    let output_dir = Path::new(&output_dir_name);
     assert!(output_dir.exists(), "Output directory should exist");
 
     // Check for expected subdirectories
@@ -181,13 +183,16 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
-    // Test the family optimization mode as well
-    let temp_dir = TempDir::new()?;
-    let output_path = temp_dir.path().to_str().unwrap().to_string();
+
+    let report_path_prefix = "results/test_report_generator_family_mode_";
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let output_dir_name = format!("{report_path_prefix}{timestamp}");
+    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    fs::create_dir_all(&output_dir)?;
 
     let test_data = UnifiedReportTestSuite::create_test_data();
     let config = BenchmarkConfig::default();
-    let report_generator = ReportGenerator::new(output_path.clone(), config);
+    let report_generator = ReportGenerator::new(output_dir_name.clone(), config);
     let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
 
     // Run with family optimization enabled
@@ -195,7 +200,7 @@ async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
         .generate_main_report(&data_refs, true)
         .await?;
 
-    let output_dir = Path::new(&output_path);
+    let output_dir = Path::new(&output_dir_name);
     assert!(output_dir.exists(), "Output directory should exist");
 
     // Verify the same basic structure exists
@@ -216,6 +221,13 @@ async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
 
 #[test]
 fn test_report_generator_creation() {
+
+    let report_path_prefix = "results/test_report_generator_";
+    let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+    let output_dir_name = format!("{report_path_prefix}{timestamp}");
+    let output_dir = std::path::PathBuf::from(&output_dir_name);
+    fs::create_dir_all(&output_dir).unwrap();
+
     // Test basic ReportGenerator creation
     let config = BenchmarkConfig::default();
     let _report_generator = ReportGenerator::new("test_output".to_string(), config);

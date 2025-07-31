@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Enable error handling and detailed logging
 set +e
 set +x
