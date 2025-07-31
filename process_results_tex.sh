@@ -57,46 +57,6 @@ while IFS= read -r -d '' tex_file; do
   fi
 done < <(find results -name "*.tex" -type f -print0 2>/dev/null)
 
-
-# Use find for recursive search of markdown files
-while IFS= read -r -d '' md_file; do
-  if [ -f "$md_file" ]; then
-    log "Processing file: $md_file"
-    md_dir=$(dirname "$md_file")
-    base_name=$(basename "$md_file" .md)
-    output_file="${md_dir}/${base_name}.html"
-    # Skip if output file already exists
-    if [ -f "$output_file" ]; then
-      log "Skipping $md_file - output file $output_file already exists"
-      continue
-    fi
-
-
-    log "Converting $md_file to $output_file"
-
-   # Create a temporary file with updated links (with .md extension for pandoc)
-   temp_file=$(mktemp --suffix=.md)
-   # Replace .md links with .html links in the markdown content
-   # Handle both markdown links [text](link.md) and HTML links <a href="link.md">
-   sed -e 's/\(\[[^]]*\]([^)]*\)\.md\()\)/\1.html\2/g' \
-       -e 's/\(href="[^"]*\)\.md"/\1.html"/g' \
-       -e "s/\(href='[^']*\)\.md'/\1.html'/g" "$md_file" > "$temp_file"
-
-   if pandoc "$temp_file" -f markdown -t html -o "$output_file" 2>/dev/null; then
-      log "Successfully converted: $md_file -> $output_file"
-      rm "$temp_file"
-      ((processed_count++))
-    else
-      log_error "Failed to convert: $md_file"
-      rm "$temp_file"
-      ((error_count++))
-    fi
-  else
-    log "Skipping non-file or non-existent: $md_file"
-  fi
-done < <(find results -name "*.md" -type f -print0 2>/dev/null)
-
-
 # Final summary
 log "Processing complete!"
 log "Files processed successfully: $processed_count"

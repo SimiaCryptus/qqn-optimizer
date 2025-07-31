@@ -61,26 +61,26 @@ pub fn get_family(problem_name: &str) -> String {
         .unwrap_or(problem_name)
     {
         // Convex/Unimodal functions - smooth, single global minimum
-        "Sphere" => "Convex Unimodal".to_string(),
-        "Matyas" => "Convex Unimodal".to_string(),
+        "Sphere" => "Sphere".to_string(),
+        "Matyas" => "Matyas".to_string(),
 
         // Non-convex but unimodal - single global minimum, challenging valleys/ridges
-        "Rosenbrock" => "Non-Convex Unimodal".to_string(),
-        "Beale" => "Non-Convex Unimodal".to_string(),
-        "GoldsteinPrice" => "Non-Convex Unimodal".to_string(),
-        "Levi" => "Non-Convex Unimodal".to_string(),
+        "Rosenbrock" => "Rosenbrock".to_string(),
+        "Beale" => "Beale".to_string(),
+        "GoldsteinPrice" => "GoldsteinPrice".to_string(),
+        "Levi" => "Levi".to_string(),
 
         // Highly multimodal - many local minima, very challenging
-        "Rastrigin" => "Highly Multimodal".to_string(),
-        "Ackley" => "Highly Multimodal".to_string(),
-        "Michalewicz" => "Highly Multimodal".to_string(),
-        "StyblinskiTang" => "Highly Multimodal".to_string(),
+        "Rastrigin" => "Rastrigin".to_string(),
+        "Ackley" => "Ackley".to_string(),
+        "Michalewicz" => "Michalewicz".to_string(),
+        "StyblinskiTang" => "StyblinskiTang".to_string(),
 
         // Machine Learning problems
-        name if name.contains("Regression") => "ML Regression".to_string(),
-        name if name.contains("Neural") => "ML Neural Networks".to_string(),
-        name if name.contains("SVM") => "ML Classification".to_string(),
-        name if name.contains("Logistic") => "ML Classification".to_string(),
+        name if name.contains("Regression") => "Regression".to_string(),
+        name if name.contains("Neural") => "Neural Networks".to_string(),
+        name if name.contains("SVM") => "SVM".to_string(),
+        name if name.contains("Logistic") => "Logistic".to_string(),
 
         // Default fallback
         x => x.to_string(),
@@ -765,9 +765,9 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
     );
     summary
 }
-pub(crate) fn shorten_optimizer_name(name: &str) -> String {
+pub(crate) fn shorten_optimizer_name(name: &str, max_length: usize) -> String {
     // Shorten optimizer names for display in the table
-    if name.len() <= 10 {
+    if name.len() <= max_length {
         name.to_string()
     } else {
         // Try to create meaningful abbreviations
@@ -790,11 +790,11 @@ pub(crate) fn shorten_optimizer_name(name: &str) -> String {
             .replace("L-BFGS-", "")
             .replace("QQN-", "");
 
-        if shortened.len() <= 10 {
+        if shortened.len() <= max_length {
             shortened
         } else {
             // Take first 7 chars + "..."
-            format!("{}...", &shortened[..7.min(shortened.len())])
+            format!("{}...", &shortened[..(max_length-3).min(shortened.len())])
         }
     }
 }

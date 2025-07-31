@@ -10,6 +10,7 @@ pub mod reports;
 pub mod statistical_analysis;
 pub mod unified_report;
 pub mod unified_report_tests;
+pub mod test_data;
 pub use experiment_runner::*;
 pub use report_generator::*;
 pub use reports::convergence_analysis::ConvergenceAnalysisReport;
