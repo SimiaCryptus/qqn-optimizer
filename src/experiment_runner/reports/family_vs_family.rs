@@ -45,9 +45,11 @@ pub async fn generate_family_vs_family_latex_table(
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{xcolor}
+\usepackage{colortbl}
 \usepackage{siunitx}
 \usepackage{adjustbox}
 \usepackage{rotating}
+\usepackage{makecell}
 \usepackage[margin=0.5in]{geometry}
 \usepackage{longtable}
 \definecolor{bestgreen}{RGB}{0,150,0}
@@ -80,16 +82,16 @@ pub async fn generate_family_vs_family_latex_table(
 \caption{{Optimizer Family vs Problem Family Performance Matrix}}
 \label{{tab:family_vs_family_matrix}} \\
 \toprule
-\textbf{{Problem Family}} {}\\
+\makecell{{Problem\\Family}} {} \\
 \midrule
 \endfirsthead
-\multicolumn{{{}}}{{c}}{{\tablename\ \thetable\ -- continued from previous page}} \\
+\multicolumn{{{}}}{{l}}{{\tablename\ \thetable\ -- continued from previous page}} \\
 \toprule
-\textbf{{Problem Family}} {}\\
+\makecell{{Problem\\Family}} {} \\
 \midrule
 \endhead
 \midrule
-\multicolumn{{{}}}{{r}}{{Continued on next page}} \\
+\multicolumn{{{}}}{{l}}{{Continued on next page}} \\
 \endfoot
 \bottomrule
 \endlastfoot
@@ -97,7 +99,7 @@ pub async fn generate_family_vs_family_latex_table(
         optimizer_families
             .iter()
             .map(|fam| format!(
-                "& \\rotatebox{{45}}{{\\textbf{{{}}}}}",
+                "& \\makecell{{\\rotatebox{{90}}{{\\textbf{{{}}}}}}}",
                 report_generator::escape_latex(fam)
             ))
             .collect::<Vec<_>>()
@@ -106,7 +108,7 @@ pub async fn generate_family_vs_family_latex_table(
         optimizer_families
             .iter()
             .map(|fam| format!(
-                "& \\rotatebox{{45}}{{\\textbf{{{}}}}}",
+                "& \\makecell{{\\rotatebox{{90}}{{\\textbf{{{}}}}}}}",
                 report_generator::escape_latex(fam)
             ))
             .collect::<Vec<_>>()
@@ -166,7 +168,7 @@ pub async fn generate_family_vs_family_latex_table(
             };
 
             let cell_content = format!(
-                "& {} \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} / {:.1} \\\\ \\scriptsize{{{}}} \\\\ \\scriptsize{{{}}} \\end{{tabular}}",
+                "& {} \\makecell{{{:.1} / {:.1} \\\\ \\scriptsize{{{}}} \\\\ \\scriptsize{{{}}}}}",
                 color_cmd,
                 cell_data.average_ranking,
                 cell_data.best_rank_average,
@@ -175,7 +177,7 @@ pub async fn generate_family_vs_family_latex_table(
             );
             latex_content.push_str(&cell_content);
         }
-        latex_content.push_str(" \\\\ \\hline\n");
+        latex_content.push_str(" \\\\\n");
     }
     latex_content.push_str(
         r#"\end{longtable}
@@ -264,16 +266,16 @@ pub fn generate_family_vs_family_table_content(
 \caption{{Optimizer Family vs Problem Family Performance Matrix}}
 \label{{tab:family_vs_family_matrix}} \\
 \toprule
-\textbf{{Problem Family}} {}\\
+\makecell{{Problem\\Family}} {} \\
 \midrule
 \endfirsthead
-\multicolumn{{{}}}{{c}}{{\tablename\ \thetable\ -- continued from previous page}} \\
+\multicolumn{{{}}}{{l}}{{\tablename\ \thetable\ -- continued from previous page}} \\
 \toprule
-\textbf{{Problem Family}} {}\\
+\makecell{{Problem\\Family}} {} \\
 \midrule
 \endhead
 \midrule
-\multicolumn{{{}}}{{r}}{{Continued on next page}} \\
+\multicolumn{{{}}}{{l}}{{Continued on next page}} \\
 \endfoot
 \bottomrule
 \endlastfoot
@@ -282,7 +284,7 @@ pub fn generate_family_vs_family_table_content(
         optimizer_families
             .iter()
             .map(|fam| format!(
-                "& \\rotatebox{{45}}{{\\textbf{{{}}}}}",
+                "& \\makecell{{\\rotatebox{{90}}{{\\textbf{{{}}}}}}}",
                 report_generator::escape_latex(fam)
             ))
             .collect::<Vec<_>>()
@@ -291,7 +293,7 @@ pub fn generate_family_vs_family_table_content(
         optimizer_families
             .iter()
             .map(|fam| format!(
-                "& \\rotatebox{{45}}{{\\textbf{{{}}}}}",
+                "& \\makecell{{\\rotatebox{{90}}{{\\textbf{{{}}}}}}}",
                 report_generator::escape_latex(fam)
             ))
             .collect::<Vec<_>>()
@@ -351,7 +353,7 @@ pub fn generate_family_vs_family_table_content(
             };
 
             let cell_content = format!(
-                "& {} \\begin{{tabular}}{{@{{}}c@{{}}}} {:.1} / {:.1} \\\\ \\scriptsize{{{}}} \\\\ \\scriptsize{{{}}} \\end{{tabular}}",
+                "& {} \\makecell{{{:.1} / {:.1} \\\\ \\scriptsize{{{}}} \\\\ \\scriptsize{{{}}}}}",
                 color_cmd,
                 cell_data.average_ranking,
                 cell_data.best_rank_average,
@@ -360,7 +362,7 @@ pub fn generate_family_vs_family_table_content(
             );
             content.push_str(&cell_content);
         }
-        content.push_str(" \\\\ \\hline\n");
+        content.push_str(" \\\\\n");
     }
     content.push_str(
         r#"\end{longtable}

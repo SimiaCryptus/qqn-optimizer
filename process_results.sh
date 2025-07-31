@@ -57,6 +57,8 @@ while IFS= read -r -d '' md_file; do
     log "Skipping non-file or non-existent: $md_file"
   fi
 done < <(find results -name "*.md" -type f -print0 2>/dev/null)
+
+
 # Process all TeX files (table exports) in benchmark results
 log "Starting processing of TeX table export files..."
 # Use find for recursive search of TeX files
@@ -75,15 +77,29 @@ while IFS= read -r -d '' tex_file; do
     log "Converting $tex_file to $output_file"
     # Use pdflatex to compile TeX to PDF
     # Run in the directory containing the TeX file to handle relative paths
-    if (cd "$tex_dir" && pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1); then
+    pushd "$tex_dir"
+    pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1
+    pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
       log "Successfully converted: $tex_file -> $output_file"
       # Clean up auxiliary files created by pdflatex
-      rm -f "${tex_dir}/${base_name}.aux" "${tex_dir}/${base_name}.log"
+      rm -f "${base_name}.aux" "${base_name}.log"
       ((processed_count++))
     else
       log_error "Failed to convert: $tex_file"
       ((error_count++))
     fi
+
+    if [ $? -eq 0 ]; then
+      log "Successfully converted: $tex_file -> $output_file"
+      # Clean up auxiliary files created by pdflatex
+      rm -f "${base_name}.aux" "${base_name}.log"
+      ((processed_count++))
+    else
+      log_error "Failed to convert: $tex_file"
+      ((error_count++))
+    fi
+    popd
   else
     log "Skipping non-file or non-existent: $tex_file"
   fi
