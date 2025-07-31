@@ -48,7 +48,7 @@ pub fn generate_comparison_matrix_latex_table(
 "#,
     );
     // Calculate column specification dynamically
-    let col_spec = format!("l{}", "c".repeat(non_qqn_optimizers.len()));
+   let col_spec = format!("l{}", "c".repeat(qqn_optimizers.len()));
 
     latex_content.push_str(&format!(
         r#"\begin{{table}}[htbp]
@@ -58,10 +58,10 @@ pub fn generate_comparison_matrix_latex_table(
 \adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{{col_spec}}}
 \toprule
-\textbf{{QQN Optimizer}} {}\\
+\textbf{{Non-QQN Optimizer}} {}\\
 \midrule
 "#,
-        non_qqn_optimizers
+        qqn_optimizers
             .iter()
             .map(|opt| format!("& \\textbf{{{}}}", report_generator::escape_latex_safe(opt)))
             .collect::<Vec<_>>()
@@ -80,12 +80,12 @@ pub fn generate_comparison_matrix_latex_table(
                 .push(result);
         }
     }
-    for qqn_opt in &qqn_optimizers {
+    for non_qqn_opt in &non_qqn_optimizers {
         latex_content.push_str(&format!(
             "\\textbf{{{}}} ",
-            report_generator::escape_latex_safe(qqn_opt)
+            report_generator::escape_latex_safe(non_qqn_opt)
         ));
-        for non_qqn_opt in &non_qqn_optimizers {
+        for qqn_opt in &qqn_optimizers {
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;
@@ -194,11 +194,11 @@ pub fn generate_comparison_matrix_table_content(
 \adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{l{}}}
 \toprule
-\textbf{{QQN Optimizer}} {}\\
+\textbf{{Non-QQN Optimizer}} {}\\
 \midrule
 "#,
-        "c".repeat(non_qqn_optimizers.len()),
-        non_qqn_optimizers
+        "c".repeat(qqn_optimizers.len()),
+        qqn_optimizers
             .iter()
             .map(|opt| format!("& \\textbf{{{}}}", report_generator::escape_latex(opt)))
             .collect::<Vec<_>>()
@@ -217,12 +217,12 @@ pub fn generate_comparison_matrix_table_content(
                 .push(result);
         }
     }
-    for qqn_opt in &qqn_optimizers {
+    for non_qqn_opt in &non_qqn_optimizers {
         content.push_str(&format!(
             "\\textbf{{{}}} ",
-            report_generator::escape_latex(qqn_opt)
+            report_generator::escape_latex(non_qqn_opt)
         ));
-        for non_qqn_opt in &non_qqn_optimizers {
+        for qqn_opt in &qqn_optimizers {
             let mut wins = 0;
             let mut losses = 0;
             let mut ties = 0;

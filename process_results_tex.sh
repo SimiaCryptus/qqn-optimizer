@@ -39,8 +39,7 @@ while IFS= read -r -d '' tex_file; do
     # Use pdflatex to compile TeX to PDF
     # Run in the directory containing the TeX file to handle relative paths
     pushd "$tex_dir"
-    pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1
-    pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1
+    pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1 && pdflatex -interaction=nonstopmode "${base_name}.tex" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
       log "Successfully converted: $tex_file -> $output_file"
       # Clean up auxiliary files created by pdflatex
