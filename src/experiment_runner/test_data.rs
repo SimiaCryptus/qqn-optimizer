@@ -1,6 +1,8 @@
-use std::sync::Arc;
-use crate::benchmarks::evaluation::{BenchmarkResults, ConvergenceReason, PerformanceMetrics, ProblemSpec, SingleResult};
+use crate::benchmarks::evaluation::{
+    BenchmarkResults, ConvergenceReason, PerformanceMetrics, ProblemSpec, SingleResult,
+};
 use crate::OptimizationProblem;
+use std::sync::Arc;
 
 pub fn create_test_data() -> Vec<(ProblemSpec, BenchmarkResults)> {
     vec![
@@ -178,5 +180,3 @@ impl OptimizationProblem for MockProblem {
         todo!()
     }
 }
-
-

@@ -1,10 +1,10 @@
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
+use crate::experiment_runner;
 use crate::experiment_runner::{Report, ReportConfig, ReportFormat, ReportMetadata};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
-use std::path::Path;
 use std::fs;
-use crate::experiment_runner;
+use std::path::Path;
 
 pub struct PerformanceAnalysisReport;
 
@@ -545,7 +545,7 @@ impl PerformanceTableReport {
     fn generate_latex(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-      config: &ReportConfig,
+        config: &ReportConfig,
     ) -> anyhow::Result<String> {
         let performance_data = self.calculate_performance_data(data);
         let mut latex_content = String::from(
@@ -965,7 +965,6 @@ pub fn generate_main_performance_latex_table(
 pub fn generate_main_performance_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<String> {
-
     let mut content = String::from(
         r#"\footnotesize
 \begin{longtable}{|l|l|c|c|c|c|c|c|c|}

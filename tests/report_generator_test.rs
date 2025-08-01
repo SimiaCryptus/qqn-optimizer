@@ -183,7 +183,6 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
-
     let report_path_prefix = "results/test_report_generator_family_mode_";
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{report_path_prefix}{timestamp}");
@@ -221,7 +220,6 @@ async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
 
 #[test]
 fn test_report_generator_creation() {
-
     let report_path_prefix = "results/test_report_generator_";
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{report_path_prefix}{timestamp}");

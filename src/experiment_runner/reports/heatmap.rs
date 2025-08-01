@@ -65,12 +65,12 @@ impl Report for SuccessRateHeatmapReport {
     fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
         let mut all_optimizers = std::collections::HashSet::new();
         let problem_count = data.len();
-       let mut total_data_points = 0;
-       
+        let mut total_data_points = 0;
+
         for (_, results) in data {
             for result in &results.results {
                 all_optimizers.insert(result.optimizer_name.clone());
-               total_data_points += 1;
+                total_data_points += 1;
             }
         }
         let mut metadata = HashMap::new();
@@ -84,8 +84,8 @@ impl Report for SuccessRateHeatmapReport {
             report_type: "success_rate_heatmap".to_string(),
             generated_at: Default::default(),
             problem_count,
-           optimizer_count: all_optimizers.len(),
-           data_points: total_data_points,
+            optimizer_count: all_optimizers.len(),
+            data_points: total_data_points,
         }
     }
     fn supported_formats(&self) -> Vec<ReportFormat> {
@@ -380,13 +380,13 @@ Quickly identifies which optimizers work on which problem types.
 pub fn generate_success_rate_heatmap_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<String> {
-   let report = SuccessRateHeatmapReport::new();
-   let (optimizers, all_problems) = report.collect_optimizers_and_problems(all_results);
-   
-   if optimizers.is_empty() || all_problems.is_empty() {
+    let report = SuccessRateHeatmapReport::new();
+    let (optimizers, all_problems) = report.collect_optimizers_and_problems(all_results);
+
+    if optimizers.is_empty() || all_problems.is_empty() {
         return Ok(String::new());
     }
-   
+
     let mut content = format!(
         r#"\begin{{table}}[H]
 \centering
@@ -408,7 +408,7 @@ pub fn generate_success_rate_heatmap_table_content(
             .collect::<Vec<_>>()
             .join(" ")
     );
-   
+
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         content.push_str(&format!(
@@ -416,8 +416,8 @@ pub fn generate_success_rate_heatmap_table_content(
             report_generator::escape_latex(&problem_name)
         ));
         for optimizer in &optimizers {
-           let (success_rate, has_data) = report.calculate_success_rate(results, optimizer);
-           let cell_content = report.get_latex_cell_content(success_rate, has_data);
+            let (success_rate, has_data) = report.calculate_success_rate(results, optimizer);
+            let cell_content = report.get_latex_cell_content(success_rate, has_data);
             content.push_str(&cell_content);
         }
         content.push_str(" \\\\\n");
@@ -444,13 +444,13 @@ pub fn generate_success_rate_heatmap_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,
 ) -> anyhow::Result<()> {
-   let report = SuccessRateHeatmapReport::new();
-   let (optimizers, all_problems) = report.collect_optimizers_and_problems(all_results);
-   
-   if optimizers.is_empty() || all_problems.is_empty() {
+    let report = SuccessRateHeatmapReport::new();
+    let (optimizers, all_problems) = report.collect_optimizers_and_problems(all_results);
+
+    if optimizers.is_empty() || all_problems.is_empty() {
         return Ok(());
     }
-   
+
     let col_spec = format!("l{}", "c".repeat(optimizers.len()));
 
     let mut latex_content = String::from(
@@ -482,7 +482,7 @@ pub fn generate_success_rate_heatmap_latex_table(
             .collect::<Vec<_>>()
             .join(" ")
     ));
-   
+
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         latex_content.push_str(&format!(
@@ -490,8 +490,8 @@ pub fn generate_success_rate_heatmap_latex_table(
             report_generator::escape_latex(&problem_name)
         ));
         for optimizer in &optimizers {
-           let (success_rate, has_data) = report.calculate_success_rate(results, optimizer);
-           let cell_content = report.get_latex_cell_content(success_rate, has_data);
+            let (success_rate, has_data) = report.calculate_success_rate(results, optimizer);
+            let cell_content = report.get_latex_cell_content(success_rate, has_data);
             latex_content.push_str(&cell_content);
         }
         latex_content.push_str(" \\\\\n");

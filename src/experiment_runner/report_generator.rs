@@ -21,6 +21,9 @@ use crate::experiment_runner::reports::heatmap::SuccessRateHeatmapReport;
 use crate::experiment_runner::reports::heatmap::{
     generate_success_rate_heatmap_latex_table, generate_success_rate_heatmap_table_content,
 };
+use crate::experiment_runner::reports::performance_analysis::{
+    generate_main_performance_latex_table, generate_main_performance_table_content,
+};
 use crate::experiment_runner::reports::summary_statistics::{
     generate_summary_statistics_latex_table, generate_summary_statistics_table_content,
 };
@@ -34,7 +37,6 @@ use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use crate::experiment_runner::reports::performance_analysis::{generate_main_performance_latex_table, generate_main_performance_table_content};
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -504,10 +506,10 @@ pub async fn generate_unified_reports(
 pub(crate) fn escape_latex(text: &str) -> String {
     // Proper LaTeX escaping that avoids compilation errors
     let mut result = text.to_string();
-    
+
     // Handle backslashes first (before other replacements add backslashes)
     result = result.replace("\\", "\\textbackslash{}");
-    
+
     // Handle other special characters
     result = result.replace("_", "\\_");
     result = result.replace("&", "\\&");
@@ -518,10 +520,10 @@ pub(crate) fn escape_latex(text: &str) -> String {
     result = result.replace("{", "\\{");
     result = result.replace("}", "\\}");
     result = result.replace("~", "\\textasciitilde{}");
-    
+
     // Clean up any problematic sequences and ensure valid LaTeX
     result = result.replace("textbackslash_", "textbackslash\\_");
-    
+
     result.trim().to_string()
 }
 
@@ -792,7 +794,7 @@ pub(crate) fn shorten_optimizer_name(name: &str, max_length: usize) -> String {
             shortened
         } else {
             // Take first 7 chars + "..."
-            format!("{}...", &shortened[..(max_length-3).min(shortened.len())])
+            format!("{}...", &shortened[..(max_length - 3).min(shortened.len())])
         }
     }
 }

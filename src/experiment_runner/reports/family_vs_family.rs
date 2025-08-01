@@ -1,7 +1,7 @@
 use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
-use crate::experiment_runner::{report_generator, shorten_optimizer_name};
 use crate::experiment_runner::report_generator::FamilyPerformanceData;
+use crate::experiment_runner::{report_generator, shorten_optimizer_name};
 use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
@@ -173,8 +173,14 @@ pub async fn generate_family_vs_family_latex_table(
                 color_cmd,
                 cell_data.average_ranking,
                 cell_data.best_rank_average,
-                report_generator::escape_latex(&truncate_name(&cell_data.best_variant, MAX_NAME_SIZE)),
-                report_generator::escape_latex(&truncate_name(&cell_data.worst_variant, MAX_NAME_SIZE))
+                report_generator::escape_latex(&truncate_name(
+                    &cell_data.best_variant,
+                    MAX_NAME_SIZE
+                )),
+                report_generator::escape_latex(&truncate_name(
+                    &cell_data.worst_variant,
+                    MAX_NAME_SIZE
+                ))
             );
             latex_content.push_str(&cell_content);
         }
@@ -359,8 +365,14 @@ pub fn generate_family_vs_family_table_content(
                 color_cmd,
                 cell_data.average_ranking,
                 cell_data.best_rank_average,
-                report_generator::escape_latex(&truncate_name(&cell_data.best_variant, MAX_NAME_SIZE)),
-                report_generator::escape_latex(&truncate_name(&cell_data.worst_variant, MAX_NAME_SIZE))
+                report_generator::escape_latex(&truncate_name(
+                    &cell_data.best_variant,
+                    MAX_NAME_SIZE
+                )),
+                report_generator::escape_latex(&truncate_name(
+                    &cell_data.worst_variant,
+                    MAX_NAME_SIZE
+                ))
             );
             content.push_str(&cell_content);
         }
@@ -644,11 +656,9 @@ pub(crate) fn calculate_family_performance_data(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::benchmarks::evaluation::{
-        BenchmarkResults, ProblemSpec,
-    };
-    use std::fs;
+    use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
     use crate::experiment_runner::test_data;
+    use std::fs;
 
     #[tokio::test]
     async fn test_render_family_vs_family_examples() -> anyhow::Result<()> {

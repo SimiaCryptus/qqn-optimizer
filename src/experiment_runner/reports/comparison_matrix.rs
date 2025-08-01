@@ -48,7 +48,7 @@ pub fn generate_comparison_matrix_latex_table(
 "#,
     );
     // Calculate column specification dynamically
-   let col_spec = format!("l{}", "c".repeat(qqn_optimizers.len()));
+    let col_spec = format!("l{}", "c".repeat(qqn_optimizers.len()));
 
     latex_content.push_str(&format!(
         r#"\begin{{table}}[htbp]
