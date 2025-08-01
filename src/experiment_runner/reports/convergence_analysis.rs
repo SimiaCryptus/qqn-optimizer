@@ -84,7 +84,7 @@ impl ConvergenceAnalysisReport {
         _config: &ReportConfig,
     ) -> anyhow::Result<String> {
         let mut content = String::from(
-            "Optimizer,Mean_Iterations_50%,Mean_Iterations_90%,Final_Convergence_Iteration\n",
+            "Optimizer,Mean_FuncEvals_50%,Mean_FuncEvals_90%,Final_Convergence_FuncEvals\n",
         );
         let optimizer_averages = self.calculate_convergence_averages(data)?;
         for (optimizer, avg_50, avg_90, avg_final) in optimizer_averages {
@@ -179,9 +179,9 @@ impl ConvergenceAnalysisReport {
         <thead>
             <tr>
                 <th>Optimizer</th>
-                <th>Mean Iterations to 50% Improvement</th>
-                <th>Mean Iterations to 90% Improvement</th>
-                <th>Final Convergence Iteration</th>
+                <th>Mean Function Evaluations to 50% Improvement</th>
+                <th>Mean Function Evaluations to 90% Improvement</th>
+                <th>Final Convergence Function Evaluations</th>
             </tr>
         </thead>
         <tbody>
@@ -208,7 +208,7 @@ impl ConvergenceAnalysisReport {
         }
         content.push_str(r#"        </tbody>
     </table>
-    <p><strong>Purpose:</strong> Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.</p>
+    <p><strong>Purpose:</strong> Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.</p>
 "#);
         Ok(content)
     }
@@ -222,8 +222,8 @@ impl ConvergenceAnalysisReport {
         }
         let mut content = String::from(
             r#"## Convergence Speed Analysis
-| Optimizer | Mean Iterations to 50% Improvement | Mean Iterations to 90% Improvement | Final Convergence Iteration |
-|-----------|-------------------------------------|-------------------------------------|------------------------------|
+| Optimizer | Mean Function Evaluations to 50% Improvement | Mean Function Evaluations to 90% Improvement | Final Convergence Function Evaluations |
+|-----------|-----------------------------------------------|-----------------------------------------------|----------------------------------------|
 "#,
         );
         for (optimizer, avg_50, avg_90, avg_final) in optimizer_averages {
@@ -232,7 +232,7 @@ impl ConvergenceAnalysisReport {
                 optimizer, avg_50, avg_90, avg_final
             ));
         }
-        content.push_str("\n**Purpose:** Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average).\n\n");
+        content.push_str("\n**Purpose:** Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average).\n\n");
         Ok(content)
     }
 
@@ -420,13 +420,13 @@ fn generate_convergence_speed_table_content_legacy(
     let mut content = String::from(
         r#"\begin{table}[H]
 \centering
-\caption{Convergence Speed Analysis: Mean Iterations to Reach Improvement Milestones}
+\caption{Convergence Speed Analysis: Mean Function Evaluations to Reach Improvement Milestones}
 \label{tab:convergence_speed}
 \adjustbox{width=\textwidth,center}{
 \begin{tabular}{lrrr}
 \toprule
-\textbf{Optimizer} & \textbf{Mean Iterations} & \textbf{Mean Iterations} & \textbf{Final Convergence} \\
- & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Iteration} \\
+\textbf{Optimizer} & \textbf{Mean Function Evals} & \textbf{Mean Function Evals} & \textbf{Final Convergence} \\
+ & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Function Evals} \\
 \midrule
 "#,
     );
@@ -479,7 +479,7 @@ fn generate_convergence_speed_table_content_legacy(
 \end{tabular}
 }
 \end{table}
-\textbf{Purpose:} Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
+\textbf{Purpose:} Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
 "#,
     );
     Ok(content)
@@ -618,8 +618,8 @@ pub fn generate_convergence_speed_latex_table(
 \adjustbox{width=\textwidth,center}{
 \begin{tabular}{p{3cm}p{2cm}p{2cm}p{2cm}}
 \toprule
-\textbf{Optimizer} & \textbf{Mean Iterations} & \textbf{Mean Iterations} & \textbf{Final Convergence} \\
- & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Iteration} \\
+\textbf{Optimizer} & \textbf{Mean Function Evals} & \textbf{Mean Function Evals} & \textbf{Final Convergence} \\
+ & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Function Evals} \\
 \midrule
 "#,
     );
@@ -673,7 +673,7 @@ pub fn generate_convergence_speed_latex_table(
 \end{tabular}
 }
 \end{table}
-\textbf{Purpose:} Compares convergence rates for different optimizers. Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
+\textbf{Purpose:} Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
 \end{document}
 "#,
     );

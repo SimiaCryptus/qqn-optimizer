@@ -7,7 +7,6 @@ pub mod family_vs_family_report;
 pub mod heatmap;
 pub(crate) mod parameter_evolution;
 pub mod performance_analysis;
-pub mod performance_table;
 pub(crate) mod run_by_run;
 pub mod summary_statistics;
 pub mod unified_performance_table;

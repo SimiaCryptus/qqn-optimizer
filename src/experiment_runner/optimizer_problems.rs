@@ -784,7 +784,7 @@ pub fn generate_problem_latex_table(
  & \textbf{{Value}} & & \textbf{{Value}} & \textbf{{Value}} & \textbf{{Evals}} & \textbf{{Rate (\%)}} & \textbf{{(s)}} \\
 \midrule
 "#,
-        experiment_runner::escape_latex_safe(&problem_name),
+        experiment_runner::escape_latex(&problem_name),
         problem_filename.to_lowercase()
     ));
     let mut optimizer_stats = HashMap::new();

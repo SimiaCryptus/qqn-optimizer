@@ -109,7 +109,7 @@ impl EfficiencyMatrixReport {
         table { border-collapse: collapse; width: 100%; margin: 20px 0; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         th { background-color: #f2f2f2; font-weight: bold; }
-        .optimizer-name { text-align: left; font-weight: bold; }
+        .problem-name { text-align: left; font-weight: bold; }
         .na-cell { color: #999; font-style: italic; }
         .description { margin: 20px 0; font-style: italic; }
     </style>
@@ -120,21 +120,21 @@ impl EfficiencyMatrixReport {
     <table>
         <thead>
             <tr>
-                <th>Optimizer Family</th>"#,
+                <th>Problem Family</th>"#,
         );
 
-        for problem_family in &problem_families {
-            html_content.push_str(&format!("<th>{}</th>", problem_family));
+        for optimizer_family in &optimizer_families {
+            html_content.push_str(&format!("<th>{}</th>", optimizer_family));
         }
         html_content.push_str("</tr></thead><tbody>");
 
-        for optimizer_family in &optimizer_families {
+        for problem_family in &problem_families {
             html_content.push_str(&format!(
-                "<tr><td class=\"optimizer-name\">{}</td>",
-                optimizer_family
+                "<tr><td class=\"problem-name\">{}</td>",
+                problem_family
             ));
 
-            for problem_family in &problem_families {
+            for optimizer_family in &optimizer_families {
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
@@ -170,7 +170,7 @@ impl EfficiencyMatrixReport {
             return Ok("No data available for efficiency matrix.".to_string());
         }
 
-        let col_spec = format!("l{}", "c".repeat(problem_families.len()));
+        let col_spec = format!("l{}", "c".repeat(optimizer_families.len()));
 
         let mut latex_content = String::from(
             r#"\documentclass{article}
@@ -192,23 +192,23 @@ impl EfficiencyMatrixReport {
 \adjustbox{{width=\textwidth,center}}{{
 \begin{{tabular}}{{{col_spec}}}
 \toprule
-\textbf{{Optimizer Family}} {}\\
+\textbf{{Problem Family}} {}\\
 \midrule
 "#,
-            problem_families
+            optimizer_families
                 .iter()
                 .map(|fam| format!("& \\textbf{{{}}}", report_generator::escape_latex(fam)))
                 .collect::<Vec<_>>()
                 .join(" ")
         ));
 
-        for optimizer_family in &optimizer_families {
+        for problem_family in &problem_families {
             latex_content.push_str(&format!(
                 "\\textbf{{{}}} ",
-                report_generator::escape_latex(optimizer_family)
+                report_generator::escape_latex(problem_family)
             ));
 
-            for problem_family in &problem_families {
+            for optimizer_family in &optimizer_families {
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
@@ -250,24 +250,24 @@ impl EfficiencyMatrixReport {
         markdown_content.push_str("Mean Function Evaluations for Successful Runs\n\n");
 
         // Table header
-        markdown_content.push_str("| Optimizer Family |");
-        for problem_family in &problem_families {
-            markdown_content.push_str(&format!(" {} |", problem_family));
+        markdown_content.push_str("| Problem Family |");
+        for optimizer_family in &optimizer_families {
+            markdown_content.push_str(&format!(" {} |", optimizer_family));
         }
         markdown_content.push_str("\n|");
 
         // Table separator
         markdown_content.push_str("---|");
-        for _ in &problem_families {
+        for _ in &optimizer_families {
             markdown_content.push_str("---|");
         }
         markdown_content.push_str("\n");
 
         // Table rows
-        for optimizer_family in &optimizer_families {
-            markdown_content.push_str(&format!("| **{}** |", optimizer_family));
+        for problem_family in &problem_families {
+            markdown_content.push_str(&format!("| **{}** |", problem_family));
 
-            for problem_family in &problem_families {
+            for optimizer_family in &optimizer_families {
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
@@ -297,16 +297,16 @@ impl EfficiencyMatrixReport {
             return Ok("No data available for efficiency matrix.".to_string());
         }
 
-        let mut csv_content = String::from("Optimizer Family");
-        for problem_family in &problem_families {
-            csv_content.push_str(&format!(",{}", problem_family));
+        let mut csv_content = String::from("Problem Family");
+        for optimizer_family in &optimizer_families {
+            csv_content.push_str(&format!(",{}", optimizer_family));
         }
         csv_content.push_str("\n");
 
-        for optimizer_family in &optimizer_families {
-            csv_content.push_str(optimizer_family);
+        for problem_family in &problem_families {
+            csv_content.push_str(problem_family);
 
-            for problem_family in &problem_families {
+            for optimizer_family in &optimizer_families {
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {

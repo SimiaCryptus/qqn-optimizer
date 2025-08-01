@@ -53,13 +53,13 @@ async fn test_all(
     prefix: &str,
     problems: Vec<ProblemSpec>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let max_evals = 1000;
+    let max_evals = 10000;
     let num_runs = 10;
     run_benchmark(
         &format!("{prefix}all_optimizers_"),
         max_evals,
         num_runs,
-        Duration::from_secs(60),
+        Duration::from_secs(600),
         problems.clone(),
         {
             let mut optimizers = qqn_variants();

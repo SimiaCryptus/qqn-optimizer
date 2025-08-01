@@ -63,7 +63,7 @@ pub fn generate_comparison_matrix_latex_table(
 "#,
         qqn_optimizers
             .iter()
-            .map(|opt| format!("& \\textbf{{{}}}", report_generator::escape_latex_safe(opt)))
+            .map(|opt| format!("& \\textbf{{{}}}", report_generator::escape_latex(opt)))
             .collect::<Vec<_>>()
             .join(" ")
     ));
@@ -83,7 +83,7 @@ pub fn generate_comparison_matrix_latex_table(
     for non_qqn_opt in &non_qqn_optimizers {
         latex_content.push_str(&format!(
             "\\textbf{{{}}} ",
-            report_generator::escape_latex_safe(non_qqn_opt)
+            report_generator::escape_latex(non_qqn_opt)
         ));
         for qqn_opt in &qqn_optimizers {
             let mut wins = 0;

@@ -21,9 +21,6 @@ use crate::experiment_runner::reports::heatmap::SuccessRateHeatmapReport;
 use crate::experiment_runner::reports::heatmap::{
     generate_success_rate_heatmap_latex_table, generate_success_rate_heatmap_table_content,
 };
-use crate::experiment_runner::reports::performance_table::{
-    generate_main_performance_latex_table, generate_main_performance_table_content,
-};
 use crate::experiment_runner::reports::summary_statistics::{
     generate_summary_statistics_latex_table, generate_summary_statistics_table_content,
 };
@@ -37,6 +34,7 @@ use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use crate::experiment_runner::reports::performance_analysis::{generate_main_performance_latex_table, generate_main_performance_table_content};
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -503,29 +501,28 @@ pub async fn generate_unified_reports(
 }
 
 /// Escape special LaTeX characters
-pub(crate) fn escape_latex_safe(text: &str) -> String {
-    // More conservative escaping to avoid LaTeX compilation errors
-    text.replace("_", "\\_")
-        .replace("&", "\\&")
-        .replace("%", "\\%")
-        .replace("$", "\\$")
-        .replace("#", "\\#")
-        .replace("^", "\\textasciicircum")
-        .replace("{", "\\{")
-        .replace("}", "\\}")
-        .replace("~", "\\textasciitilde")
-        .replace("\\", "\\textbackslash")
-        // Remove problematic characters that cause math mode issues
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || " ()-.,_".contains(*c))
-        .collect::<String>()
-        .trim()
-        .to_string()
-}
-
-/// Legacy escape function for backward compatibility
 pub(crate) fn escape_latex(text: &str) -> String {
-    escape_latex_safe(text)
+    // Proper LaTeX escaping that avoids compilation errors
+    let mut result = text.to_string();
+    
+    // Handle backslashes first (before other replacements add backslashes)
+    result = result.replace("\\", "\\textbackslash{}");
+    
+    // Handle other special characters
+    result = result.replace("_", "\\_");
+    result = result.replace("&", "\\&");
+    result = result.replace("%", "\\%");
+    result = result.replace("$", "\\$");
+    result = result.replace("#", "\\#");
+    result = result.replace("^", "\\textasciicircum{}");
+    result = result.replace("{", "\\{");
+    result = result.replace("}", "\\}");
+    result = result.replace("~", "\\textasciitilde{}");
+    
+    // Clean up any problematic sequences and ensure valid LaTeX
+    result = result.replace("textbackslash_", "textbackslash\\_");
+    
+    result.trim().to_string()
 }
 
 /// Generate detailed reports for each optimizer-problem combination
@@ -785,6 +782,7 @@ pub(crate) fn shorten_optimizer_name(name: &str, max_length: usize) -> String {
             .replace("Shanno", "S")
             .replace("Quadratic", "Quad")
             .replace("Trust Region ", "")
+            .replace("Trust Region-", "")
             .replace("Adam-", "")
             .replace("GD-", "")
             .replace("L-BFGS-", "")
@@ -1179,7 +1177,6 @@ fn generate_comprehensive_latex_document(
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{adjustbox}
-\usepackage{rotating}
 \title{Quadratic Quasi-Newton (QQN) Optimizer: Comprehensive Benchmark Results}
 \author{QQN Benchmark Suite}
 \date{\today}
