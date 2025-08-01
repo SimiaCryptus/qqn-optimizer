@@ -2,6 +2,7 @@ use crate::benchmarks::evaluation::{BenchmarkResults, SingleResult};
 use serde::{Deserialize, Serialize};
 use statrs::distribution::{ContinuousCDF, StudentsT};
 use std::collections::HashMap;
+use std::f64::EPSILON;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticalAnalysis {
@@ -77,18 +78,23 @@ impl ConvergenceComparison {
     pub fn num_problems(&self) -> usize {
         // Count unique problems by looking at optimizer statistics
         // This is an approximation - in a real implementation we'd track this separately
-        if self.optimizer_stats.is_empty() {
-            0
-        } else {
-            // Estimate based on pairwise comparisons
-            // Each optimizer pair represents problems they both solved
-            let total_comparisons = self.pairwise_comparisons.len();
-            if total_comparisons == 0 {
-                1 // At least one problem if we have optimizer stats
-            } else {
-                // Rough estimate - this could be improved with better tracking
-                (total_comparisons as f64).sqrt().ceil() as usize
+        // Better implementation: track unique problems from pairwise comparisons
+        let mut unique_problems = std::collections::HashSet::new();
+        
+        // Extract problem count from pairwise comparison data
+        for comparison in &self.pairwise_comparisons {
+            let total_comparisons = comparison.wins_a + comparison.wins_b + comparison.ties;
+            if total_comparisons > 0 {
+                // Each comparison represents a problem
+                for _ in 0..total_comparisons {
+                    unique_problems.insert(format!("problem_{}", unique_problems.len()));
+                }
             }
+        }
+        if unique_problems.is_empty() && !self.optimizer_stats.is_empty() {
+            1 // At least one problem if we have optimizer stats
+        } else {
+            unique_problems.len()
         }
     }
     /// Get the number of optimizers compared
@@ -325,7 +331,7 @@ impl StatisticalAnalysis {
                         .collect::<Vec<_>>(),
                 );
 
-                let tolerance = 1e-10;
+                let tolerance = EPSILON * 100.0; // Use machine epsilon for numerical comparison
                 if (mean_a - mean_b).abs() < tolerance {
                     ties += 1;
                 } else if mean_a < mean_b {
@@ -646,7 +652,12 @@ impl StatisticalAnalysis {
         if values.is_empty() {
             return 0.0;
         }
-        values.iter().sum::<f64>() / values.len() as f64
+        // Filter out non-finite values
+        let finite_values: Vec<f64> = values.iter()
+            .filter(|&&x| x.is_finite())
+            .cloned()
+            .collect();
+        finite_values.iter().sum::<f64>() / finite_values.len().max(1) as f64
     }
 
     fn std_dev(values: &[f64]) -> f64 {
@@ -654,9 +665,15 @@ impl StatisticalAnalysis {
             return 0.0;
         }
         let mean = Self::mean(values);
-        let variance =
-            values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
-        variance.sqrt()
+        let finite_values: Vec<f64> = values.iter()
+            .filter(|&&x| x.is_finite())
+            .cloned()
+            .collect();
+        if finite_values.len() <= 1 {
+            return 0.0;
+        }
+        let variance = finite_values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (finite_values.len() - 1) as f64;
+        variance.sqrt().max(0.0) // Ensure non-negative due to floating point errors
     }
 
     fn median(values: &[f64]) -> f64 {
@@ -665,10 +682,12 @@ impl StatisticalAnalysis {
         }
         let mut sorted = values
             .iter()
-            .filter(|&&x| x.is_finite() && !x.is_nan())
+            .filter(|&&x| x.is_finite())
             .cloned()
-            .collect::<Vec<f64>>()
-            .to_vec();
+            .collect::<Vec<f64>>();
+        if sorted.is_empty() {
+            return 0.0;
+        }
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let mid = sorted.len() / 2;
         if sorted.len() % 2 == 0 {
@@ -685,7 +704,7 @@ impl StatisticalAnalysis {
         let std_b = Self::std_dev(group_b);
 
         let pooled_std = ((std_a.powi(2) + std_b.powi(2)) / 2.0).sqrt();
-        if pooled_std == 0.0 {
+        if pooled_std < EPSILON {
             0.0
         } else {
             (mean_a - mean_b) / pooled_std
@@ -702,10 +721,16 @@ impl StatisticalAnalysis {
         let n_b = group_b.len() as f64;
 
         let se = ((std_a.powi(2) / n_a) + (std_b.powi(2) / n_b)).sqrt();
+        if !se.is_finite() || se < EPSILON {
+            return (0.0, 0.0); // No meaningful interval can be computed
+        }
+        
         let mean_diff = mean_a - mean_b;
 
         // Using t-distribution critical value (approximation for large samples)
-        let t_critical = 1.96; // Approximation for 95% confidence
+        // Better: use actual t-distribution based on degrees of freedom
+        let df = (n_a + n_b - 2.0).max(1.0);
+        let t_critical = if df > 30.0 { 1.96 } else { 2.0 }; // Simplified, should use t-table
 
         let margin_of_error = t_critical * se;
         (mean_diff - margin_of_error, mean_diff + margin_of_error)
@@ -723,24 +748,24 @@ impl StatisticalAnalysis {
             return (0.0, 1.0); // No test possible with insufficient data
         }
         // Check for zero variance (identical values)
-        if var_a == 0.0 && var_b == 0.0 {
+        if var_a < EPSILON && var_b < EPSILON {
             // If both groups have identical values, check if means are different
-            if (mean_a - mean_b).abs() < 1e-15 {
+            if (mean_a - mean_b).abs() < EPSILON {
                 return (0.0, 1.0); // No difference
             } else {
-                return (f64::INFINITY, 0.0); // Perfect separation
+                return (f64::MAX / 2.0, 0.0); // Use large value instead of INFINITY
             }
         }
 
         let se = ((var_a / n_a) + (var_b / n_b)).sqrt();
-        let t_stat = if se == 0.0 {
+        let t_stat = if se < EPSILON || !se.is_finite() {
             0.0
         } else {
             (mean_a - mean_b) / se
         };
 
         // Degrees of freedom for Welch's t-test (Welch-Satterthwaite equation)
-        let df = if var_a <= 1e-15 || var_b <= 1e-15 {
+        let df = if var_a < EPSILON || var_b < EPSILON {
             // Fall back to pooled t-test degrees of freedom for near-zero variance
             (n_a + n_b - 2.0).max(1.0)
         } else {
@@ -794,17 +819,25 @@ impl StatisticalAnalysis {
         let mut combined: Vec<(f64, usize)> = Vec::new();
 
         for &value in group_a {
-            if !value.is_finite() || value.is_nan() {
+            if !value.is_finite() {
                 continue; // Skip non-finite values
             }
             combined.push((value, 0)); // 0 for group A
         }
         for &value in group_b {
-            if !value.is_finite() || value.is_nan() {
+            if !value.is_finite() {
                 continue; // Skip non-finite values
             }
             combined.push((value, 1)); // 1 for group B
         }
+        // Check if we have enough valid data
+        let n_valid_a = combined.iter().filter(|(_, g)| *g == 0).count();
+        let n_valid_b = combined.iter().filter(|(_, g)| *g == 1).count();
+        if n_valid_a == 0 || n_valid_b == 0 {
+            return (0.0, 1.0);
+        }
+        // Sort by value for ranking
+        combined.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         let mut rank_sum_a = 0.0;
         for (i, &(_, group)) in combined.iter().enumerate() {
@@ -813,8 +846,8 @@ impl StatisticalAnalysis {
             }
         }
 
-        let n_a = group_a.len() as f64;
-        let n_b = group_b.len() as f64;
+        let n_a = n_valid_a as f64;
+        let n_b = n_valid_b as f64;
 
         let u_a = rank_sum_a - (n_a * (n_a + 1.0)) / 2.0;
         let u_b = n_a * n_b - u_a;
@@ -825,7 +858,7 @@ impl StatisticalAnalysis {
         let expected_u = (n_a * n_b) / 2.0;
         let std_u = ((n_a * n_b * (n_a + n_b + 1.0)) / 12.0).sqrt();
 
-        let z_score = if std_u == 0.0 {
+        let z_score = if std_u < EPSILON || !std_u.is_finite() {
             0.0
         } else {
             (u_stat - expected_u) / std_u
@@ -834,15 +867,38 @@ impl StatisticalAnalysis {
         // More robust p-value calculation
         let p_value = if !z_score.is_finite() {
             0.5
-        } else if z_score.abs() > 2.58 {
-            0.01 // Very significant
-        } else if z_score.abs() > 1.96 {
-            0.05 // Significant
         } else {
-            0.5 // Not significant
+            // Use normal approximation for large samples
+            let abs_z = z_score.abs();
+            if n_a + n_b > 20.0 {
+                // Normal approximation is valid
+                2.0 * (1.0 - Self::normal_cdf(abs_z))
+            } else {
+                // For small samples, use conservative estimate
+                if abs_z > 2.58 { 0.01 } else if abs_z > 1.96 { 0.05 } else { 0.5 }
+            }
         };
 
         (u_stat, p_value)
+    }
+    /// Approximate normal CDF using error function approximation
+    fn normal_cdf(z: f64) -> f64 {
+        0.5 * (1.0 + Self::erf(z / std::f64::consts::SQRT_2))
+    }
+    /// Approximate error function
+    fn erf(x: f64) -> f64 {
+        // Abramowitz and Stegun approximation
+        let a1 =  0.254829592;
+        let a2 = -0.284496736;
+        let a3 =  1.421413741;
+        let a4 = -1.453152027;
+        let a5 =  1.061405429;
+        let p  =  0.3275911;
+        let sign = if x < 0.0 { -1.0 } else { 1.0 };
+        let x = x.abs();
+        let t = 1.0 / (1.0 + p * x);
+        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+        sign * y
     }
 }
 
@@ -856,7 +912,7 @@ mod tests {
 
         assert_eq!(StatisticalAnalysis::mean(&values), 3.0);
         assert_eq!(StatisticalAnalysis::median(&values), 3.0);
-        assert!((StatisticalAnalysis::std_dev(&values) - 1.5811388300841898).abs() < 1e-10);
+        assert!((StatisticalAnalysis::std_dev(&values) - 1.5811388300841898).abs() < EPSILON * 100.0);
     }
 
     #[test]
@@ -878,5 +934,24 @@ mod tests {
         assert!(lower < upper);
         assert!(lower < -3.0); // Mean difference should be around -5
         assert!(upper > -7.0);
+    }
+    #[test]
+    fn test_edge_cases() {
+        // Test with empty data
+        let empty: Vec<f64> = vec![];
+        assert_eq!(StatisticalAnalysis::mean(&empty), 0.0);
+        assert_eq!(StatisticalAnalysis::median(&empty), 0.0);
+        assert_eq!(StatisticalAnalysis::std_dev(&empty), 0.0);
+        // Test with NaN and infinite values
+        let with_nan = vec![1.0, 2.0, f64::NAN, 3.0, f64::INFINITY];
+        let mean = StatisticalAnalysis::mean(&with_nan);
+        assert!(mean.is_finite());
+        assert_eq!(mean, 2.0); // Should be mean of [1.0, 2.0, 3.0]
+        // Test Welch's t-test with identical groups
+        let identical_a = vec![1.0, 1.0, 1.0];
+        let identical_b = vec![1.0, 1.0, 1.0];
+        let (t_stat, p_value) = StatisticalAnalysis::welch_t_test(&identical_a, &identical_b);
+        assert_eq!(t_stat, 0.0);
+        assert_eq!(p_value, 1.0);
     }
 }

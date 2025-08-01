@@ -118,7 +118,14 @@ impl GoldenSectionConfig {
 /// - **Fixed reduction**: Cannot adapt reduction rate based on function behavior
 ///
 /// # When to Use
-/// Uses the golden ratio to narrow down the interval containing the minimum
+/// - When derivative information is unavailable or unreliable
+/// - For noisy or non-smooth objective functions
+/// - When robustness is more important than convergence speed
+/// - As a fallback when gradient-based methods fail
+/// - For verifying results from other line search methods
+///
+/// The golden ratio (φ = (1 + √5)/2 ≈ 1.618) ensures optimal worst-case reduction
+/// of the search interval, making it a reliable choice for difficult optimization problems.
 #[derive(Debug, Clone)]
 pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
@@ -126,9 +133,6 @@ pub struct GoldenSectionLineSearch {
 impl LineSearch for GoldenSectionLineSearch {
     fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
-        if directional_derivative >= 0.0 {
-            return Err(anyhow!("Direction is not a descent direction"));
-        }
         // First verify we can make progress
         let f0 = (problem.objective)(0.0)?;
         let test_step = self.config.min_step;
@@ -153,7 +157,7 @@ impl LineSearch for GoldenSectionLineSearch {
             step_size,
             success,
             termination_reason: if success {
-                TerminationReason::WolfeConditionsSatisfied
+                TerminationReason::ToleranceReached
             } else {
                 TerminationReason::StepSizeTooSmall
             },
@@ -201,7 +205,7 @@ impl GoldenSectionLineSearch {
         }
     }
     /// Golden ratio constant
-    const RESPHI: f64 = 0.618033988749895; // 1/phi = phi - 1
+    const RESPHI: f64 = 0.6180339887498949; // 2 - φ = 1/φ = φ - 1
 
     /// Find minimum using golden section search.
     ///
@@ -266,7 +270,7 @@ impl GoldenSectionLineSearch {
         let mut f_a = (problem.objective)(a)?;
 
         // Find a point where function decreases
-        let mut b = step;
+        let mut b = step.min(self.config.max_step);
         let mut f_b = (problem.objective)(b)?;
 
         // If initial step doesn't decrease function, try smaller steps
@@ -281,7 +285,7 @@ impl GoldenSectionLineSearch {
         }
 
         // Now find a point where function increases again
-        let mut c = b * 2.0;
+        let mut c = (b * 1.618).min(self.config.max_step);
         let mut f_c = (problem.objective)(c)?;
 
         // Expand until we find an increasing point
@@ -290,7 +294,7 @@ impl GoldenSectionLineSearch {
             f_a = f_b;
             b = c;
             f_b = f_c;
-            c *= 1.618; // Golden ratio expansion
+            c = (c * 1.618).min(self.config.max_step); // Golden ratio expansion with bound
             if c > self.config.max_step {
                 c = self.config.max_step;
             }
@@ -313,6 +317,11 @@ impl GoldenSectionLineSearch {
                 return Ok((a, b, c));
             }
         }
+        // If we still don't have a valid bracket, the function might be monotonic
+        if f_c <= f_b && c >= self.config.max_step {
+            return Err(anyhow!("Cannot establish bracket: function appears unbounded below in search direction"));
+        }
+
 
         // We have a valid bracket if f_b < f_a and f_b < f_c
         Ok((a, b, c))

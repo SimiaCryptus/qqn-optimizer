@@ -11,6 +11,25 @@ use log::warn;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::fmt::Write as FmtWrite;
+/// Statistics for a set of optimization runs
+#[derive(Debug, Clone)]
+struct OptimizerStats {
+    mean_final: f64,
+    std_final: f64,
+    best_final: f64,
+    worst_final: f64,
+    mean_function_evals: f64,
+    mean_gradient_evals: f64,
+    success_rate: f64,
+    mean_time: f64,
+    mean_final_success: f64,
+    mean_final_fail: f64,
+    mean_func_evals_success: f64,
+    mean_func_evals_fail: f64,
+    mean_grad_evals_success: f64,
+    mean_grad_evals_fail: f64,
+}
 
 /// Generate problem table content (without document wrapper)
 pub fn generate_problem_table_content(
@@ -19,7 +38,8 @@ pub fn generate_problem_table_content(
 ) -> anyhow::Result<String> {
     let problem_name = problem.get_name();
     let problem_filename = problem_name.replace(" ", "_");
-    let mut content = format!(
+    let mut content = String::with_capacity(4096);
+    write!(&mut content,
         r#"\begin{{table}}[H]
 \centering
 \caption{{Performance Results for {} Problem}}
@@ -33,7 +53,8 @@ pub fn generate_problem_table_content(
 "#,
         experiment_runner::escape_latex(&problem_name),
         problem_filename.to_lowercase()
-    );
+    )?;
+    
     let mut optimizer_stats = HashMap::new();
     for result in &results.results {
         let stats = optimizer_stats
@@ -41,50 +62,9 @@ pub fn generate_problem_table_content(
             .or_insert(Vec::new());
         stats.push(result);
     }
-    let mut perf_data = Vec::new();
-    for (optimizer, runs) in &optimizer_stats {
-        let final_values: Vec<f64> = runs
-            .iter()
-            .map(|r| r.final_value)
-            .filter(|&v| v.is_finite())
-            .collect();
-        if final_values.is_empty() {
-            continue;
-        }
-        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
-        let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-        let execution_times: Vec<f64> = runs
-            .iter()
-            .map(|r| r.execution_time.as_secs_f64())
-            .collect();
-        let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
-        let std_final = {
-            let variance = final_values
-                .iter()
-                .map(|x| (x - mean_final).powi(2))
-                .sum::<f64>()
-                / final_values.len() as f64;
-            variance.sqrt()
-        };
-        let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-        let worst_final = final_values
-            .iter()
-            .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
-        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
-        let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-        let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
-        perf_data.push((
-            optimizer.clone(),
-            mean_final,
-            std_final,
-            best_final,
-            worst_final,
-            mean_function_evals,
-            success_rate,
-            mean_time,
-        ));
-    }
+    
+    let perf_data = calculate_performance_data(&optimizer_stats, false)?;
+    
     // Sort by success rate first, then by mean final value
     perf_data.sort_by(|a, b| {
         let success_cmp = b.6.partial_cmp(&a.6).unwrap_or(std::cmp::Ordering::Equal);
@@ -94,6 +74,7 @@ pub fn generate_problem_table_content(
             a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
         }
     });
+    
     for (
         i,
         (
@@ -113,18 +94,155 @@ pub fn generate_problem_table_content(
         } else {
             experiment_runner::escape_latex(optimizer)
         };
-        content.push_str(&format!(
+        write!(&mut content,
             "{optimizer_style} & {mean_final:.2e} & {std_final:.2e} & {best_final:.2e} & {worst_final:.2e} & {mean_func_evals:.1} & {success_rate:.1} & {mean_time:.3} \\\\\n"
-        ));
+        )?;
     }
+    
     content.push_str(
         r#"\bottomrule
 \end{tabular}
+}
 \end{table}
 "#,
     );
     Ok(content)
 }
+/// Calculate performance statistics for optimizers
+fn calculate_optimizer_stats(runs: &[&SingleResult]) -> Option<OptimizerStats> {
+    let final_values: Vec<f64> = runs
+        .iter()
+        .map(|r| r.best_value)
+        .filter(|&v| v.is_finite())
+        .collect();
+    if final_values.is_empty() {
+        return None;
+    }
+    let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
+    let gradient_evals: Vec<f64> = runs.iter().map(|r| r.gradient_evaluations as f64).collect();
+    let execution_times: Vec<f64> = runs
+        .iter()
+        .map(|r| r.execution_time.as_secs_f64())
+        .collect();
+    let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+    if !mean_final.is_finite() {
+        return None;
+    }
+    let std_final = calculate_std_dev(&final_values, mean_final);
+    let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+    let worst_final = final_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+    let mean_gradient_evals = gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
+    let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
+    // Calculate success/fail statistics
+    let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
+    let unsuccessful_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
+    let (mean_final_success, mean_func_evals_success, mean_grad_evals_success) = 
+        calculate_subset_stats(&successful_runs);
+    let (mean_final_fail, mean_func_evals_fail, mean_grad_evals_fail) = 
+        calculate_subset_stats(&unsuccessful_runs);
+    let success_count = if is_no_threshold_mode() {
+        successful_runs.len()
+    } else {
+        0
+    };
+    let success_rate = success_count as f64 / runs.len() as f64;
+    Some(OptimizerStats {
+        mean_final,
+        std_final,
+        best_final,
+        worst_final,
+        mean_function_evals,
+        mean_gradient_evals,
+        success_rate,
+        mean_time,
+        mean_final_success,
+        mean_final_fail,
+        mean_func_evals_success,
+        mean_func_evals_fail,
+        mean_grad_evals_success,
+        mean_grad_evals_fail,
+    })
+}
+/// Calculate standard deviation
+fn calculate_std_dev(values: &[f64], mean: f64) -> f64 {
+    let variance = values
+        .iter()
+        .map(|x| (x - mean).powi(2))
+        .sum::<f64>()
+        / values.len() as f64;
+    variance.sqrt()
+}
+/// Calculate statistics for a subset of runs
+fn calculate_subset_stats(runs: &[&&SingleResult]) -> (f64, f64, f64) {
+    if runs.is_empty() {
+        return (f64::NAN, f64::NAN, f64::NAN);
+    }
+    let final_vals: Vec<f64> = runs
+        .iter()
+        .map(|r| r.final_value)
+        .filter(|&v| v.is_finite())
+        .collect();
+    let func_evals: Vec<f64> = runs
+        .iter()
+        .map(|r| r.function_evaluations as f64)
+        .collect();
+    let grad_evals: Vec<f64> = runs
+        .iter()
+        .map(|r| r.gradient_evaluations as f64)
+        .collect();
+    (
+        if !final_vals.is_empty() {
+            final_vals.iter().sum::<f64>() / final_vals.len() as f64
+        } else {
+            f64::NAN
+        },
+        func_evals.iter().sum::<f64>() / func_evals.len() as f64,
+        grad_evals.iter().sum::<f64>() / grad_evals.len() as f64,
+    )
+}
+/// Calculate performance data for all optimizers
+fn calculate_performance_data(
+    optimizer_stats: &HashMap<String, Vec<&SingleResult>>,
+    use_best_value: bool,
+) -> anyhow::Result<Vec<(String, f64, f64, f64, f64, f64, f64, f64)>> {
+    let mut perf_data = Vec::new();
+    for (optimizer, runs) in optimizer_stats {
+        let final_values: Vec<f64> = runs
+            .iter()
+            .map(|r| if use_best_value { r.best_value } else { r.final_value })
+            .filter(|&v| v.is_finite())
+            .collect();
+        if final_values.is_empty() {
+            continue;
+        }
+        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
+        let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+        let execution_times: Vec<f64> = runs
+            .iter()
+            .map(|r| r.execution_time.as_secs_f64())
+            .collect();
+        let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+        let std_final = calculate_std_dev(&final_values, mean_final);
+        let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+        let worst_final = final_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+        let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
+        let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
+        perf_data.push((
+            optimizer.clone(),
+            mean_final,
+            std_final,
+            best_final,
+            worst_final,
+            mean_function_evals,
+            success_rate,
+            mean_time,
+        ));
+    }
+    Ok(perf_data)
+}
+
 
 /// Generate a detailed report for a specific optimizer on a specific problem
 pub async fn generate_optimizer_problem_report(
@@ -138,8 +256,10 @@ pub async fn generate_optimizer_problem_report(
     let optimizer_filename = optimizer_name.replace(" ", "_");
     let filename = format!("detailed_{problem_filename}_{optimizer_filename}.md");
     let filepath = Path::new(output_dir).join(&filename);
+    
     let mut content =
         report_generator::generate_detailed_report_header(problem, optimizer_name, runs);
+    
     content.push_str(&run_by_run::generate_run_by_run_analysis(runs)?);
     content.push_str(&generate_convergence_analysis(runs)?);
     content.push_str(&parameter_evolution::generate_parameter_evolution_analysis(
@@ -151,8 +271,10 @@ pub async fn generate_optimizer_problem_report(
         problem_name,
         optimizer_name,
     ));
+    
     fs::write(&filepath, content)
         .with_context(|| format!("Failed to write detailed report to: {}", filepath.display()))?;
+    
     Ok(())
 }
 
@@ -165,7 +287,8 @@ pub fn generate_problem_section(
     let dimension = problem.dimensions;
     let optimal_value = problem.problem.optimal_value().unwrap_or(f64::NEG_INFINITY);
 
-    let mut section = format!(
+    let mut section = String::with_capacity(8192);
+    write!(&mut section,
         r#"
 ## Problem: {}
 
@@ -183,7 +306,7 @@ pub fn generate_problem_section(
         optimal_value,
         results.results.len(),
         problem_name.replace(" ", "_")
-    );
+    )?;
 
     let mut optimizer_stats = HashMap::new();
     let mut suspicious_results = Vec::new();
@@ -193,6 +316,7 @@ pub fn generate_problem_section(
             .entry(result.optimizer_name.clone())
             .or_insert(Vec::new());
         stats.push(result);
+        
         // More sophisticated suspicious result detection
         if result.function_evaluations <= 2 && result.convergence_achieved {
             suspicious_results.push((
@@ -201,6 +325,7 @@ pub fn generate_problem_section(
                 result.final_value,
             ));
         }
+        
         // Also check for NaN or infinite values
         if !result.final_value.is_finite() || !result.final_gradient_norm.is_finite() {
             warn!(
@@ -217,9 +342,9 @@ pub fn generate_problem_section(
 "#,
         );
         for (optimizer, evaluations, final_value) in suspicious_results {
-            section.push_str(&format!(
+            write!(&mut section,
                 "> {optimizer} claimed convergence with {evaluations} function evaluations (final_value: {final_value:.2e})  \n"
-            ));
+            )?;
         }
         section.push_str(r#">
 > *Note: This may indicate problems with initialization or convergence criteria, or could be due to lucky initialization.*
@@ -246,130 +371,31 @@ pub fn generate_problem_section(
 
     let mut perf_data = Vec::new();
     for (optimizer, runs) in &optimizer_stats {
-        let final_values: Vec<f64> = runs
-            .iter()
-            .map(|r| r.best_value)
-            .filter(|&v| v.is_finite())
-            .collect();
-        if final_values.is_empty() {
-            continue; // Skip optimizers with no valid results
+
+
+
+
+        if let Some(stats) = calculate_optimizer_stats(runs) {
+            perf_data.push((
+                optimizer.clone(),
+                stats.mean_final,
+                stats.std_final,
+                stats.best_final,
+                stats.worst_final,
+                stats.mean_function_evals,
+                stats.mean_gradient_evals,
+                stats.success_rate,
+                stats.mean_time,
+                stats.mean_final_success,
+                stats.mean_final_fail,
+                stats.mean_func_evals_success,
+                stats.mean_func_evals_fail,
+                stats.mean_grad_evals_success,
+                stats.mean_grad_evals_fail,
+            ));
         }
-
-        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
-        let gradient_evals: Vec<f64> = runs.iter().map(|r| r.gradient_evaluations as f64).collect();
-        let success_count = if is_no_threshold_mode() {
-            runs.iter().filter(|r| r.convergence_achieved).count()
-        } else {
-            0
-        };
-        let execution_times: Vec<f64> = runs
-            .iter()
-            .map(|r| r.execution_time.as_secs_f64())
-            .collect();
-
-        let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
-        if !mean_final.is_finite() {
-            warn!(
-                "Mean final value for optimizer '{optimizer}' is not finite (mean: {mean_final})"
-            );
-            continue;
-        }
-        // Separate statistics for successful and unsuccessful runs
-        let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
-        let unsuccessful_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
-        // Calculate separate statistics for successful runs
-        let (mean_final_success, mean_func_evals_success, mean_grad_evals_success) =
-            if !successful_runs.is_empty() {
-                let final_vals: Vec<f64> = successful_runs
-                    .iter()
-                    .map(|r| r.final_value)
-                    .filter(|&v| v.is_finite())
-                    .collect();
-                let func_evals: Vec<f64> = successful_runs
-                    .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .collect();
-                let grad_evals: Vec<f64> = successful_runs
-                    .iter()
-                    .map(|r| r.gradient_evaluations as f64)
-                    .collect();
-                (
-                    if !final_vals.is_empty() {
-                        final_vals.iter().sum::<f64>() / final_vals.len() as f64
-                    } else {
-                        f64::NAN
-                    },
-                    func_evals.iter().sum::<f64>() / func_evals.len() as f64,
-                    grad_evals.iter().sum::<f64>() / grad_evals.len() as f64,
-                )
-            } else {
-                (f64::NAN, f64::NAN, f64::NAN)
-            };
-        // Calculate separate statistics for unsuccessful runs
-        let (mean_final_fail, mean_func_evals_fail, mean_grad_evals_fail) =
-            if !unsuccessful_runs.is_empty() {
-                let final_vals: Vec<f64> = unsuccessful_runs
-                    .iter()
-                    .map(|r| r.final_value)
-                    .filter(|&v| v.is_finite())
-                    .collect();
-                let func_evals: Vec<f64> = unsuccessful_runs
-                    .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .collect();
-                let grad_evals: Vec<f64> = unsuccessful_runs
-                    .iter()
-                    .map(|r| r.gradient_evaluations as f64)
-                    .collect();
-                (
-                    if !final_vals.is_empty() {
-                        final_vals.iter().sum::<f64>() / final_vals.len() as f64
-                    } else {
-                        f64::NAN
-                    },
-                    func_evals.iter().sum::<f64>() / func_evals.len() as f64,
-                    grad_evals.iter().sum::<f64>() / grad_evals.len() as f64,
-                )
-            } else {
-                (f64::NAN, f64::NAN, f64::NAN)
-            };
-
-        let std_final = {
-            let variance = final_values
-                .iter()
-                .map(|x| (x - mean_final).powi(2))
-                .sum::<f64>()
-                / final_values.len() as f64;
-            variance.sqrt()
-        };
-        let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-        let worst_final = final_values
-            .iter()
-            .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
-        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
-        let mean_gradient_evals = gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
-        let success_rate = success_count as f64 / runs.len() as f64;
-        let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
-
-        perf_data.push((
-            optimizer.clone(),
-            mean_final,
-            std_final,
-            best_final,
-            worst_final,
-            mean_function_evals,
-            mean_gradient_evals,
-            success_rate,
-            mean_time,
-            mean_final_success,
-            mean_final_fail,
-            mean_func_evals_success,
-            mean_func_evals_fail,
-            mean_grad_evals_success,
-            mean_grad_evals_fail,
-        ));
     }
+    
     // Sort by success rate first, then by mean final value
 
     perf_data.sort_by(|a, b| {
@@ -413,6 +439,7 @@ pub fn generate_problem_section(
         } else {
             ""
         };
+        
         // Create hyperlink to detailed report
         let problem_filename = problem_name.replace(" ", "_");
         let optimizer_filename = optimizer.replace(" ", "_");
@@ -423,49 +450,25 @@ pub fn generate_problem_section(
         );
 
         // Create formatted strings for success/fail values
-        let success_str = if mean_final_success.is_nan() || !mean_final_success.is_finite() {
-            "-".to_string()
-        } else {
-            format!("{mean_final_success:.2e}")
-        };
-        let fail_str = if mean_final_fail.is_nan() || !mean_final_fail.is_finite() {
-            "-".to_string()
-        } else {
-            format!("{mean_final_fail:.2e}")
-        };
+        let success_str = format_finite_value(*mean_final_success, "2e");
+        let fail_str = format_finite_value(*mean_final_fail, "2e");
         let final_value_str = if mean_final.is_finite() {
             format!("{mean_final:.2e} / {success_str} / {fail_str}")
         } else {
             format!("- / {success_str} / {fail_str}")
         };
+        
         // Create formatted strings for function evaluations
-        let func_success_str =
-            if mean_func_evals_success.is_nan() || !mean_func_evals_success.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{mean_func_evals_success:.1}")
-            };
-        let func_fail_str = if mean_func_evals_fail.is_nan() || !mean_func_evals_fail.is_finite() {
-            "-".to_string()
-        } else {
-            format!("{mean_func_evals_fail:.1}")
-        };
+        let func_success_str = format_finite_value(*mean_func_evals_success, "1");
+        let func_fail_str = format_finite_value(*mean_func_evals_fail, "1");
         let func_evals_str = format!("{mean_func_evals:.1} / {func_success_str} / {func_fail_str}");
+        
         // Create formatted strings for gradient evaluations
-        let grad_success_str =
-            if mean_grad_evals_success.is_nan() || !mean_grad_evals_success.is_finite() {
-                "-".to_string()
-            } else {
-                format!("{mean_grad_evals_success:.1}")
-            };
-        let grad_fail_str = if mean_grad_evals_fail.is_nan() || !mean_grad_evals_fail.is_finite() {
-            "-".to_string()
-        } else {
-            format!("{mean_grad_evals_fail:.1}")
-        };
+        let grad_success_str = format_finite_value(*mean_grad_evals_success, "1");
+        let grad_fail_str = format_finite_value(*mean_grad_evals_fail, "1");
         let grad_evals_str = format!("{mean_grad_evals:.1} / {grad_success_str} / {grad_fail_str}");
 
-        section.push_str(&format!(
+        write!(&mut section,
             r#"<tr style="{}">
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
@@ -490,7 +493,7 @@ pub fn generate_problem_section(
             grad_evals_str,
             success_rate * 100.0,
             mean_time,
-        ));
+        )?;
     }
 
     section.push_str(
@@ -503,28 +506,32 @@ pub fn generate_problem_section(
 
 "#,
     );
+    
     // Add convergence plots for this problem
     let problem_filename = problem_name.replace(" ", "_");
     let convergence_plot = format!("plots/convergence/{problem_filename}.png");
     let log_convergence_plot = format!("plots/convergence/{problem_filename}_log.png");
+    
     // Check if convergence plot exists
     let convergence_path = Path::new(plots_dir).join(format!("convergence/{problem_filename}.png"));
     if convergence_path.exists() {
-        section.push_str(&format!(
+        write!(&mut section,
             r#"<img src="{convergence_plot}" alt="Convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">
 "#
-        ));
+        )?;
     }
+    
     // Check if log convergence plot exists
     let log_convergence_path =
         Path::new(plots_dir).join(format!("convergence/{problem_filename}_log.png"));
     if log_convergence_path.exists() {
-        section.push_str(&format!(
+        write!(&mut section,
             r#"<img src="{log_convergence_plot}" alt="Log convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">
 "#
-        ));
+        )?;
     }
-    section.push_str(&format!(
+    
+    write!(&mut section,
         r#"
 **Figure:** Convergence plots for {problem_name} showing objective value vs iterations.
 Left: Linear scale, Right: Log scale for better visualization of convergence behavior.
@@ -532,9 +539,23 @@ Left: Linear scale, Right: Log scale for better visualization of convergence beh
 **Data:** [Linear scale data (CSV)](data/convergence/{problem_filename}_data.csv) | [Log scale data (CSV)](data/convergence/{problem_filename}_log_data.csv)
 
 "#
-    ));
+    )?;
+    
     Ok(section)
 }
+/// Format a finite value or return "-" for non-finite values
+fn format_finite_value(value: f64, precision: &str) -> String {
+    if value.is_nan() || !value.is_finite() {
+        "-".to_string()
+    } else {
+        match precision {
+            "1" => format!("{value:.1}"),
+            "2e" => format!("{value:.2e}"),
+            _ => format!("{value}")
+        }
+    }
+}
+
 
 pub fn generate_problem_specific_csvs(
     output_dir: &str,
@@ -547,6 +568,7 @@ pub fn generate_problem_specific_csvs(
             problems_dir.display()
         )
     })?;
+    
     // Also generate a problem analysis report for each problem
     let reports_dir = Path::new(output_dir).parent().unwrap().join("reports");
     fs::create_dir_all(&reports_dir)?;
@@ -554,9 +576,12 @@ pub fn generate_problem_specific_csvs(
     for (problem, results) in all_results {
         let problem_name = problem.get_name().replace(" ", "_");
         let csv_path = problems_dir.join(format!("{problem_name}_results.csv"));
-        let mut csv_content = String::from("Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
+        
+        let mut csv_content = String::with_capacity(results.results.len() * 200);
+        csv_content.push_str("Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged\n");
+        
         for result in &results.results {
-            csv_content.push_str(&format!(
+            write!(&mut csv_content,
                 "{},{},{:.6e},{:.6e},{},{},{},{:.3},{}\n",
                 result.optimizer_name,
                 result.run_id,
@@ -567,17 +592,20 @@ pub fn generate_problem_specific_csvs(
                 result.gradient_evaluations,
                 result.execution_time.as_secs_f64(),
                 result.convergence_achieved,
-            ));
+            )?;
         }
+        
         fs::write(&csv_path, csv_content).with_context(|| {
             format!(
                 "Failed to write problem-specific CSV to: {}",
                 csv_path.display()
             )
         })?;
+        
         // Generate problem analysis report
         generate_problem_analysis_report(problem, results, &reports_dir)?;
     }
+    
     Ok(())
 }
 
@@ -591,7 +619,8 @@ fn generate_problem_analysis_report(
     let problem_filename = problem_name.replace(" ", "_");
     let report_path = reports_dir.join(format!("problem_analysis_{problem_filename}.md"));
 
-    let mut content = format!(
+    let mut content = String::with_capacity(4096);
+    write!(&mut content,
         r#"# Comprehensive Analysis: {}
 
 [← Back to Main Report](../benchmark_report.md)
@@ -613,13 +642,13 @@ fn generate_problem_analysis_report(
         problem.dimensions.unwrap_or(0),
         problem.problem.optimal_value().unwrap_or(f64::NEG_INFINITY),
         results.results.len()
-    );
+    )?;
 
     // Add detailed performance table
     content.push_str(&generate_problem_performance_table(results)?);
 
     // Add convergence analysis
-    content.push_str(&format!(
+    write!(&mut content,
         r#"
 ## Convergence Analysis
 
@@ -641,7 +670,7 @@ fn generate_problem_analysis_report(
         problem_filename,
         problem_filename,
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
-    ));
+    )?;
 
     fs::write(&report_path, content)?;
     Ok(())
@@ -649,7 +678,8 @@ fn generate_problem_analysis_report(
 
 /// Generate performance table for a specific problem
 fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Result<String> {
-    let mut content = String::from(
+    let mut content = String::with_capacity(2048);
+    content.push_str(
         r#"<table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
 <tr style="background-color: #f2f2f2;">
 <th style="border: 1px solid #ddd; padding: 8px;">Rank</th>
@@ -723,7 +753,7 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
             ""
         };
 
-        content.push_str(&format!(
+        write!(&mut content,
             r#"<tr style="{}">
 <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">{}</td>
 <td style="border: 1px solid #ddd; padding: 8px;">{}</td>
@@ -743,7 +773,7 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
             mean_time,
             "problem_name", // This would need to be passed in
             optimizer.replace(" ", "_")
-        ));
+        )?;
     }
 
     content.push_str("</table>\n");
@@ -758,7 +788,9 @@ pub fn generate_problem_latex_table(
 ) -> anyhow::Result<()> {
     let problem_name = problem.get_name();
     let problem_filename = problem_name.replace(" ", "_");
-    let mut latex_content = String::from(
+    
+    let mut latex_content = String::with_capacity(4096);
+    latex_content.push_str(
         r#"\documentclass{article}
 \usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
@@ -772,7 +804,8 @@ pub fn generate_problem_latex_table(
 \small
 "#,
     );
-    latex_content.push_str(&format!(
+    
+    write!(&mut latex_content,
         r#"\begin{{table}}[htbp]
 \centering
 \caption{{Performance Results for {} Problem}}
@@ -786,7 +819,8 @@ pub fn generate_problem_latex_table(
 "#,
         experiment_runner::escape_latex(&problem_name),
         problem_filename.to_lowercase()
-    ));
+    )?;
+    
     let mut optimizer_stats = HashMap::new();
     for result in &results.results {
         let stats = optimizer_stats
@@ -794,50 +828,9 @@ pub fn generate_problem_latex_table(
             .or_insert(Vec::new());
         stats.push(result);
     }
-    let mut perf_data = Vec::new();
-    for (optimizer, runs) in &optimizer_stats {
-        let final_values: Vec<f64> = runs
-            .iter()
-            .map(|r| r.final_value)
-            .filter(|&v| v.is_finite())
-            .collect();
-        if final_values.is_empty() {
-            continue;
-        }
-        let function_evals: Vec<f64> = runs.iter().map(|r| r.function_evaluations as f64).collect();
-        let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-        let execution_times: Vec<f64> = runs
-            .iter()
-            .map(|r| r.execution_time.as_secs_f64())
-            .collect();
-        let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
-        let std_final = {
-            let variance = final_values
-                .iter()
-                .map(|x| (x - mean_final).powi(2))
-                .sum::<f64>()
-                / final_values.len() as f64;
-            variance.sqrt()
-        };
-        let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
-        let worst_final = final_values
-            .iter()
-            .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
-        let mean_function_evals = function_evals.iter().sum::<f64>() / function_evals.len() as f64;
-        let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-        let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
-        perf_data.push((
-            optimizer.clone(),
-            mean_final,
-            std_final,
-            best_final,
-            worst_final,
-            mean_function_evals,
-            success_rate,
-            mean_time,
-        ));
-    }
+    
+    let perf_data = calculate_performance_data(&optimizer_stats, false)?;
+    
     // Sort by success rate first, then by mean final value
     perf_data.sort_by(|a, b| {
         let success_cmp = b.6.partial_cmp(&a.6).unwrap_or(std::cmp::Ordering::Equal);
@@ -847,6 +840,7 @@ pub fn generate_problem_latex_table(
             a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
         }
     });
+    
     for (
         i,
         (
@@ -866,10 +860,12 @@ pub fn generate_problem_latex_table(
         } else {
             experiment_runner::escape_latex(optimizer)
         };
-        latex_content.push_str(&format!(
+        
+        write!(&mut latex_content,
             "{optimizer_style} & {mean_final:.2e} & {std_final:.2e} & {best_final:.2e} & {worst_final:.2e} & {mean_func_evals:.1} & {success_rate:.1} & {mean_time:.3} \\\\\n"
-        ));
+        )?;
     }
+    
     latex_content.push_str(
         r#"\bottomrule
 \end{tabular}
@@ -878,8 +874,10 @@ pub fn generate_problem_latex_table(
 \end{document}
 "#,
     );
+    
     let latex_path = latex_dir.join(format!("{problem_filename}_performance.tex"));
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
+    
     Ok(())
 }

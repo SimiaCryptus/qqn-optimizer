@@ -120,7 +120,7 @@ impl OptimizationProblem for QuadraticProblem {
         Some(self.optimal_value)
     }
 
-    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
         Box::new(QuadraticProblem {
             name: self.name.clone(),
             dimension: self.dimension,

@@ -6,6 +6,7 @@ use plotters::prelude::*;
 use plotters::style::text_anchor::{HPos, Pos, VPos};
 use std::collections::HashMap;
 use std::{fs, panic};
+/// Font configuration for different plot elements
 
 /// Check if font rendering is available
 fn has_font_support() -> bool {
@@ -32,6 +33,16 @@ fn has_font_support() -> bool {
     println!("[Plotting] Font support available: {ok}");
     ok
 }
+/// Color palette for consistent visualization
+const COLOR_PALETTE: &[&RGBColor] = &[
+    &RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK,
+    &RGBColor(255, 165, 0),   // Orange
+    &RGBColor(128, 0, 128),   // Purple
+    &RGBColor(165, 42, 42),   // Brown
+    &RGBColor(255, 192, 203), // Pink
+    &RGBColor(128, 128, 128), // Grey
+];
+
 
 #[derive(Debug, Clone)]
 pub struct PlotConfig {
@@ -41,6 +52,8 @@ pub struct PlotConfig {
     pub color_scheme: String,
     pub enable_legends: bool,
     pub enable_grid: bool,
+    pub dpi: u32,
+    pub font_size: u32,
 }
 impl Default for PlotConfig {
     fn default() -> Self {
@@ -49,8 +62,10 @@ impl Default for PlotConfig {
             height: 768,
             output_format: "png".to_string(),
             color_scheme: "default".to_string(),
-            enable_legends: false, // todo: debug
+            enable_legends: true,
             enable_grid: true,
+            dpi: 100,
+            font_size: 12,
         }
     }
 }
@@ -61,6 +76,7 @@ pub struct ExtendedOptimizationTrace {
     pub optimizer_name: String,
     pub objective_values: Vec<f64>,
     pub evaluation_counts: Vec<usize>,
+    pub gradient_norms: Option<Vec<f64>>,
 }
 impl ExtendedOptimizationTrace {
     /// Sanitize trace data by filtering out NaN and infinite values
@@ -89,6 +105,13 @@ impl ExtendedOptimizationTrace {
                     .map(|&i| self.evaluation_counts[i])
                     .collect();
             }
+            // Also sanitize gradient norms if present
+            if let Some(ref mut norms) = self.gradient_norms {
+                *norms = valid_indices
+                    .iter()
+                    .map(|&i| norms.get(i).copied().unwrap_or(f64::NAN))
+                    .collect();
+            }
         }
     }
 }
@@ -107,6 +130,7 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
                 .iter()
                 .map(|iter| iter.total_evaluations())
                 .collect(),
+            gradient_norms: None,
         };
         result.sanitize();
         result
@@ -151,6 +175,14 @@ impl PlottingEngine {
         self.config = config;
         self
     }
+    /// Create output directory if it doesn't exist
+    fn ensure_output_dir(&self) -> Result<()> {
+        if !std::path::Path::new(&self.output_dir).exists() {
+            fs::create_dir_all(&self.output_dir)?;
+        }
+        Ok(())
+    }
+    /// Generate a safe filename from a potentially unsafe string
 
     /// Create convergence plots showing objective value vs iterations
     pub fn convergence_plot(
@@ -158,6 +190,7 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
         // Wrap in panic handler
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             self.convergence_plot_impl(traces, filename)
@@ -182,6 +215,7 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        
         if traces.is_empty() {
             return Ok(());
         }
@@ -264,33 +298,7 @@ impl PlottingEngine {
                 .draw()?;
         }
 
-        // Color palette for different optimizers
-        let colors = [
-            &RED,
-            &BLUE,
-            &GREEN,
-            &MAGENTA,
-            &CYAN,
-            &BLACK,
-            &RGBColor(255, 165, 0),   // Orange
-            &RGBColor(128, 0, 128),   // Purple
-            &RGBColor(165, 42, 42),   // Brown
-            &RGBColor(255, 192, 203), // Pink
-            &RGBColor(128, 128, 128), // Grey
-            &YELLOW,
-            &RGBColor(173, 216, 230), // Light Blue
-            &RGBColor(144, 238, 144), // Light Green
-            &RGBColor(255, 182, 193), // Light Red
-            &RGBColor(0, 0, 139),     // Dark Blue
-            &RGBColor(0, 100, 0),     // Dark Green
-            &RGBColor(139, 0, 0),     // Dark Red
-            &RGBColor(0, 0, 128),     // Navy
-            &RGBColor(128, 0, 0),     // Maroon
-            &RGBColor(128, 128, 0),   // Olive
-            &RGBColor(0, 128, 128),   // Teal
-            &RGBColor(192, 192, 192), // Silver
-            &RGBColor(0, 255, 0),     // Lime
-        ];
+        let colors = COLOR_PALETTE;
 
         // Plot traces grouped by optimizer name
         for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
@@ -327,7 +335,7 @@ impl PlottingEngine {
         }
         // Try to add legend
         if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
-            self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
+            self.add_legend_for_optimizers(&root, &unique_optimizers, COLOR_PALETTE)?;
         }
 
         root.present()?;
@@ -365,6 +373,8 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
+        
         if traces.is_empty() {
             return Ok(());
         }
@@ -455,7 +465,7 @@ impl PlottingEngine {
             chart.configure_mesh().draw()?;
         }
 
-        let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
+        let colors = COLOR_PALETTE;
 
         // Plot traces grouped by optimizer name
         for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
@@ -492,13 +502,45 @@ impl PlottingEngine {
         }
         // Try to add legend
         if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
-            self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
+            self.add_legend_for_optimizers(&root, &unique_optimizers, COLOR_PALETTE)?;
         }
 
         root.present()?;
         println!("Log convergence plot saved to: {output_path}");
         Ok(())
     }
+    /// Create gradient norm plots to visualize optimization progress
+    pub fn gradient_norm_plot(
+        &self,
+        traces: &[ExtendedOptimizationTrace],
+        filename: &str,
+    ) -> Result<()> {
+        self.ensure_output_dir()?;
+        // Filter traces that have gradient norm data
+        let traces_with_norms: Vec<_> = traces
+            .iter()
+            .filter(|t| t.gradient_norms.is_some())
+            .collect();
+        if traces_with_norms.is_empty() {
+            eprintln!("[Plotting] No gradient norm data available for plotting");
+            return Ok(());
+        }
+        // Create a modified trace with gradient norms as objective values
+        let mut norm_traces: Vec<ExtendedOptimizationTrace> = traces_with_norms
+            .iter()
+            .map(|t| ExtendedOptimizationTrace {
+                optimizer_name: t.optimizer_name.clone(),
+                objective_values: t.gradient_norms.as_ref().unwrap().clone(),
+                evaluation_counts: t.evaluation_counts.clone(),
+                gradient_norms: None,
+            })
+            .collect();
+        // Use log convergence plot for gradient norms
+        let gradient_filename = format!("{}_gradient_norms", filename);
+        self.log_convergence_plot(&norm_traces, &gradient_filename)?;
+        Ok(())
+    }
+
 
     /// Create performance comparison bar charts
     pub fn performance_comparison(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
@@ -526,6 +568,8 @@ impl PlottingEngine {
         results: &BenchmarkResults,
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
+        
         if results.results.is_empty() {
             return Ok(());
         }
@@ -584,32 +628,7 @@ impl PlottingEngine {
         // Create subplot for each problem
         let num_problems = chart_data.len();
         let subplot_height = self.height / num_problems as u32;
-        let colors = [
-            &RED,
-            &BLUE,
-            &GREEN,
-            &MAGENTA,
-            &CYAN,
-            &BLACK,
-            &RGBColor(255, 165, 0),   // Orange
-            &RGBColor(128, 0, 128),   // Purple
-            &RGBColor(165, 42, 42),   // Brown
-            &RGBColor(255, 192, 203), // Pink
-            &RGBColor(128, 128, 128), // Grey
-            &YELLOW,
-            &RGBColor(173, 216, 230), // Light Blue
-            &RGBColor(144, 238, 144), // Light Green
-            &RGBColor(255, 182, 193), // Light Red
-            &RGBColor(0, 0, 139),     // Dark Blue
-            &RGBColor(0, 100, 0),     // Dark Green
-            &RGBColor(139, 0, 0),     // Dark Red
-            &RGBColor(0, 0, 128),     // Navy
-            &RGBColor(128, 0, 0),     // Maroon
-            &RGBColor(128, 128, 0),   // Olive
-            &RGBColor(0, 128, 128),   // Teal
-            &RGBColor(192, 192, 192), // Silver
-            &RGBColor(0, 255, 0),     // Lime
-        ];
+        let colors = COLOR_PALETTE;
 
         for (i, (problem_name, optimizer_data)) in chart_data.iter().enumerate() {
             let y_start = i as u32 * subplot_height;
@@ -703,6 +722,8 @@ impl PlottingEngine {
         }
     }
     fn performance_boxplot_impl(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
+        self.ensure_output_dir()?;
+        
         if results.results.is_empty() {
             return Ok(());
         }
@@ -882,6 +903,7 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
         let mut csv_content = String::from("Optimizer,MaxEvaluation,ObjectiveValue\n");
         for trace in traces {
@@ -910,6 +932,7 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
         let mut csv_content =
             String::from("Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue\n");
@@ -941,6 +964,7 @@ impl PlottingEngine {
         results: &BenchmarkResults,
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
         let mut csv_content = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
         // Group results by problem and optimizer
@@ -1014,8 +1038,39 @@ impl PlottingEngine {
         results: &BenchmarkResults,
         filename: &str,
     ) -> Result<()> {
+        self.ensure_output_dir()?;
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
         let mut csv_content = String::from("Optimizer,Min,Q1,Median,Q3,Max,AllValues\n");
+    /// Create a summary report with all plots for a benchmark run
+    pub fn create_summary_report(
+        &self,
+        results: &BenchmarkResults,
+        traces: &HashMap<String, Vec<ExtendedOptimizationTrace>>,
+        report_name: &str,
+    ) -> Result<()> {
+        self.ensure_output_dir()?;
+        // Create subdirectory for this report
+        let report_dir = format!("{}/{}", self.output_dir, report_name);
+        fs::create_dir_all(&report_dir)?;
+        // Update output directory temporarily
+        let original_dir = self.output_dir.clone();
+        let mut self_mut = self.clone();
+        self_mut.output_dir = report_dir.clone();
+        // Generate all plots
+        for (problem_name, problem_traces) in traces {
+            let safe_problem_name = problem_name.replace(" ", "_").replace("/", "_");
+            // Convergence plots
+            self_mut.convergence_plot(problem_traces, &format!("{}_convergence", safe_problem_name))?;
+            self_mut.log_convergence_plot(problem_traces, &format!("{}_log_convergence", safe_problem_name))?;
+            // Gradient norm plots if available
+            self_mut.gradient_norm_plot(problem_traces, &format!("{}_gradient", safe_problem_name))?;
+        }
+        // Overall performance plots
+        self_mut.performance_comparison(results, "performance_comparison")?;
+        self_mut.performance_boxplot(results, "performance_boxplot")?;
+        println!("Summary report created in: {}", report_dir);
+        Ok(())
+    }
         // Group results by optimizer across all problems
         let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
         for result in &results.results {
@@ -1115,6 +1170,19 @@ struct BoxPlotData {
     q3: f64,
     max: f64,
 }
+impl PlottingEngine {
+    /// Clone the engine (needed for mutable operations in summary report)
+    fn clone(&self) -> Self {
+        Self {
+            output_dir: self.output_dir.clone(),
+            width: self.width,
+            height: self.height,
+            config: self.config.clone(),
+            has_fonts: self.has_fonts,
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

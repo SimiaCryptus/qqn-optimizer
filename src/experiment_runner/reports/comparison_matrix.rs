@@ -5,6 +5,24 @@ use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+/// Result of a comparison between two optimizers
+#[derive(Debug, Default)]
+struct ComparisonResult {
+    wins: usize,
+    losses: usize,
+    ties: usize,
+}
+impl ComparisonResult {
+    /// Format the comparison result as a LaTeX cell
+    fn to_latex(&self) -> String {
+        match (self.wins > self.losses, self.losses > self.wins) {
+            (true, false) => format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}", wins=self.wins, losses=self.losses, ties=self.ties),
+            (false, true) => format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}", wins=self.wins, losses=self.losses, ties=self.ties),
+            _ => format!("{wins}W-{losses}L-{ties}T", wins=self.wins, losses=self.losses, ties=self.ties),
+        }
+    }
+}
+
 
 /// Generate comparison matrix LaTeX table
 pub fn generate_comparison_matrix_latex_table(
@@ -12,27 +30,8 @@ pub fn generate_comparison_matrix_latex_table(
     latex_dir: &Path,
     slf: &ReportGenerator,
 ) -> anyhow::Result<()> {
-    // Collect all optimizers
-    let mut all_optimizers = std::collections::HashSet::new();
-    for (_, results) in all_results {
-        for result in &results.results {
-            all_optimizers.insert(result.optimizer_name.clone());
-        }
-    }
-    let mut qqn_optimizers = Vec::new();
-    let mut non_qqn_optimizers = Vec::new();
-    for optimizer in all_optimizers {
-        if optimizer.contains("QQN") {
-            qqn_optimizers.push(optimizer);
-        } else {
-            non_qqn_optimizers.push(optimizer);
-        }
-    }
-    if qqn_optimizers.is_empty() || non_qqn_optimizers.is_empty() {
-        return Ok(());
-    }
-    qqn_optimizers.sort();
-    non_qqn_optimizers.sort();
+    let (qqn_optimizers, non_qqn_optimizers) = collect_and_sort_optimizers(all_results)?;
+    
     let mut latex_content = String::from(
         r#"\documentclass{article}
 \usepackage[margin=0.5in]{geometry}
@@ -67,79 +66,9 @@ pub fn generate_comparison_matrix_latex_table(
             .collect::<Vec<_>>()
             .join(" ")
     ));
-    // Group results by problem for comparison
-    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
-    for (problem, results) in all_results {
-        let problem_name = problem.get_name();
-        for result in &results.results {
-            problem_results
-                .entry(problem_name.to_string())
-                .or_default()
-                .entry(result.optimizer_name.clone())
-                .or_default()
-                .push(result);
-        }
-    }
-    for non_qqn_opt in &non_qqn_optimizers {
-        latex_content.push_str(&format!(
-            "\\textbf{{{}}} ",
-            report_generator::escape_latex(non_qqn_opt)
-        ));
-        for qqn_opt in &qqn_optimizers {
-            let mut wins = 0;
-            let mut losses = 0;
-            let mut ties = 0;
-            for optimizers in problem_results.values() {
-                if let (Some(qqn_results), Some(non_qqn_results)) =
-                    (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
-                {
-                    if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
-                            if let Ok((_, p_value)) = slf
-                                .statistical_analysis
-                                .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
-                            {
-                                if p_value < 0.05 {
-                                    if qqn_mean < non_qqn_mean {
-                                        wins += 1;
-                                    } else {
-                                        losses += 1;
-                                    }
-                                } else {
-                                    ties += 1;
-                                }
-                            } else {
-                                ties += 1;
-                            }
-                        }
-                    }
-                }
-            }
-            let cell_content = if wins > losses {
-                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else if losses > wins {
-                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else {
-                format!("{wins}W-{losses}L-{ties}T")
-            };
-            latex_content.push_str(&format!("& {cell_content} "));
-        }
-        latex_content.push_str("\\\\\n");
-    }
+    let comparison_rows = generate_optimizer_comparison_rows(all_results, &qqn_optimizers, &non_qqn_optimizers, slf)?;
+    latex_content.push_str(&comparison_rows);
+    
     latex_content.push_str(
         r#"\bottomrule
 \end{tabular}
@@ -164,27 +93,7 @@ pub fn generate_comparison_matrix_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     slf: &ReportGenerator,
 ) -> anyhow::Result<String> {
-    // Similar logic as generate_comparison_matrix_latex_table but return just the table content
-    let mut all_optimizers = std::collections::HashSet::new();
-    for (_, results) in all_results {
-        for result in &results.results {
-            all_optimizers.insert(result.optimizer_name.clone());
-        }
-    }
-    let mut qqn_optimizers = Vec::new();
-    let mut non_qqn_optimizers = Vec::new();
-    for optimizer in all_optimizers {
-        if optimizer.contains("QQN") {
-            qqn_optimizers.push(optimizer);
-        } else {
-            non_qqn_optimizers.push(optimizer);
-        }
-    }
-    if qqn_optimizers.is_empty() || non_qqn_optimizers.is_empty() {
-        return Ok(String::new());
-    }
-    qqn_optimizers.sort();
-    non_qqn_optimizers.sort();
+    let (qqn_optimizers, non_qqn_optimizers) = collect_and_sort_optimizers(all_results)?;
 
     let mut content = format!(
         r#"\begin{{table}}[H]
@@ -204,79 +113,9 @@ pub fn generate_comparison_matrix_table_content(
             .collect::<Vec<_>>()
             .join(" ")
     );
-    // Same comparison logic as before...
-    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
-    for (problem, results) in all_results {
-        let problem_name = problem.get_name();
-        for result in &results.results {
-            problem_results
-                .entry(problem_name.to_string())
-                .or_default()
-                .entry(result.optimizer_name.clone())
-                .or_default()
-                .push(result);
-        }
-    }
-    for non_qqn_opt in &non_qqn_optimizers {
-        content.push_str(&format!(
-            "\\textbf{{{}}} ",
-            report_generator::escape_latex(non_qqn_opt)
-        ));
-        for qqn_opt in &qqn_optimizers {
-            let mut wins = 0;
-            let mut losses = 0;
-            let mut ties = 0;
-            for optimizers in problem_results.values() {
-                if let (Some(qqn_results), Some(non_qqn_results)) =
-                    (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
-                {
-                    if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
-                            if let Ok((_, p_value)) = slf
-                                .statistical_analysis
-                                .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
-                            {
-                                if p_value < 0.05 {
-                                    if qqn_mean < non_qqn_mean {
-                                        wins += 1;
-                                    } else {
-                                        losses += 1;
-                                    }
-                                } else {
-                                    ties += 1;
-                                }
-                            } else {
-                                ties += 1;
-                            }
-                        }
-                    }
-                }
-            }
-            let cell_content = if wins > losses {
-                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else if losses > wins {
-                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else {
-                format!("{wins}W-{losses}L-{ties}T")
-            };
-            content.push_str(&format!("& {cell_content} "));
-        }
-        content.push_str("\\\\\n");
-    }
+    let comparison_rows = generate_optimizer_comparison_rows(all_results, &qqn_optimizers, &non_qqn_optimizers, slf)?;
+    content.push_str(&comparison_rows);
+    
     content.push_str(
         r#"\bottomrule
 \end{tabular}
@@ -293,28 +132,8 @@ pub fn generate_family_comparison_matrix_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     slf: &ReportGenerator,
 ) -> anyhow::Result<String> {
-    // Collect all optimizer families
-    let mut all_families = std::collections::HashSet::new();
-    for (_, results) in all_results {
-        for result in &results.results {
-            let family = get_optimizer_family(&result.optimizer_name);
-            all_families.insert(family);
-        }
-    }
-    let mut qqn_families = Vec::new();
-    let mut non_qqn_families = Vec::new();
-    for family in all_families {
-        if family == "QQN" {
-            qqn_families.push(family);
-        } else {
-            non_qqn_families.push(family);
-        }
-    }
-    if qqn_families.is_empty() || non_qqn_families.is_empty() {
-        return Ok(String::new());
-    }
-    qqn_families.sort();
-    non_qqn_families.sort();
+    let (qqn_families, non_qqn_families) = collect_and_sort_families(all_results)?;
+    
     let mut content = format!(
         r#"\begin{{table}}[H]
 \centering
@@ -333,81 +152,9 @@ pub fn generate_family_comparison_matrix_table_content(
             .collect::<Vec<_>>()
             .join(" ")
     );
-    // Group results by problem and family for comparison
-    let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
-    for (problem, results) in all_results {
-        let problem_name = problem.get_name();
-        for result in &results.results {
-            let family = get_optimizer_family(&result.optimizer_name);
-            problem_family_results
-                .entry(problem_name.to_string())
-                .or_default()
-                .entry(family)
-                .or_default()
-                .push(result);
-        }
-    }
-    for qqn_fam in &qqn_families {
-        content.push_str(&format!(
-            "\\textbf{{{}}} ",
-            report_generator::escape_latex(qqn_fam)
-        ));
-        for non_qqn_fam in &non_qqn_families {
-            let mut wins = 0;
-            let mut losses = 0;
-            let mut ties = 0;
-            for families in problem_family_results.values() {
-                if let (Some(qqn_results), Some(non_qqn_results)) =
-                    (families.get(qqn_fam), families.get(non_qqn_fam))
-                {
-                    if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
-                            if let Ok((_, p_value)) = slf
-                                .statistical_analysis
-                                .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
-                            {
-                                if p_value < 0.05 {
-                                    if qqn_mean < non_qqn_mean {
-                                        wins += 1;
-                                    } else {
-                                        losses += 1;
-                                    }
-                                } else {
-                                    ties += 1;
-                                }
-                            } else {
-                                ties += 1;
-                            }
-                        }
-                    }
-                }
-            }
-            let cell_content = if wins > losses {
-                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else if losses > wins {
-                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else {
-                format!("{wins}W-{losses}L-{ties}T")
-            };
-            content.push_str(&format!("& {cell_content} "));
-        }
-        content.push_str("\\\\\n");
-    }
+    let comparison_rows = generate_family_comparison_rows(all_results, &qqn_families, &non_qqn_families, slf)?;
+    content.push_str(&comparison_rows);
+    
     content.push_str(
         r#"\bottomrule
 \end{tabular}
@@ -425,28 +172,8 @@ pub fn generate_family_comparison_matrix_latex_table(
     latex_dir: &Path,
     slf: &ReportGenerator,
 ) -> anyhow::Result<()> {
-    // Collect all optimizer families
-    let mut all_families = std::collections::HashSet::new();
-    for (_, results) in all_results {
-        for result in &results.results {
-            let family = get_optimizer_family(&result.optimizer_name);
-            all_families.insert(family);
-        }
-    }
-    let mut qqn_families = Vec::new();
-    let mut non_qqn_families = Vec::new();
-    for family in all_families {
-        if family == "QQN" {
-            qqn_families.push(family);
-        } else {
-            non_qqn_families.push(family);
-        }
-    }
-    if qqn_families.is_empty() || non_qqn_families.is_empty() {
-        return Ok(());
-    }
-    qqn_families.sort();
-    non_qqn_families.sort();
+    let (qqn_families, non_qqn_families) = collect_and_sort_families(all_results)?;
+    
     // Calculate column specification dynamically
     let col_spec = format!("l{}", "c".repeat(non_qqn_families.len()));
 
@@ -478,9 +205,158 @@ pub fn generate_family_comparison_matrix_latex_table(
             .collect::<Vec<_>>()
             .join(" ")
     ));
-    // Group results by problem and family for comparison
-    let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =
-        HashMap::new();
+    let comparison_rows = generate_family_comparison_rows(all_results, &qqn_families, &non_qqn_families, slf)?;
+    latex_content.push_str(&comparison_rows);
+    
+    latex_content.push_str(
+        r#"\bottomrule
+/// Helper function to collect and sort optimizers into QQN and non-QQN groups
+fn collect_and_sort_optimizers(
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+) -> anyhow::Result<(Vec<String>, Vec<String>)> {
+    let mut all_optimizers = std::collections::HashSet::new();
+    for (_, results) in all_results {
+        for result in &results.results {
+            all_optimizers.insert(result.optimizer_name.clone());
+        }
+    }
+    let mut qqn_optimizers = Vec::new();
+    let mut non_qqn_optimizers = Vec::new();
+    for optimizer in all_optimizers {
+        if optimizer.contains("QQN") {
+            qqn_optimizers.push(optimizer);
+        } else {
+            non_qqn_optimizers.push(optimizer);
+        }
+    }
+    if qqn_optimizers.is_empty() || non_qqn_optimizers.is_empty() {
+        anyhow::bail!("Cannot generate comparison matrix: need both QQN and non-QQN optimizers");
+    }
+    qqn_optimizers.sort();
+    non_qqn_optimizers.sort();
+    Ok((qqn_optimizers, non_qqn_optimizers))
+}
+/// Helper function to collect and sort optimizer families
+fn collect_and_sort_families(
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+) -> anyhow::Result<(Vec<String>, Vec<String>)> {
+    let mut all_families = std::collections::HashSet::new();
+    for (_, results) in all_results {
+        for result in &results.results {
+            let family = get_optimizer_family(&result.optimizer_name);
+            all_families.insert(family);
+        }
+    }
+    let mut qqn_families = Vec::new();
+    let mut non_qqn_families = Vec::new();
+    for family in all_families {
+        if family == "QQN" {
+            qqn_families.push(family);
+        } else {
+            non_qqn_families.push(family);
+        }
+    }
+    if qqn_families.is_empty() || non_qqn_families.is_empty() {
+        anyhow::bail!("Cannot generate family comparison matrix: need both QQN and non-QQN families");
+    }
+    qqn_families.sort();
+    non_qqn_families.sort();
+    Ok((qqn_families, non_qqn_families))
+}
+/// Helper function to perform statistical comparison between two sets of results
+fn compare_results(
+    results1: &[&SingleResult],
+    results2: &[&SingleResult],
+    slf: &ReportGenerator,
+) -> ComparisonResult {
+    let mut comparison = ComparisonResult::default();
+    if results1.len() < 2 || results2.len() < 2 {
+        return comparison;
+    }
+    let values1: Vec<f64> = results1
+        .iter()
+        .map(|r| r.final_value)
+        .filter(|&v| v.is_finite())
+        .collect();
+    let values2: Vec<f64> = results2
+        .iter()
+        .map(|r| r.final_value)
+        .filter(|&v| v.is_finite())
+        .collect();
+    if values1.is_empty() || values2.is_empty() {
+        return comparison;
+    }
+    let mean1 = values1.iter().sum::<f64>() / values1.len() as f64;
+    let mean2 = values2.iter().sum::<f64>() / values2.len() as f64;
+    match slf.statistical_analysis.welch_t_test_public(&values1, &values2) {
+        Ok((_, p_value)) => {
+            if p_value < 0.05 {
+                if mean1 < mean2 {
+                    comparison.wins += 1;
+                } else {
+                    comparison.losses += 1;
+                }
+            } else {
+                comparison.ties += 1;
+            }
+        }
+        Err(_) => {
+            comparison.ties += 1;
+        }
+    }
+    comparison
+}
+/// Generate comparison rows for optimizer comparison matrix
+fn generate_optimizer_comparison_rows(
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+    qqn_optimizers: &[String],
+    non_qqn_optimizers: &[String],
+    slf: &ReportGenerator,
+) -> anyhow::Result<String> {
+    let mut problem_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
+    for (problem, results) in all_results {
+        let problem_name = problem.get_name();
+        for result in &results.results {
+            problem_results
+                .entry(problem_name.to_string())
+                .or_default()
+                .entry(result.optimizer_name.clone())
+                .or_default()
+                .push(result);
+        }
+    }
+    let mut rows = String::new();
+    for non_qqn_opt in non_qqn_optimizers {
+        rows.push_str(&format!(
+            "\\textbf{{{}}} ",
+            report_generator::escape_latex(non_qqn_opt)
+        ));
+        for qqn_opt in qqn_optimizers {
+            let mut total_comparison = ComparisonResult::default();
+            for optimizers in problem_results.values() {
+                if let (Some(qqn_results), Some(non_qqn_results)) =
+                    (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
+                {
+                    let comparison = compare_results(qqn_results, non_qqn_results, slf);
+                    total_comparison.wins += comparison.wins;
+                    total_comparison.losses += comparison.losses;
+                    total_comparison.ties += comparison.ties;
+                }
+            }
+            rows.push_str(&format!("& {} ", total_comparison.to_latex()));
+        }
+        rows.push_str("\\\\\n");
+    }
+    Ok(rows)
+}
+/// Generate comparison rows for family comparison matrix
+fn generate_family_comparison_rows(
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+    qqn_families: &[String],
+    non_qqn_families: &[String],
+    slf: &ReportGenerator,
+) -> anyhow::Result<String> {
+    let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> = HashMap::new();
     for (problem, results) in all_results {
         let problem_name = problem.get_name();
         for result in &results.results {
@@ -493,68 +369,30 @@ pub fn generate_family_comparison_matrix_latex_table(
                 .push(result);
         }
     }
-    for qqn_fam in &qqn_families {
-        latex_content.push_str(&format!(
+    let mut rows = String::new();
+    for qqn_fam in qqn_families {
+        rows.push_str(&format!(
             "\\textbf{{{}}} ",
             report_generator::escape_latex(qqn_fam)
         ));
-        for non_qqn_fam in &non_qqn_families {
-            let mut wins = 0;
-            let mut losses = 0;
-            let mut ties = 0;
+        for non_qqn_fam in non_qqn_families {
+            let mut total_comparison = ComparisonResult::default();
             for families in problem_family_results.values() {
                 if let (Some(qqn_results), Some(non_qqn_results)) =
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
-                    if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
-                            .iter()
-                            .map(|r| r.final_value)
-                            .filter(|&v| v.is_finite())
-                            .collect();
-                        if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
-                            if let Ok((_, p_value)) = slf
-                                .statistical_analysis
-                                .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
-                            {
-                                if p_value < 0.05 {
-                                    if qqn_mean < non_qqn_mean {
-                                        wins += 1;
-                                    } else {
-                                        losses += 1;
-                                    }
-                                } else {
-                                    ties += 1;
-                                }
-                            } else {
-                                ties += 1;
-                            }
-                        }
-                    }
+                    let comparison = compare_results(qqn_results, non_qqn_results, slf);
+                    total_comparison.wins += comparison.wins;
+                    total_comparison.losses += comparison.losses;
+                    total_comparison.ties += comparison.ties;
                 }
             }
-            let cell_content = if wins > losses {
-                format!("\\textcolor{{green!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else if losses > wins {
-                format!("\\textcolor{{red!70!black}}{{{wins}W-{losses}L-{ties}T}}")
-            } else {
-                format!("{wins}W-{losses}L-{ties}T")
-            };
-            latex_content.push_str(&format!("& {cell_content} "));
+            rows.push_str(&format!("& {} ", total_comparison.to_latex()));
         }
-        latex_content.push_str("\\\\\n");
+        rows.push_str("\\\\\n");
     }
-    latex_content.push_str(
-        r#"\bottomrule
+    Ok(rows)
+}
 \end{tabular}
 }
 \end{table}

@@ -1,3 +1,15 @@
+//! # QQN Optimizer
+//!
+//! A high-performance optimization library implementing Quasi-Quasi-Newton (QQN) methods
+//! along with other state-of-the-art optimization algorithms.
+//!
+//! This crate provides efficient implementations of various optimization algorithms
+//! suitable for machine learning, scientific computing, and general optimization tasks.
+//!
+//! ## Feature Flags
+//! - `plotting`: Enables visualization capabilities
+//! - `onednn`: Enables Intel oneDNN acceleration for neural network problems
+
 #![allow(clippy::doc_overindented_list_items)]
 #![allow(clippy::doc_lazy_continuation)]
 
@@ -8,20 +20,28 @@ pub mod line_search;
 pub mod optimizers;
 pub mod utils;
 
-// Re-export commonly used types
+// ===== Core Optimizer Types =====
+
+/// Core optimizer implementations
 pub use optimizers::{
     lbfgs::{LBFGSConfig, LBFGSOptimizer},
     optimizer::{ConvergenceInfo, Optimizer, StepResult},
     qqn::{QQNConfig, QQNOptimizer},
 };
+/// Line search algorithms and configurations
 
 pub use line_search::{
     LineSearch, LineSearchConfig, LineSearchMethod, LineSearchResult, TerminationReason,
 };
+// ===== Experiment and Benchmarking =====
+/// Pre-configured optimizer and problem sets for experiments
 
 pub use experiment_runner::{optimizer_sets, problem_sets};
+/// Base trait for optimization problems
 
 pub use benchmarks::functions::OptimizationProblem;
+// ===== Analysis and Reporting =====
+/// Analysis and reporting tools
 
 pub use analysis::{
     reporting::AcademicReport,
@@ -31,36 +51,64 @@ pub use analysis::{
 #[cfg(feature = "plotting")]
 pub use analysis::plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 
-// Re-export ML problems for easier access
+// ===== Machine Learning Problems =====
+
+/// Machine learning optimization problems
 pub use crate::benchmarks::ml_problems::{
     LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
 };
 
-// Re-export commonly used types
-pub use crate::optimizers::adam::{AdamConfig, AdamOptimizer, AdamState};
-// Error types
-pub use anyhow::{Error, Result};
+/// MNIST neural network problem
+pub use benchmarks::mnist::MnistNeuralNetwork;
+
+#[cfg(feature = "onednn")]
+/// MNIST neural network with Intel oneDNN acceleration
+pub use benchmarks::mnist_onednn::MnistOneDnnNeuralNetwork;
+
+// ===== Analytic Test Functions =====
+
+/// Classic optimization test functions
 pub use benchmarks::analytic_functions::AckleyFunction;
 pub use benchmarks::analytic_functions::BealeFunction;
 pub use benchmarks::analytic_functions::RastriginFunction;
 pub use benchmarks::analytic_functions::RosenbrockFunction;
 pub use benchmarks::analytic_functions::SphereFunction;
-// Re-export ML problems for easier access
-pub use benchmarks::mnist::MnistNeuralNetwork;
-#[cfg(feature = "onednn")]
-pub use benchmarks::mnist_onednn::MnistOneDnnNeuralNetwork;
+
+// ===== Additional Optimizers =====
+
+/// Adam optimizer for stochastic optimization
+pub use crate::optimizers::adam::{AdamConfig, AdamOptimizer, AdamState};
+
+// ===== Error Handling =====
+
+/// Error types used throughout the crate
+pub use anyhow::{Error, Result};
+
+// ===== Constants =====
 
 /// Current version of the QQN optimizer framework
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Initialize logging for the framework
+// ===== Initialization Functions =====
+
+/// Initialize logging for the framework with default settings
 pub fn init_logging(debug: bool) -> Result<()> {
     init_logging_with_mode(true, debug)
 }
 
 /// Initialize logging with configurable format mode
-/// - compact: if true, uses compact format (raw output only)
-/// - compact: if false, uses default format (with timestamp, level, source)
+///
+/// # Arguments
+/// * `compact` - If true, uses compact format (raw output only).
+///               If false, uses default format (with timestamp, level, source)
+/// * `debug` - If true, enables debug-level logging. If false, uses info-level
+///
+/// # Examples
+/// ```no_run
+/// # use qqn_optimizer::init_logging_with_mode;
+/// // Initialize with compact format and debug logging
+/// init_logging_with_mode(true, true).unwrap();
+/// ```
 pub fn init_logging_with_mode(compact: bool, debug: bool) -> Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

@@ -48,6 +48,26 @@ impl Default for StrongWolfeConfig {
     }
 }
 impl StrongWolfeConfig {
+    /// Validate configuration parameters
+    pub fn validate(&self) -> anyhow::Result<()> {
+        if self.c1 <= 0.0 || self.c1 >= 1.0 {
+            return Err(anyhow!("c1 must be in (0, 1), got {}", self.c1));
+        }
+        if self.c2 <= 0.0 || self.c2 >= 1.0 {
+            return Err(anyhow!("c2 must be in (0, 1), got {}", self.c2));
+        }
+        if self.c1 >= self.c2 {
+            return Err(anyhow!("Must have c1 < c2, got c1={}, c2={}", self.c1, self.c2));
+        }
+        if self.min_step >= self.max_step {
+            return Err(anyhow!("min_step must be less than max_step"));
+        }
+        if self.initial_step < self.min_step || self.initial_step > self.max_step {
+            return Err(anyhow!("initial_step must be in [min_step, max_step]"));
+        }
+        Ok(())
+    }
+
     /// Strict configuration with tight tolerances for high-precision optimization
     ///
     /// **Use when:**
@@ -169,6 +189,12 @@ pub struct StrongWolfeLineSearch {
 }
 
 impl StrongWolfeLineSearch {
+    /// Create a new Strong Wolfe line search with the given configuration
+    pub fn new(config: StrongWolfeConfig) -> anyhow::Result<Self> {
+        config.validate()?;
+        Ok(Self { config })
+    }
+
     /// Set the initial step size for the next line search
     ///
     /// The step size will be clamped to [min_step, max_step] range.
@@ -176,21 +202,22 @@ impl StrongWolfeLineSearch {
     pub fn set_initial_step(&mut self, step: f64) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
-    pub fn new(config: StrongWolfeConfig) -> Self {
-        Self { config }
-    }
+
     /// Create with default configuration
     pub fn default_search() -> Self {
-        Self::new(StrongWolfeConfig::default())
+        Self::new(StrongWolfeConfig::default()).expect("Default config should be valid")
     }
+
     /// Create with strict configuration
     pub fn strict() -> Self {
-        Self::new(StrongWolfeConfig::strict())
+        Self::new(StrongWolfeConfig::strict()).expect("Strict config should be valid")
     }
+
     /// Create with lax configuration
     pub fn lax() -> Self {
-        Self::new(StrongWolfeConfig::lax())
+        Self::new(StrongWolfeConfig::lax()).expect("Lax config should be valid")
     }
+
     /// Log line search details if verbose mode is enabled
     fn log_verbose(&self, message: &str) {
         if self.config.verbose {
@@ -270,6 +297,27 @@ impl StrongWolfeLineSearch {
         }
         satisfied
     }
+    /// Perform cubic interpolation to find a better step size
+    fn cubic_interpolation(
+        &self,
+        alpha_lo: f64,
+        alpha_hi: f64,
+        f_lo: f64,
+        f_hi: f64,
+        grad_lo: f64,
+        grad_hi: f64,
+    ) -> f64 {
+        let d1 = grad_lo + grad_hi - 3.0 * (f_lo - f_hi) / (alpha_lo - alpha_hi);
+        let d2 = ((d1 * d1 - grad_lo * grad_hi).max(0.0)).sqrt();
+        let d2 = if alpha_hi < alpha_lo { -d2 } else { d2 };
+        let denominator = grad_hi - grad_lo + 2.0 * d2;
+        if denominator.abs() < 1e-10 {
+            // Fall back to bisection
+            return 0.5 * (alpha_lo + alpha_hi);
+        }
+        alpha_hi - (alpha_hi - alpha_lo) * (grad_hi + d2 - d1) / denominator
+    }
+
 
     /// Zoom phase of Strong Wolfe line search
     ///
@@ -295,17 +343,24 @@ impl StrongWolfeLineSearch {
         let mut alpha_hi = alpha_hi;
         let mut best_alpha = alpha_lo;
         let mut best_value = f64::INFINITY;
+        let mut f_lo = (problem.objective)(alpha_lo)?;
+        let mut f_hi = (problem.objective)(alpha_hi)?;
+        let mut grad_lo = (problem.gradient)(alpha_lo)?;
+        let mut grad_hi = (problem.gradient)(alpha_hi)?;
 
         for _ in 0..self.config.max_iterations {
             // Use quadratic interpolation when possible
             let alpha_j = if (alpha_hi - alpha_lo).abs() > 1e-10 {
-                // Try cubic interpolation first
-                let mid = 0.5 * (alpha_lo + alpha_hi);
+                // Try cubic interpolation
+                let interpolated = self.cubic_interpolation(
+                    alpha_lo, alpha_hi, f_lo, f_hi, grad_lo, grad_hi
+                );
+                
                 // Safeguard to ensure progress
                 let safeguard_factor = 0.1;
                 let min_alpha = alpha_lo + safeguard_factor * (alpha_hi - alpha_lo);
                 let max_alpha = alpha_hi - safeguard_factor * (alpha_hi - alpha_lo);
-                mid.max(min_alpha).min(max_alpha)
+                interpolated.max(min_alpha).min(max_alpha)
             } else {
                 0.5 * (alpha_lo + alpha_hi)
             };
@@ -321,6 +376,8 @@ impl StrongWolfeLineSearch {
             // Check Armijo condition
             if !self.armijo_condition(f0, f_alpha_j, alpha_j, directional_derivative) {
                 alpha_hi = alpha_j;
+                f_hi = f_alpha_j;
+                grad_hi = (problem.gradient)(alpha_j)?;
                 continue;
             }
 
@@ -335,8 +392,13 @@ impl StrongWolfeLineSearch {
             // Update interval
             if grad_alpha_j * (alpha_hi - alpha_lo) >= 0.0 {
                 alpha_hi = alpha_lo;
+                f_hi = f_lo;
+                grad_hi = grad_lo;
             }
             alpha_lo = alpha_j;
+            f_lo = f_alpha_j;
+            grad_lo = grad_alpha_j;
+            
             // Check if interval is too small
             if (alpha_hi - alpha_lo).abs() < self.config.min_step {
                 break;
@@ -375,9 +437,9 @@ impl LineSearch for StrongWolfeLineSearch {
             return Err(anyhow!("Direction is not a descent direction"));
         }
 
-        let alpha = self.config.initial_step;
-        let alpha_prev = 0.0;
-        let f_prev = f0;
+        let mut alpha = self.config.initial_step;
+        let mut alpha_prev = 0.0;
+        let mut f_prev = f0;
         let mut best_alpha = 0.0;
         let mut best_f = f0;
 
@@ -446,8 +508,18 @@ impl LineSearch for StrongWolfeLineSearch {
                 });
             }
 
-            // Both conditions satisfied - should not reach here
-            break;
+            // Update for next iteration
+            alpha_prev = alpha;
+            f_prev = f_alpha;
+            
+            // Increase step size for next iteration
+            alpha = (2.0 * alpha).min(self.config.max_step);
+            
+            // Check if we've reached maximum step size
+            if alpha >= self.config.max_step {
+                self.log_verbose("Reached maximum step size");
+                break;
+            }
         }
 
         // If we have any improvement, use it
@@ -508,6 +580,26 @@ mod tests {
         // ∇f(x) = x
         Ok(x.to_vec())
     }
+    #[test]
+    fn test_config_validation() {
+        // Valid config
+        let config = StrongWolfeConfig::default();
+        assert!(config.validate().is_ok());
+        // Invalid c1
+        let mut config = StrongWolfeConfig::default();
+        config.c1 = 0.0;
+        assert!(config.validate().is_err());
+        // Invalid c2
+        let mut config = StrongWolfeConfig::default();
+        config.c2 = 1.0;
+        assert!(config.validate().is_err());
+        // c1 >= c2
+        let mut config = StrongWolfeConfig::default();
+        config.c1 = 0.5;
+        config.c2 = 0.4;
+        assert!(config.validate().is_err());
+    }
+
 
     #[test]
     fn test_rosenbrock_function() {
@@ -526,7 +618,7 @@ mod tests {
             c1: 1e-4,
             c2: 0.9,
             ..Default::default()
-        });
+        }).unwrap();
         let current_point = vec![0.0, 0.0];
         let current_gradient = rosenbrock_gradient(&current_point).unwrap();
         let direction = vec![-current_gradient[0], -current_gradient[1]]; // Steepest descent
@@ -554,7 +646,7 @@ mod tests {
     #[test]
     fn test_strong_wolfe_quadratic() {
         // init_logging();
-        let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig::default());
+        let mut line_search = StrongWolfeLineSearch::default_search();
 
         let current_point = vec![2.0, 3.0];
         let direction = vec![-2.0, -3.0]; // Negative gradient (descent direction)

@@ -9,6 +9,7 @@
 use anyhow::{anyhow, Result};
 use candle_core::{Device, Result as CandleResult, Tensor};
 use log::{debug, warn};
+/// Convert a vector of tensors to a flat vector of f64 values
 
 pub(crate) fn tensors_to_f64(tensors: &[Tensor]) -> CandleResult<Vec<f64>> {
     let mut result = Vec::new();
@@ -18,6 +19,20 @@ pub(crate) fn tensors_to_f64(tensors: &[Tensor]) -> CandleResult<Vec<f64>> {
     }
     Ok(result)
 }
+/// Helper function to validate tensor vector compatibility for binary operations
+fn validate_tensor_vectors(a: &[Tensor], b: &[Tensor], operation: &str) -> CandleResult<()> {
+    if a.len() != b.len() {
+        return Err(candle_core::Error::Msg(
+            format!("Tensor vectors must have same length for {}: {} != {}", 
+                    operation, a.len(), b.len())
+        ));
+    }
+    if a.is_empty() {
+        warn!("Performing {} on empty tensor vectors", operation);
+    }
+    Ok(())
+}
+
 
 /// Compute the magnitude (L2 norm) of a vector of tensors
 pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
@@ -85,11 +100,11 @@ pub fn compute_magnitude(tensors: &[Tensor]) -> CandleResult<f64> {
 
 /// Compute dot product between two tensor vectors
 pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
-    if a.len() != b.len() {
-        return Err(candle_core::Error::Msg(
-            "Tensor vectors must have same length for dot product".to_string(),
-        ));
+    validate_tensor_vectors(a, b, "dot product")?;
+    if a.is_empty() {
+        return Ok(0.0);
     }
+
 
     let mut result = 0.0;
 
@@ -110,6 +125,7 @@ pub fn dot_product(a: &[Tensor], b: &[Tensor]) -> CandleResult<f64> {
 
     Ok(result)
 }
+
 /// Compute dot product between two f64 slices
 pub fn dot_product_f64(a: &[f64], b: &[f64]) -> Result<f64> {
     if a.len() != b.len() {
@@ -119,17 +135,26 @@ pub fn dot_product_f64(a: &[f64], b: &[f64]) -> Result<f64> {
             b.len()
         ));
     }
-    let result = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    
+    // Use compensated summation for better numerical stability
+    let mut sum = 0.0;
+    let mut compensation = 0.0;
+    for (x, y) in a.iter().zip(b.iter()) {
+        let product = x * y - compensation;
+        let t = sum + product;
+        compensation = (t - sum) - product;
+        sum = t;
+    }
     Ok(result)
 }
 
 /// Add two tensor vectors element-wise
 pub fn vector_add(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-    if a.len() != b.len() {
-        return Err(candle_core::Error::Msg(
-            "Tensor vectors must have same length for addition".to_string(),
-        ));
+    validate_tensor_vectors(a, b, "addition")?;
+    if a.is_empty() {
+        return Ok(vec![]);
     }
+
 
     let mut result = Vec::with_capacity(a.len());
 
@@ -142,11 +167,11 @@ pub fn vector_add(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
 
 /// Subtract two tensor vectors element-wise (a - b)
 pub fn vector_subtract(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-    if a.len() != b.len() {
-        return Err(candle_core::Error::Msg(
-            "Tensor vectors must have same length for subtraction".to_string(),
-        ));
+    validate_tensor_vectors(a, b, "subtraction")?;
+    if a.is_empty() {
+        return Ok(vec![]);
     }
+
 
     let mut result = Vec::with_capacity(a.len());
 
@@ -159,6 +184,12 @@ pub fn vector_subtract(a: &[Tensor], b: &[Tensor]) -> CandleResult<Vec<Tensor>> 
 
 /// Scale a tensor vector by a scalar value
 pub fn vector_scale(tensors: &[Tensor], scale: f64) -> CandleResult<Vec<Tensor>> {
+    if !scale.is_finite() {
+        return Err(candle_core::Error::Msg(
+            format!("Scale factor must be finite, got: {}", scale)
+        ));
+    }
+    
     let mut result = Vec::with_capacity(tensors.len());
 
     for tensor in tensors {
@@ -176,16 +207,25 @@ pub trait DifferentiableFunction: Send + Sync {
     /// Compute gradients at the given point
     fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>>;
 }
+/// Create a tensor from a vector of f64 values
 
-pub fn tensor_from_vec(values: Vec<f64>) -> Tensor {
-    Tensor::from_vec(values.clone(), values.len(), &Device::Cpu).unwrap()
+pub fn tensor_from_vec(values: Vec<f64>) -> CandleResult<Tensor> {
+    if values.iter().any(|v| !v.is_finite()) {
+        return Err(candle_core::Error::Msg(
+            "Cannot create tensor from non-finite values".to_string()
+        ));
+    }
+    Tensor::from_vec(values.clone(), values.len(), &Device::Cpu)
 }
+/// Convert a vector of tensors to a flat vector of f64 values
 
-pub fn tensors_to_vec(tensors: &[Tensor]) -> Vec<f64> {
-    tensors
-        .iter()
-        .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-        .collect()
+pub fn tensors_to_vec(tensors: &[Tensor]) -> CandleResult<Vec<f64>> {
+    let mut result = Vec::new();
+    for tensor in tensors {
+        let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+        result.extend(values);
+    }
+    Ok(result)
 }
 
 /// Wrapper for separate objective and gradient functions
@@ -222,6 +262,7 @@ where
         (self.gradient_fn)(params)
     }
 }
+/// Log detailed information about tensors for debugging
 
 pub fn log_tensor(tensors: &[Tensor]) {
     for (i, tensor) in tensors.iter().enumerate() {
@@ -311,8 +352,13 @@ pub fn is_finite(values: &[f64]) -> bool {
 
 /// Clamp vector values to a range
 pub fn clamp_vector(values: &[f64], min_val: f64, max_val: f64) -> Vec<f64> {
+    if min_val > max_val {
+        warn!("min_val ({}) > max_val ({}), swapping values", min_val, max_val);
+        return values.iter().map(|&x| x.clamp(max_val, min_val)).collect();
+    }
     values.iter().map(|&x| x.clamp(min_val, max_val)).collect()
 }
+/// Compute the L2 norm of the parameter change between two parameter vectors
 
 pub fn compute_parameter_change(p0: &[Tensor], p1: &[Tensor]) -> CandleResult<f64> {
     if p0.len() != p1.len() {
@@ -320,16 +366,28 @@ pub fn compute_parameter_change(p0: &[Tensor], p1: &[Tensor]) -> CandleResult<f6
             "Parameter vectors must have the same length".to_string(),
         ));
     }
+    // Use compensated summation for better numerical stability
 
     let mut sum_of_squares = 0.0;
+    let mut compensation = 0.0;
+    
     for (tensor0, tensor1) in p0.iter().zip(p1.iter()) {
         let diff = tensor1.sub(tensor0)?;
         let values = diff.flatten_all()?.to_vec1::<f64>()?;
         for &val in &values {
-            sum_of_squares += val * val;
+            let square = val * val;
+            let y = square - compensation;
+            let t = sum_of_squares + y;
+            compensation = (t - sum_of_squares) - y;
+            sum_of_squares = t;
         }
     }
+    if sum_of_squares < 0.0 {
+        warn!("Negative sum of squares in parameter change computation, using absolute value");
+        return Ok(sum_of_squares.abs().sqrt());
+    }
 
+    
     Ok(sum_of_squares.sqrt())
 }
 

@@ -38,6 +38,20 @@ const COHEN_D_LARGE: f64 = 0.8;
 /// - **Bonferroni correction**: Should be applied externally for multiple comparisons
 /// - **Effect size**: Cohen's d provides practical significance beyond statistical significance
 ///
+/// # Usage Example
+///
+/// ```rust,no_run
+/// use qqn_optimizer::experiment_runner::statistical_analysis::StatisticalAnalysis;
+/// 
+/// let analysis = StatisticalAnalysis::new();
+/// let report = analysis.generate_statistical_analysis(
+///     &results,
+///     &config,
+///     "output/",
+///     true,  // use optimizer families
+/// )?;
+/// ```
+///
 #[derive(Debug, Clone)]
 pub struct StatisticalAnalysis;
 
@@ -438,6 +452,15 @@ impl StatisticalAnalysis {
         if sample_a.len() < MIN_SAMPLE_SIZE || sample_b.len() < MIN_SAMPLE_SIZE {
             return Err(anyhow::anyhow!("Insufficient sample size for t-test"));
         }
+        // Check for empty or invalid samples
+        if sample_a.is_empty() || sample_b.is_empty() {
+            return Err(anyhow::anyhow!("Empty sample provided"));
+        }
+        // Check for NaN or infinite values
+        if sample_a.iter().any(|x| !x.is_finite()) || sample_b.iter().any(|x| !x.is_finite()) {
+            return Err(anyhow::anyhow!("Sample contains non-finite values"));
+        }
+
 
         let mean_a = sample_a.iter().sum::<f64>() / sample_a.len() as f64;
         let mean_b = sample_b.iter().sum::<f64>() / sample_b.len() as f64;
@@ -1173,6 +1196,15 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
     }
 
     /// Helper function to calculate p-value between two optimizer result sets
+    ///
+    /// # Arguments
+    ///
+    /// * `results_a` - First optimizer's results (final_value, cost, problem)
+    /// * `results_b` - Second optimizer's results (final_value, cost, problem)
+    ///
+    /// # Returns
+    ///
+    /// P-value from Welch's t-test, or 1.0 if test cannot be performed
     fn calculate_pairwise_p_value(
         &self,
         results_a: &[(f64, f64, String)],
@@ -1187,11 +1219,23 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
 
         match self.welch_t_test(&values_a, &values_b) {
             Ok((_, p_value)) => p_value,
-            Err(_) => 1.0,
+            Err(e) => {
+                log::debug!("Failed to calculate p-value: {}", e);
+                1.0
+            }
         }
     }
 
     /// Helper function to calculate Cohen's d between two optimizer result sets
+    ///
+    /// # Arguments
+    ///
+    /// * `results_a` - First optimizer's results (final_value, cost, problem)
+    /// * `results_b` - Second optimizer's results (final_value, cost, problem)
+    ///
+    /// # Returns
+    ///
+    /// Cohen's d effect size, or 0.0 if calculation cannot be performed
     fn calculate_pairwise_cohens_d(
         &self,
         results_a: &[(f64, f64, String)],
@@ -1208,6 +1252,14 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
     }
 
     /// Helper function to escape LaTeX special characters
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to escape for LaTeX
+    ///
+    /// # Returns
+    ///
+    /// LaTeX-safe string with special characters escaped
     fn escape_latex(&self, text: &str) -> String {
         text.chars()
             .map(|c| match c {
@@ -1226,18 +1278,22 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
             .collect()
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_welch_t_test() {
         let analysis = StatisticalAnalysis::new();
+
         // Test with equal samples
         let sample_a = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let sample_b = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let (t_stat, p_value) = analysis.welch_t_test(&sample_a, &sample_b).unwrap();
         assert_eq!(t_stat, 0.0);
         assert_eq!(p_value, 1.0);
+
         // Test with different samples
         let sample_a = vec![1.0, 2.0, 3.0];
         let sample_b = vec![4.0, 5.0, 6.0];
@@ -1246,13 +1302,32 @@ mod tests {
         assert!(p_value < 0.05); // Should be significant
     }
     #[test]
+    fn test_welch_t_test_edge_cases() {
+        let analysis = StatisticalAnalysis::new();
+        // Test with insufficient samples
+        let sample_a = vec![1.0];
+        let sample_b = vec![2.0];
+        assert!(analysis.welch_t_test(&sample_a, &sample_b).is_err());
+        // Test with NaN values
+        let sample_a = vec![1.0, 2.0, f64::NAN];
+        let sample_b = vec![1.0, 2.0, 3.0];
+        assert!(analysis.welch_t_test(&sample_a, &sample_b).is_err());
+        // Test with infinite values
+        let sample_a = vec![1.0, 2.0, f64::INFINITY];
+        let sample_b = vec![1.0, 2.0, 3.0];
+        assert!(analysis.welch_t_test(&sample_a, &sample_b).is_err());
+    }
+
+    #[test]
     fn test_cohens_d() {
         let analysis = StatisticalAnalysis::new();
+
         // Test with no effect
         let sample_a = vec![1.0, 2.0, 3.0];
         let sample_b = vec![1.0, 2.0, 3.0];
         let d = analysis.cohens_d(&sample_a, &sample_b);
         assert_eq!(d, 0.0);
+
         // Test with large effect
         let sample_a = vec![1.0, 2.0, 3.0];
         let sample_b = vec![10.0, 11.0, 12.0];
@@ -1260,18 +1335,48 @@ mod tests {
         assert!(d > COHEN_D_LARGE);
     }
     #[test]
+    fn test_cohens_d_edge_cases() {
+        let analysis = StatisticalAnalysis::new();
+        // Test with insufficient samples
+        let sample_a = vec![1.0];
+        let sample_b = vec![2.0];
+        let d = analysis.cohens_d(&sample_a, &sample_b);
+        assert_eq!(d, 0.0);
+        // Test with zero variance
+        let sample_a = vec![5.0, 5.0, 5.0];
+        let sample_b = vec![5.0, 5.0, 5.0];
+        let d = analysis.cohens_d(&sample_a, &sample_b);
+        assert_eq!(d, 0.0);
+    }
+
+    #[test]
     fn test_interpret_cohens_d() {
         let analysis = StatisticalAnalysis::new();
+
         assert_eq!(analysis.interpret_cohens_d(0.1), "negligible");
         assert_eq!(analysis.interpret_cohens_d(0.3), "small");
         assert_eq!(analysis.interpret_cohens_d(0.6), "medium");
         assert_eq!(analysis.interpret_cohens_d(1.0), "large");
     }
+
     #[test]
     fn test_escape_latex() {
         let analysis = StatisticalAnalysis::new();
+
         let input = "Test & % $ # ^ _ { } ~ \\";
         let expected = "Test \\& \\% \\$ \\# \\textasciicircum{} \\_ \\{ \\} \\textasciitilde{} \\textbackslash{}";
         assert_eq!(analysis.escape_latex(input), expected);
+    }
+    #[test]
+    fn test_t_distribution_p_value() {
+        let analysis = StatisticalAnalysis::new();
+        // Test with t = 0
+        assert_eq!(analysis.t_distribution_p_value(0.0, 10.0), 1.0);
+        // Test with large df (normal approximation)
+        let p = analysis.t_distribution_p_value(2.0, 50.0);
+        assert!(p > 0.01 && p < 0.10);
+        // Test with small df
+        let p = analysis.t_distribution_p_value(3.0, 5.0);
+        assert!(p > 0.01 && p < 0.05);
     }
 }

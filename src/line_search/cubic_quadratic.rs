@@ -189,7 +189,9 @@ impl CubicQuadraticLineSearch {
     /// fraction away from both interval endpoints.
     fn cubic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64, gb: f64) -> Option<f64> {
         let h = b - a;
-        if h.abs() < f64::EPSILON {
+        // Use a more reasonable epsilon for numerical stability
+        const EPSILON: f64 = 1e-10;
+        if h.abs() < EPSILON {
             return None;
         }
 
@@ -205,7 +207,7 @@ impl CubicQuadraticLineSearch {
         let numerator2 = gb - d2 - d1;
         let denominator = gb - ga + 2.0 * d2;
 
-        if denominator.abs() < f64::EPSILON * 10.0 {
+        if denominator.abs() < EPSILON {
             return None;
         }
 
@@ -257,12 +259,14 @@ impl CubicQuadraticLineSearch {
     /// * `None` - If interpolation fails (e.g., zero denominator)
     fn quadratic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64) -> Option<f64> {
         let h = b - a;
-        if h.abs() < f64::EPSILON {
+        const EPSILON: f64 = 1e-10;
+        if h.abs() < EPSILON {
             return None;
         }
 
         let denom = 2.0 * (fb - fa - ga * h);
-        if denom.abs() < f64::EPSILON * 10.0 {
+        // Check for near-zero denominator to avoid numerical issues
+        if denom.abs() < EPSILON * h.abs() {
             return None;
         }
         let t = a - ga * h * h / denom;
@@ -297,8 +301,10 @@ impl CubicQuadraticLineSearch {
         g0: f64,
     ) -> (bool, bool) {
         let armijo = f_alpha <= f0 + self.config.c1 * alpha * g0;
-        let curvature = g_alpha.abs() <= self.config.c2 * g0.abs();
-        (armijo, curvature)
+        // Use strong Wolfe condition for better convergence
+        let strong_wolfe = g_alpha.abs() <= self.config.c2 * g0.abs();
+        let weak_wolfe = g_alpha >= self.config.c2 * g0;
+        (armijo, strong_wolfe)
     }
 }
 
@@ -306,6 +312,11 @@ impl LineSearch for CubicQuadraticLineSearch {
     fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
+        // Check for NaN or infinite values
+        if !f0.is_finite() || !g0.is_finite() {
+            return Err(anyhow!("Initial function value or gradient is not finite: f0={}, g0={}", f0, g0));
+        }
+        
         if g0 >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction: g0 = {:.6e} >= 0. This indicates the search direction is pointing uphill.", g0));
         }
@@ -344,8 +355,10 @@ impl LineSearch for CubicQuadraticLineSearch {
         let mut g_prev = g0;
         let mut best_alpha = 0.0;
         let mut best_f = f0;
-        let mut bracket_low = 0.0;
-        let mut bracket_high = self.config.max_step;
+        
+        // Initialize bracketing interval more carefully
+        let mut lo = 0.0;
+        let mut hi = self.config.max_step;
 
         self.log_verbose(&format!(
             "Starting with f(0)={f0:.3e}, g(0)={g0:.3e}, initial_step={alpha:.3e}"
@@ -354,6 +367,12 @@ impl LineSearch for CubicQuadraticLineSearch {
             // Evaluate at current step
             let f_alpha = (problem.objective)(alpha)?;
             let g_alpha = (problem.gradient)(alpha)?;
+            // Check for NaN or infinite values
+            if !f_alpha.is_finite() || !g_alpha.is_finite() {
+                self.log_verbose(&format!("Non-finite values encountered at alpha={}: f={}, g={}", alpha, f_alpha, g_alpha));
+                break;
+            }
+            
             // Track best point
             if f_alpha < best_f {
                 best_f = f_alpha;
@@ -365,11 +384,14 @@ impl LineSearch for CubicQuadraticLineSearch {
             ));
             // Check Wolfe conditions
             let (armijo, curvature) = self.check_wolfe(f0, f_alpha, g_alpha, alpha, g0);
-            // Update bracketing interval
-            if f_alpha < f0 {
-                bracket_low = alpha;
+            
+            // Update bracketing interval based on Wolfe conditions
+            if !armijo || f_alpha >= f_prev {
+                // Function increased or Armijo failed - reduce upper bound
+                hi = alpha;
             } else {
-                bracket_high = alpha;
+                // Function decreased - update lower bound
+                lo = alpha;
             }
 
             if armijo && curvature {
@@ -400,10 +422,11 @@ impl LineSearch for CubicQuadraticLineSearch {
                     .unwrap_or(0.5 * (left + right));
 
                 // Ensure the new step is within bounds
-                let bracket_size = bracket_high - bracket_low;
+                let bracket_size = hi - lo;
+                let safeguard_dist = self.config.interpolation_safeguard * bracket_size;
                 alpha = new_alpha
-                    .max(bracket_low + self.config.interpolation_safeguard * bracket_size)
-                    .min(bracket_high - self.config.interpolation_safeguard * bracket_size)
+                    .max(lo + safeguard_dist.max(self.config.min_step))
+                    .min(hi - safeguard_dist.max(self.config.min_step))
                     .max(self.config.min_step)
                     .min(self.config.max_step);
 
@@ -417,7 +440,13 @@ impl LineSearch for CubicQuadraticLineSearch {
                 alpha_prev = alpha;
                 f_prev = f_alpha;
                 g_prev = g_alpha;
-                alpha = (alpha * self.config.extrapolation_factor).min(self.config.max_step);
+                
+                // Extrapolate more carefully, considering the bracketing interval
+                let new_alpha = alpha * self.config.extrapolation_factor;
+                alpha = new_alpha
+                    .min(hi)
+                    .min(self.config.max_step)
+                    .max(alpha * 1.1); // Ensure we make some progress
 
                 self.log_verbose(&format!("Extrapolated for curvature: {alpha:.3e}"));
                 continue;

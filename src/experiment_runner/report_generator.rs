@@ -226,6 +226,8 @@ impl ReportGenerator {
             include_detailed_stats: true,
             include_plots: true,
             style_options: std::collections::HashMap::new(),
+            max_trace_points: None,
+            include_raw_data: false,
         };
         report.validate_data(all_results)?;
         let content = report.generate_content(all_results, &config)?;

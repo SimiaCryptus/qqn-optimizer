@@ -1,6 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
 use crate::OptimizationProblem;
+use anyhow::{Context, Result};
 use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
 use parking_lot::RwLock;
@@ -97,13 +98,14 @@ pub struct MnistNeuralNetwork {
     device: Device,
     name: String,
     varmap: VarMap,
+    varmap_keys: Vec<String>, // Cache variable names for consistent ordering
     model: MLP,
     optimal_value: Option<f64>,
     param_count: usize,
     param_cache: Arc<RwLock<Option<Vec<f64>>>>,
     gradient_cache: Arc<RwLock<Option<Vec<f64>>>>,
     #[allow(dead_code)]
-    batch_tensors: Arc<RwLock<Option<(Tensor, Tensor)>>>, // Cache for batch tensors
+    batch_tensors: Arc<RwLock<Option<(Tensor, Tensor)>>>,
     #[allow(dead_code)]
     dropout_rate: f64,
     l2_regularization: f64,
@@ -120,7 +122,7 @@ impl MnistNeuralNetwork {
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         if hidden_sizes.is_empty() {
             return Err(anyhow::anyhow!(
                 "At least one hidden layer size must be specified"
@@ -161,6 +163,15 @@ impl MnistNeuralNetwork {
             prev_dim = hidden_dim;
         }
         param_count += (prev_dim + 1) * output_dim;
+        // Cache variable names for consistent ordering
+        let varmap_keys = varmap
+            .data()
+            .lock()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>();
+
 
         // Initialize with appropriate initialization for the activation
         let instance = Self {
@@ -170,6 +181,7 @@ impl MnistNeuralNetwork {
             device,
             name,
             varmap,
+            varmap_keys,
             model,
             optimal_value: None,
             param_count,
@@ -196,7 +208,7 @@ impl MnistNeuralNetwork {
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         if !Path::new("data/train-images-idx3-ubyte").exists() {
             println!("MNIST files not found, downloading...");
             Self::download_mnist_data()?;
@@ -229,7 +241,7 @@ impl MnistNeuralNetwork {
         Self::new(x_data, y_data, hidden_sizes, batch_size, rng, activation)
     }
 
-    fn try_load_mnist_files() -> anyhow::Result<MnistData> {
+    fn try_load_mnist_files() -> Result<MnistData> {
         // Try to load from standard MNIST file locations
         let train_images = Self::load_mnist_images("data/train-images-idx3-ubyte")?;
         let train_labels = Self::load_mnist_labels("data/train-labels-idx1-ubyte")?;
@@ -240,7 +252,7 @@ impl MnistNeuralNetwork {
         })
     }
 
-    fn download_mnist_data() -> anyhow::Result<MnistData> {
+    fn download_mnist_data() -> Result<MnistData> {
         // Create data directory if it doesn't exist
         fs::create_dir_all("data")?;
 
@@ -285,7 +297,7 @@ impl MnistNeuralNetwork {
         })
     }
 
-    fn download_file(url: &str, path: &str) -> anyhow::Result<()> {
+    fn download_file(url: &str, path: &str) -> Result<()> {
         // Try curl first
         if let Ok(output) = std::process::Command::new("curl")
             .args(["-L", "-f", "-s", "-o", path, url])
@@ -312,7 +324,7 @@ impl MnistNeuralNetwork {
         ))
     }
 
-    fn decompress_mnist_files() -> anyhow::Result<()> {
+    fn decompress_mnist_files() -> Result<()> {
         use flate2::read::GzDecoder;
         use std::fs::File;
         use std::io::BufReader;
@@ -349,7 +361,7 @@ impl MnistNeuralNetwork {
         Ok(())
     }
 
-    fn load_mnist_images(path: &str) -> anyhow::Result<Vec<Vec<u8>>> {
+    fn load_mnist_images(path: &str) -> Result<Vec<Vec<u8>>> {
         use std::fs::File;
         use std::io::{BufReader, Read};
 
@@ -384,7 +396,7 @@ impl MnistNeuralNetwork {
         Ok(images)
     }
 
-    fn load_mnist_labels(path: &str) -> anyhow::Result<Vec<u8>> {
+    fn load_mnist_labels(path: &str) -> Result<Vec<u8>> {
         use std::fs::File;
         use std::io::{BufReader, Read};
 
@@ -413,7 +425,7 @@ impl MnistNeuralNetwork {
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         // Validate hidden sizes to prevent overflow
         for (i, &hidden_size) in hidden_sizes.iter().enumerate() {
             if hidden_size > 2048 {
@@ -442,7 +454,7 @@ impl MnistNeuralNetwork {
         batch_size: Option<usize>,
         rng: &mut StdRng,
         activation: Option<ActivationType>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         Self::create(n_samples, &[hidden_size], batch_size, rng, activation)
     }
 
@@ -450,7 +462,7 @@ impl MnistNeuralNetwork {
         self.param_count
     }
 
-    fn set_parameters(&self, params: &[f64]) -> anyhow::Result<()> {
+    fn set_parameters(&self, params: &[f64]) -> Result<()> {
         // Check all parameters for non-finite values before setting
         if params.iter().any(|&p| !p.is_finite()) {
             return Err(anyhow::anyhow!("Non-finite parameters detected"));
@@ -472,7 +484,8 @@ impl MnistNeuralNetwork {
         let mut param_idx = 0;
         let mut data = self.varmap.data().lock().unwrap();
 
-        for (_name, var) in data.iter_mut() {
+        for name in &self.varmap_keys {
+            let var = data.get_mut(name).ok_or_else(|| anyhow::anyhow!("Variable {} not found", name))?;
             let tensor = var.as_tensor();
             let elem_count = tensor.elem_count();
 
@@ -490,7 +503,7 @@ impl MnistNeuralNetwork {
         Ok(())
     }
 
-    fn get_parameters(&self) -> anyhow::Result<Vec<f64>> {
+    fn get_parameters(&self) -> Result<Vec<f64>> {
         // Check cache first
         if let Some(cached) = self.param_cache.read().as_ref() {
             return Ok(cached.clone());
@@ -500,7 +513,8 @@ impl MnistNeuralNetwork {
 
         let data = self.varmap.data().lock().unwrap();
 
-        for (_, var) in data.iter() {
+        for name in &self.varmap_keys {
+            let var = data.get(name).ok_or_else(|| anyhow::anyhow!("Variable {} not found", name))?;
             let tensor = var.as_tensor();
             let values = tensor.flatten_all()?.to_vec1::<f64>()?;
             params.extend(values);
@@ -512,7 +526,7 @@ impl MnistNeuralNetwork {
     }
 
     /// Initialize weights using appropriate initialization for the activation function
-    fn initialize_weights(&self, rng: &mut StdRng) -> anyhow::Result<()> {
+    fn initialize_weights(&self, rng: &mut StdRng) -> Result<()> {
         let mut data = self.varmap.data().lock().unwrap();
         for (_name, var) in data.iter_mut() {
             let tensor = var.as_tensor();
@@ -558,6 +572,7 @@ impl MnistNeuralNetwork {
         }
         Ok(())
     }
+
     /// Verify the quality of weight initialization
     pub fn verify_initialization(&self) -> anyhow::Result<()> {
         println!("\n=== Weight Initialization Quality Check ===");
@@ -640,7 +655,7 @@ impl MnistNeuralNetwork {
 }
 
 impl OptimizationProblem for MnistNeuralNetwork {
-    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
     }
     fn name(&self) -> &str {
@@ -656,7 +671,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
             .unwrap_or_else(|_| vec![0.0; self.count_parameters()])
     }
 
-    fn evaluate_f64(&self, params: &[f64]) -> anyhow::Result<f64> {
+    fn evaluate_f64(&self, params: &[f64]) -> Result<f64> {
         // Set parameters in the model
         self.set_parameters(params)?;
 
@@ -667,7 +682,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         // Process batches in parallel using rayon
         let batch_losses: Vec<(f64, usize)> = (0..n_batches)
             .into_par_iter()
-            .map(|batch_idx| -> anyhow::Result<(f64, usize)> {
+            .map(|batch_idx| -> Result<(f64, usize)> {
                 let start = batch_idx * self.batch_size;
                 let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
                 let batch_size = end - start;
@@ -681,7 +696,8 @@ impl OptimizationProblem for MnistNeuralNetwork {
                             &self.device,
                         )
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()
+                    .context("Failed to create x_batch tensors")?;
                 let x_batch = Tensor::cat(&x_tensors, 0)?;
 
                 let y_tensors: Vec<Tensor> = (start..end)
@@ -692,7 +708,8 @@ impl OptimizationProblem for MnistNeuralNetwork {
                             &self.device,
                         )
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()
+                    .context("Failed to create y_batch tensors")?;
                 let y_batch = Tensor::cat(&y_tensors, 0)?;
 
                 // Forward pass
@@ -706,7 +723,8 @@ impl OptimizationProblem for MnistNeuralNetwork {
                 let batch_loss_value = batch_loss.to_scalar::<f64>()?;
                 Ok((batch_loss_value, batch_size))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .context("Failed to compute batch losses")?;
 
         // Aggregate batch losses
         for (loss, size) in batch_losses {
@@ -730,7 +748,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         Ok(loss_value)
     }
 
-    fn gradient_f64(&self, params: &[f64]) -> anyhow::Result<Vec<f64>> {
+    fn gradient_f64(&self, params: &[f64]) -> Result<Vec<f64>> {
         // Check gradient cache first
         if let Some(cached) = self.gradient_cache.read().as_ref() {
             if let Some(cached_params) = self.param_cache.read().as_ref() {
@@ -751,7 +769,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         // Process batches in parallel
         let batch_grads: Vec<Vec<f64>> = (0..n_batches)
             .into_par_iter()
-            .map(|batch_idx| -> anyhow::Result<Vec<f64>> {
+            .map(|batch_idx| -> Result<Vec<f64>> {
                 let start = batch_idx * self.batch_size;
                 let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
                 let batch_size = end - start;
@@ -765,7 +783,8 @@ impl OptimizationProblem for MnistNeuralNetwork {
                             &self.device,
                         )
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()
+                    .context("Failed to create x_batch tensors for gradient")?;
                 let x_batch = Tensor::cat(&x_tensors, 0)?;
 
                 let y_tensors: Vec<Tensor> = (start..end)
@@ -776,14 +795,16 @@ impl OptimizationProblem for MnistNeuralNetwork {
                             &self.device,
                         )
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()
+                    .context("Failed to create y_batch tensors for gradient")?;
                 let y_batch = Tensor::cat(&y_tensors, 0)?;
 
                 // Create variables for autodiff
                 let mut vars = Vec::with_capacity(self.model.layers.len() * 2); // Each layer has weights and biases
 
                 let data = self.varmap.data().lock().unwrap();
-                for (_, var) in data.iter() {
+                for name in &self.varmap_keys {
+                    let var = data.get(name).ok_or_else(|| anyhow::anyhow!("Variable {} not found", name))?;
                     vars.push(var.clone());
                 }
                 drop(data);
@@ -818,7 +839,8 @@ impl OptimizationProblem for MnistNeuralNetwork {
                 }
                 Ok(batch_grads)
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .context("Failed to compute batch gradients")?;
         // Aggregate gradients from all batches
         for batch_grad in batch_grads {
             for (i, &g) in batch_grad.iter().enumerate() {

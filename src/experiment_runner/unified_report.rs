@@ -8,6 +8,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+use std::fmt;
 
 /// Configuration for report generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +21,10 @@ pub struct ReportConfig {
     pub include_plots: bool,
     /// Custom styling options
     pub style_options: HashMap<String, String>,
+    /// Maximum number of iterations to include in trace plots
+    pub max_trace_points: Option<usize>,
+    /// Include raw data tables
+    pub include_raw_data: bool,
 }
 
 /// Supported report output formats
@@ -29,6 +34,30 @@ pub enum ReportFormat {
     Latex,
     Csv,
     Markdown,
+    Json,
+}
+impl fmt::Display for ReportFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReportFormat::Html => write!(f, "html"),
+            ReportFormat::Latex => write!(f, "tex"),
+            ReportFormat::Csv => write!(f, "csv"),
+            ReportFormat::Markdown => write!(f, "md"),
+            ReportFormat::Json => write!(f, "json"),
+        }
+    }
+}
+impl ReportFormat {
+    /// Get the file extension for this format
+    pub fn extension(&self) -> &'static str {
+        match self {
+            ReportFormat::Html => "html",
+            ReportFormat::Latex => "tex",
+            ReportFormat::Csv => "csv",
+            ReportFormat::Markdown => "md",
+            ReportFormat::Json => "json",
+        }
+    }
 }
 
 impl Default for ReportConfig {
@@ -38,6 +67,8 @@ impl Default for ReportConfig {
             include_detailed_stats: true,
             include_plots: true,
             style_options: HashMap::new(),
+            max_trace_points: Some(1000),
+            include_raw_data: false,
         }
     }
 }
@@ -55,10 +86,14 @@ pub struct ReportMetadata {
     pub optimizer_count: usize,
     /// Total data points processed
     pub data_points: usize,
+    /// Report format used
+    pub format: ReportFormat,
+    /// Configuration used
+    pub config: ReportConfig,
 }
 
 /// Unified trait for all report types
-pub trait Report {
+pub trait Report: Send + Sync {
     /// Get the name/identifier for this report type
     fn name(&self) -> &'static str;
 
@@ -79,7 +114,21 @@ pub trait Report {
         config: &ReportConfig,
         output_path: &Path,
     ) -> Result<()> {
+        // Validate format is supported
+        if !self.supported_formats().contains(&config.format) {
+            anyhow::bail!(
+                "Report '{}' does not support format '{}'",
+                self.name(),
+                config.format
+            );
+        }
+
         let content = self.generate_content(data, config)?;
+        // Ensure parent directory exists
+        if let Some(parent) = output_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        
         std::fs::write(output_path, content)?;
         Ok(())
     }
@@ -104,7 +153,7 @@ pub trait Report {
     }
 
     /// Get metadata about the generated report
-    fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
+    fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> ReportMetadata {
         let problem_count = data.len();
         let optimizer_count = data
             .iter()
@@ -120,6 +169,8 @@ pub trait Report {
             problem_count,
             optimizer_count,
             data_points,
+            format: config.format.clone(),
+            config: config.clone(),
         }
     }
 
@@ -129,7 +180,12 @@ pub trait Report {
             ReportFormat::Html,
             ReportFormat::Latex,
             ReportFormat::Markdown,
+            ReportFormat::Json,
         ]
+    }
+    /// Check if a specific format is supported
+    fn supports_format(&self, format: &ReportFormat) -> bool {
+        self.supported_formats().contains(format)
     }
 }
 
@@ -165,29 +221,50 @@ impl ReportCollection {
         for report in &self.reports {
             report.validate_data(data)?;
 
-            let filename = format!(
-                "{}.{}",
-                report.name(),
-                match config.format {
-                    ReportFormat::Html => "html",
-                    ReportFormat::Latex => "tex",
-                    ReportFormat::Csv => "csv",
-                    ReportFormat::Markdown => "md",
-                }
-            );
+            let filename = format!("{}.{}", report.name(), config.format.extension());
 
             let output_path = output_dir.join(filename);
             report.export_to_file(data, config, &output_path)?;
 
-            metadata.push(report.get_metadata(data));
+            metadata.push(report.get_metadata(data, config));
         }
 
         Ok(metadata)
     }
+    /// Generate reports in parallel
+    pub fn generate_all_parallel(
+        &self,
+        data: &[(&ProblemSpec, BenchmarkResults)],
+        config: &ReportConfig,
+        output_dir: &Path,
+    ) -> Result<Vec<ReportMetadata>> {
+        use rayon::prelude::*;
+        std::fs::create_dir_all(output_dir)?;
+        let results: Result<Vec<_>> = self.reports
+            .par_iter()
+            .map(|report| {
+                report.validate_data(data)?;
+                let filename = format!("{}.{}", report.name(), config.format.extension());
+                let output_path = output_dir.join(filename);
+                report.export_to_file(data, config, &output_path)?;
+                Ok(report.get_metadata(data, config))
+            })
+            .collect();
+        results
+    }
+
 
     /// Get all report names in the collection
     pub fn report_names(&self) -> Vec<&'static str> {
         self.reports.iter().map(|r| r.name()).collect()
+    }
+    /// Get the number of reports in the collection
+    pub fn len(&self) -> usize {
+        self.reports.len()
+    }
+    /// Check if the collection is empty
+    pub fn is_empty(&self) -> bool {
+        self.reports.is_empty()
     }
 }
 
@@ -198,7 +275,6 @@ mod tests {
         BenchmarkConfig, BenchmarkResults, ConvergenceReason, OptimizationTrace,
         PerformanceMetrics, ProblemSpec, SingleResult,
     };
-    use crate::experiment_runner::{Report, ReportCollection, ReportFormat};
     use crate::SphereFunction;
     use std::sync::Arc;
     use std::time::Duration;
@@ -207,6 +283,9 @@ mod tests {
     struct MockReport {
         name: &'static str,
     }
+    unsafe impl Send for MockReport {}
+    unsafe impl Sync for MockReport {}
+
 
     impl Report for MockReport {
         fn name(&self) -> &'static str {
@@ -240,6 +319,11 @@ mod tests {
                 )),
                 ReportFormat::Csv => Ok(format!(
                     "report_type,problem_count\n{},{}\n",
+                    self.name(),
+                    data.len()
+                )),
+                ReportFormat::Json => Ok(format!(
+                    r#"{{"report_type":"{}","problem_count":{}}}"#,
                     self.name(),
                     data.len()
                 )),
@@ -306,6 +390,7 @@ mod tests {
         assert!(formats.contains(&ReportFormat::Html));
         assert!(formats.contains(&ReportFormat::Latex));
         assert!(formats.contains(&ReportFormat::Markdown));
+        assert!(formats.contains(&ReportFormat::Json));
     }
 
     #[test]
@@ -349,12 +434,14 @@ mod tests {
         };
         let data = create_test_data();
         let data_refs: Vec<_> = data.iter().map(|(p, r)| (p, r.clone())).collect();
+        let config = ReportConfig::default();
 
-        let metadata = report.get_metadata(&data_refs);
+        let metadata = report.get_metadata(&data_refs, &config);
         assert_eq!(metadata.report_type, "test_report");
         assert_eq!(metadata.problem_count, 1);
         assert_eq!(metadata.optimizer_count, 1);
         assert_eq!(metadata.data_points, 1);
+        assert_eq!(metadata.format, ReportFormat::Html);
     }
 
     #[test]
@@ -368,6 +455,8 @@ mod tests {
         assert_eq!(names.len(), 2);
         assert!(names.contains(&"report1"));
         assert!(names.contains(&"report2"));
+        assert_eq!(collection.len(), 2);
+        assert!(!collection.is_empty());
     }
 
     #[test]
@@ -405,5 +494,38 @@ mod tests {
         };
         let csv_content = report.generate_content(&data_refs, &csv_config).unwrap();
         assert!(csv_content.contains("report_type,problem_count"));
+        let json_config = ReportConfig {
+            format: ReportFormat::Json,
+            ..Default::default()
+        };
+        let json_content = report.generate_content(&data_refs, &json_config).unwrap();
+        assert!(json_content.contains(r#""report_type":"test_report""#));
+    }
+    #[test]
+    fn test_format_extensions() {
+        assert_eq!(ReportFormat::Html.extension(), "html");
+        assert_eq!(ReportFormat::Latex.extension(), "tex");
+        assert_eq!(ReportFormat::Csv.extension(), "csv");
+        assert_eq!(ReportFormat::Markdown.extension(), "md");
+        assert_eq!(ReportFormat::Json.extension(), "json");
+    }
+    #[test]
+    fn test_format_display() {
+        assert_eq!(format!("{}", ReportFormat::Html), "html");
+        assert_eq!(format!("{}", ReportFormat::Latex), "tex");
+        assert_eq!(format!("{}", ReportFormat::Csv), "csv");
+        assert_eq!(format!("{}", ReportFormat::Markdown), "md");
+        assert_eq!(format!("{}", ReportFormat::Json), "json");
+    }
+    #[test]
+    fn test_supports_format() {
+        let report = MockReport {
+            name: "test_report",
+        };
+        assert!(report.supports_format(&ReportFormat::Html));
+        assert!(report.supports_format(&ReportFormat::Latex));
+        assert!(report.supports_format(&ReportFormat::Csv));
+        assert!(report.supports_format(&ReportFormat::Markdown));
+        assert!(report.supports_format(&ReportFormat::Json));
     }
 }

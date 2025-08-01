@@ -37,6 +37,10 @@ struct OneDnnLayer {
     input_size: usize,
     output_size: usize,
     activation: ActivationType,
+    // Store intermediate values for backpropagation
+    last_input: Vec<f32>,
+    last_output: Vec<f32>,
+    last_pre_activation: Vec<f32>,
 }
 
 #[cfg(feature = "onednn")]
@@ -52,6 +56,9 @@ impl OneDnnLayer {
             input_size,
             output_size,
             activation,
+            last_input: vec![0.0; input_size],
+            last_output: vec![0.0; output_size],
+            last_pre_activation: vec![0.0; output_size],
         })
     }
 
@@ -78,6 +85,10 @@ impl OneDnnLayer {
         if output.len() != self.output_size {
             return Err(anyhow::anyhow!("Output size mismatch"));
         }
+        // Store input for backpropagation
+        let layer = unsafe { &mut *(self as *const Self as *mut Self) };
+        layer.last_input.copy_from_slice(input);
+
 
         // Matrix multiplication: output = weights * input + bias
         for i in 0..self.output_size {
@@ -86,9 +97,15 @@ impl OneDnnLayer {
                 output[i] += self.weights[i * self.input_size + j] * input[j];
             }
         }
+        // Store pre-activation values
+        layer.last_pre_activation.copy_from_slice(output);
+
 
         // Apply activation function
         self.apply_activation(output)?;
+        // Store output for backpropagation
+        layer.last_output.copy_from_slice(output);
+        
         Ok(())
     }
 
@@ -112,6 +129,19 @@ impl OneDnnLayer {
         }
         Ok(())
     }
+    fn activation_derivative(&self, pre_activation: f32, output: f32) -> f32 {
+        match self.activation {
+            ActivationType::ReLU => {
+                if pre_activation > 0.0 { 1.0 } else { 0.0 }
+            }
+            ActivationType::Tanh => {
+                1.0 - output * output
+            }
+            ActivationType::Logistic => {
+                output * (1.0 - output)
+            }
+        }
+    }
 }
 
 /// MNIST neural network using OneDNN for optimized performance
@@ -130,6 +160,8 @@ pub struct MnistOneDnnNeuralNetwork {
     l2_regularization: f64,
     #[cfg(feature = "onednn")]
     layers: Arc<RwLock<Vec<OneDnnLayer>>>,
+    #[cfg(not(feature = "onednn"))]
+    dummy_params: Arc<RwLock<Vec<f64>>>,
 }
 
 impl MnistOneDnnNeuralNetwork {
@@ -222,6 +254,8 @@ impl MnistOneDnnNeuralNetwork {
             l2_regularization: 1e-4,
             #[cfg(feature = "onednn")]
             layers: Arc::new(RwLock::new(layers)),
+            #[cfg(not(feature = "onednn"))]
+            dummy_params: Arc::new(RwLock::new(vec![0.0; param_count])),
         };
 
         instance.initialize_weights(rng)?;
@@ -566,9 +600,12 @@ impl MnistOneDnnNeuralNetwork {
 
         #[cfg(not(feature = "onednn"))]
         {
-            // Fallback: just store parameters for basic implementation
-            // This allows compilation without OneDNN
+            // Store parameters for fallback implementation
+            *self.dummy_params.write() = params.to_vec();
         }
+        // Cache the parameters
+        *self.param_cache.write() = Some(params.to_vec());
+
 
         Ok(())
     }
@@ -579,9 +616,29 @@ impl MnistOneDnnNeuralNetwork {
             return Ok(cached.clone());
         }
 
-        // For now, return zeros - in a full implementation, this would
-        // extract parameters from OneDNN layers
-        let params = vec![0.0; self.param_count];
+        let mut params = Vec::with_capacity(self.param_count);
+
+        #[cfg(feature = "onednn")]
+        {
+            // Extract parameters from OneDNN layers
+            let layers = self.layers.read();
+            for layer in layers.iter() {
+                // Add weights
+                for &w in &layer.weights {
+                    params.push(w as f64);
+                }
+                // Add bias
+                for &b in &layer.bias {
+                    params.push(b as f64);
+                }
+            }
+        }
+
+        #[cfg(not(feature = "onednn"))]
+        {
+            // Return stored parameters for fallback
+            params = self.dummy_params.read().clone();
+        }
 
         // Cache the parameters
         *self.param_cache.write() = Some(params.clone());
@@ -591,10 +648,13 @@ impl MnistOneDnnNeuralNetwork {
 
     /// Initialize weights using appropriate initialization for the activation function
     fn initialize_weights(&self, rng: &mut StdRng) -> anyhow::Result<()> {
+        let mut all_params = Vec::with_capacity(self.param_count);
+
         #[cfg(feature = "onednn")]
         {
             // Initialize OneDNN layers with proper weight initialization
-            for (i, _layer) in self.layers.iter().enumerate() {
+            let mut layers = self.layers.write();
+            for (i, layer) in layers.iter_mut().enumerate() {
                 let input_size = self.layer_sizes[i];
                 let output_size = self.layer_sizes[i + 1];
 
@@ -618,22 +678,50 @@ impl MnistOneDnnNeuralNetwork {
                 let mut weights = Vec::with_capacity(input_size * output_size);
                 for _ in 0..(input_size * output_size) {
                     let normal: f64 = rng.sample(rand_distr::StandardNormal);
-                    weights.push((normal * std_dev) as f32);
+                    let weight = (normal * std_dev) as f32;
+                    weights.push(weight);
+                    all_params.push(weight as f64);
                 }
+                layer.set_weights(&weights)?;
 
                 // Generate initialized biases (zeros)
                 let biases = vec![0.0f32; output_size];
 
-                // Note: In a full implementation, we would set these in the OneDNN layers
-                // For now, we'll handle this in the parameter setting logic
+                layer.set_bias(&biases)?;
+                for _ in 0..output_size {
+                    all_params.push(0.0);
+                }
             }
         }
 
         #[cfg(not(feature = "onednn"))]
         {
-            // Fallback initialization when OneDNN is not available
-            // Initialize with random values and store for later use
+            // Fallback initialization
+            for i in 0..self.layer_sizes.len() - 1 {
+                let input_size = self.layer_sizes[i];
+                let output_size = self.layer_sizes[i + 1];
+                
+                let std_dev = match self.activation {
+                    ActivationType::ReLU => (2.0 / input_size as f64).sqrt(),
+                    ActivationType::Logistic => (2.0 / (input_size + output_size) as f64).sqrt(),
+                    ActivationType::Tanh => (1.0 / (input_size + output_size) as f64).sqrt(),
+                };
+
+                // Weights
+                for _ in 0..(input_size * output_size) {
+                    let normal: f64 = rng.sample(rand_distr::StandardNormal);
+                    all_params.push(normal * std_dev);
+                }
+                // Biases
+                for _ in 0..output_size {
+                    all_params.push(0.0);
+                }
+            }
+            *self.dummy_params.write() = all_params.clone();
         }
+        // Cache the initial parameters
+        *self.param_cache.write() = Some(all_params);
+
 
         Ok(())
     }
@@ -674,19 +762,67 @@ impl MnistOneDnnNeuralNetwork {
 
     #[cfg(not(feature = "onednn"))]
     fn forward_pass(&self, batch_x: &[Vec<f32>]) -> anyhow::Result<Vec<Vec<f32>>> {
-        // Fallback implementation without OneDNN
-        // This is a simple linear transformation for testing purposes
-        let output_size = self.layer_sizes.last().unwrap();
-        let results: Vec<Vec<f32>> = batch_x
-            .iter()
-            .map(|_| vec![0.5f32; *output_size]) // Dummy output
-            .collect();
+        // Simple forward pass implementation for fallback
+        let params = self.dummy_params.read();
+        let mut results = Vec::with_capacity(batch_x.len());
+        
+        for sample in batch_x {
+            let mut current_input = sample.clone();
+            let mut param_idx = 0;
+            
+            for i in 0..self.layer_sizes.len() - 1 {
+                let input_size = self.layer_sizes[i];
+                let output_size = self.layer_sizes[i + 1];
+                let mut output = vec![0.0f32; output_size];
+                
+                // Matrix multiplication
+                for j in 0..output_size {
+                    // Bias
+                    output[j] = params[param_idx + input_size * output_size + j] as f32;
+                    // Weights
+                    for k in 0..input_size {
+                        output[j] += params[param_idx + j * input_size + k] as f32 * current_input[k];
+                    }
+                }
+                param_idx += input_size * output_size + output_size;
+                
+                // Apply activation
+                let activation = if i == self.layer_sizes.len() - 2 {
+                    ActivationType::Logistic
+                } else {
+                    self.activation
+                };
+                
+                match activation {
+                    ActivationType::ReLU => {
+                        for v in output.iter_mut() {
+                            *v = v.max(0.0);
+                        }
+                    }
+                    ActivationType::Tanh => {
+                        for v in output.iter_mut() {
+                            *v = v.tanh();
+                        }
+                    }
+                    ActivationType::Logistic => {
+                        for v in output.iter_mut() {
+                            *v = 1.0 / (1.0 + (-*v).exp());
+                        }
+                    }
+                }
+                
+                current_input = output;
+            }
+            
+            results.push(current_input);
+        }
+        
         Ok(results)
     }
 }
 
 impl OptimizationProblem for MnistOneDnnNeuralNetwork {
-    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
     }
 

@@ -12,16 +12,6 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
 
-/// Additional metadata that optimizers can provide
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct OptimizationMetadata {
-    /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
-    pub optimizer_data: std::collections::HashMap<String, f64>,
-    /// Timing information for different phases of the step
-    pub timing_info: TimingInfo,
-    /// Memory usage information
-    pub memory_info: MemoryInfo,
-}
 /// Core trait that all optimization algorithms must implement.
 ///
 /// This trait provides a unified interface for different optimization methods,
@@ -133,6 +123,15 @@ pub enum ConvergenceCriterion {
 }
 
 /// Additional metadata that optimizers can provide
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct OptimizationMetadata {
+    /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
+    pub optimizer_data: std::collections::HashMap<String, f64>,
+    /// Timing information for different phases of the step
+    pub timing_info: TimingInfo,
+    /// Memory usage information
+    pub memory_info: MemoryInfo,
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct TimingInfo {
@@ -215,7 +214,6 @@ pub struct ConvergenceChecker {
     start_time: std::time::Instant,
     previous_function_value: Option<f64>,
     previous_parameters: Option<Vec<Tensor>>,
-    stagnation_count: usize,
     consecutive_stagnation: usize,
 }
 
@@ -228,7 +226,6 @@ impl ConvergenceChecker {
             start_time: std::time::Instant::now(),
             previous_function_value: None,
             previous_parameters: None,
-            stagnation_count: 0,
             consecutive_stagnation: 0,
         }
     }
@@ -245,7 +242,7 @@ impl ConvergenceChecker {
         function_value: f64,
         gradients: &[Tensor],
         parameters: &[Tensor],
-        _optimizer: &dyn Optimizer,
+        optimizer: &dyn Optimizer,
     ) -> CandleResult<ConvergenceInfo> {
         self.iteration_count += 1;
 
@@ -264,8 +261,14 @@ impl ConvergenceChecker {
         } else {
             self.consecutive_stagnation = 0;
         }
+        // Apply relaxed convergence criteria if stagnation is detected
+        let stagnation_multiplier = if self.consecutive_stagnation >= optimizer.stagnation_count() {
+            optimizer.stagnation_multiplier()
+        } else {
+            1.0
+        };
         // Check gradient norm convergence with relaxed tolerance
-        let gradient_converged = gradient_norm < self.config.gradient_tolerance;
+        let gradient_converged = gradient_norm < self.config.gradient_tolerance * stagnation_multiplier;
         // Check function change convergence
         let function_converged = function_change
             .map(|change| change < self.config.function_tolerance)
@@ -316,7 +319,6 @@ impl ConvergenceChecker {
         self.start_time = std::time::Instant::now();
         self.previous_function_value = None;
         self.previous_parameters = None;
-        self.stagnation_count = 0;
         self.consecutive_stagnation = 0;
     }
     /// Get the current consecutive stagnation count

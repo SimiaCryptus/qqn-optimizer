@@ -26,6 +26,31 @@ impl PlottingManager {
             enable_enhanced_plots: true,
         }
     }
+    /// Generate a summary report of all plots created
+    pub async fn generate_plot_summary(&self) -> anyhow::Result<()> {
+        let summary_path = self.output_dir.join("plot_summary.md");
+        let mut summary = String::from("# Plot Generation Summary\n\n");
+        // List convergence plots
+        let convergence_dir = self.output_dir.join("convergence");
+        if convergence_dir.exists() {
+            summary.push_str("## Convergence Plots\n\n");
+            for entry in fs::read_dir(&convergence_dir)? {
+                let entry = entry?;
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("png") {
+                    let filename = entry.file_name().to_string_lossy();
+                    summary.push_str(&format!("- {}\n", filename));
+                }
+            }
+            summary.push_str("\n");
+        }
+        // Add performance comparison section
+        summary.push_str("## Performance Comparison Plots\n\n");
+        summary.push_str("- performance_comparison.png\n");
+        summary.push_str("- performance_distribution.png\n");
+        fs::write(summary_path, summary)?;
+        Ok(())
+    }
+
 
     pub async fn generate_all_plots(
         &self,
@@ -116,6 +141,8 @@ impl PlottingManager {
 
         tokio::task::yield_now().await;
         info!("Plot generation completed");
+        // Generate summary report
+        self.generate_plot_summary().await?;
         Ok(())
     }
 
@@ -135,5 +162,38 @@ impl PlottingManager {
                 warn!("Skipping {plot_description} due to panic in plotting library");
             }
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_sanitize_filename() {
+        assert_eq!(sanitize_filename("Test Problem"), "test_problem");
+        assert_eq!(sanitize_filename("Test/Problem:1"), "test_problem_1");
+        assert_eq!(sanitize_filename("Test*Problem?"), "test_problem");
+        assert_eq!(sanitize_filename("Test<>Problem|"), "test_problem");
+    }
+    #[tokio::test]
+    async fn test_plotting_manager_creation() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = PlottingManager::new(temp_dir.path().to_string_lossy().to_string());
+        assert!(manager.enable_enhanced_plots);
+        assert_eq!(manager.max_concurrent_plots, 4);
+    }
+    #[tokio::test]
+    async fn test_plotting_manager_configuration() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = PlottingManager::new(temp_dir.path().to_string_lossy().to_string())
+            .with_enhanced_plots(false)
+            .with_max_concurrent_plots(8);
+        assert!(!manager.enable_enhanced_plots);
+        assert_eq!(manager.max_concurrent_plots, 8);
+    }
+    #[tokio::test]
+    async fn test_empty_results_handling() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manager = PlottingManager::new(temp_dir.path().to_string_lossy().to_string());
+        assert!(manager.generate_all_plots(&[]).await.is_ok());
     }
 }
