@@ -10,6 +10,7 @@ use qqn_optimizer::optimizer_sets::{
     adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants,
 };
 use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems};
+use tokio::task::LocalSet;
 
 // #[tokio::test]
 async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -17,12 +18,17 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    test_all("results/calibration_", {
-        let mut problems = analytic_problems();
-        problems.extend(ml_problems());
-        problems
-    })
-    .await?;
+    let local = LocalSet::new();
+    local
+        .run_until(async move {
+            test_all("results/calibration_", {
+                let mut problems = analytic_problems();
+                problems.extend(ml_problems());
+                problems
+            })
+            .await
+        })
+        .await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;
@@ -36,12 +42,17 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Disable no threshold mode for this test
     disable_no_threshold_mode();
 
-    test_all("results/full_", {
-        let mut problems = analytic_problems();
-        problems.extend(ml_problems());
-        problems
-    })
-    .await?;
+    let local = LocalSet::new();
+    local
+        .run_until(async move {
+            test_all("results/full_", {
+                let mut problems = analytic_problems();
+                problems.extend(ml_problems());
+                problems
+            })
+            .await
+        })
+        .await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;
@@ -53,13 +64,14 @@ async fn test_all(
     prefix: &str,
     problems: Vec<ProblemSpec>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let max_evals = 10000;
+    let max_evals = 1000;
     let num_runs = 10;
     run_benchmark(
         &format!("{prefix}all_optimizers_"),
         max_evals,
         num_runs,
         Duration::from_secs(600),
+        Some(1),
         problems.clone(),
         {
             let mut optimizers = qqn_variants();
@@ -80,7 +92,10 @@ async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    test("results/mnist_", mnist_problems(1000)).await?;
+    let local = LocalSet::new();
+    local
+        .run_until(async move { test("results/mnist_", mnist_problems(1000)).await })
+        .await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;
@@ -100,6 +115,7 @@ async fn test(
         max_evals,
         num_runs,
         Duration::from_secs(60),
+        Some(1),
         problems.clone(),
         qqn_variants(),
     )
@@ -110,6 +126,7 @@ async fn test(
         max_evals,
         num_runs,
         Duration::from_secs(60),
+        Some(1),
         problems.clone(),
         qqn_variants(),
     )
@@ -120,6 +137,7 @@ async fn test(
         max_evals,
         num_runs,
         Duration::from_secs(60),
+        Some(1),
         problems.clone(),
         lbfgs_variants(),
     )
@@ -130,6 +148,7 @@ async fn test(
         max_evals,
         num_runs,
         Duration::from_secs(60),
+        Some(1),
         problems.clone(),
         gd_variants(),
     )
@@ -140,6 +159,7 @@ async fn test(
         max_evals,
         num_runs,
         Duration::from_secs(60),
+        Some(1),
         problems.clone(),
         adam_variants(),
     )
@@ -150,6 +170,7 @@ async fn test(
         max_evals,
         num_runs,
         Duration::from_secs(60),
+        Some(1),
         problems.clone(),
         trust_region_variants(),
     )

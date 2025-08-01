@@ -7,7 +7,8 @@ use crate::utils::math::DifferentiableFunction;
 use candle_core::Result as CandleResult;
 use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_distr::num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use std::cmp::max;
@@ -358,7 +359,7 @@ impl BenchmarkRunner {
         problem: &ProblemSpec,
         optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
-        opt_name: &String,
+        opt_name: &str,
         noise: f64,
     ) -> Result<SingleResult, BenchmarkError> {
         info!(
@@ -380,7 +381,7 @@ impl BenchmarkRunner {
             ));
         }
         // Randomize initial point to ensure variability
-        let mut rng = rand::rng();
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         for xi in x.iter_mut() {
             *xi += rng.random_range(-noise..noise); // Random perturbation
         }
@@ -490,7 +491,7 @@ impl BenchmarkRunner {
         } else {
             Ok(SingleResult {
                 problem_name: problem.get_name().to_string(),
-                optimizer_name: opt_name.clone(),
+                optimizer_name: opt_name.clone().to_string(),
                 run_id,
                 final_value,
                 best_value: if best_value.is_finite() {
