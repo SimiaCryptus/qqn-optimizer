@@ -129,10 +129,13 @@ pub struct BisectionLineSearch {
 impl LineSearch for BisectionLineSearch {
     fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
         let directional_derivative = problem.initial_directional_derivative;
-        self.log_verbose(&format!("Starting bisection line search with initial directional derivative: {directional_derivative:.3e}"));
+        self.log_verbose("Starting bisection line search");
+        self.log_verbose(&format!(
+            "Initial directional derivative: {directional_derivative:.3e}"
+        ));
 
         if directional_derivative >= 0.0 {
-            return Err(anyhow!("Direction is not a descent direction: directional derivative = {:.3e}", directional_derivative));
+            return Err(anyhow!("Direction is not a descent direction"));
         }
 
         // Step 1: Find the far point
@@ -201,10 +204,12 @@ impl LineSearch for BisectionLineSearch {
                 }
 
                 if best_step > 0.0 {
-                    self.log_verbose(&format!("Found improvement with small step: {best_step:.3e}"));
+                    self.log_verbose(&format!(
+                        "Found improvement with small step: {best_step:.3e}"
+                    ));
                     best_step
                 } else {
-                    return Err(anyhow!("Cannot find any improvement along search direction"));
+                    return Err(anyhow!("Cannot find any improvement"));
                 }
             }
         };
@@ -214,7 +219,7 @@ impl LineSearch for BisectionLineSearch {
         let f_final = (problem.objective)(step_size)?;
 
         if f_final >= f0 {
-            return Err(anyhow!("Final step size {:.3e} does not provide improvement: f({:.3e}) = {:.3e} >= f(0) = {:.3e}", step_size, step_size, f_final, f0));
+            return Err(anyhow!("Final step size does not provide improvement"));
         }
 
         // Check final gradient
@@ -247,7 +252,6 @@ impl LineSearch for BisectionLineSearch {
     fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
-    /// Get a mutable reference to the concrete type for downcasting
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -302,7 +306,9 @@ impl BisectionLineSearch {
         let mut a = left;
         let mut b = right;
 
-        self.log_verbose(&format!("Finding zero gradient in interval [{a:.3e}, {b:.3e}]"));
+        self.log_verbose(&format!(
+            "Finding zero gradient in interval [{a:.3e}, {b:.3e}]"
+        ));
         // Verify we have a proper bracket with opposite gradient signs
         let grad_a = (problem.gradient)(a)?;
         let grad_b = (problem.gradient)(b)?;
@@ -343,7 +349,9 @@ impl BisectionLineSearch {
         }
         // Return midpoint if max iterations reached
         let final_alpha = 0.5 * (a + b);
-        self.log_verbose(&format!("Max iterations reached, returning alpha={final_alpha:.3e}"));
+        self.log_verbose(&format!(
+            "Max iterations reached, returning alpha={final_alpha:.3e}"
+        ));
         Ok(final_alpha)
     }
 }
@@ -429,11 +437,11 @@ pub(crate) fn find_far_point_1(
 pub(crate) fn find_far_point_2(
     problem: &OneDimensionalProblem,
     f0: f64,
-    initial_step: f64,
+    initial_steop: f64,
     max_iterations: usize,
     max_step: f64,
 ) -> anyhow::Result<f64, Error> {
-    let mut t = initial_step;
+    let mut t = initial_steop;
     let mut iteration = 0;
     debug!("Finding far point starting from t={t:.3e}");
     while iteration < max_iterations {

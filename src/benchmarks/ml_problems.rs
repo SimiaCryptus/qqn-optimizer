@@ -1,7 +1,6 @@
 //! Machine learning optimization problems for benchmarking.
 use crate::benchmarks::functions::OptimizationProblem;
 use anyhow::Result;
-use candle_core::bail;
 use candle_core::{Device, Tensor};
 use rand::rngs::StdRng;
 
@@ -22,10 +21,6 @@ pub struct LogisticRegression {
 impl LogisticRegression {
     pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<f64>, regularization: f64) -> Result<Self> {
         let device = Device::Cpu;
-        if x_data.is_empty() || y_data.is_empty() {
-            bail!("Input data cannot be empty");
-        }
-        
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
         let name = format!(
@@ -57,9 +52,6 @@ impl LogisticRegression {
 
     pub fn synthetic(n_samples: usize, n_features: usize, rng: &mut StdRng) -> Result<Self> {
         use rand::Rng;
-        if n_samples == 0 || n_features == 0 {
-            bail!("Number of samples and features must be greater than 0");
-        }
 
         let mut x_data = Vec::with_capacity(n_samples);
         let mut y_data = Vec::with_capacity(n_samples);
@@ -96,10 +88,6 @@ impl OptimizationProblem for LogisticRegression {
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
-        if weights.len() != self.dimension() {
-            bail!("Weight vector has incorrect dimension");
-        }
-        
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute logits: X @ weights
@@ -130,10 +118,6 @@ impl OptimizationProblem for LogisticRegression {
     }
 
     fn gradient_f64(&self, weights: &[f64]) -> Result<Vec<f64>> {
-        if weights.len() != self.dimension() {
-            bail!("Weight vector has incorrect dimension");
-        }
-        
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute predictions
@@ -169,7 +153,7 @@ impl OptimizationProblem for LogisticRegression {
     fn initial_point(&self) -> Vec<f64> {
         vec![0.0; self.dimension()]
     }
-    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
     }
 }
@@ -192,13 +176,6 @@ impl NeuralNetworkTraining {
         y_data: Vec<Vec<f64>>,
     ) -> Result<Self> {
         let device = Device::Cpu;
-        if layer_sizes.len() < 2 {
-            bail!("Neural network must have at least input and output layers");
-        }
-        if x_data.is_empty() || y_data.is_empty() {
-            bail!("Input data cannot be empty");
-        }
-        
         let n_samples = x_data.len();
         let layer_str = layer_sizes
             .iter()
@@ -238,9 +215,6 @@ impl NeuralNetworkTraining {
 
     pub fn mlp_classification(layer_sizes: Vec<usize>, rng: &mut StdRng) -> Result<Self> {
         use rand::Rng;
-        if layer_sizes.len() < 2 {
-            bail!("Neural network must have at least input and output layers");
-        }
 
         let n_samples = 100;
         let input_size = layer_sizes[0];
@@ -275,26 +249,15 @@ impl NeuralNetworkTraining {
         }
         count
     }
-    
     fn forward_pass(&self, params: &[f64]) -> Result<Tensor> {
-        let expected_params = self.count_parameters();
-        if params.len() != expected_params {
-            bail!("Expected {} parameters, got {}", expected_params, params.len());
-        }
-        
         let mut param_idx = 0;
         let mut x = &self.x_tensor;
         let mut owned_x: Option<Tensor> = None;
-        
         for i in 0..self.layer_sizes.len() - 1 {
             let input_size = self.layer_sizes[i];
             let output_size = self.layer_sizes[i + 1];
             // Extract weights and biases
             let weight_size = input_size * output_size;
-            if param_idx + weight_size + output_size > params.len() {
-                bail!("Insufficient parameters for layer {}", i);
-            }
-            
             let weight_slice = &params[param_idx..param_idx + weight_size];
             param_idx += weight_size;
             let bias_slice = &params[param_idx..param_idx + output_size];
@@ -313,12 +276,9 @@ impl NeuralNetworkTraining {
             }
             x = owned_x.as_ref().unwrap();
         }
-        
         Ok(owned_x.unwrap())
     }
-    
     fn backward_pass(&self, params: &[f64]) -> Result<Vec<f64>> {
-        let expected_params = self.count_parameters();
         let batch_size = self.x_tensor.dim(0)? as f64;
         let mut gradients = Vec::with_capacity(params.len());
         gradients.resize(params.len(), 0.0);
@@ -326,9 +286,6 @@ impl NeuralNetworkTraining {
 
         // Forward pass with intermediate activations
         let mut activations = vec![self.x_tensor.clone()];
-        let mut weights_list = Vec::new();
-        let mut biases_list = Vec::new();
-        // Store weights and biases for backward pass
         let mut param_idx = 0;
         for i in 0..self.layer_sizes.len() - 1 {
             let input_size = self.layer_sizes[i];
@@ -342,9 +299,6 @@ impl NeuralNetworkTraining {
             // Create weight tensor
             let w = Tensor::from_vec(weights.to_vec(), (input_size, output_size), &self.device)?;
             let b = Tensor::from_vec(biases.to_vec(), output_size, &self.device)?;
-            weights_list.push(w.clone());
-            biases_list.push(b.clone());
-            
             // Linear transformation
             let z = activations.last().unwrap().matmul(&w)?.broadcast_add(&b)?;
             // Apply activation
@@ -379,7 +333,10 @@ impl NeuralNetworkTraining {
             // Propagate gradient through activation
             if i > 0 {
                 // Extract weights for backward pass
-                let w = &weights_list[i];
+                let w_idx = param_idx;
+                let weights = &params[w_idx..w_idx + input_size * output_size];
+                let w =
+                    Tensor::from_vec(weights.to_vec(), (input_size, output_size), &self.device)?;
                 delta = delta.matmul(&w.t()?)?;
                 // Apply ReLU derivative
                 if i < self.layer_sizes.len() - 1 {
@@ -396,7 +353,7 @@ impl NeuralNetworkTraining {
 }
 
 impl OptimizationProblem for NeuralNetworkTraining {
-    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
     }
     fn name(&self) -> &str {
@@ -415,10 +372,6 @@ impl OptimizationProblem for NeuralNetworkTraining {
     }
 
     fn evaluate_f64(&self, params: &[f64]) -> Result<f64> {
-        if params.len() != self.dimension() {
-            bail!("Parameter vector has incorrect dimension");
-        }
-        
         let y_pred = self.forward_pass(params)?;
 
         // MSE loss
@@ -429,10 +382,6 @@ impl OptimizationProblem for NeuralNetworkTraining {
     }
 
     fn gradient_f64(&self, params: &[f64]) -> Result<Vec<f64>> {
-        if params.len() != self.dimension() {
-            bail!("Parameter vector has incorrect dimension");
-        }
-        
         self.backward_pass(params)
     }
 
@@ -455,10 +404,6 @@ pub struct LinearRegression {
 impl LinearRegression {
     pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<f64>, regularization: f64) -> Result<Self> {
         let device = Device::Cpu;
-        if x_data.is_empty() || y_data.is_empty() {
-            bail!("Input data cannot be empty");
-        }
-        
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
         let name =
@@ -490,7 +435,7 @@ impl LinearRegression {
 }
 
 impl OptimizationProblem for LinearRegression {
-    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
     }
     fn name(&self) -> &str {
@@ -501,10 +446,6 @@ impl OptimizationProblem for LinearRegression {
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
-        if weights.len() != self.dimension() {
-            bail!("Weight vector has incorrect dimension");
-        }
-        
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute predictions: X @ weights
@@ -526,10 +467,6 @@ impl OptimizationProblem for LinearRegression {
     }
 
     fn gradient_f64(&self, weights: &[f64]) -> Result<Vec<f64>> {
-        if weights.len() != self.dimension() {
-            bail!("Weight vector has incorrect dimension");
-        }
-        
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute predictions and error
@@ -579,10 +516,6 @@ pub struct SupportVectorMachine {
 impl SupportVectorMachine {
     pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<f64>, c: f64) -> Result<Self> {
         let device = Device::Cpu;
-        if x_data.is_empty() || y_data.is_empty() {
-            bail!("Input data cannot be empty");
-        }
-        
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
         let name = format!("SVM_{n_samples}samples_{n_features}features_C{c}");
@@ -591,13 +524,6 @@ impl SupportVectorMachine {
         let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
-        // Validate y_data contains only -1 and 1
-        for &y in &y_tensor.to_vec1::<f64>()? {
-            if y != 1.0 && y != -1.0 {
-                bail!("SVM labels must be -1 or 1, got {}", y);
-            }
-        }
-        
         // Set default optimal value based on problem size
         let optimal_value = if n_samples <= 100 && n_features <= 5 {
             Some(1.05) // Small problems: ~5% above 0.994
@@ -621,7 +547,7 @@ impl SupportVectorMachine {
 }
 
 impl OptimizationProblem for SupportVectorMachine {
-    fn clone_boxed(&self) -> Box<dyn OptimizationProblem> {
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
         Box::new(self.clone())
     }
     fn name(&self) -> &str {
@@ -632,10 +558,6 @@ impl OptimizationProblem for SupportVectorMachine {
     }
 
     fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
-        if weights.len() != self.dimension() {
-            bail!("Weight vector has incorrect dimension");
-        }
-        
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute scores: X @ weights
@@ -666,10 +588,6 @@ impl OptimizationProblem for SupportVectorMachine {
     }
 
     fn gradient_f64(&self, weights: &[f64]) -> Result<Vec<f64>> {
-        if weights.len() != self.dimension() {
-            bail!("Weight vector has incorrect dimension");
-        }
-        
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
         let n_samples = self.x_tensor.dim(0)? as f64;
 
@@ -721,10 +639,6 @@ pub fn generate_linear_regression_data(
     rng: &mut StdRng,
 ) -> (Vec<Vec<f64>>, Vec<f64>) {
     use rand::Rng;
-    if n_samples == 0 || n_features == 0 {
-        return (vec![], vec![]);
-    }
-    
     let mut x_data = Vec::new();
     let mut y_data = Vec::new();
     let true_weights: Vec<f64> = (0..n_features).map(|i| (i as f64 + 1.0) * 0.5).collect();
@@ -750,10 +664,6 @@ pub fn generate_svm_data(
     rng: &mut StdRng,
 ) -> (Vec<Vec<f64>>, Vec<f64>) {
     use rand::Rng;
-    if n_samples == 0 || n_features == 0 {
-        return (vec![], vec![]);
-    }
-    
     let mut x_data = Vec::new();
     let mut y_data = Vec::new();
     for _ in 0..n_samples {

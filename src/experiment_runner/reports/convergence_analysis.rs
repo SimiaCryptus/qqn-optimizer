@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 /// Convergence Analysis Report
-/// Convergence Analysis Report
 pub struct ConvergenceAnalysisReport;
 impl ConvergenceAnalysisReport {
     pub fn new() -> Self {
@@ -30,7 +29,6 @@ impl ConvergenceAnalysisReport {
         th { background-color: #f2f2f2; }
         .best { font-weight: bold; }
         .qqn { color: #2e7d32; }
-        .worst { color: #d32f2f; }
         .stats { background-color: #f9f9f9; padding: 15px; margin: 10px 0; }
     </style>
 </head>
@@ -38,9 +36,6 @@ impl ConvergenceAnalysisReport {
     <h1>Convergence Analysis Report</h1>
 "#,
         );
-        // Add summary statistics
-        content.push_str(&self.generate_summary_stats_html(data)?);
-        
         if config.include_detailed_stats {
             content.push_str(&self.generate_convergence_speed_html_table(data)?);
         }
@@ -66,9 +61,6 @@ impl ConvergenceAnalysisReport {
 \maketitle
 "#,
         );
-        // Add summary statistics
-        content.push_str(&self.generate_summary_stats_latex(data)?);
-        
         if config.include_detailed_stats {
             content.push_str(&self.generate_convergence_speed_latex_table(data)?);
         }
@@ -81,9 +73,6 @@ impl ConvergenceAnalysisReport {
         config: &ReportConfig,
     ) -> anyhow::Result<String> {
         let mut content = String::from("# Convergence Analysis Report\n\n");
-        // Add summary statistics
-        content.push_str(&self.generate_summary_stats_markdown(data)?);
-        
         if config.include_detailed_stats {
             content.push_str(&self.generate_convergence_speed_markdown_table(data)?);
         }
@@ -106,77 +95,6 @@ impl ConvergenceAnalysisReport {
         }
         Ok(content)
     }
-    fn generate_summary_stats_html(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
-        let stats = self.calculate_summary_statistics(data)?;
-        Ok(format!(
-            r#"<div class="stats">
-    <h2>Summary Statistics</h2>
-    <ul>
-        <li>Total Problems: {}</li>
-        <li>Total Runs: {}</li>
-        <li>Convergent Runs: {} ({:.1}%)</li>
-        <li>Average Convergence Rate by Optimizer:</li>
-        <ul>
-            {}
-        </ul>
-    </ul>
-</div>
-"#,
-            stats.total_problems,
-            stats.total_runs,
-            stats.convergent_runs,
-            stats.convergence_rate,
-            stats.optimizer_rates.iter()
-                .map(|(opt, rate)| format!("<li>{}: {:.1}%</li>", opt, rate))
-                .collect::<Vec<_>>()
-                .join("\n            ")
-        ))
-    }
-    fn generate_summary_stats_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
-        let stats = self.calculate_summary_statistics(data)?;
-        Ok(format!(
-            r#"\section{{Summary Statistics}}
-\begin{{itemize}}
-    \item Total Problems: {}
-    \item Total Runs: {}
-    \item Convergent Runs: {} ({:.1}\%)
-    \item Average Convergence Rate by Optimizer:
-    \begin{{itemize}}
-        {}
-    \end{{itemize}}
-\end{{itemize}}
-"#,
-            stats.total_problems,
-            stats.total_runs,
-            stats.convergent_runs,
-            stats.convergence_rate,
-            stats.optimizer_rates.iter()
-                .map(|(opt, rate)| format!("\\item {}: {:.1}\\%", opt, rate))
-                .collect::<Vec<_>>()
-                .join("\n        ")
-        ))
-    }
-    fn generate_summary_stats_markdown(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<String> {
-        let stats = self.calculate_summary_statistics(data)?;
-        Ok(format!(
-            r#"## Summary Statistics
-- Total Problems: {}
-- Total Runs: {}
-- Convergent Runs: {} ({:.1}%)
-- Average Convergence Rate by Optimizer:
-{}
-"#,
-            stats.total_problems,
-            stats.total_runs,
-            stats.convergent_runs,
-            stats.convergence_rate,
-            stats.optimizer_rates.iter()
-                .map(|(opt, rate)| format!("  - {}: {:.1}%", opt, rate))
-                .collect::<Vec<_>>()
-                .join("\n")
-        ))
-    }
-    
     fn calculate_convergence_averages(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -187,7 +105,7 @@ impl ConvergenceAnalysisReport {
                 if result.convergence_achieved && !result.trace.iterations.is_empty() {
                     let speed_data = optimizer_speed_data
                         .entry(result.optimizer_name.clone())
-                        .or_insert_with(Vec::new);
+                        .or_insert(Vec::new());
                     let initial_value = result
                         .trace
                         .iterations
@@ -246,44 +164,6 @@ impl ConvergenceAnalysisReport {
         });
         Ok(optimizer_averages)
     }
-    fn calculate_summary_statistics(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<SummaryStats> {
-        let total_problems = data.len();
-        let total_runs: usize = data.iter().map(|(_, results)| results.results.len()).sum();
-        let convergent_runs: usize = data
-            .iter()
-            .map(|(_, results)| {
-                results
-                    .results
-                    .iter()
-                    .filter(|r| r.convergence_achieved)
-                    .count()
-            })
-            .sum();
-        let mut optimizer_stats: HashMap<String, (usize, usize)> = HashMap::new();
-        for (_, results) in data {
-            for result in &results.results {
-                let entry = optimizer_stats
-                    .entry(result.optimizer_name.clone())
-                    .or_insert((0, 0));
-                entry.0 += 1; // total runs
-                if result.convergence_achieved {
-                    entry.1 += 1; // convergent runs
-                }
-            }
-        }
-        let optimizer_rates: Vec<(String, f64)> = optimizer_stats
-            .into_iter()
-            .map(|(name, (total, conv))| (name, (conv as f64 / total as f64) * 100.0))
-            .collect();
-        Ok(SummaryStats {
-            total_problems,
-            total_runs,
-            convergent_runs,
-            convergence_rate: (convergent_runs as f64 / total_runs as f64) * 100.0,
-            optimizer_rates,
-        })
-    }
-    
     fn generate_convergence_speed_html_table(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -308,11 +188,12 @@ impl ConvergenceAnalysisReport {
 "#,
         );
         for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
-            let class = match i {
-                0 => "best",
-                _ if i == optimizer_averages.len() - 1 => "worst",
-                _ if optimizer.contains("QQN") => "qqn",
-                _ => ""
+            let class = if i == 0 {
+                "best"
+            } else if optimizer.contains("QQN") {
+                "qqn"
+            } else {
+                ""
             };
             content.push_str(&format!(
                 r#"            <tr>
@@ -327,7 +208,7 @@ impl ConvergenceAnalysisReport {
         }
         content.push_str(r#"        </tbody>
     </table>
-    <p><strong>Purpose:</strong> Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average: 30% 50%-milestone, 40% 90%-milestone, 30% final). Best performer is highlighted in bold, QQN variants in green, worst in red.</p>
+    <p><strong>Purpose:</strong> Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.</p>
 "#);
         Ok(content)
     }
@@ -359,59 +240,21 @@ impl ConvergenceAnalysisReport {
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<String> {
-        let optimizer_averages = self.calculate_convergence_averages(data)?;
-        if optimizer_averages.is_empty() {
-            return Ok(String::new());
-        }
-        
-        let mut content = String::from(
-            r#"\section{Convergence Speed Analysis}
-\begin{table}[H]
-\centering
-\caption{Mean Function Evaluations to Reach Improvement Milestones}
-\label{tab:convergence_speed}
-\adjustbox{width=\textwidth,center}{
-\begin{tabular}{lrrr}
-\toprule
-\textbf{Optimizer} & \textbf{Mean Function Evals} & \textbf{Mean Function Evals} & \textbf{Final Convergence} \\
- & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Function Evals} \\
-\midrule
-"#,
-        );
-        
-        for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
-            let optimizer_style = match i {
-                0 => format!("\\textbf{{{}}}", report_generator::escape_latex(optimizer)),
-                _ if i == optimizer_averages.len() - 1 => 
-                    format!("\\textcolor{{red}}{{{}}}", report_generator::escape_latex(optimizer)),
-                _ if optimizer.contains("QQN") => 
-                    format!("\\textcolor{{green!70!black}}{{{}}}", report_generator::escape_latex(optimizer)),
-                _ => report_generator::escape_latex(optimizer)
-            };
-            content.push_str(&format!(
-                "{} & {:.1} & {:.1} & {:.1} \\\\\n",
-                optimizer_style, avg_50, avg_90, avg_final
-            ));
-        }
-        
-        content.push_str(r#"\bottomrule
-\end{tabular}
-}
-\end{table}
-\textbf{Purpose:} Compares convergence rates for different optimizers based on total function evaluations. Sorted by fastest overall convergence (weighted average: 30\% 50\%-milestone, 40\% 90\%-milestone, 30\% final). Best performer is highlighted in bold, QQN variants in green, worst in red.
-"#);
-        
-        Ok(content)
+        // Convert HTML table to LaTeX format
+        let html_content = self.generate_convergence_speed_html_table(data)?;
+        // Simple conversion - you might want to make this more sophisticated
+        let latex_content = html_content
+            .replace("<table>", "\\begin{tabular}{|l|c|c|c|}\n\\hline")
+            .replace("</table>", "\\end{tabular}")
+            .replace("<tr>", "")
+            .replace("</tr>", " \\\\\n\\hline")
+            .replace("<th>", "")
+            .replace("</th>", " & ")
+            .replace("<td>", "")
+            .replace("</td>", " & ");
+        Ok(latex_content)
     }
 }
-struct SummaryStats {
-    total_problems: usize,
-    total_runs: usize,
-    convergent_runs: usize,
-    convergence_rate: f64,
-    optimizer_rates: Vec<(String, f64)>,
-}
-
 impl Report for ConvergenceAnalysisReport {
     fn name(&self) -> &'static str {
         "convergence_analysis"
@@ -543,7 +386,7 @@ fn generate_convergence_speed_table_content_legacy(
             if result.convergence_achieved && !result.trace.iterations.is_empty() {
                 let speed_data = optimizer_speed_data
                     .entry(result.optimizer_name.clone())
-                    .or_insert_with(Vec::new);
+                    .or_insert(Vec::new());
                 let initial_value = result
                     .trace
                     .iterations
@@ -727,7 +570,7 @@ pub fn generate_convergence_speed_latex_table(
             if result.convergence_achieved && !result.trace.iterations.is_empty() {
                 let speed_data = optimizer_speed_data
                     .entry(result.optimizer_name.clone())
-                    .or_insert_with(Vec::new);
+                    .or_insert(Vec::new());
                 // Calculate convergence milestones
                 let initial_value = result
                     .trace

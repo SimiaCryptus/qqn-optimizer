@@ -12,36 +12,17 @@ impl PerformanceAnalysisReport {
     pub fn new() -> Self {
         Self
     }
-    /// Calculate average metrics from a collection of runs
-    fn calculate_averages(runs: &[&SingleResult]) -> (f64, f64, f64, f64) {
-        let n = runs.len() as f64;
-        let total_func_evals: usize = runs.iter().map(|r| r.function_evaluations).sum();
-        let total_grad_evals: usize = runs.iter().map(|r| r.gradient_evaluations).sum();
-        let total_time: f64 = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
-        let total_iterations: usize = runs.iter().map(|r| r.iterations).sum();
-        (
-            total_func_evals as f64 / n,
-            total_grad_evals as f64 / n,
-            total_time / n,
-            total_iterations as f64 / n,
-        )
-    }
-
 
     fn generate_analysis_content(&self, runs: &[&SingleResult]) -> String {
         let mut content = String::from("## Performance Analysis\n\n");
-        if runs.is_empty() {
-            content.push_str("No data available for analysis.\n");
-            return content;
-        }
-        
         let total_func_evals: usize = runs.iter().map(|r| r.function_evaluations).sum();
         let total_grad_evals: usize = runs.iter().map(|r| r.gradient_evaluations).sum();
         let total_time: f64 = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
         let total_iterations: usize = runs.iter().map(|r| r.iterations).sum();
-        
-        let (avg_func_evals, avg_grad_evals, avg_time, avg_iterations) = 
-            Self::calculate_averages(runs);
+        let avg_func_evals = total_func_evals as f64 / runs.len() as f64;
+        let avg_grad_evals = total_grad_evals as f64 / runs.len() as f64;
+        let avg_time = total_time / runs.len() as f64;
+        let avg_iterations = total_iterations as f64 / runs.len() as f64;
 
         content.push_str(&format!(
             r#"### Computational Efficiency
@@ -88,8 +69,7 @@ impl PerformanceAnalysisReport {
         data: &[(&ProblemSpec, BenchmarkResults)],
         config: &ReportConfig,
     ) -> Result<String> {
-        let mut html = String::new();
-        html.push_str(
+        let mut html = String::from(
             r#"<!DOCTYPE html>
 <html>
 <head>
@@ -116,7 +96,8 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -149,8 +130,7 @@ impl PerformanceAnalysisReport {
         data: &[(&ProblemSpec, BenchmarkResults)],
         config: &ReportConfig,
     ) -> Result<String> {
-        let mut latex = String::new();
-        latex.push_str(
+        let mut latex = String::from(
             r#"\documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
@@ -172,7 +152,8 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -219,7 +200,8 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -238,7 +220,6 @@ impl PerformanceAnalysisReport {
         Ok(markdown)
     }
 
-    
     fn generate_csv(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -248,7 +229,8 @@ impl PerformanceAnalysisReport {
 
         for (problem_spec, results) in data {
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
+            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
+                std::collections::HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -257,12 +239,14 @@ impl PerformanceAnalysisReport {
             }
 
             for (optimizer_name, runs) in optimizer_results {
-                let (avg_func_evals, avg_grad_evals, avg_time, avg_iterations) = 
-                    Self::calculate_averages(&runs);
-                
                 let total_func_evals: usize = runs.iter().map(|r| r.function_evaluations).sum();
                 let total_grad_evals: usize = runs.iter().map(|r| r.gradient_evaluations).sum();
                 let total_time: f64 = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
+                let total_iterations: usize = runs.iter().map(|r| r.iterations).sum();
+                let avg_func_evals = total_func_evals as f64 / runs.len() as f64;
+                let avg_grad_evals = total_grad_evals as f64 / runs.len() as f64;
+                let avg_time = total_time / runs.len() as f64;
+                let avg_iterations = total_iterations as f64 / runs.len() as f64;
                 let func_grad_ratio = if total_grad_evals > 0 {
                     total_func_evals as f64 / total_grad_evals as f64
                 } else {
@@ -311,7 +295,6 @@ impl Report for PerformanceAnalysisReport {
         }
     }
 
-    
     fn export_to_file(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -319,7 +302,7 @@ impl Report for PerformanceAnalysisReport {
         output_path: &Path,
     ) -> Result<()> {
         let content = self.generate_content(data, config)?;
-        fs::write(output_path, content).context("Failed to write performance analysis report")?;
+        std::fs::write(output_path, content)?;
         Ok(())
     }
 
@@ -370,7 +353,6 @@ impl Report for PerformanceAnalysisReport {
         }
     }
 
-    
     fn supported_formats(&self) -> Vec<ReportFormat> {
         vec![
             ReportFormat::Html,
@@ -380,12 +362,6 @@ impl Report for PerformanceAnalysisReport {
         ]
     }
 }
-impl Default for PerformanceAnalysisReport {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 
 // Legacy function for backward compatibility
 pub fn generate_performance_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
@@ -400,7 +376,6 @@ impl PerformanceTableReport {
     pub fn new() -> Self {
         Self
     }
-    
     fn calculate_performance_data(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
@@ -422,7 +397,6 @@ impl PerformanceTableReport {
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
-                
                 if final_values.is_empty() {
                     continue;
                 }
@@ -433,19 +407,14 @@ impl PerformanceTableReport {
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
                     .collect();
-                    
                 let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
                 let std_final = {
-                    if final_values.len() > 1 {
-                        let variance = final_values
-                            .iter()
-                            .map(|x| (x - mean_final).powi(2))
-                            .sum::<f64>()
-                            / (final_values.len() - 1) as f64; // Use n-1 for sample std dev
-                        variance.sqrt()
-                    } else {
-                        0.0
-                    }
+                    let variance = final_values
+                        .iter()
+                        .map(|x| (x - mean_final).powi(2))
+                        .sum::<f64>()
+                        / final_values.len() as f64;
+                    variance.sqrt()
                 };
                 let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
                 let worst_final = final_values
@@ -480,15 +449,13 @@ impl PerformanceTableReport {
         }
         problem_data
     }
-    
     fn generate_html(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
         _config: &ReportConfig,
     ) -> anyhow::Result<String> {
         let performance_data = self.calculate_performance_data(data);
-        let mut html = String::new();
-        html.push_str(
+        let mut html = String::from(
             r#"<!DOCTYPE html>
 <html>
 <head>
@@ -575,15 +542,13 @@ impl PerformanceTableReport {
         html.push_str("</tbody></table></body></html>");
         Ok(html)
     }
-    
     fn generate_latex(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-        _config: &ReportConfig,
+        config: &ReportConfig,
     ) -> anyhow::Result<String> {
         let performance_data = self.calculate_performance_data(data);
-        let mut latex_content = String::new();
-        latex_content.push_str(
+        let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
@@ -673,7 +638,6 @@ impl PerformanceTableReport {
         );
         Ok(latex_content)
     }
-    
     fn generate_markdown(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -755,11 +719,9 @@ impl Report for PerformanceTableReport {
     fn name(&self) -> &'static str {
         "performance_table"
     }
-    
     fn description(&self) -> &'static str {
         "Shows detailed performance metrics for each optimizer-problem combination"
     }
-    
     fn generate_content(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -787,7 +749,6 @@ impl Report for PerformanceTableReport {
         })?;
         Ok(())
     }
-    
     fn validate_data(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<()> {
         if data.is_empty() {
             return Err(anyhow::anyhow!("No benchmark data provided"));
@@ -802,7 +763,6 @@ impl Report for PerformanceTableReport {
         }
         Ok(())
     }
-    
     fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
         let total_problems = data.len();
         let total_optimizers: std::collections::HashSet<String> = data
@@ -827,12 +787,6 @@ impl Report for PerformanceTableReport {
         ]
     }
 }
-impl Default for PerformanceTableReport {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 
 /// Generate main performance LaTeX table
 pub fn generate_main_performance_latex_table(
@@ -846,8 +800,7 @@ pub fn generate_main_performance_latex_table(
     };
     let content = report.generate_content(all_results, &config)?;
 
-    let mut latex_content = String::new();
-    latex_content.push_str(
+    let mut latex_content = String::from(
         r#"\documentclass{article}
 \usepackage[margin=0.5in]{geometry}
 \usepackage{booktabs}
@@ -916,16 +869,12 @@ pub fn generate_main_performance_latex_table(
                 .collect();
             let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
             let std_final = {
-                if final_values.len() > 1 {
-                    let variance = final_values
-                        .iter()
-                        .map(|x| (x - mean_final).powi(2))
-                        .sum::<f64>()
-                        / (final_values.len() - 1) as f64;
-                    variance.sqrt()
-                } else {
-                    0.0
-                }
+                let variance = final_values
+                    .iter()
+                    .map(|x| (x - mean_final).powi(2))
+                    .sum::<f64>()
+                    / final_values.len() as f64;
+                variance.sqrt()
             };
             let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
             let worst_final = final_values
@@ -1016,8 +965,7 @@ pub fn generate_main_performance_latex_table(
 pub fn generate_main_performance_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<String> {
-    let mut content = String::new();
-    content.push_str(
+    let mut content = String::from(
         r#"\footnotesize
 \begin{longtable}{|l|l|c|c|c|c|c|c|c|}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
@@ -1076,16 +1024,12 @@ pub fn generate_main_performance_table_content(
                 .collect();
             let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
             let std_final = {
-                if final_values.len() > 1 {
-                    let variance = final_values
-                        .iter()
-                        .map(|x| (x - mean_final).powi(2))
-                        .sum::<f64>()
-                        / (final_values.len() - 1) as f64;
-                    variance.sqrt()
-                } else {
-                    0.0
-                }
+                let variance = final_values
+                    .iter()
+                    .map(|x| (x - mean_final).powi(2))
+                    .sum::<f64>()
+                    / final_values.len() as f64;
+                variance.sqrt()
             };
             let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
             let worst_final = final_values

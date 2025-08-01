@@ -3,8 +3,6 @@
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::unified_report::{Report, ReportConfig, ReportFormat};
 use anyhow::Result;
-use chrono::Utc;
-use itertools::Itertools;
 use std::collections::HashMap;
 
 /// Performance table report that provides detailed performance metrics
@@ -50,79 +48,6 @@ impl Report for PerformanceTableReport {
 }
 
 impl PerformanceTableReport {
-    /// Calculate performance statistics for a set of runs
-    fn calculate_stats(
-        &self,
-        runs: &[&crate::benchmarks::evaluation::OptimizationResult],
-    ) -> (f64, f64, f64, f64, f64) {
-        if runs.is_empty() {
-            return (0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0);
-        }
-        let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-        let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-        let final_values: Vec<f64> = runs
-            .iter()
-            .map(|r| r.final_value)
-            .filter(|&v| v.is_finite())
-            .collect();
-        let mean_final = if !final_values.is_empty() {
-            final_values.iter().sum::<f64>() / final_values.len() as f64
-        } else {
-            f64::INFINITY
-        };
-        let best_final = final_values
-            .iter()
-            .cloned()
-            .fold(f64::INFINITY, f64::min);
-        let mean_func_evals = runs
-            .iter()
-            .map(|r| r.function_evaluations as f64)
-            .sum::<f64>()
-            / runs.len() as f64;
-        let mean_time = runs
-            .iter()
-            .map(|r| r.execution_time.as_secs_f64())
-            .sum::<f64>()
-            / runs.len() as f64;
-        (success_rate, mean_final, best_final, mean_func_evals, mean_time)
-    }
-    /// Group results by optimizer and calculate statistics
-    fn get_optimizer_stats(
-        &self,
-        results: &crate::benchmarks::evaluation::BenchmarkResults,
-    ) -> Vec<(String, f64, f64, f64, f64, f64)> {
-        let grouped = results
-            .results
-            .iter()
-            .group_by(|r| &r.optimizer_name);
-        let mut stats: Vec<_> = grouped
-            .into_iter()
-            .map(|(optimizer, group)| {
-                let runs: Vec<_> = group.collect();
-                let (success_rate, mean_final, best_final, mean_func_evals, mean_time) =
-                    self.calculate_stats(&runs);
-                (
-                    optimizer.clone(),
-                    success_rate,
-                    mean_final,
-                    best_final,
-                    mean_func_evals,
-                    mean_time,
-                )
-            })
-            .collect();
-        // Sort by success rate (descending), then by best value (ascending)
-        stats.sort_by(|a, b| {
-            match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {
-                std::cmp::Ordering::Equal => {
-                    a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
-                }
-                other => other,
-            }
-        });
-        stats
-    }
-    /// Generate HTML content for the performance table
     fn generate_html_content(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
@@ -149,7 +74,7 @@ impl PerformanceTableReport {
         );
 
         html.push_str(
-            &Utc::now()
+            &chrono::Utc::now()
                 .format("%Y-%m-%d %H:%M:%S UTC")
                 .to_string(),
         );
@@ -171,15 +96,64 @@ impl PerformanceTableReport {
                 problem.get_name()
             ));
 
+            let mut optimizer_stats = HashMap::new();
+            for result in &results.results {
+                let stats = optimizer_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert(Vec::new());
+                stats.push(result);
+            }
 
+            let mut perf_data = Vec::new();
+            for (optimizer, runs) in &optimizer_stats {
+                let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
 
+                let final_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
 
+                let mean_final = if !final_values.is_empty() {
+                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                } else {
+                    f64::INFINITY
+                };
 
+                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
 
+                let mean_func_evals = runs
+                    .iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
+                let mean_time = runs
+                    .iter()
+                    .map(|r| r.execution_time.as_secs_f64())
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
+                perf_data.push((
+                    optimizer.clone(),
+                    success_rate,
+                    mean_final,
+                    best_final,
+                    mean_func_evals,
+                    mean_time,
+                ));
+            }
 
-            let perf_data = self.get_optimizer_stats(results);
+            // Sort by success rate, then by best value
+            perf_data.sort_by(|a, b| {
+                match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {
+                    std::cmp::Ordering::Equal => {
+                        a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+                    }
+                    other => other,
+                }
+            });
 
             for (
                 i,
@@ -199,7 +173,6 @@ impl PerformanceTableReport {
         html.push_str("</body></html>");
         Ok(html)
     }
-    /// Generate LaTeX content for the performance table
 
     fn generate_latex_content(
         &self,
@@ -233,17 +206,44 @@ impl PerformanceTableReport {
                 self.escape_latex(&problem.get_name())
             ));
 
+            let mut optimizer_stats = HashMap::new();
+            for result in &results.results {
+                let stats = optimizer_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert(Vec::new());
+                stats.push(result);
+            }
 
+            for (optimizer, runs) in &optimizer_stats {
+                let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
 
+                let final_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
 
+                let mean_final = if !final_values.is_empty() {
+                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                } else {
+                    f64::INFINITY
+                };
 
+                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
 
+                let mean_func_evals = runs
+                    .iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
-            let perf_data = self.get_optimizer_stats(results);
+                let mean_time = runs
+                    .iter()
+                    .map(|r| r.execution_time.as_secs_f64())
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
-            for (optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time) in
-                &perf_data
-            {
                 latex.push_str(&format!(
                     "{} & {:.1} & {:.2e} & {:.2e} & {:.1} & {:.3} \\\\\n",
                     self.escape_latex(optimizer),
@@ -266,7 +266,6 @@ impl PerformanceTableReport {
         latex.push_str("\\end{document}");
         Ok(latex)
     }
-    /// Generate Markdown content for the performance table
 
     fn generate_markdown_content(
         &self,
@@ -276,7 +275,7 @@ impl PerformanceTableReport {
         let mut md = String::from("# Performance Table Report\n\n");
         md.push_str(&format!(
             "Generated on: {}\n\n",
-            Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
         ));
 
         for (problem, results) in data {
@@ -284,17 +283,44 @@ impl PerformanceTableReport {
             md.push_str("| Optimizer | Success Rate (%) | Mean Final Value | Best Value | Mean Func Evals | Mean Time (s) |\n");
             md.push_str("|-----------|------------------|------------------|------------|-----------------|---------------|\n");
 
+            let mut optimizer_stats = HashMap::new();
+            for result in &results.results {
+                let stats = optimizer_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert(Vec::new());
+                stats.push(result);
+            }
 
+            for (optimizer, runs) in &optimizer_stats {
+                let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
 
+                let final_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
 
+                let mean_final = if !final_values.is_empty() {
+                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                } else {
+                    f64::INFINITY
+                };
 
+                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
 
+                let mean_func_evals = runs
+                    .iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
-            let perf_data = self.get_optimizer_stats(results);
+                let mean_time = runs
+                    .iter()
+                    .map(|r| r.execution_time.as_secs_f64())
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
-            for (optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time) in
-                &perf_data
-            {
                 md.push_str(&format!(
                     "| {} | {:.1} | {:.2e} | {:.2e} | {:.1} | {:.3} |\n",
                     optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time
@@ -306,7 +332,6 @@ impl PerformanceTableReport {
 
         Ok(md)
     }
-    /// Generate CSV content for the performance table
 
     fn generate_csv_content(
         &self,
@@ -317,17 +342,44 @@ impl PerformanceTableReport {
 
         for (problem, results) in data {
             let problem_name = problem.get_name();
-            let perf_data = self.get_optimizer_stats(results);
 
+            let mut optimizer_stats = HashMap::new();
+            for result in &results.results {
+                let stats = optimizer_stats
+                    .entry(result.optimizer_name.clone())
+                    .or_insert(Vec::new());
+                stats.push(result);
+            }
 
+            for (optimizer, runs) in &optimizer_stats {
+                let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
+                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
 
+                let final_values: Vec<f64> = runs
+                    .iter()
+                    .map(|r| r.final_value)
+                    .filter(|&v| v.is_finite())
+                    .collect();
 
+                let mean_final = if !final_values.is_empty() {
+                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                } else {
+                    f64::INFINITY
+                };
 
+                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
 
+                let mean_func_evals = runs
+                    .iter()
+                    .map(|r| r.function_evaluations as f64)
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
-            for (optimizer, success_rate, mean_final, best_final, mean_func_evals, mean_time) in
-                &perf_data
-            {
+                let mean_time = runs
+                    .iter()
+                    .map(|r| r.execution_time.as_secs_f64())
+                    .sum::<f64>()
+                    / runs.len() as f64;
 
                 csv.push_str(&format!(
                     "{},{},{:.1},{:.2e},{:.2e},{:.1},{:.3}\n",
@@ -344,7 +396,6 @@ impl PerformanceTableReport {
 
         Ok(csv)
     }
-    /// Escape special LaTeX characters in text
 
     fn escape_latex(&self, text: &str) -> String {
         text.replace("_", "\\_")

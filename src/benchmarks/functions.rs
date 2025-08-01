@@ -1,7 +1,6 @@
 use crate::utils::math::{tensor_from_vec, tensors_to_vec, DifferentiableFunction};
 use anyhow::Result;
 use candle_core::Tensor;
-
 /// Trait defining an optimization problem interface
 pub trait OptimizationProblem: Send + Sync {
     /// Get the problem name
@@ -16,39 +15,28 @@ pub trait OptimizationProblem: Send + Sync {
     fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>>;
     /// Get the optimal value if known
     fn optimal_value(&self) -> Option<f64>;
-    /// Clone this optimization problem into a boxed trait object
-    fn clone_boxed(&self) -> Box<dyn OptimizationProblem>;
+    /// Clone this optimization problem
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem>;
 }
 
-/// Wrapper to adapt `OptimizationProblem` implementations to the `DifferentiableFunction` trait.
-/// 
-/// This struct bridges the gap between optimization problems that work with `f64` slices
-/// and the tensor-based `DifferentiableFunction` interface.
-#[derive(Clone)]
-pub struct BenchmarkFunctionWrapper<T: OptimizationProblem + Clone> {
+/// Wrapper to make benchmark functions work with the new DifferentiableFunction trait
+pub struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
     problem: T,
 }
-
-impl<T: OptimizationProblem + Clone> BenchmarkFunctionWrapper<T> {
-    /// Create a new wrapper around an optimization problem
-    pub fn new(problem: T) -> Self {
-        Self { problem }
-    }
-}
-
-impl<T: OptimizationProblem + Clone> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
+impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {}
+impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
     fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
         let x_vec = tensors_to_vec(params);
         self.problem
             .evaluate_f64(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(format!("Evaluation failed: {}", e)))
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))
     }
     fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
         let x_vec = tensors_to_vec(params);
         let grad_vec = self
             .problem
             .gradient_f64(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(format!("Gradient computation failed: {}", e)))?;
+            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
         Ok(vec![tensor_from_vec(grad_vec)])
     }
 }

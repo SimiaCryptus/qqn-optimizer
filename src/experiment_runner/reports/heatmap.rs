@@ -10,15 +10,9 @@ use std::path::Path;
 
 /// Success Rate Heatmap Report
 pub struct SuccessRateHeatmapReport;
-
 impl SuccessRateHeatmapReport {
     pub fn new() -> Self {
         Self
-    }
-}
-impl Default for SuccessRateHeatmapReport {
-    fn default() -> Self {
-        Self::new()
     }
 }
 impl Report for SuccessRateHeatmapReport {
@@ -88,7 +82,7 @@ impl Report for SuccessRateHeatmapReport {
         metadata.insert("report_type".to_string(), "heatmap".to_string());
         ReportMetadata {
             report_type: "success_rate_heatmap".to_string(),
-            generated_at: chrono::Utc::now(),
+            generated_at: Default::default(),
             problem_count,
             optimizer_count: all_optimizers.len(),
             data_points: total_data_points,
@@ -103,7 +97,6 @@ impl Report for SuccessRateHeatmapReport {
         ]
     }
 }
-
 impl SuccessRateHeatmapReport {
     fn generate_html(
         &self,
@@ -114,8 +107,7 @@ impl SuccessRateHeatmapReport {
         if optimizers.is_empty() {
             return Ok("<p>No data available for heatmap generation.</p>".to_string());
         }
-        let mut html = String::with_capacity(4096); // Pre-allocate for better performance
-        html.push_str(
+        let mut html = String::from(
             r#"<!DOCTYPE html>
 <html>
 <head>
@@ -184,8 +176,7 @@ impl SuccessRateHeatmapReport {
             return Ok(String::new());
         }
         let col_spec = format!("l{}", "c".repeat(optimizers.len()));
-        let mut latex_content = String::with_capacity(4096);
-        latex_content.push_str(
+        let mut latex_content = String::from(
             r#"\documentclass{article}
 \usepackage{booktabs}
 \usepackage{array}
@@ -253,9 +244,7 @@ Quickly identifies which optimizers work on which problem types.
         if optimizers.is_empty() {
             return Ok("No data available for heatmap generation.".to_string());
         }
-        let mut markdown = String::with_capacity(2048);
-        markdown.push_str("# Success Rate Heatmap\n\n");
-        markdown.push_str("Color-coded success rates across all optimizer-problem combinations\n\n");
+        let mut markdown = String::from("# Success Rate Heatmap\n\nColor-coded success rates across all optimizer-problem combinations\n\n");
         // Table header
         markdown.push_str("| Problem |");
         for optimizer in &optimizers {
@@ -302,8 +291,7 @@ Quickly identifies which optimizers work on which problem types.
                 "Problem,Message\nNo Data,No data available for heatmap generation".to_string(),
             );
         }
-        let mut csv = String::with_capacity(1024);
-        csv.push_str("Problem");
+        let mut csv = String::from("Problem");
         for optimizer in &optimizers {
             csv.push_str(&format!(",{}", optimizer));
         }
@@ -357,17 +345,17 @@ Quickly identifies which optimizers work on which problem types.
             (success_rate, true)
         }
     }
-    fn get_html_cell_style(&self, success_rate: f64, has_data: bool) -> (String, String) {
+    fn get_html_cell_style(&self, success_rate: f64, has_data: bool) -> (&'static str, String) {
         if !has_data {
-            ("no-data".to_string(), "N/A".to_string())
+            ("no-data", "N/A".to_string())
         } else if success_rate >= 90.0 {
-            ("excellent".to_string(), format!("{:.0}%", success_rate))
+            ("excellent", format!("{:.0}%", success_rate))
         } else if success_rate >= 50.0 {
-            ("good".to_string(), format!("{:.0}%", success_rate))
+            ("good", format!("{:.0}%", success_rate))
         } else if success_rate >= 10.0 {
-            ("poor".to_string(), format!("{:.0}%", success_rate))
+            ("poor", format!("{:.0}%", success_rate))
         } else {
-            ("very-poor".to_string(), format!("{:.0}%", success_rate))
+            ("very-poor", format!("{:.0}%", success_rate))
         }
     }
     fn get_latex_cell_content(&self, success_rate: f64, has_data: bool) -> String {
@@ -392,7 +380,7 @@ Quickly identifies which optimizers work on which problem types.
 pub fn generate_success_rate_heatmap_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<String> {
-    let report = SuccessRateHeatmapReport::default();
+    let report = SuccessRateHeatmapReport::new();
     let (optimizers, all_problems) = report.collect_optimizers_and_problems(all_results);
 
     if optimizers.is_empty() || all_problems.is_empty() {
@@ -456,7 +444,7 @@ pub fn generate_success_rate_heatmap_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,
 ) -> anyhow::Result<()> {
-    let report = SuccessRateHeatmapReport::default();
+    let report = SuccessRateHeatmapReport::new();
     let (optimizers, all_problems) = report.collect_optimizers_and_problems(all_results);
 
     if optimizers.is_empty() || all_problems.is_empty() {
@@ -465,8 +453,7 @@ pub fn generate_success_rate_heatmap_latex_table(
 
     let col_spec = format!("l{}", "c".repeat(optimizers.len()));
 
-    let mut latex_content = String::with_capacity(8192);
-    latex_content.push_str(
+    let mut latex_content = String::from(
         r#"\documentclass{article}
 \usepackage{booktabs}
 \usepackage{array}
@@ -537,26 +524,13 @@ Quickly identifies which optimizers work on which problem types.
     );
     Ok(())
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::experiment_runner::UnifiedReportTestSuite;
-    
     #[test]
     fn test_success_rate_heatmap_report() {
         let report = SuccessRateHeatmapReport::new();
         UnifiedReportTestSuite::test_report(&report).unwrap();
-    }
-    #[test]
-    fn test_default_implementation() {
-        let report1 = SuccessRateHeatmapReport::new();
-        let report2 = SuccessRateHeatmapReport::default();
-        assert_eq!(report1.name(), report2.name());
-    }
-    #[test]
-    fn test_supported_formats() {
-        let report = SuccessRateHeatmapReport::new();
-        assert_eq!(report.supported_formats().len(), 4);
     }
 }

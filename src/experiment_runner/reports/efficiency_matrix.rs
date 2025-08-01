@@ -11,21 +11,12 @@ use std::path::Path;
 ///
 /// Shows mean function evaluations ± standard deviation for successful runs only across problem families.
 /// Lower values indicate higher efficiency.
-#[derive(Debug, Clone)]
 pub struct EfficiencyMatrixReport;
-impl Default for EfficiencyMatrixReport {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 
 impl EfficiencyMatrixReport {
-    /// Creates a new instance of the efficiency matrix report generator
     pub fn new() -> Self {
         Self
     }
-    /// Collects unique optimizer and problem families from the results
 
     fn collect_families(
         &self,
@@ -50,7 +41,6 @@ impl EfficiencyMatrixReport {
 
         (optimizer_families, problem_families)
     }
-    /// Calculates efficiency statistics for each optimizer-problem family combination
 
     fn calculate_efficiency_data(
         &self,
@@ -78,20 +68,14 @@ impl EfficiencyMatrixReport {
                 }
 
                 if !successful_evaluations.is_empty() {
-                    let n = successful_evaluations.len() as f64;
-                    let mean = successful_evaluations.iter().sum::<f64>() / n;
-                    
-                    let std_dev = if successful_evaluations.len() > 1 {
-                        let variance = successful_evaluations
-                            .iter()
-                            .map(|x| (x - mean).powi(2))
-                            .sum::<f64>()
-                            / (n - 1.0); // Use n-1 for sample standard deviation
-                        variance.sqrt()
-                    } else {
-                        0.0 // Single data point has no standard deviation
-                    };
-                    
+                    let mean = successful_evaluations.iter().sum::<f64>()
+                        / successful_evaluations.len() as f64;
+                    let variance = successful_evaluations
+                        .iter()
+                        .map(|x| (x - mean).powi(2))
+                        .sum::<f64>()
+                        / successful_evaluations.len() as f64;
+                    let std_dev = variance.sqrt();
                     efficiency_data.insert(
                         (optimizer_family.clone(), problem_family.clone()),
                         (mean, std_dev, successful_evaluations.len()),
@@ -102,7 +86,6 @@ impl EfficiencyMatrixReport {
 
         efficiency_data
     }
-    /// Generates HTML format of the efficiency matrix report
 
     fn generate_html(
         &self,
@@ -113,10 +96,7 @@ impl EfficiencyMatrixReport {
         let efficiency_data = self.calculate_efficiency_data(all_results);
 
         if optimizer_families.is_empty() || problem_families.is_empty() {
-            return Ok(r#"<!DOCTYPE html>
-<html><head><title>Algorithm Efficiency Matrix</title></head>
-<body><h1>Algorithm Efficiency Matrix</h1>
-<p>No data available for efficiency matrix.</p></body></html>"#.to_string());
+            return Ok("<p>No data available for efficiency matrix.</p>".to_string());
         }
 
         let mut html_content = String::from(
@@ -131,7 +111,6 @@ impl EfficiencyMatrixReport {
         th { background-color: #f2f2f2; font-weight: bold; }
         .problem-name { text-align: left; font-weight: bold; }
         .na-cell { color: #999; font-style: italic; }
-        .best-cell { background-color: #e8f5e9; font-weight: bold; }
         .description { margin: 20px 0; font-style: italic; }
     </style>
 </head>
@@ -150,18 +129,6 @@ impl EfficiencyMatrixReport {
         html_content.push_str("</tr></thead><tbody>");
 
         for problem_family in &problem_families {
-            // Find the best (lowest) mean for this problem family
-            let mut best_mean = f64::INFINITY;
-            for optimizer_family in &optimizer_families {
-                if let Some((mean, _, _)) =
-                    efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
-                {
-                    if *mean < best_mean {
-                        best_mean = *mean;
-                    }
-                }
-            }
-
             html_content.push_str(&format!(
                 "<tr><td class=\"problem-name\">{}</td>",
                 problem_family
@@ -171,9 +138,7 @@ impl EfficiencyMatrixReport {
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
-                    let is_best = (*mean - best_mean).abs() < f64::EPSILON;
-                    let class = if is_best { " class=\"best-cell\"" } else { "" };
-                    format!("<span{}>{:.0} ± {:.0}</span>", class, mean, std_dev)
+                    format!("{:.0} ± {:.0}", mean, std_dev)
                 } else {
                     "<span class=\"na-cell\">N/A</span>".to_string()
                 };
@@ -192,7 +157,6 @@ impl EfficiencyMatrixReport {
 
         Ok(html_content)
     }
-    /// Generates LaTeX format of the efficiency matrix report
 
     fn generate_latex(
         &self,
@@ -203,11 +167,7 @@ impl EfficiencyMatrixReport {
         let efficiency_data = self.calculate_efficiency_data(all_results);
 
         if optimizer_families.is_empty() || problem_families.is_empty() {
-            return Ok(r#"\documentclass{article}
-\begin{document}
-\section*{Algorithm Efficiency Matrix}
-No data available for efficiency matrix.
-\end{document}"#.to_string());
+            return Ok("No data available for efficiency matrix.".to_string());
         }
 
         let col_spec = format!("l{}", "c".repeat(optimizer_families.len()));
@@ -243,18 +203,6 @@ No data available for efficiency matrix.
         ));
 
         for problem_family in &problem_families {
-            // Find the best (lowest) mean for this problem family
-            let mut best_mean = f64::INFINITY;
-            for optimizer_family in &optimizer_families {
-                if let Some((mean, _, _)) =
-                    efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
-                {
-                    if *mean < best_mean {
-                        best_mean = *mean;
-                    }
-                }
-            }
-
             latex_content.push_str(&format!(
                 "\\textbf{{{}}} ",
                 report_generator::escape_latex(problem_family)
@@ -264,12 +212,7 @@ No data available for efficiency matrix.
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
-                    let is_best = (*mean - best_mean).abs() < f64::EPSILON;
-                    if is_best {
-                        format!("\\textbf{{{:.0} $\\pm$ {:.0}}}", mean, std_dev)
-                    } else {
-                        format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
-                    }
+                    format!("{:.0} $\\pm$ {:.0}", mean, std_dev)
                 } else {
                     "N/A".to_string()
                 };
@@ -290,7 +233,6 @@ No data available for efficiency matrix.
 
         Ok(latex_content)
     }
-    /// Generates Markdown format of the efficiency matrix report
 
     fn generate_markdown(
         &self,
@@ -323,30 +265,13 @@ No data available for efficiency matrix.
 
         // Table rows
         for problem_family in &problem_families {
-            // Find the best (lowest) mean for this problem family
-            let mut best_mean = f64::INFINITY;
-            for optimizer_family in &optimizer_families {
-                if let Some((mean, _, _)) =
-                    efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
-                {
-                    if *mean < best_mean {
-                        best_mean = *mean;
-                    }
-                }
-            }
-
             markdown_content.push_str(&format!("| **{}** |", problem_family));
 
             for optimizer_family in &optimizer_families {
                 let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
-                    let is_best = (*mean - best_mean).abs() < f64::EPSILON;
-                    if is_best {
-                        format!("**{:.0} ± {:.0}**", mean, std_dev)
-                    } else {
-                        format!("{:.0} ± {:.0}", mean, std_dev)
-                    }
+                    format!("{:.0} ± {:.0}", mean, std_dev)
                 } else {
                     "N/A".to_string()
                 };
@@ -359,7 +284,6 @@ No data available for efficiency matrix.
 
         Ok(markdown_content)
     }
-    /// Generates CSV format of the efficiency matrix report
 
     fn generate_csv(
         &self,
@@ -373,12 +297,9 @@ No data available for efficiency matrix.
             return Ok("No data available for efficiency matrix.".to_string());
         }
 
-        // Add header row with additional metadata columns
         let mut csv_content = String::from("Problem Family");
         for optimizer_family in &optimizer_families {
             csv_content.push_str(&format!(",{}", optimizer_family));
-            csv_content.push_str(&format!(",{} (StdDev)", optimizer_family));
-            csv_content.push_str(&format!(",{} (Count)", optimizer_family));
         }
         csv_content.push_str("\n");
 
@@ -386,13 +307,14 @@ No data available for efficiency matrix.
             csv_content.push_str(problem_family);
 
             for optimizer_family in &optimizer_families {
-                if let Some((mean, std_dev, count)) =
+                let cell_content = if let Some((mean, std_dev, _count)) =
                     efficiency_data.get(&(optimizer_family.clone(), problem_family.clone()))
                 {
-                    csv_content.push_str(&format!(",{:.0},{:.0},{}", mean, std_dev, count));
+                    format!("{:.0} ± {:.0}", mean, std_dev)
                 } else {
-                    csv_content.push_str(",N/A,N/A,N/A");
+                    "N/A".to_string()
                 };
+                csv_content.push_str(&format!(",{}", cell_content));
             }
             csv_content.push_str("\n");
         }
@@ -451,7 +373,7 @@ impl Report for EfficiencyMatrixReport {
 
         if !has_convergence_data {
             return Err(anyhow::anyhow!(
-                "No successful convergence data found in benchmark results"
+                "No convergence data found in benchmark results"
             ));
         }
 
@@ -463,14 +385,7 @@ impl Report for EfficiencyMatrixReport {
         let efficiency_data = self.calculate_efficiency_data(data);
 
         let total_successful_runs: usize =
-            efficiency_data.values().map(|(_, _, count)| *count).sum();
-        
-        let avg_efficiency = if !efficiency_data.is_empty() {
-            efficiency_data.values().map(|(mean, _, _)| mean).sum::<f64>() 
-                / efficiency_data.len() as f64
-        } else {
-            0.0
-        };
+            efficiency_data.values().map(|(_, _, count)| count).sum();
 
         let mut metadata = HashMap::new();
         metadata.insert(
@@ -488,10 +403,6 @@ impl Report for EfficiencyMatrixReport {
         metadata.insert(
             "matrix_cells".to_string(),
             (optimizer_families.len() * problem_families.len()).to_string(),
-        );
-        metadata.insert(
-            "average_efficiency".to_string(),
-            format!("{:.2}", avg_efficiency),
         );
 
         ReportMetadata {
@@ -519,8 +430,7 @@ impl Report for EfficiencyMatrixReport {
 }
 
 /// Legacy function for backward compatibility
-/// 
-/// Generates efficiency matrix LaTeX table and saves it to the specified directory
+/// Generate efficiency matrix LaTeX table
 pub fn generate_efficiency_matrix_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,

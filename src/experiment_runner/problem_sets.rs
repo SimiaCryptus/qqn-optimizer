@@ -22,20 +22,6 @@ use crate::{
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::sync::Arc;
-/// Standard dimensions used for testing optimization problems
-const STANDARD_DIMS: &[usize] = &[2, 5, 10];
-/// Helper macro to create problems with multiple dimensions
-macro_rules! create_dim_problems {
-    ($func:ident, $name:expr, $seed:expr) => {
-        STANDARD_DIMS
-            .iter()
-            .map(|&dim| {
-                ProblemSpec::new(Arc::new($func::new(dim)), $name.to_string(), Some(dim), $seed)
-            })
-            .collect::<Vec<_>>()
-    };
-}
-/// Creates a comprehensive set of analytic benchmark problems for testing optimization algorithms
 
 pub fn analytic_problems() -> Vec<ProblemSpec> {
     vec![
@@ -51,19 +37,46 @@ pub fn analytic_problems() -> Vec<ProblemSpec> {
             Some(10),
             42,
         ),
-    ]
-    .into_iter()
-    .chain(create_dim_problems!(RosenbrockFunction, "Rosenbrock", 42))
-    .chain(create_dim_problems!(MichalewiczFunction, "Michalewicz", 42))
-    .chain(create_dim_problems!(RastriginFunction, "Rastrigin", 42))
-    .chain(create_dim_problems!(AckleyFunction, "Ackley", 42))
-    .chain(create_dim_problems!(StyblinskiTangFunction, "StyblinskiTang", 42))
-    .chain(vec![
-        // 2D-only functions
+        ProblemSpec::new(
+            Arc::new(RosenbrockFunction::new(2)),
+            "Rosenbrock".to_string(),
+            Some(2),
+            42,
+        ),
+        ProblemSpec::new(
+            Arc::new(RosenbrockFunction::new(5)),
+            "Rosenbrock".to_string(),
+            Some(5),
+            42,
+        ),
+        ProblemSpec::new(
+            Arc::new(RosenbrockFunction::new(10)),
+            "Rosenbrock".to_string(),
+            Some(10),
+            42,
+        ),
+        ProblemSpec::new(
+            Arc::new(MichalewiczFunction::new(2)),
+            "Michalewicz".to_string(),
+            Some(2),
+            42,
+        ),
+        ProblemSpec::new(
+            Arc::new(MichalewiczFunction::new(5)),
+            "Michalewicz".to_string(),
+            Some(5),
+            42,
+        ),
+        ProblemSpec::new(
+            Arc::new(MichalewiczFunction::new(10)),
+            "Michalewicz".to_string(),
+            Some(10),
+            42,
+        ),
         ProblemSpec::new(
             Arc::new(RastriginFunction::new(2)),
             "Rastrigin".to_string(),
-           Some(10),
+            Some(2),
             42,
         ),
         ProblemSpec::new(
@@ -336,51 +349,17 @@ pub fn analytic_problems() -> Vec<ProblemSpec> {
             Some(10),
             42,
         ),
-    ])
-    .chain(create_dim_problems!(GriewankFunction, "Griewank", 42))
-    .chain(create_dim_problems!(SchwefelFunction, "Schwefel", 42))
-    .chain(create_dim_problems!(LevyFunction, "LevyN", 42))
-    .chain(create_dim_problems!(ZakharovFunction, "Zakharov", 42))
-    .chain(create_dim_problems!(IllConditionedRosenbrock, "IllConditionedRosenbrock", 42))
-    .chain(create_dim_problems!(TrigonometricFunction, "Trigonometric", 42))
-    .chain(create_dim_problems!(PenaltyFunctionI, "PenaltyI", 42))
-    .chain(create_dim_problems!(BarrierFunction, "Barrier", 42))
-    .chain(create_dim_problems!(NoisySphere, "NoisySphere", 42))
-    .collect()
+    ]
 }
-/// Configuration for ML problem optimal values
-struct MLOptimalValues {
-    logistic_100_5: f64,
-    logistic_200_10: f64,
-    linear_100_5: f64,
-    linear_200_10: f64,
-    nn_small: f64,
-    nn_large: f64,
-    svm_100_5: f64,
-    svm_200_10: f64,
-}
-const ML_OPTIMAL_VALUES: MLOptimalValues = MLOptimalValues {
-    logistic_100_5: 3.15e-1,
-    logistic_200_10: 3.23e-1,
-    linear_100_5: 7.15e-2,
-    linear_200_10: 4.82e-1,
-    nn_small: 1.40e-1,
-    nn_large: 3.82e-2,
-    svm_100_5: 6.43e-1,
-    svm_200_10: 6.86e-1,
-};
-/// Creates a set of machine learning problems for benchmarking
 
 pub fn ml_problems() -> Vec<ProblemSpec> {
-    let mut rng = StdRng::seed_from_u64(42);
-    
     vec![
         ProblemSpec::new(
             Arc::new({
                 let mut regression =
-                    LogisticRegression::synthetic(100, 5, &mut rng)
+                    LogisticRegression::synthetic(100, 5, &mut StdRng::seed_from_u64(42))
                         .expect("Failed to create synthetic logistic regression");
-                regression.set_optimal_value(Some(ML_OPTIMAL_VALUES.logistic_100_5));
+                regression.set_optimal_value(Option::from(3.15e-1));
                 regression
             }),
             "LogisticRegression".to_string(),
@@ -390,9 +369,9 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
         ProblemSpec::new(
             Arc::new({
                 let mut regression =
-                    LogisticRegression::synthetic(200, 10, &mut rng)
+                    LogisticRegression::synthetic(200, 10, &mut StdRng::seed_from_u64(42))
                         .expect("Failed to create synthetic logistic regression");
-                regression.set_optimal_value(Some(ML_OPTIMAL_VALUES.logistic_200_10));
+                regression.set_optimal_value(Option::from(3.23e-1));
                 regression
             }),
             "LogisticRegression".to_string(),
@@ -401,14 +380,13 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
         ),
         ProblemSpec::new(
             Arc::new({
-                let (x, y) = generate_linear_regression_data(100, 5, &mut rng);
                 let mut regression = LinearRegression::new(
-                    x,
-                    y,
+                    generate_linear_regression_data(100, 5, &mut StdRng::seed_from_u64(42)).0,
+                    generate_linear_regression_data(100, 5, &mut StdRng::seed_from_u64(42)).1,
                     0.01,
                 )
                 .expect("Failed to create linear regression");
-                regression.set_optimal_value(Some(ML_OPTIMAL_VALUES.linear_100_5));
+                regression.set_optimal_value(Option::from(7.15e-2));
                 regression
             }),
             "LinearRegression".to_string(),
@@ -417,14 +395,13 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
         ),
         ProblemSpec::new(
             Arc::new({
-                let (x, y) = generate_linear_regression_data(200, 10, &mut rng);
                 let mut regression = LinearRegression::new(
-                    x,
-                    y,
+                    generate_linear_regression_data(200, 10, &mut StdRng::seed_from_u64(42)).0,
+                    generate_linear_regression_data(200, 10, &mut StdRng::seed_from_u64(42)).1,
                     0.01,
                 )
                 .expect("Failed to create linear regression");
-                regression.set_optimal_value(Some(ML_OPTIMAL_VALUES.linear_200_10));
+                regression.set_optimal_value(Option::from(4.82e-1));
                 regression
             }),
             "LinearRegression".to_string(),
@@ -435,10 +412,10 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
             Arc::new({
                 let mut training = NeuralNetworkTraining::mlp_classification(
                     vec![5, 10, 3],
-                    &mut rng,
+                    &mut StdRng::seed_from_u64(42),
                 )
                 .expect("Failed to create MLP");
-                training.set_optimal_value(Some(ML_OPTIMAL_VALUES.nn_small));
+                training.set_optimal_value(Option::from(1.40e-1));
                 training
             }),
             "NeuralNetwork".to_string(),
@@ -449,10 +426,10 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
             Arc::new({
                 let mut training = NeuralNetworkTraining::mlp_classification(
                     vec![10, 20, 5],
-                    &mut rng,
+                    &mut StdRng::seed_from_u64(42),
                 )
                 .expect("Failed to create MLP");
-                training.set_optimal_value(Some(ML_OPTIMAL_VALUES.nn_large));
+                training.set_optimal_value(Option::from(3.82e-2));
                 training
             }),
             "NeuralNetwork".to_string(),
@@ -461,14 +438,13 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
         ),
         ProblemSpec::new(
             Arc::new({
-                let (x, y) = generate_svm_data(100, 5, &mut rng);
                 let mut svm = SupportVectorMachine::new(
-                    x,
-                    y,
+                    generate_svm_data(100, 5, &mut StdRng::seed_from_u64(42)).0,
+                    generate_svm_data(100, 5, &mut StdRng::seed_from_u64(42)).1,
                     1.0,
                 )
                 .expect("Failed to create SVM");
-                svm.set_optimal_value(Some(ML_OPTIMAL_VALUES.svm_100_5));
+                svm.set_optimal_value(Option::from(6.43e-1));
                 svm
             }),
             "SVM".to_string(),
@@ -477,14 +453,13 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
         ),
         ProblemSpec::new(
             Arc::new({
-                let (x, y) = generate_svm_data(200, 10, &mut rng);
                 let mut svm = SupportVectorMachine::new(
-                    x,
-                    y,
+                    generate_svm_data(200, 10, &mut StdRng::seed_from_u64(42)).0,
+                    generate_svm_data(200, 10, &mut StdRng::seed_from_u64(42)).1,
                     1.0,
                 )
                 .expect("Failed to create SVM");
-                svm.set_optimal_value(Some(ML_OPTIMAL_VALUES.svm_200_10));
+                svm.set_optimal_value(Option::from(6.86e-1));
                 svm
             }),
             "SVM".to_string(),
@@ -493,15 +468,9 @@ pub fn ml_problems() -> Vec<ProblemSpec> {
         ),
     ]
 }
-/// Creates MNIST neural network problems with various architectures
-/// 
-/// # Arguments
-/// * `samples` - Number of training samples to use
 
 pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
     let mut rng = StdRng::seed_from_u64(42);
-    const MNIST_OPTIMAL_VALUE: f64 = 0.05;
-    
     vec![
         ProblemSpec::new(
             Arc::new({
@@ -513,7 +482,7 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(ActivationType::ReLU),
                 )
                 .expect("Failed to create MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST".to_string(),
@@ -531,7 +500,7 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(ActivationType::Logistic),
                 )
                 .expect("Failed to create MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST".to_string(),
@@ -549,7 +518,7 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(ActivationType::ReLU),
                 )
                 .expect("Failed to create MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST".to_string(),
@@ -567,7 +536,7 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(ActivationType::Logistic),
                 )
                 .expect("Failed to create MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST".to_string(),
@@ -585,7 +554,7 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(ActivationType::Logistic),
                 )
                 .expect("Failed to create MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST".to_string(),
@@ -597,14 +566,8 @@ pub fn mnist_problems(samples: usize) -> Vec<ProblemSpec> {
 }
 
 #[cfg(feature = "onednn")]
-/// Creates MNIST neural network problems using OneDNN backend
-/// 
-/// # Arguments
-/// * `samples` - Number of training samples to use
 pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
     let mut rng = StdRng::seed_from_u64(42);
-    const MNIST_OPTIMAL_VALUE: f64 = 0.05;
-    
     vec![
         ProblemSpec::new(
             Arc::new({
@@ -616,7 +579,7 @@ pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(mnist_onednn::ActivationType::ReLU),
                 )
                 .expect("Failed to create OneDNN MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST_OneDNN".to_string(),
@@ -634,7 +597,7 @@ pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(mnist_onednn::ActivationType::Logistic),
                 )
                 .expect("Failed to create OneDNN MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST_OneDNN".to_string(),
@@ -652,7 +615,7 @@ pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(mnist_onednn::ActivationType::ReLU),
                 )
                 .expect("Failed to create OneDNN MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST_OneDNN".to_string(),
@@ -670,7 +633,7 @@ pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(mnist_onednn::ActivationType::Tanh),
                 )
                 .expect("Failed to create OneDNN MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST_OneDNN".to_string(),
@@ -688,7 +651,7 @@ pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
                     Some(mnist_onednn::ActivationType::Tanh),
                 )
                 .expect("Failed to create OneDNN MNIST neural network");
-                network.set_optimal_value(Some(MNIST_OPTIMAL_VALUE));
+                network.set_optimal_value(Option::from(0.05));
                 network
             }),
             "MNIST_OneDNN".to_string(),
@@ -700,7 +663,6 @@ pub fn mnist_onednn_problems(samples: usize) -> Vec<ProblemSpec> {
 }
 
 #[cfg(not(feature = "onednn"))]
-/// Stub implementation when OneDNN feature is not enabled
 pub fn mnist_onednn_problems(_samples: usize) -> Vec<ProblemSpec> {
     vec![] // Return empty vector when OneDNN feature is not enabled
 }

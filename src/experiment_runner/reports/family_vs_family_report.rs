@@ -7,7 +7,8 @@ use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::report_generator;
 use crate::experiment_runner::reports::family_vs_family::{
-    calculate_family_performance_data, generate_family_vs_family_table_content,
+    calculate_family_performance_data, generate_family_vs_family_comparison_table,
+    generate_family_vs_family_table_content,
 };
 use crate::experiment_runner::unified_report::{
     Report, ReportConfig, ReportFormat, ReportMetadata,
@@ -24,22 +25,6 @@ impl FamilyVsFamilyReport {
     pub fn new() -> Self {
         Self
     }
-    /// Collect all optimizer and problem families from the data
-    fn collect_families(
-        &self,
-        data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> (Vec<String>, Vec<String>) {
-        let mut optimizer_families = HashSet::new();
-        let mut problem_families = HashSet::new();
-        for (problem, results) in data {
-            problem_families.insert(report_generator::get_family(&problem.get_name()));
-            for result in &results.results {
-                optimizer_families.insert(get_optimizer_family(&result.optimizer_name));
-            }
-        }
-        (optimizer_families.into_iter().collect(), problem_families.into_iter().collect())
-    }
-
 
     /// Generate HTML content for the report
     fn generate_html(
@@ -78,7 +63,6 @@ impl FamilyVsFamilyReport {
 
         Ok(content)
     }
-
     /// Generate HTML table content for the family vs family comparison
     fn generate_html_table_content(
         &self,
@@ -86,10 +70,20 @@ impl FamilyVsFamilyReport {
         content: &mut String,
     ) -> Result<()> {
         // Collect all optimizer families and problem families
-        let (mut optimizer_families, mut problem_families) = self.collect_families(data);
+        let mut all_optimizer_families = HashSet::new();
+        let mut all_problem_families = HashSet::new();
+        for (problem, results) in data {
+            let problem_family = report_generator::get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
-        
         if optimizer_families.is_empty() || problem_families.is_empty() {
             content.push_str("<p><em>No data available for family comparison.</em></p>\n");
             return Ok(());
@@ -223,44 +217,8 @@ impl FamilyVsFamilyReport {
 "#,
         );
 
-        // Generate LaTeX table content inline for better control
-        content.push_str(r#"\section{Performance Matrix}
-
-This table shows how different optimizer families perform across different problem families.
-
-"#);
-
-        let (mut optimizer_families, mut problem_families) = self.collect_families(data);
-        optimizer_families.sort();
-        problem_families.sort();
-
-        if optimizer_families.is_empty() || problem_families.is_empty() {
-            content.push_str("\\textit{No data available for family comparison.}\n\n");
-        } else {
-            // Use the existing function but wrap it with better error handling
-            match generate_family_vs_family_table_content(data) {
-                Ok(table_content) => content.push_str(&table_content),
-                Err(e) => {
-                    // Fallback to a simple message if table generation fails
-                    content.push_str(&format!(
-                        "\\textit{{Error generating table: {}}}\n\n",
-                        e
-                    ));
-                }
-            }
-        }
-
-        content.push_str(r#"
-\section{Legend}
-\begin{itemize}
-\item \textbf{Avg Rank}: Average ranking of all variants in the optimizer family (lower is better)
-\item \textbf{Best Rank}: Average of the best rank achieved by any variant in the optimizer family
-\item \textbf{Best Var}: The specific optimizer variant that achieved the best average rank
-\item \textbf{Worst Var}: The specific optimizer variant that achieved the worst average rank
-\item Green cells indicate the best performing optimizer family
-\item Red cells indicate the worst performing optimizer family
-\end{itemize}
-"#);
+        let table_content = generate_family_vs_family_table_content(data)?;
+        content.push_str(&table_content);
         content.push_str("\n\\end{document}");
 
         Ok(content)
@@ -281,9 +239,20 @@ This report shows how different optimizer families perform across different prob
         );
 
         // Generate a simplified markdown table since HTML tables in markdown are complex
+        let mut all_optimizer_families = HashSet::new();
+        let mut all_problem_families = HashSet::new();
 
+        for (problem, results) in data {
+            let problem_family = report_generator::get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
 
-        let (mut optimizer_families, mut problem_families) = self.collect_families(data);
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
 
@@ -314,8 +283,7 @@ This report shows how different optimizer families perform across different prob
 
             for optimizer_family in &optimizer_families {
                 let cell_data =
-                    calculate_family_performance_data(&problems_in_family, optimizer_family)
-                        .unwrap_or_default();
+                    calculate_family_performance_data(&problems_in_family, optimizer_family)?;
 
                 let cell_content = if cell_data.average_ranking.is_finite() {
                     format!(
@@ -356,9 +324,20 @@ This report shows how different optimizer families perform across different prob
     ) -> Result<String> {
         let mut content = String::from("Problem Family,Optimizer Family,Average Ranking,Best Rank Average,Best Variant,Worst Variant\n");
 
+        let mut all_optimizer_families = HashSet::new();
+        let mut all_problem_families = HashSet::new();
 
+        for (problem, results) in data {
+            let problem_family = report_generator::get_family(&problem.get_name());
+            all_problem_families.insert(problem_family);
+            for result in &results.results {
+                let optimizer_family = get_optimizer_family(&result.optimizer_name);
+                all_optimizer_families.insert(optimizer_family);
+            }
+        }
 
-        let (mut optimizer_families, mut problem_families) = self.collect_families(data);
+        let mut optimizer_families: Vec<_> = all_optimizer_families.into_iter().collect();
+        let mut problem_families: Vec<_> = all_problem_families.into_iter().collect();
         optimizer_families.sort();
         problem_families.sort();
 
@@ -372,8 +351,7 @@ This report shows how different optimizer families perform across different prob
 
             for optimizer_family in &optimizer_families {
                 let cell_data =
-                    calculate_family_performance_data(&problems_in_family, optimizer_family)
-                        .unwrap_or_default();
+                    calculate_family_performance_data(&problems_in_family, optimizer_family)?;
 
                 content.push_str(&format!(
                     "{},{},{:.3},{:.3},{},{}\n",
