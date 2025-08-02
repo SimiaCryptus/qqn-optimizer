@@ -715,11 +715,13 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
 
             perf_data.push((optimizer.clone(), success_rate, mean_final, median_best));
         }
+        
         // Sort by success rate first, then by mean final value
         perf_data.sort_by(|a, b| match b.1.total_cmp(&a.1) {
             std::cmp::Ordering::Equal => a.2.total_cmp(&b.2),
             other => other,
         });
+        
         if !perf_data.is_empty() {
             let winner = &perf_data[0];
             let runner_up = if perf_data.len() > 1 {

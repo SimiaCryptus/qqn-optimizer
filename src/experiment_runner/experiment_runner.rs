@@ -124,6 +124,11 @@ impl ExperimentRunner {
         let completed_count = Arc::new(AtomicUsize::new(0));
         let total_problems = problems.len();
         let config = self.config.clone();
+        let total_tasks = problems.len() * optimizers.len() * config.num_runs;
+        info!(
+            "Starting {} total benchmark tasks across {} problems with {} max concurrent",
+            total_tasks, total_problems, self.max_concurrent_tasks
+        );
 
         // Store problems in a way that allows sharing across tasks
         let problems = Arc::new(problems);
@@ -134,6 +139,7 @@ impl ExperimentRunner {
             let config = config.clone();
             let completed_count = completed_count.clone();
             let problem = problem.clone();
+            let max_concurrent_per_problem = std::cmp::max(1, self.max_concurrent_tasks / problems.len());
 
             let mut rng = StdRng::seed_from_u64(42);
             let future = async move {
@@ -142,7 +148,7 @@ impl ExperimentRunner {
                 info!("Starting benchmarks for problem: {}", problem.get_name());
                 let runner = BenchmarkRunner::new(config);
                 let result =
-                    Self::run_problem_benchmarks_static(&problem, &optimizers, &runner, &mut rng)
+                    Self::run_problem_benchmarks_static(&problem, &optimizers, &runner, &mut rng, max_concurrent_per_problem)
                         .await;
                 let completed = completed_count.fetch_add(1, Ordering::SeqCst) + 1;
                 info!(
@@ -232,13 +238,21 @@ impl ExperimentRunner {
         optimizers: &[(String, Arc<dyn Optimizer>)],
         runner: &BenchmarkRunner,
         rng: &mut StdRng,
+        max_concurrent: usize,
     ) -> anyhow::Result<BenchmarkResults> {
         let mut results = BenchmarkResults::new(runner.config.clone());
 
         // Run optimizer benchmarks with controlled parallelism within each problem
-        let semaphore = Arc::new(Semaphore::new(4)); // Limit concurrent runs per problem
+        let semaphore = Arc::new(Semaphore::new(max_concurrent));
         let mut tasks = Vec::new();
         let config = runner.config.clone();
+        let total_optimizer_tasks = optimizers.len() * config.num_runs;
+        info!(
+            "Running {} optimizer tasks for problem {} with {} max concurrent",
+            total_optimizer_tasks,
+            problem.get_name(),
+            max_concurrent
+        );
 
         for (opt_name, optimizer) in optimizers.iter() {
             for run_id in 0..config.num_runs {
@@ -251,10 +265,21 @@ impl ExperimentRunner {
                 let mut rng = StdRng::seed_from_u64(rng.random());
                 let future = async move {
                     let _permit = semaphore.acquire().await.unwrap();
+                    let start = std::time::Instant::now();
                     Self::run_single_benchmark_static(
                         &problem, optimizer, run_id, &opt_name, config, &mut rng,
                     )
                     .await
+                    .map(|result| {
+                        info!(
+                            "Completed benchmark: {} - {} (run {}) in {:?}",
+                            problem.get_name(),
+                            opt_name,
+                            run_id,
+                            start.elapsed()
+                        );
+                        result
+                    })
                 };
                 // Use regular spawn instead of spawn_local
                 let task = tokio::spawn(future);

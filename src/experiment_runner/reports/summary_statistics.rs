@@ -92,6 +92,7 @@ pub fn generate_summary_statistics_latex_table(
             }
             // Sort by success rate
             optimizer_data.sort_by(|a, b| b.1.total_cmp(&a.1));
+            
             for (
                 i,
                 (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),
@@ -217,8 +218,10 @@ pub fn generate_summary_statistics_table_content(
                     avg_time,
                 ));
             }
+            
             optimizer_data
                 .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+            
             for (
                 i,
                 (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),

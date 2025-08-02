@@ -21,12 +21,12 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     let local = LocalSet::new();
     local
         .run_until(async move {
-            test_all("results/calibration_", {
+            let problems = {
                 let mut problems = analytic_problems();
                 problems.extend(ml_problems());
                 problems
-            })
-            .await
+            };
+            test_all(&"results/calibration_", problems, 1000, 10, Some(8), 2e-1, Duration::from_secs(600)).await
         })
         .await?;
 
@@ -39,18 +39,24 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
 #[tokio::test]
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
-    // Disable no threshold mode for this test
     disable_no_threshold_mode();
 
     let local = LocalSet::new();
     local
         .run_until(async move {
-            test_all("results/full_", {
-                let mut problems = analytic_problems();
-                problems.extend(ml_problems());
-                problems
-            })
-            .await
+            test_all(
+                &"results/full_",
+                {
+                    let mut problems = analytic_problems();
+                    problems.extend(ml_problems());
+                    problems
+                },
+                5000,
+                20,
+                Some(8),
+                2e-1,
+                Duration::from_secs(600)
+            ).await
         })
         .await?;
 
@@ -60,19 +66,12 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
-async fn test_all(
-    prefix: &str,
-    problems: Vec<ProblemSpec>,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let max_evals = 10000;
-    let num_runs = 50;
-    let max_cpu = Some(8);
-    let initial_point_noise = 2e-1;
+async fn test_all(prefix: &&str, problems: Vec<ProblemSpec>, max_evals: usize, num_runs: usize, max_cpu: Option<usize>, initial_point_noise: f64, time_limit: Duration) -> Result<(), Box<dyn Error + Send + Sync>> {
     run_benchmark(
         &format!("{prefix}all_optimizers_"),
         max_evals,
         num_runs,
-        Duration::from_secs(600),
+        time_limit,
         max_cpu,
         problems.clone(),
         {
@@ -84,8 +83,7 @@ async fn test_all(
             optimizers
         },
         initial_point_noise,
-    )
-    .await
+    ).await
 }
 
 // #[tokio::test]

@@ -1,4 +1,4 @@
-use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec, SingleResult};
+use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner;
 use crate::experiment_runner::{Report, ReportConfig, ReportFormat, ReportMetadata};
 use anyhow::{Context, Result};
@@ -435,15 +435,23 @@ impl PerformanceTableReport {
                     mean_time,
                 ));
             }
-            // Sort by success rate first, then by mean final value
-            perf_data.sort_by(|a, b| {
-                let success_cmp = b.6.partial_cmp(&a.6).unwrap_or(std::cmp::Ordering::Equal);
-                if success_cmp != std::cmp::Ordering::Equal {
-                    success_cmp
-                } else {
-                    a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
-                }
-            });
+
+            if is_no_threshold_mode() {
+                // In no-threshold mode, sort by best value
+                perf_data.sort_by(|a, b| {
+                    a.3.total_cmp(&b.3)
+                });
+            } else {
+                // Sort by success rate first, then by total evaluations
+                perf_data.sort_by(|a, b| {
+                    use std::cmp::Ordering;
+                    match b.7.total_cmp(&a.7) {
+                        Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)),
+                        other => other,
+                    }
+                });
+            }
+
             problem_data.push((problem_name, perf_data));
         }
         problem_data
@@ -904,15 +912,23 @@ pub fn generate_main_performance_latex_table(
                 mean_time,
             ));
         }
-        // Sort by success rate first, then by mean final value
-        perf_data.sort_by(|a, b| {
-            let success_cmp = b.6.partial_cmp(&a.6).unwrap_or(std::cmp::Ordering::Equal);
-            if success_cmp != std::cmp::Ordering::Equal {
-                success_cmp
-            } else {
-                a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
-            }
-        });
+
+        if is_no_threshold_mode() {
+            // In no-threshold mode, sort by best value
+            perf_data.sort_by(|a, b| {
+                a.3.total_cmp(&b.3)
+            });
+        } else {
+            // Sort by success rate first, then by total evaluations
+            perf_data.sort_by(|a, b| {
+                use std::cmp::Ordering;
+                match b.7.total_cmp(&a.7) {
+                    Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)),
+                    other => other,
+                }
+            });
+        }
+
         for (
             i,
             (
@@ -1061,15 +1077,23 @@ pub fn generate_main_performance_table_content(
                 mean_time,
             ));
         }
-        // Sort by success rate first, then by mean final value
-        perf_data.sort_by(|a, b| {
-            let success_cmp = b.6.partial_cmp(&a.6).unwrap_or(std::cmp::Ordering::Equal);
-            if success_cmp != std::cmp::Ordering::Equal {
-                success_cmp
-            } else {
-                a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
-            }
-        });
+
+        if is_no_threshold_mode() {
+            // In no-threshold mode, sort by best value
+            perf_data.sort_by(|a, b| {
+                a.3.total_cmp(&b.3)
+            });
+        } else {
+            // Sort by success rate first, then by total evaluations
+            perf_data.sort_by(|a, b| {
+                use std::cmp::Ordering;
+                match b.7.total_cmp(&a.7) {
+                    Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)),
+                    other => other,
+                }
+            });
+        }
+
         for (
             i,
             (
