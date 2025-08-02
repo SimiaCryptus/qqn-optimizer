@@ -283,7 +283,10 @@ impl Report for ConvergenceAnalysisReport {
         let content = self.generate_content(data, config)?;
         if let Some(parent) = output_path.parent() {
             fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create parent directories for: {}", output_path.display())
+                format!(
+                    "Failed to create parent directories for: {}",
+                    output_path.display()
+                )
             })?;
         }
         fs::write(output_path, content).with_context(|| {
@@ -683,9 +686,8 @@ pub fn generate_convergence_speed_latex_table(
 "#,
     );
     let latex_path = latex_dir.join("convergence_speed_table.tex");
-    fs::create_dir_all(latex_dir).with_context(|| {
-        format!("Failed to create LaTeX directory: {}", latex_dir.display())
-    })?;
+    fs::create_dir_all(latex_dir)
+        .with_context(|| format!("Failed to create LaTeX directory: {}", latex_dir.display()))?;
     fs::write(&latex_path, latex_content).with_context(|| {
         format!(
             "Failed to write convergence speed LaTeX table to: {}",

@@ -73,10 +73,13 @@ impl PlottingManager {
                     traces.len()
                 );
 
-
                 fs::create_dir_all(format!("{}/plots", self.output_dir))
                     .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
-                let filename = format!("{}/plots/{}", self.output_dir, problem_name.replace(" ", "_"));
+                let filename = format!(
+                    "{}/plots/{}",
+                    self.output_dir,
+                    problem_name.replace(" ", "_")
+                );
                 self.generate_plot_with_fallback(
                     || self.plotting_engine.convergence_plot(&traces, &filename),
                     &format!("convergence plot for {problem_name}"),

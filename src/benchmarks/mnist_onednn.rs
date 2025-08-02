@@ -797,7 +797,6 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]

@@ -151,11 +151,13 @@ pub fn generate_comparison_matrix_latex_table(
     );
     // Ensure parent directory exists
     if let Some(parent) = latex_dir.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
     }
-    
+
     // Ensure directory exists
-    fs::create_dir_all(latex_dir).with_context(|| format!("Failed to create directory: {}", latex_dir.display()))?;
+    fs::create_dir_all(latex_dir)
+        .with_context(|| format!("Failed to create directory: {}", latex_dir.display()))?;
     let latex_path = latex_dir.join("comparison_matrix.tex");
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
@@ -571,11 +573,13 @@ pub fn generate_family_comparison_matrix_latex_table(
     );
     // Ensure parent directory exists
     if let Some(parent) = latex_dir.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
     }
-    
+
     // Ensure directory exists
-    fs::create_dir_all(latex_dir).with_context(|| format!("Failed to create directory: {}", latex_dir.display()))?;
+    fs::create_dir_all(latex_dir)
+        .with_context(|| format!("Failed to create directory: {}", latex_dir.display()))?;
     let latex_path = latex_dir.join("family_comparison_matrix.tex");
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;

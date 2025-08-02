@@ -23,11 +23,6 @@ pub use experiment_runner::{optimizer_sets, problem_sets};
 
 pub use benchmarks::functions::OptimizationProblem;
 
-pub use analysis::{
-    reporting::AcademicReport,
-    statistics::{ConvergenceComparison, PerformanceProfiles, StatisticalAnalysis},
-};
-
 #[cfg(feature = "plotting")]
 pub use analysis::plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 

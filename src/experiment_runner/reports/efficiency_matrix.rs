@@ -354,7 +354,10 @@ impl Report for EfficiencyMatrixReport {
         let content = self.generate_content(data, config)?;
         if let Some(parent) = output_path.parent() {
             fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create parent directories for: {}", output_path.display())
+                format!(
+                    "Failed to create parent directories for: {}",
+                    output_path.display()
+                )
             })?;
         }
         fs::write(output_path, content).with_context(|| {
@@ -449,7 +452,10 @@ pub fn generate_efficiency_matrix_latex_table(
     let latex_path = latex_dir.join("efficiency_matrix.tex");
     if let Some(parent) = latex_path.parent() {
         fs::create_dir_all(parent).with_context(|| {
-            format!("Failed to create parent directories for: {}", latex_path.display())
+            format!(
+                "Failed to create parent directories for: {}",
+                latex_path.display()
+            )
         })?;
     }
     report.export_to_file(all_results, &config, &latex_path)?;

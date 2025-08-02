@@ -131,9 +131,10 @@ pub fn generate_summary_statistics_latex_table(
     let latex_path = latex_dir.join("summary_statistics.tex");
     // Ensure parent directory exists
     if let Some(parent) = latex_path.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
     }
-    
+
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
     println!(

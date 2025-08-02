@@ -7,8 +7,7 @@ use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::report_generator;
 use crate::experiment_runner::reports::family_vs_family::{
-    calculate_family_performance_data, generate_family_vs_family_comparison_table,
-    generate_family_vs_family_table_content,
+    calculate_family_performance_data, generate_family_vs_family_table_content,
 };
 use crate::experiment_runner::unified_report::{
     Report, ReportConfig, ReportFormat, ReportMetadata,

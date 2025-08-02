@@ -746,7 +746,10 @@ impl Report for PerformanceTableReport {
         let content = self.generate_content(data, config)?;
         if let Some(parent) = output_path.parent() {
             fs::create_dir_all(parent).with_context(|| {
-                format!("Failed to create parent directories for: {}", output_path.display())
+                format!(
+                    "Failed to create parent directories for: {}",
+                    output_path.display()
+                )
             })?;
         }
         fs::write(output_path, content).with_context(|| {

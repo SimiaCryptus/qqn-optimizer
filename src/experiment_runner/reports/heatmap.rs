@@ -43,7 +43,12 @@ impl Report for SuccessRateHeatmapReport {
         let content = self.generate_content(data, config)?;
         // Ensure parent directories exist
         if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent).with_context(|| format!("Failed to create parent directories for: {}", output_path.display()))?;
+            fs::create_dir_all(parent).with_context(|| {
+                format!(
+                    "Failed to create parent directories for: {}",
+                    output_path.display()
+                )
+            })?;
         }
         fs::write(output_path, content).with_context(|| {
             format!(
@@ -517,7 +522,12 @@ Quickly identifies which optimizers work on which problem types.
     );
     // Ensure parent directories exist
     if let Some(parent) = latex_dir.parent() {
-        fs::create_dir_all(parent).with_context(|| format!("Failed to create parent directories for: {}", latex_dir.display()))?;
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "Failed to create parent directories for: {}",
+                latex_dir.display()
+            )
+        })?;
     }
     let latex_path = latex_dir.join("success_rate_heatmap.tex");
     fs::write(&latex_path, latex_content).with_context(|| {

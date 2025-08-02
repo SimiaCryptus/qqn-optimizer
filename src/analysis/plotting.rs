@@ -398,16 +398,19 @@ impl PlottingEngine {
                 );
                 // Use slightly different line styles for multiple runs of the same optimizer
                 let line_style = if run_idx == 0 {
-                   (*color).to_rgba()
+                    (*color).to_rgba()
                 } else {
                     // Make subsequent runs more transparent based on run index
-                   (*color).mix(0.8 - (run_idx as f64 * 0.05).min(0.3)).to_rgba()
+                    (*color)
+                        .mix(0.8 - (run_idx as f64 * 0.05).min(0.3))
+                        .to_rgba()
                 };
 
                 // Draw series
                 chart
                     .draw_series(LineSeries::new(series_data.clone(), &line_style))
                     .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
+
                 // Add markers at regular intervals for better visibility
                 let marker_interval = series_data.len().max(1) / 20 + 1;
                 debug!("Adding markers every {} points", marker_interval);
@@ -637,11 +640,18 @@ impl PlottingEngine {
                     );
                     // Use slightly different line styles for multiple runs of the same optimizer
                     let line_style = if run_idx == 0 {
-                       (*color).to_rgba()
+                        (*color).to_rgba()
                     } else {
-                        // Make subsequent runs slightly more transparent
-                       (*color).mix(0.7).to_rgba()
+                        // Make subsequent runs more transparent based on run index
+                        (*color)
+                            .mix(0.8 - (run_idx as f64 * 0.05).min(0.3))
+                            .to_rgba()
                     };
+
+                    // Draw series
+                    chart
+                        .draw_series(LineSeries::new(series_data.clone(), &line_style))
+                        .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
 
                     // Add markers for better visibility
                     let marker_interval = series_data.len().max(1) / 20 + 1;

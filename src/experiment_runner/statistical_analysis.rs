@@ -395,12 +395,12 @@ impl StatisticalAnalysis {
     fn save_statistical_analysis_csv(&self, csv_data: &[String], output_dir: &str) -> Result<()> {
         let csv_content = csv_data.join("\n");
         let csv_path = Path::new(output_dir).join("statistical_analysis_raw_data.csv");
-       // Ensure parent directory exists
-       if let Some(parent) = csv_path.parent() {
-           fs::create_dir_all(parent)
-               .with_context(|| format!("Failed to create directory: {parent:?}"))?;
-       }
-       
+        // Ensure parent directory exists
+        if let Some(parent) = csv_path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create directory: {parent:?}"))?;
+        }
+
         fs::write(&csv_path, csv_content)
             .with_context(|| format!("Failed to write CSV to {csv_path:?}"))?;
         Ok(())
@@ -930,7 +930,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
         }
 
         let latex_dir = Path::new(output_dir).join("latex");
-       // Ensure the latex directory exists before writing
+        // Ensure the latex directory exists before writing
         fs::create_dir_all(&latex_dir)
             .with_context(|| format!("Failed to create LaTeX directory: {latex_dir:?}"))?;
 
@@ -1034,7 +1034,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
         output_dir: &str,
     ) -> Result<()> {
         let latex_dir = Path::new(output_dir).join("latex");
-       // Ensure the latex directory exists before writing
+        // Ensure the latex directory exists before writing
         fs::create_dir_all(&latex_dir)
             .with_context(|| format!("Failed to create LaTeX directory: {latex_dir:?}"))?;
 
