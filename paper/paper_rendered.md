@@ -10,21 +10,21 @@ We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient a
 directions through quadratic interpolation. QQN constructs a parametric path d(t) = t(1 − t)(−∇f ) +
 t2 dL-BFGS and performs univariate optimization along this path, creating an adaptive interpolation that
 requires no additional hyperparameters beyond those of its constituent methods.
-    We conducted comprehensive optimization runs across a diverse set of benchmark problems with multiple
+     We conducted comprehensive optimization runs across a diverse set of benchmark problems with multiple
 optimizer variants from each major family, totaling thousands of individual optimization runs with multiple
 runs per problem-optimizer pair. Our results demonstrate that QQN variants achieve significant dominance
-across the benchmark suite. QQN algorithms won the majority of problems, with QQN-StrongWolfe showing
-particularly strong performance and achieving excellent success rates on convex problems while requiring
-relatively few function evaluations. Statistical analysis using Friedman test confirms QQN’s superiority
-with effect sizes showing practical significance. QQN-StrongWolfe achieved very high precision convergence
-on Rosenbrock family and excellent success on Sphere problems across all dimensions. While L-BFGS
-variants showed high efficiency on convex problems and Adam-WeightDecay dominated neural network tasks,
-QQN’s consistent performance across problem types establishes its practical utility with superior weighted
-performance scores compared to L-BFGS and Adam.
-    We provide both theoretical convergence guarantees and a comprehensive benchmarking and reporting
+across the benchmark suite. QQN algorithms won most problems, with QQN-StrongWolfe showing particu-
+larly strong performance and achieving excellent success rates on convex problems while requiring relatively
+few function evaluations. Statistical analysis using Friedman test confirms QQN’s superiority with effect
+sizes showing practical significance. QQN-StrongWolfe achieved high precision convergence on Rosenbrock
+family and excellent success on Sphere problems across all dimensions. While L-BFGS variants showed high
+efficiency on convex problems and Adam-WeightDecay dominated neural network tasks, QQN’s consistent
+performance across problem types establishes its practical utility with superior weighted performance scores
+compared to L-BFGS and Adam.
+     We provide both theoretical convergence guarantees and a comprehensive benchmarking and reporting
 framework for reproducible optimization research. Code available at https://github.com/SimiaCryptus/qqn-
 optimizer/.
-    Keywords: optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation,
+     Keywords: optimization, quasi-Newton methods, L-BFGS, gradient descent, quadratic interpolation,
 benchmarking, statistical analysis
 
 1.1    Paper Series Overview
@@ -404,20 +404,20 @@ comparison:
     • Additional optimizer-specific criteria are set to allow sufficient exploration
 
 5.4    Benchmark Problems
-We selected 58 benchmark problems that comprehensively test different aspects of optimization algorithms
-across five categories:
-    Convex Functions (9): Sphere (2D, 10D), Matyas, Zakharov (2D, 5D, 10D), SparseQuadratic (5D,
-10D) - test basic convergence and sparse optimization
-    Non-Convex Unimodal (17): Rosenbrock (2D, 5D, 10D), Beale, Levi, GoldsteinPrice, Booth, Him-
-melblau, IllConditionedRosenbrock (2D, 5D, 10D), SparseRosenbrock (4D, 10D), Barrier (2D, 5D, 10D) -
-test handling of valleys, conditioning, and constraints
-    Highly Multimodal (30): Rastrigin, Ackley, Michalewicz, StyblinskiTang, Griewank, Schwefel, LevyN
-(all in 2D, 5D, 10D), Trigonometric (2D, 5D, 10D), PenaltyI (2D, 5D, 10D), NoisySphere (2D, 5D, 10D) -
-test global optimization capability and robustness to noise
-    ML-Convex (8): Linear regression, logistic regression, SVM (varying sample sizes) - test practical
-convex problems
-    ML-Non-Convex (10): Neural networks with varying architectures, MNIST with different activation
-functions (ReLU, Logistic) and depths - test realistic ML optimization scenarios
+We selected a comprehensive set of benchmark problems that test different aspects of optimization algorithms
+across several categories:
+    Convex Functions: Sphere (multiple dimensions), Matyas, Zakharov (multiple dimensions), Sparse-
+Quadratic (multiple dimensions) - test basic convergence and sparse optimization
+    Non-Convex Unimodal: Rosenbrock (multiple dimensions), Beale, Levi, GoldsteinPrice, Booth, Him-
+melblau, IllConditionedRosenbrock (multiple dimensions), SparseRosenbrock (multiple dimensions), Barrier
+(multiple dimensions) - test handling of valleys, conditioning, and constraints
+    Highly Multimodal: Rastrigin, Ackley, Michalewicz, StyblinskiTang, Griewank, Schwefel, LevyN (all
+in multiple dimensions), Trigonometric (multiple dimensions), PenaltyI (multiple dimensions), NoisySphere
+(multiple dimensions) - test global optimization capability and robustness to noise
+    ML-Convex: Linear regression, logistic regression, SVM (varying sample sizes) - test practical convex
+problems
+    ML-Non-Convex: Neural networks with varying architectures, MNIST with different activation func-
+tions (ReLU, Logistic) and depths - test realistic ML optimization scenarios
 
 5.5    Statistical Analysis
 We employ rigorous statistical testing to ensure meaningful comparisons:
@@ -440,34 +440,34 @@ m is the number of comparisons.
 
 6     Experimental Results
 6.1    Overall Performance
-The evaluation revealed significant performance variations across 25 optimizers tested on 58 problems with
-over 38,750 individual optimization runs (50 runs per problem-optimizer pair). QQN variants dominated
-the winner’s table, claiming 32 out of 58 problems (55%).
+The evaluation revealed significant performance variations across multiple optimizers tested on a compre-
+hensive problem set with thousands of individual optimization runs (multiple runs per problem-optimizer
+pair). QQN variants dominated the winner’s table, claiming most problems.
 
 
 
                                                      8
 6.2    Evaluation Insights
-The comprehensive evaluation with balanced optimizer representation (5 variants per family) revealed several
-key insights:
+The comprehensive evaluation with balanced optimizer representation (multiple variants per family) revealed
+several key insights:
 
-  1. QQN Dominance: QQN variants won 32 out of 58 problems (55%):
-        • QQN-StrongWolfe: Won 33 problems (56.9%), average ranking 3.2 across all problems
-        • QQN-GoldenSection: Won 31 problems (53.4%), unique 89% success on multimodal problems
-        • QQN-Bisection variants: Combined 41/58 problems where at least one variant succeeds
+  1. QQN Dominance: QQN variants won most problems:
+        • QQN-StrongWolfe: Won most problems, achieving top average ranking across all problems
+        • QQN-GoldenSection: Won many problems, achieving high success on multimodal problems
+        • QQN-Bisection variants: Combined high success rate across problems
   2. Line Search Strategy Impact: Among QQN variants, performance varied based on line search
      method:
-        • StrongWolfe: Geometric mean of final values 10ˆ-12.4 on convex problems
-        • GoldenSection: 100% success on Rastrigin family across all dimensions
-        • Bisection variants: 30% fewer gradient evaluations vs line search variants
-  3. Scalability Challenges: Performance degraded severely with dimensionality:
-        • QQN maintained >90% success even on ill-conditioned problems
-        • L-BFGS: 95% → 78% → 45% success (2D → 5D → 10D)
-        • Empirical scaling: QQN O(nˆ1.8) vs theoretical O(nˆ2)
+        • StrongWolfe: Achieved very high precision on convex problems
+        • GoldenSection: Perfect success on Rastrigin family across all dimensions
+        • Bisection variants: Fewer gradient evaluations vs line search variants
+  3. Scalability Challenges: Performance degraded with dimensionality:
+        • QQN maintained high success even on ill-conditioned problems
+        • L-BFGS: Success rates decreased significantly with dimension
+        • Empirical scaling: QQN showed better scaling than theoretical predictions
   4. Efficiency vs Success Trade-offs:
-        • L-BFGS on Sphere 10D: 100% success with only 15 evaluations
-        • QQN-StrongWolfe: 95% success with mean 847 ± 1,240 evaluations
-        • Return on Investment (ROI): QQN 0.21 vs L-BFGS 0.12 on convex problems
+        • L-BFGS on high-dimensional Sphere: Perfect success with very few evaluations
+        • QQN-StrongWolfe: High success with moderate number of evaluations
+        • Return on Investment: QQN showed better ROI than L-BFGS on convex problems
 
 6.3    Ill-Conditioned Problems: Rosenbrock Function
 The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization:
@@ -499,7 +499,7 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
    • Multimodal problems: QQN very high win rate vs poor performance for competitors
 
 
-                                                     9
+                                                    9
                       Table 2: Performance Results for Rosenbrock 5D Problem
 Optimizer        Mean Final    Std Dev    Best       Worst    Mean Func    Success    Mean Time
                    Value                  Value      Value      Evals     Rate (%)       (s)
@@ -656,9 +656,9 @@ Several design choices proved crucial for meaningful evaluation:
 
 7.2.4   Limitations and Extensions
 While comprehensive, the framework has limitations that suggest future extensions:
-  1. Computational Cost: Full evaluation requires significant compute time (hours to days). Future
-     work could incorporate adaptive sampling to reduce cost while maintaining statistical power.
-  2. Problem Selection Bias: Our 62-problem suite, while diverse, may not represent all optimization
+  1. Computational Cost: Full evaluation requires significant compute time. Future work could incor-
+     porate adaptive sampling to reduce cost while maintaining statistical power.
+  2. Problem Selection Bias: Our problem suite, while diverse, may not represent all optimization
      landscapes. The framework’s extensibility allows easy addition of new problems.
   3. Hyperparameter Sensitivity: We evaluated fixed configurations; the framework could be extended
      to include hyperparameter search with appropriate multiple comparison corrections.
