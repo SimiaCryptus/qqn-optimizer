@@ -1,0 +1,50 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for NoisySphere\_10D\_sigma0.01 Problem}
+\label{tab:noisysphere_10d_sigma0.01}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Bisection-1} & 9.08e0 & 1.54e0 & 4.69e0 & 1.10e1 & 55.0 & 45.0 & 0.016 \\
+L-BFGS-Conservative & 9.49e0 & 1.72e-1 & 9.16e0 & 9.70e0 & 93.8 & 85.0 & 0.006 \\
+Adam-WeightDecay & 1.04e1 & 4.40e-1 & 9.79e0 & 1.14e1 & 28.9 & 0.0 & 0.006 \\
+Adam-AMSGrad & 1.04e1 & 6.28e-1 & 9.75e0 & 1.18e1 & 18.9 & 0.0 & 0.004 \\
+Adam & 1.07e1 & 5.64e-1 & 9.87e0 & 1.20e1 & 18.2 & 0.0 & 0.003 \\
+Adam-Robust & 1.05e1 & 6.12e-1 & 9.71e0 & 1.19e1 & 18.1 & 5.0 & 0.003 \\
+GD & 1.10e1 & 7.03e-1 & 9.54e0 & 1.19e1 & 10.2 & 10.0 & 0.003 \\
+GD-AdaptiveMomentum & 1.03e1 & 7.39e-1 & 9.45e0 & 1.20e1 & 8.0 & 35.0 & 0.002 \\
+L-BFGS & 2.28e1 & 1.18e1 & 7.46e0 & 4.18e1 & 31.4 & 20.0 & 0.002 \\
+GD-Nesterov & 1.09e1 & 8.10e-1 & 9.63e0 & 1.25e1 & 7.5 & 15.0 & 0.002 \\
+L-BFGS-MoreThuente & 9.77e0 & 1.48e0 & 6.61e0 & 1.14e1 & 12.4 & 10.0 & 0.002 \\
+GD-Momentum & 1.11e1 & 9.34e-1 & 9.66e0 & 1.26e1 & 6.8 & 10.0 & 0.002 \\
+QQN-GoldenSection & 1.03e1 & 5.55e-1 & 9.18e0 & 1.11e1 & 22.1 & 5.0 & 0.002 \\
+GD-WeightDecay & 1.10e1 & 7.21e-1 & 9.66e0 & 1.25e1 & 6.0 & 5.0 & 0.002 \\
+QQN-StrongWolfe & 9.41e0 & 1.31e0 & 7.23e0 & 1.10e1 & 19.9 & 25.0 & 0.002 \\
+Adam-Fast & 1.11e1 & 1.47e0 & 9.46e0 & 1.54e1 & 9.7 & 15.0 & 0.002 \\
+L-BFGS-Limited & 9.06e0 & 1.17e0 & 6.79e0 & 1.08e1 & 32.2 & 45.0 & 0.002 \\
+Trust Region-Conservative & 1.04e1 & 3.84e-1 & 9.82e0 & 1.13e1 & 6.4 & 0.0 & 0.001 \\
+Trust Region-Precise & 1.06e1 & 3.31e-1 & 9.93e0 & 1.12e1 & 4.8 & 0.0 & 0.001 \\
+L-BFGS-Aggressive & 1.06e1 & 5.02e-1 & 9.75e0 & 1.11e1 & 5.4 & 0.0 & 0.001 \\
+Trust Region-Aggressive & 1.04e1 & 5.45e-1 & 9.77e0 & 1.14e1 & 3.5 & 0.0 & 0.001 \\
+Trust Region-Standard & 1.06e1 & 5.93e-1 & 9.80e0 & 1.16e1 & 3.2 & 0.0 & 0.000 \\
+QQN-CubicQuadraticInterpolation & 1.04e1 & 1.61e-1 & 1.03e1 & 1.07e1 & 1.9 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 1.04e1 & 6.06e-1 & 9.73e0 & 1.17e1 & 2.8 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

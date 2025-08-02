@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Zakharov\_5D Problem}
+\label{tab:zakharov_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS-Aggressive} & 4.22e1 & 8.64e0 & 2.82e1 & 6.13e1 & 3309.5 & 0.0 & 0.061 \\
+Adam-AMSGrad & 2.23e-2 & 1.32e-2 & 4.59e-3 & 5.39e-2 & 2502.0 & 0.0 & 0.059 \\
+Adam-Robust & 7.06e-2 & 7.45e-2 & 6.18e-3 & 2.91e-1 & 2502.0 & 0.0 & 0.059 \\
+Adam & 2.82e-3 & 2.38e-3 & 2.65e-4 & 7.47e-3 & 2502.0 & 0.0 & 0.052 \\
+Adam-WeightDecay & 8.64e-3 & 1.13e-2 & 9.76e-9 & 2.86e-2 & 1586.3 & 60.0 & 0.035 \\
+Trust Region-Standard & 2.28e3 & 8.27e2 & 6.92e2 & 3.84e3 & 3002.0 & 0.0 & 0.020 \\
+Trust Region-Precise & 3.50e3 & 7.96e2 & 2.04e3 & 4.73e3 & 3002.0 & 0.0 & 0.020 \\
+Trust Region-Conservative & 3.28e3 & 6.15e2 & 2.05e3 & 4.46e3 & 3002.0 & 0.0 & 0.020 \\
+Trust Region-Adaptive & 3.10e3 & 8.27e2 & 1.77e3 & 4.98e3 & 3002.0 & 0.0 & 0.020 \\
+Trust Region-Aggressive & 5.65e1 & 1.12e2 & 6.02e-1 & 4.25e2 & 2415.8 & 0.0 & 0.016 \\
+L-BFGS-Limited & 1.94e-8 & 4.45e-8 & 7.85e-9 & 2.13e-7 & 1078.6 & 95.0 & 0.016 \\
+L-BFGS-MoreThuente & 9.32e-9 & 3.60e-10 & 8.60e-9 & 9.95e-9 & 634.6 & 100.0 & 0.013 \\
+GD & 9.78e-9 & 9.76e-11 & 9.63e-9 & 9.97e-9 & 477.1 & 100.0 & 0.012 \\
+L-BFGS-Conservative & 7.32e-9 & 2.98e-9 & 2.42e-10 & 9.99e-9 & 492.9 & 100.0 & 0.012 \\
+QQN-CubicQuadraticInterpolation & 1.52e-9 & 1.59e-9 & 3.50e-12 & 5.23e-9 & 205.0 & 100.0 & 0.008 \\
+QQN-StrongWolfe & 2.41e-9 & 3.17e-9 & 2.91e-14 & 9.91e-9 & 100.3 & 100.0 & 0.003 \\
+QQN-Bisection-2 & 1.50e-9 & 1.97e-9 & 2.56e-15 & 6.16e-9 & 114.7 & 100.0 & 0.003 \\
+QQN-Bisection-1 & 1.12e-12 & 2.99e-12 & 5.59e-14 & 1.40e-11 & 118.0 & 100.0 & 0.002 \\
+QQN-GoldenSection & 2.83e-12 & 2.87e-12 & 2.45e-13 & 1.21e-11 & 138.0 & 100.0 & 0.002 \\
+GD-WeightDecay & 7.62e-1 & 4.69e-1 & 9.24e-9 & 1.31e0 & 52.5 & 25.0 & 0.002 \\
+L-BFGS & 2.69e1 & 2.46e1 & 2.58e-1 & 8.10e1 & 93.0 & 0.0 & 0.002 \\
+Adam-Fast & 9.66e0 & 1.31e0 & 7.78e0 & 1.15e1 & 34.8 & 0.0 & 0.001 \\
+GD-AdaptiveMomentum & 6.97e1 & 1.64e1 & 4.83e1 & 1.09e2 & 18.5 & 0.0 & 0.001 \\
+GD-Momentum & 5.45e1 & 1.33e1 & 3.48e1 & 9.04e1 & 18.9 & 0.0 & 0.001 \\
+GD-Nesterov & 5.05e0 & 2.73e0 & 1.42e0 & 1.10e1 & 18.1 & 0.0 & 0.001 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

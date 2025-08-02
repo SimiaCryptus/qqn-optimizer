@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for LogisticRegression\_200samples\_10features\_reg0.01 Problem}
+\label{tab:logisticregression_200samples_10features_reg0.01}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{GD-WeightDecay} & 3.39e-1 & 4.45e-4 & 3.38e-1 & 3.40e-1 & 1668.0 & 0.0 & 1.649 \\
+GD-Nesterov & 3.23e-1 & 6.77e-7 & 3.23e-1 & 3.23e-1 & 1668.0 & 0.0 & 1.649 \\
+GD-Momentum & 3.23e-1 & 7.07e-7 & 3.23e-1 & 3.23e-1 & 1668.0 & 0.0 & 1.648 \\
+GD & 3.97e-1 & 3.28e-3 & 3.93e-1 & 4.05e-1 & 1668.0 & 0.0 & 1.640 \\
+L-BFGS-Limited & 3.23e-1 & 8.38e-5 & 3.23e-1 & 3.24e-1 & 3146.0 & 0.0 & 1.621 \\
+Adam-Robust & 4.12e-1 & 8.61e-3 & 3.96e-1 & 4.28e-1 & 2502.0 & 0.0 & 1.621 \\
+Adam-AMSGrad & 3.95e-1 & 5.85e-3 & 3.84e-1 & 4.09e-1 & 2502.0 & 0.0 & 1.620 \\
+Adam-WeightDecay & 3.27e-1 & 8.69e-4 & 3.25e-1 & 3.29e-1 & 2502.0 & 0.0 & 1.618 \\
+Adam & 3.92e-1 & 9.22e-3 & 3.75e-1 & 4.09e-1 & 2502.0 & 0.0 & 1.617 \\
+L-BFGS-Aggressive & 3.25e-1 & 7.06e-4 & 3.23e-1 & 3.26e-1 & 3432.2 & 0.0 & 1.407 \\
+L-BFGS & 3.23e-1 & 2.14e-5 & 3.23e-1 & 3.23e-1 & 2311.4 & 0.0 & 1.256 \\
+GD-AdaptiveMomentum & 3.23e-1 & 4.50e-9 & 3.23e-1 & 3.23e-1 & 479.1 & 0.0 & 0.478 \\
+L-BFGS-Conservative & 3.23e-1 & 9.68e-11 & 3.23e-1 & 3.23e-1 & 545.5 & 0.0 & 0.324 \\
+QQN-GoldenSection & 3.23e-1 & 1.79e-12 & 3.23e-1 & 3.23e-1 & 360.0 & 0.0 & 0.143 \\
+QQN-Bisection-1 & 3.23e-1 & 1.05e-12 & 3.23e-1 & 3.23e-1 & 110.7 & 0.0 & 0.072 \\
+QQN-CubicQuadraticInterpolation & 3.23e-1 & 1.34e-12 & 3.23e-1 & 3.23e-1 & 105.4 & 0.0 & 0.072 \\
+QQN-Bisection-2 & 3.23e-1 & 1.19e-12 & 3.23e-1 & 3.23e-1 & 110.7 & 0.0 & 0.066 \\
+QQN-StrongWolfe & 3.23e-1 & 1.79e-12 & 3.23e-1 & 3.23e-1 & 80.3 & 0.0 & 0.059 \\
+Adam-Fast & 3.24e-1 & 2.14e-4 & 3.24e-1 & 3.25e-1 & 77.0 & 0.0 & 0.050 \\
+L-BFGS-MoreThuente & 3.23e-1 & 2.80e-4 & 3.23e-1 & 3.24e-1 & 86.2 & 0.0 & 0.050 \\
+Trust Region-Conservative & 4.44e-1 & 2.76e-3 & 4.39e-1 & 4.49e-1 & 82.4 & 0.0 & 0.044 \\
+Trust Region-Precise & 7.01e-1 & 2.67e-2 & 6.59e-1 & 7.56e-1 & 5.0 & 0.0 & 0.003 \\
+Trust Region-Aggressive & 7.03e-1 & 2.08e-2 & 6.65e-1 & 7.53e-1 & 5.0 & 0.0 & 0.003 \\
+Trust Region-Standard & 7.01e-1 & 2.90e-2 & 6.45e-1 & 7.53e-1 & 5.0 & 0.0 & 0.003 \\
+Trust Region-Adaptive & 7.06e-1 & 2.50e-2 & 6.56e-1 & 7.48e-1 & 5.0 & 0.0 & 0.003 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

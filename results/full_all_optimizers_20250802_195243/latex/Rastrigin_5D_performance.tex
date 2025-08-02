@@ -1,0 +1,40 @@
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Rastrigin\_5D Problem}
+\label{tab:rastrigin_5d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS-Aggressive} & 7.97e1 & 9.04e0 & 5.68e1 & 9.50e1 & 3852.0 & 0.0 & 0.029 \\
+Trust Region-Conservative & 6.91e1 & 7.96e0 & 5.03e1 & 8.29e1 & 3002.0 & 0.0 & 0.020 \\
+Adam-AMSGrad & 2.38e1 & 3.35e0 & 2.04e1 & 2.99e1 & 719.2 & 40.0 & 0.017 \\
+Trust Region-Precise & 2.39e1 & 3.48e0 & 2.03e1 & 2.99e1 & 2558.8 & 35.0 & 0.017 \\
+Adam & 2.42e1 & 3.17e0 & 2.03e1 & 2.99e1 & 745.3 & 30.0 & 0.016 \\
+L-BFGS-Conservative & 2.34e1 & 3.92e0 & 1.99e1 & 3.61e1 & 881.9 & 40.0 & 0.009 \\
+Adam-WeightDecay & 2.27e1 & 3.13e0 & 2.02e1 & 2.99e1 & 246.9 & 55.0 & 0.006 \\
+Trust Region-Adaptive & 2.34e1 & 5.02e0 & 2.02e1 & 4.05e1 & 646.1 & 60.0 & 0.004 \\
+QQN-GoldenSection & 2.31e1 & 9.30e0 & 7.97e0 & 4.97e1 & 266.0 & 35.0 & 0.004 \\
+QQN-Bisection-1 & 2.48e1 & 4.08e0 & 1.80e1 & 3.38e1 & 186.6 & 25.0 & 0.004 \\
+QQN-CubicQuadraticInterpolation & 2.30e1 & 8.41e0 & 4.91e0 & 4.28e1 & 106.2 & 50.0 & 0.003 \\
+L-BFGS-MoreThuente & 2.77e1 & 2.23e1 & 7.71e0 & 9.40e1 & 165.1 & 50.0 & 0.003 \\
+QQN-StrongWolfe & 2.36e1 & 5.65e0 & 1.16e1 & 4.08e1 & 100.2 & 40.0 & 0.003 \\
+Adam-Robust & 2.24e1 & 3.09e0 & 1.99e1 & 2.99e1 & 103.5 & 55.0 & 0.003 \\
+GD-AdaptiveMomentum & 2.14e1 & 2.74e0 & 1.83e1 & 2.99e1 & 52.4 & 65.0 & 0.002 \\
+L-BFGS-Limited & 2.84e1 & 1.49e1 & 1.70e1 & 6.88e1 & 115.2 & 35.0 & 0.002 \\
+L-BFGS & 1.02e2 & 2.33e1 & 5.89e1 & 1.42e2 & 98.2 & 0.0 & 0.001 \\
+GD-Nesterov & 2.37e1 & 4.00e0 & 1.99e1 & 3.05e1 & 41.2 & 45.0 & 0.001 \\
+GD-WeightDecay & 2.25e1 & 2.90e0 & 1.89e1 & 2.99e1 & 37.8 & 50.0 & 0.001 \\
+Trust Region-Standard & 2.31e1 & 3.22e0 & 1.95e1 & 2.99e1 & 168.5 & 45.0 & 0.001 \\
+Adam-Fast & 2.33e1 & 3.56e0 & 1.92e1 & 3.17e1 & 48.9 & 40.0 & 0.001 \\
+GD-Momentum & 3.03e1 & 6.57e0 & 2.04e1 & 4.94e1 & 28.9 & 5.0 & 0.001 \\
+QQN-Bisection-2 & 3.08e1 & 1.62e1 & 1.10e1 & 6.07e1 & 36.6 & 15.0 & 0.001 \\
+GD & 2.44e1 & 3.48e0 & 1.99e1 & 3.05e1 & 15.7 & 30.0 & 0.000 \\
+Trust Region-Aggressive & 2.33e1 & 5.41e0 & 1.82e1 & 4.25e1 & 45.7 & 50.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}

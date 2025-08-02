@@ -1,0 +1,235 @@
+<h1 id="algorithm-efficiency-matrix">Algorithm Efficiency Matrix</h1>
+<p>Mean Function Evaluations for Successful Runs</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+<col style="width: 16%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Problem Family</th>
+<th>Adam</th>
+<th>GD</th>
+<th>L-BFGS</th>
+<th>QQN</th>
+<th>Trust Region</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Ackley</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>24 ± 28</td>
+<td>26 ± 16</td>
+<td>27 ± 0</td>
+</tr>
+<tr class="even">
+<td><strong>Barrier</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>Beale</strong></td>
+<td>1540 ± 160</td>
+<td>96 ± 83</td>
+<td>129 ± 63</td>
+<td>263 ± 187</td>
+<td>816 ± 712</td>
+</tr>
+<tr class="even">
+<td><strong>Booth</strong></td>
+<td>1886 ± 74</td>
+<td>80 ± 16</td>
+<td>84 ± 72</td>
+<td>87 ± 46</td>
+<td>923 ± 76</td>
+</tr>
+<tr class="odd">
+<td><strong>GoldsteinPrice</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>72 ± 6</td>
+<td>287 ± 119</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Griewank</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>395 ± 0</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>Himmelblau</strong></td>
+<td>1744 ± 36</td>
+<td>36 ± 8</td>
+<td>113 ± 101</td>
+<td>79 ± 42</td>
+<td>1217 ± 820</td>
+</tr>
+<tr class="even">
+<td><strong>IllConditionedRosenbrock</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>1133 ± 784</td>
+<td>1282 ± 689</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>Levi</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>68 ± 62</td>
+<td>138 ± 217</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Levy</strong></td>
+<td>2167 ± 182</td>
+<td>1334 ± 344</td>
+<td>274 ± 287</td>
+<td>147 ± 112</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>Matyas</strong></td>
+<td>324 ± 339</td>
+<td>206 ± 252</td>
+<td>26 ± 10</td>
+<td>54 ± 45</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Michalewicz</strong></td>
+<td>409 ± 333</td>
+<td>321 ± 408</td>
+<td>1123 ± 744</td>
+<td>1237 ± 806</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>Neural Networks</strong></td>
+<td>1063 ± 749</td>
+<td>N/A</td>
+<td>1577 ± 712</td>
+<td>1179 ± 975</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>NoisySphere</strong></td>
+<td>10 ± 7</td>
+<td>8 ± 5</td>
+<td>78 ± 94</td>
+<td>62 ± 50</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>PenaltyI</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Rastrigin</strong></td>
+<td>403 ± 297</td>
+<td>18 ± 7</td>
+<td>96 ± 153</td>
+<td>82 ± 53</td>
+<td>661 ± 750</td>
+</tr>
+<tr class="odd">
+<td><strong>Regression</strong></td>
+<td>213 ± 23</td>
+<td>230 ± 113</td>
+<td>192 ± 179</td>
+<td>91 ± 46</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Rosenbrock</strong></td>
+<td>1352 ± 886</td>
+<td>43 ± 16</td>
+<td>693 ± 1032</td>
+<td>552 ± 751</td>
+<td>1682 ± 233</td>
+</tr>
+<tr class="odd">
+<td><strong>SVM</strong></td>
+<td>1295 ± 708</td>
+<td>186 ± 90</td>
+<td>62 ± 40</td>
+<td>93 ± 60</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Schwefel</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>62 ± 54</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>SparseQuadratic</strong></td>
+<td>1630 ± 111</td>
+<td>229 ± 128</td>
+<td>107 ± 141</td>
+<td>66 ± 42</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>SparseRosenbrock</strong></td>
+<td>N/A</td>
+<td>N/A</td>
+<td>1544 ± 800</td>
+<td>1492 ± 544</td>
+<td>N/A</td>
+</tr>
+<tr class="odd">
+<td><strong>Sphere</strong></td>
+<td>1448 ± 761</td>
+<td>62 ± 64</td>
+<td>49 ± 66</td>
+<td>19 ± 13</td>
+<td>549 ± 796</td>
+</tr>
+<tr class="even">
+<td><strong>StyblinskiTang</strong></td>
+<td>1128 ± 875</td>
+<td>55 ± 19</td>
+<td>130 ± 103</td>
+<td>140 ± 170</td>
+<td>848 ± 749</td>
+</tr>
+<tr class="odd">
+<td><strong>Trigonometric</strong></td>
+<td>1074 ± 652</td>
+<td>258 ± 169</td>
+<td>446 ± 597</td>
+<td>473 ± 491</td>
+<td>N/A</td>
+</tr>
+<tr class="even">
+<td><strong>Zakharov</strong></td>
+<td>2095 ± 174</td>
+<td>367 ± 138</td>
+<td>464 ± 566</td>
+<td>151 ± 63</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Purpose:</strong> Shows mean function evaluations ± standard
+deviation for successful runs only across problem families. Lower values
+indicate higher efficiency.</p>

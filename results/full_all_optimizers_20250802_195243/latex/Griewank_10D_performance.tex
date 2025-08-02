@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Griewank\_10D Problem}
+\label{tab:griewank_10d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-StrongWolfe} & 6.06e0 & 1.00e1 & 9.86e-3 & 2.60e1 & 2281.2 & 0.0 & 0.091 \\
+QQN-GoldenSection & 2.35e1 & 6.71e0 & 2.19e0 & 2.58e1 & 4343.6 & 0.0 & 0.085 \\
+QQN-Bisection-2 & 2.33e1 & 7.17e0 & 1.67e0 & 2.58e1 & 3260.0 & 0.0 & 0.083 \\
+QQN-Bisection-1 & 2.19e1 & 9.08e0 & 5.93e-10 & 2.58e1 & 2381.1 & 5.0 & 0.065 \\
+Adam-AMSGrad & 2.54e1 & 2.09e-2 & 2.53e1 & 2.54e1 & 2502.0 & 0.0 & 0.064 \\
+Adam-Robust & 2.55e1 & 2.00e-2 & 2.55e1 & 2.55e1 & 2502.0 & 0.0 & 0.063 \\
+Adam-WeightDecay & 2.42e1 & 1.44e-2 & 2.41e1 & 2.42e1 & 2502.0 & 0.0 & 0.061 \\
+L-BFGS-Limited & 1.95e1 & 3.46e0 & 8.48e0 & 2.38e1 & 2256.7 & 0.0 & 0.059 \\
+GD-WeightDecay & 2.48e1 & 3.83e-2 & 2.48e1 & 2.49e1 & 1668.0 & 0.0 & 0.059 \\
+GD-Nesterov & 2.21e1 & 2.17e-1 & 2.15e1 & 2.23e1 & 1668.0 & 0.0 & 0.058 \\
+Adam & 2.54e1 & 2.20e-2 & 2.53e1 & 2.54e1 & 2502.0 & 0.0 & 0.057 \\
+L-BFGS-Aggressive & 6.09e0 & 5.66e0 & 1.01e0 & 2.16e1 & 3817.8 & 0.0 & 0.054 \\
+GD-Momentum & 2.20e1 & 3.14e-1 & 2.16e1 & 2.24e1 & 1668.0 & 0.0 & 0.054 \\
+L-BFGS-Conservative & 2.33e1 & 1.54e0 & 2.01e1 & 2.49e1 & 1668.3 & 0.0 & 0.049 \\
+GD & 2.56e1 & 2.73e-2 & 2.55e1 & 2.57e1 & 1668.0 & 0.0 & 0.049 \\
+GD-AdaptiveMomentum & 1.90e1 & 3.00e0 & 1.39e1 & 2.12e1 & 920.4 & 0.0 & 0.035 \\
+Adam-Fast & 1.17e1 & 3.56e0 & 2.89e0 & 1.50e1 & 950.2 & 0.0 & 0.022 \\
+Trust Region-Conservative & 2.08e1 & 2.32e0 & 1.60e1 & 2.43e1 & 1557.3 & 0.0 & 0.012 \\
+L-BFGS & 1.93e1 & 3.27e0 & 1.20e1 & 2.43e1 & 483.9 & 0.0 & 0.012 \\
+L-BFGS-MoreThuente & 1.42e1 & 5.29e0 & 1.93e0 & 2.12e1 & 499.3 & 0.0 & 0.011 \\
+QQN-CubicQuadraticInterpolation & 2.45e1 & 5.40e0 & 9.67e-1 & 2.58e1 & 108.6 & 0.0 & 0.003 \\
+Trust Region-Precise & 2.60e1 & 1.72e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+Trust Region-Aggressive & 2.60e1 & 1.61e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+Trust Region-Adaptive & 2.60e1 & 1.74e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+Trust Region-Standard & 2.60e1 & 2.15e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

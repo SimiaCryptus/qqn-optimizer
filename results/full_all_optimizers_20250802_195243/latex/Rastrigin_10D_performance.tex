@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Rastrigin\_10D Problem}
+\label{tab:rastrigin_10d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS-Aggressive} & 1.63e2 & 1.31e1 & 1.40e2 & 1.87e2 & 3852.0 & 0.0 & 0.031 \\
+Trust Region-Conservative & 1.57e2 & 1.05e1 & 1.28e2 & 1.71e2 & 3002.0 & 0.0 & 0.021 \\
+Trust Region-Precise & 9.70e1 & 1.03e1 & 6.33e1 & 1.13e2 & 3002.0 & 0.0 & 0.021 \\
+L-BFGS-Conservative & 4.68e1 & 8.45e0 & 4.06e1 & 7.77e1 & 2037.2 & 20.0 & 0.020 \\
+Adam-AMSGrad & 4.48e1 & 4.03e0 & 4.17e1 & 5.47e1 & 718.0 & 55.0 & 0.018 \\
+Adam & 4.65e1 & 4.42e0 & 4.16e1 & 5.97e1 & 731.5 & 30.0 & 0.016 \\
+Trust Region-Adaptive & 4.39e1 & 2.92e0 & 4.16e1 & 4.98e1 & 1397.8 & 40.0 & 0.010 \\
+GD-Nesterov & 4.50e1 & 4.13e0 & 4.02e1 & 5.49e1 & 249.0 & 25.0 & 0.008 \\
+Adam-WeightDecay & 4.52e1 & 3.97e0 & 4.15e1 & 5.48e1 & 253.8 & 35.0 & 0.006 \\
+L-BFGS-MoreThuente & 4.11e1 & 7.33e0 & 2.56e1 & 6.07e1 & 291.6 & 65.0 & 0.006 \\
+QQN-Bisection-1 & 5.11e1 & 1.61e1 & 3.88e1 & 8.86e1 & 216.4 & 45.0 & 0.005 \\
+QQN-GoldenSection & 4.53e1 & 1.18e1 & 2.11e1 & 7.26e1 & 275.4 & 50.0 & 0.005 \\
+QQN-CubicQuadraticInterpolation & 4.52e1 & 7.84e0 & 3.21e1 & 5.87e1 & 102.5 & 60.0 & 0.003 \\
+QQN-StrongWolfe & 5.16e1 & 1.59e1 & 3.24e1 & 9.55e1 & 118.5 & 40.0 & 0.003 \\
+Adam-Robust & 4.44e1 & 4.07e0 & 4.13e1 & 5.48e1 & 127.9 & 30.0 & 0.003 \\
+Trust Region-Standard & 4.59e1 & 6.59e0 & 4.10e1 & 7.11e1 & 346.6 & 25.0 & 0.002 \\
+GD-WeightDecay & 4.39e1 & 3.41e0 & 3.60e1 & 4.98e1 & 61.3 & 45.0 & 0.002 \\
+Adam-Fast & 4.51e1 & 4.26e0 & 3.98e1 & 5.44e1 & 71.9 & 30.0 & 0.002 \\
+L-BFGS-Limited & 4.36e1 & 4.97e0 & 3.39e1 & 5.47e1 & 122.0 & 50.0 & 0.002 \\
+L-BFGS & 1.85e2 & 3.27e1 & 1.42e2 & 2.59e2 & 102.0 & 0.0 & 0.001 \\
+QQN-Bisection-2 & 5.38e1 & 1.81e1 & 2.52e1 & 8.86e1 & 50.6 & 15.0 & 0.001 \\
+GD-Momentum & 6.15e1 & 1.25e1 & 4.06e1 & 8.46e1 & 30.6 & 10.0 & 0.001 \\
+GD-AdaptiveMomentum & 4.85e1 & 8.54e0 & 3.80e1 & 6.99e1 & 23.2 & 40.0 & 0.001 \\
+Trust Region-Aggressive & 4.36e1 & 3.69e0 & 3.87e1 & 5.26e1 & 93.5 & 45.0 & 0.001 \\
+GD & 4.47e1 & 4.34e0 & 3.89e1 & 5.49e1 & 19.4 & 35.0 & 0.001 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

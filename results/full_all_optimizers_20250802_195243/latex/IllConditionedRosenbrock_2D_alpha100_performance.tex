@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for IllConditionedRosenbrock\_2D\_alpha100 Problem}
+\label{tab:illconditionedrosenbrock_2d_alpha100}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-GoldenSection} & 1.25e-1 & 5.78e-2 & 6.99e-5 & 1.93e-1 & 4459.4 & 0.0 & 0.081 \\
+QQN-StrongWolfe & 5.46e-2 & 7.38e-2 & 9.29e-9 & 3.11e-1 & 2343.8 & 20.0 & 0.072 \\
+QQN-CubicQuadraticInterpolation & 3.48e-2 & 3.38e-2 & 4.34e-10 & 9.89e-2 & 1722.9 & 35.0 & 0.070 \\
+QQN-Bisection-1 & 4.65e-1 & 8.86e-1 & 1.58e-8 & 3.18e0 & 2369.2 & 5.0 & 0.052 \\
+Adam & 1.22e0 & 3.51e-1 & 4.86e-1 & 1.76e0 & 2502.0 & 0.0 & 0.049 \\
+L-BFGS-Conservative & 2.69e-4 & 1.04e-3 & 2.05e-9 & 4.76e-3 & 1800.6 & 80.0 & 0.030 \\
+L-BFGS-Aggressive & 3.18e1 & 2.86e1 & 4.34e0 & 1.12e2 & 3852.0 & 0.0 & 0.027 \\
+L-BFGS-MoreThuente & 1.52e-2 & 6.51e-2 & 3.79e-9 & 2.99e-1 & 1487.5 & 65.0 & 0.027 \\
+L-BFGS-Limited & 3.93e0 & 5.18e0 & 3.26e-2 & 1.96e1 & 2251.6 & 0.0 & 0.025 \\
+GD & 1.23e0 & 1.46e0 & 7.46e-1 & 6.37e0 & 854.0 & 0.0 & 0.021 \\
+Trust Region-Conservative & 2.84e1 & 2.98e1 & 1.90e-1 & 1.23e2 & 2770.7 & 0.0 & 0.017 \\
+Adam-AMSGrad & 3.83e0 & 1.33e0 & 4.66e-1 & 4.75e0 & 678.1 & 0.0 & 0.015 \\
+QQN-Bisection-2 & 5.88e-2 & 7.05e-2 & 6.64e-9 & 2.52e-1 & 479.6 & 25.0 & 0.012 \\
+Adam-Robust & 4.04e0 & 8.59e-1 & 1.90e0 & 4.73e0 & 419.2 & 0.0 & 0.009 \\
+Adam-Fast & 2.13e0 & 2.75e0 & 2.59e-5 & 8.39e0 & 313.6 & 0.0 & 0.006 \\
+Trust Region-Precise & 7.26e0 & 8.07e0 & 3.76e0 & 3.52e1 & 946.2 & 0.0 & 0.006 \\
+Adam-WeightDecay & 4.11e0 & 9.66e-1 & 1.55e-2 & 4.69e0 & 231.9 & 0.0 & 0.005 \\
+Trust Region-Adaptive & 4.12e0 & 2.07e-1 & 3.83e0 & 4.42e0 & 494.4 & 0.0 & 0.003 \\
+GD-WeightDecay & 3.65e0 & 3.07e0 & 3.75e-2 & 1.07e1 & 58.7 & 0.0 & 0.002 \\
+L-BFGS & 1.36e2 & 1.58e2 & 8.12e-1 & 5.03e2 & 121.5 & 0.0 & 0.002 \\
+GD-AdaptiveMomentum & 8.18e-1 & 1.24e0 & 4.17e-2 & 4.36e0 & 49.2 & 0.0 & 0.002 \\
+GD-Nesterov & 1.49e0 & 1.88e0 & 5.05e-2 & 5.63e0 & 46.1 & 0.0 & 0.001 \\
+GD-Momentum & 5.61e0 & 3.44e0 & 4.79e-1 & 1.33e1 & 23.8 & 0.0 & 0.001 \\
+Trust Region-Standard & 4.18e0 & 1.83e-1 & 3.95e0 & 4.51e0 & 89.6 & 0.0 & 0.001 \\
+Trust Region-Aggressive & 4.66e0 & 3.99e-1 & 4.01e0 & 5.49e0 & 27.6 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

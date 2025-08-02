@@ -1,0 +1,174 @@
+<h1 id="convergence-analysis-report">Convergence Analysis Report</h1>
+<h2 id="convergence-speed-analysis">Convergence Speed Analysis</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 7%" />
+<col style="width: 32%" />
+<col style="width: 32%" />
+<col style="width: 27%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Optimizer</th>
+<th>Mean Function Evaluations to 50% Improvement</th>
+<th>Mean Function Evaluations to 90% Improvement</th>
+<th>Final Convergence Function Evaluations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>QQN-GoldenSection</td>
+<td>1.4</td>
+<td>3.9</td>
+<td>11.6</td>
+</tr>
+<tr class="even">
+<td>L-BFGS</td>
+<td>2.7</td>
+<td>3.5</td>
+<td>12.1</td>
+</tr>
+<tr class="odd">
+<td>L-BFGS-Aggressive</td>
+<td>1.3</td>
+<td>3.4</td>
+<td>14.2</td>
+</tr>
+<tr class="even">
+<td>QQN-Bisection-1</td>
+<td>1.4</td>
+<td>4.4</td>
+<td>15.7</td>
+</tr>
+<tr class="odd">
+<td>QQN-Bisection-2</td>
+<td>1.9</td>
+<td>5.7</td>
+<td>14.5</td>
+</tr>
+<tr class="even">
+<td>QQN-StrongWolfe</td>
+<td>1.7</td>
+<td>4.2</td>
+<td>19.1</td>
+</tr>
+<tr class="odd">
+<td>QQN-CubicQuadraticInterpolation</td>
+<td>2.2</td>
+<td>5.6</td>
+<td>23.7</td>
+</tr>
+<tr class="even">
+<td>L-BFGS-MoreThuente</td>
+<td>3.4</td>
+<td>6.9</td>
+<td>30.0</td>
+</tr>
+<tr class="odd">
+<td>L-BFGS-Limited</td>
+<td>4.4</td>
+<td>8.5</td>
+<td>44.3</td>
+</tr>
+<tr class="even">
+<td>GD-AdaptiveMomentum</td>
+<td>11.6</td>
+<td>19.1</td>
+<td>24.4</td>
+</tr>
+<tr class="odd">
+<td>GD-Momentum</td>
+<td>10.3</td>
+<td>20.8</td>
+<td>37.6</td>
+</tr>
+<tr class="even">
+<td>L-BFGS-Conservative</td>
+<td>7.7</td>
+<td>19.2</td>
+<td>56.3</td>
+</tr>
+<tr class="odd">
+<td>Adam-Fast</td>
+<td>15.9</td>
+<td>27.4</td>
+<td>47.0</td>
+</tr>
+<tr class="even">
+<td>GD-Nesterov</td>
+<td>22.2</td>
+<td>31.3</td>
+<td>49.9</td>
+</tr>
+<tr class="odd">
+<td>Adam-Robust</td>
+<td>13.5</td>
+<td>32.0</td>
+<td>82.1</td>
+</tr>
+<tr class="even">
+<td>Trust Region-Aggressive</td>
+<td>45.3</td>
+<td>81.8</td>
+<td>91.0</td>
+</tr>
+<tr class="odd">
+<td>GD-WeightDecay</td>
+<td>12.6</td>
+<td>29.7</td>
+<td>292.4</td>
+</tr>
+<tr class="even">
+<td>GD</td>
+<td>26.1</td>
+<td>71.6</td>
+<td>257.5</td>
+</tr>
+<tr class="odd">
+<td>Trust Region-Standard</td>
+<td>77.6</td>
+<td>139.8</td>
+<td>155.5</td>
+</tr>
+<tr class="even">
+<td>Trust Region-Precise</td>
+<td>127.3</td>
+<td>229.0</td>
+<td>255.4</td>
+</tr>
+<tr class="odd">
+<td>Trust Region-Adaptive</td>
+<td>198.2</td>
+<td>356.7</td>
+<td>396.8</td>
+</tr>
+<tr class="even">
+<td>Trust Region-Conservative</td>
+<td>209.6</td>
+<td>377.4</td>
+<td>419.8</td>
+</tr>
+<tr class="odd">
+<td>Adam-AMSGrad</td>
+<td>138.2</td>
+<td>319.8</td>
+<td>578.7</td>
+</tr>
+<tr class="even">
+<td>Adam-WeightDecay</td>
+<td>127.7</td>
+<td>287.1</td>
+<td>654.1</td>
+</tr>
+<tr class="odd">
+<td>Adam</td>
+<td>164.7</td>
+<td>373.4</td>
+<td>708.3</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Purpose:</strong> Compares convergence rates for different
+optimizers based on total function evaluations (function + gradient
+evaluations). Sorted by fastest overall convergence (weighted
+average).</p>

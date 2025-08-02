@@ -1,0 +1,43 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Barrier\_2D\_mu0.1 Problem}
+\label{tab:barrier_2d_mu0.1}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{Adam-Robust} & 4.09e-1 & 7.17e-3 & 4.00e-1 & 4.27e-1 & 2502.0 & 0.0 & 0.056 \\
+Adam-AMSGrad & 4.13e-1 & 1.06e-2 & 4.01e-1 & 4.31e-1 & 2502.0 & 0.0 & 0.056 \\
+Adam & 4.00e-1 & 1.38e-4 & 4.00e-1 & 4.00e-1 & 2502.0 & 0.0 & 0.051 \\
+Adam-WeightDecay & 4.00e-1 & 2.27e-9 & 4.00e-1 & 4.00e-1 & 1498.4 & 0.0 & 0.032 \\
+L-BFGS-Conservative & 4.00e-1 & 5.47e-8 & 4.00e-1 & 4.00e-1 & 880.4 & 0.0 & 0.023 \\
+GD & 4.00e-1 & 2.64e-11 & 4.00e-1 & 4.00e-1 & 292.1 & 0.0 & 0.007 \\
+Trust Region-Conservative & 4.61e-1 & 7.55e-2 & 4.00e-1 & 6.13e-1 & 494.1 & 0.0 & 0.003 \\
+L-BFGS-Limited & 4.00e-1 & 2.73e-3 & 4.00e-1 & 4.12e-1 & 140.3 & 0.0 & 0.003 \\
+GD-WeightDecay & 4.00e-1 & 6.36e-6 & 4.00e-1 & 4.00e-1 & 49.0 & 0.0 & 0.002 \\
+Trust Region-Precise & 4.55e-1 & 1.16e-1 & 4.00e-1 & 8.14e-1 & 96.7 & 0.0 & 0.001 \\
+Adam-Fast & 5.15e-1 & 2.22e-2 & 4.74e-1 & 5.54e-1 & 31.4 & 0.0 & 0.001 \\
+GD-Nesterov & 5.03e-1 & 1.17e-2 & 4.85e-1 & 5.26e-1 & 20.4 & 0.0 & 0.001 \\
+GD-Momentum & 5.05e-1 & 2.44e-2 & 4.82e-1 & 5.80e-1 & 20.9 & 0.0 & 0.001 \\
+Trust Region-Adaptive & 4.54e-1 & 9.24e-2 & 4.00e-1 & 7.59e-1 & 24.1 & 0.0 & 0.000 \\
+Trust Region-Standard & 7.17e-1 & 4.33e-1 & 4.00e-1 & 1.64e0 & 10.2 & 0.0 & 0.000 \\
+GD-AdaptiveMomentum & 4.65e-1 & 4.95e-3 & 4.60e-1 & 4.70e-1 & 1.6 & 0.0 & 0.000 \\
+Trust Region-Aggressive & 2.25e0 & 2.02e0 & 5.85e-1 & 5.05e0 & 3.4 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

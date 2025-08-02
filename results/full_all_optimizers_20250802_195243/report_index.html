@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQN Benchmark Report Index</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1, h2 { color: #333; }
+        .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+        .report-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; background: #f9f9f9; }
+        .report-card h3 { margin-top: 0; color: #2c5aa0; }
+        .format-links { margin: 10px 0; }
+        .format-links a { margin-right: 10px; padding: 5px 10px; background: #e7f3ff; text-decoration: none; border-radius: 4px; }
+        .format-links a:hover { background: #d0e7ff; }
+        .stats { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .legacy-section { background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>QQN Benchmark Report Index</h1>
+    <p>Generated on: 2025-08-02 20:44:03 UTC</p><div class="stats">
+    <h2>Benchmark Summary</h2>
+    <ul>
+        <li><strong>Total Problems:</strong> 62</li>
+        <li><strong>Total Optimizers:</strong> 25</li>
+        <li><strong>Total Runs:</strong> 31000</li>
+        <li><strong>Available Formats:</strong> Html, Latex, Markdown, Csv</li>
+    </ul>
+</div>
+<h2>Unified Reports</h2>
+<p>Modern, standardized reports with consistent formatting across all output types.</p>
+<div class="report-grid">
+    <div class="report-card">
+        <h3>Convergence Analysis</h3>
+        <p>Analyzes convergence speed and patterns across optimizers, showing mean iterations to reach improvement milestones</p>
+        <div class="format-links">
+            <a href="unified_reports/html/convergence_analysis.html">Html</a>
+            <a href="unified_reports/latex/convergence_analysis.tex">Latex</a>
+            <a href="unified_reports/markdown/convergence_analysis.md">Markdown</a>
+            <a href="unified_reports/csv/convergence_analysis.csv">Csv</a>
+        </div>
+    </div>
+    <div class="report-card">
+        <h3>Efficiency Matrix</h3>
+        <p>Algorithm efficiency matrix showing mean function evaluations for successful runs across problem families</p>
+        <div class="format-links">
+            <a href="unified_reports/html/efficiency_matrix.html">Html</a>
+            <a href="unified_reports/latex/efficiency_matrix.tex">Latex</a>
+            <a href="unified_reports/markdown/efficiency_matrix.md">Markdown</a>
+            <a href="unified_reports/csv/efficiency_matrix.csv">Csv</a>
+        </div>
+    </div>
+    <div class="report-card">
+        <h3>Success Rate Heatmap</h3>
+        <p>Color-coded heatmap showing success rates across optimizer-problem combinations</p>
+        <div class="format-links">
+            <a href="unified_reports/html/success_rate_heatmap.html">Html</a>
+            <a href="unified_reports/latex/success_rate_heatmap.tex">Latex</a>
+            <a href="unified_reports/markdown/success_rate_heatmap.md">Markdown</a>
+            <a href="unified_reports/csv/success_rate_heatmap.csv">Csv</a>
+        </div>
+    </div>
+    <div class="report-card">
+        <h3>Performance Table</h3>
+        <p>Detailed performance table showing metrics for each optimizer-problem combination</p>
+        <div class="format-links">
+            <a href="unified_reports/html/performance_table.html">Html</a>
+            <a href="unified_reports/latex/performance_table.tex">Latex</a>
+            <a href="unified_reports/markdown/performance_table.md">Markdown</a>
+            <a href="unified_reports/csv/performance_table.csv">Csv</a>
+        </div>
+    </div>
+    <div class="report-card">
+        <h3>Summary Statistics</h3>
+        <p>Summary statistics showing average performance metrics grouped by problem family and optimizer</p>
+        <div class="format-links">
+            <a href="unified_reports/html/summary_statistics.html">Html</a>
+            <a href="unified_reports/latex/summary_statistics.tex">Latex</a>
+            <a href="unified_reports/markdown/summary_statistics.md">Markdown</a>
+            <a href="unified_reports/csv/summary_statistics.csv">Csv</a>
+        </div>
+    </div>
+    <div class="report-card">
+        <h3>Family vs Family</h3>
+        <p>Comparison matrix showing how different optimizer families perform across different problem families</p>
+        <div class="format-links">
+            <a href="unified_reports/html/family_vs_family.html">Html</a>
+            <a href="unified_reports/latex/family_vs_family.tex">Latex</a>
+            <a href="unified_reports/markdown/family_vs_family.md">Markdown</a>
+            <a href="unified_reports/csv/family_vs_family.csv">Csv</a>
+        </div>
+    </div>
+</div><div class="legacy-section">
+    <h2>Legacy Reports</h2>
+    <p>Traditional report formats for backward compatibility.</p>
+    <ul>
+        <li><a href="benchmark_report.md">Main Benchmark Report (Markdown)</a></li>
+        <li><a href="latex/">LaTeX Tables Directory</a></li>
+        <li><a href="data/">Raw Data (CSV)</a></li>
+        <li><a href="reports/">Detailed Problem Reports</a></li>
+    </ul>
+</div>
+<footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
+    <p>Generated by QQN Optimizer Benchmark Suite</p>
+</footer>
+</body>
+</html>
