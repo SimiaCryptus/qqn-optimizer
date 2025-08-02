@@ -480,7 +480,7 @@ Our benchmarking framework represents a significant methodological advance in op
 
 2. **Reproducibility Infrastructure**: Fixed seeds, deterministic algorithms, and automated report generation eliminate common sources of irreproducibility in optimization research. All results can be regenerated with a single command.
 
-3. **Diverse Problem Suite**: The 74-problem benchmark suite covers a wide range of optimization challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned problems, and constrained optimization scenarios.
+3. **Diverse Problem Suite**: The 62-problem benchmark suite covers a wide range of optimization challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned problems, and constrained optimization scenarios.
 
 4. **Multi-Format Reporting**: The system generates:
    * **Markdown reports** with embedded visualizations for web viewing

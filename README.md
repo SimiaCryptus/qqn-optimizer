@@ -38,7 +38,7 @@ The QQN Optimizer introduces a novel optimization algorithm that combines gradie
 
 ### Comprehensive Benchmarking
 * **62 Benchmark Problems**: Covering convex, non-convex, multimodal, and ML problems
-* **21 Optimizer Variants**: QQN, L-BFGS, Trust Region, Gradient Descent, and Adam variants
+* **25 Optimizer Variants**: QQN, L-BFGS, Trust Region, Gradient Descent, and Adam variants
 * **Statistical Rigor**: Automated statistical testing with Welch's t-test and effect size analysis
 * **Reproducible Results**: Fixed seeds and deterministic algorithms ensure reproducibility
 
@@ -60,6 +60,7 @@ git clone https://github.com/SimiaCryptus/qqn-optimizer.git
 cd qqn-optimizer
 cargo build --release
 ```
+
 ### OneDNN Installation
 For enhanced performance with neural network problems, you can install Intel OneDNN:
 ```bash
@@ -70,7 +71,6 @@ For enhanced performance with neural network problems, you can install Intel One
 # Then build with OneDNN support
 cargo build --release --features onednn
 ```
-
 
 ### Using Docker
 ```bash
