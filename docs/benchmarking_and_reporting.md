@@ -143,24 +143,6 @@ run_benchmark(
 - Time-based termination
 - Automatic result validation
 
-#### Championship Mode
-```rust
-run_championship_benchmark(
-    report_path_prefix: &str,
-    max_evals: usize,
-    num_runs: usize,
-    time_limit: Duration,
-    problems: Vec<Arc<dyn OptimizationProblem>>,
-    championship_config: HashMap<String, Vec<String>>,
-    all_optimizers: Vec<(String, Arc<dyn Optimizer>)>,
-)
-```
-
-**Features:**
-- Problem-specific optimizer selection
-- Focused comparison on best performers
-- Reduced computational overhead
-
 ### 2. Problem Classification
 
 Problems are automatically classified into families:
