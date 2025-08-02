@@ -122,30 +122,6 @@ impl OptimizationTrace {
         }
     }
 
-    pub fn check_convergence_with_optimizer(
-        &mut self,
-        iteration: usize,
-        function_value: f64,
-        _optimizer: &dyn Optimizer,
-        parameters: &[f64],
-        gradient: &[f64],
-        step_size: f64,
-        timestamp: Duration,
-        total_function_evaluations: usize,
-        total_gradient_evaluations: usize,
-    ) {
-        self.iterations.push(IterationData {
-            iteration,
-            function_value,
-            gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
-            step_size,
-            parameters: parameters.to_vec(),
-            timestamp: timestamp.into(),
-            total_function_evaluations,
-            total_gradient_evaluations,
-        });
-    }
-
     pub fn final_value(&self) -> Option<f64> {
         if self.iterations.is_empty() {
             None
@@ -553,17 +529,19 @@ impl BenchmarkRunner {
         };
         *gradient_evaluations += 1;
         // Record initial state (iteration 0)
-        trace.check_convergence_with_optimizer(
-            0,
-            initial_f_val,
-            optimizer,
-            input_floats,
-            &initial_gradient,
-            0.0, // No step size for initial evaluation
-            start_time.elapsed(),
-            *function_evaluations,
-            *gradient_evaluations,
-        );
+        let timestamp = start_time.elapsed();
+        let total_function_evaluations = *function_evaluations;
+        let total_gradient_evaluations = *gradient_evaluations;
+        trace.iterations.push(IterationData {
+            iteration: 0,
+            function_value: initial_f_val,
+            gradient_norm: initial_gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+            step_size: 0.0,
+            parameters: input_floats.to_vec(),
+            timestamp: timestamp.into(),
+            total_function_evaluations,
+            total_gradient_evaluations,
+        });
         let mut best_f_val = initial_f_val;
 
         while *iteration < self.config.max_iterations {
@@ -668,17 +646,16 @@ impl BenchmarkRunner {
                     if f_val < optimal_value {
                         info!("Converged by function tolerance at iteration {iteration}");
                         // Record final iteration data before returning
-                        trace.check_convergence_with_optimizer(
-                            *iteration,
-                            f_val,
-                            optimizer,
-                            input_floats,
-                            &gradient,
-                            0.0,
-                            start_time.elapsed(),
-                            *function_evaluations,
-                            *gradient_evaluations,
-                        );
+                        trace.iterations.push(IterationData {
+                            iteration: *iteration,
+                            function_value: f_val,
+                            gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                            step_size: 0.0,
+                            parameters: input_floats.to_vec(),
+                            timestamp: start_time.elapsed().into(),
+                            total_function_evaluations: *function_evaluations,
+                            total_gradient_evaluations: *gradient_evaluations,
+                        });
                         return Ok(ConvergenceReason::FunctionTolerance);
                     }
                 }
@@ -707,17 +684,21 @@ impl BenchmarkRunner {
                     self.config.maximum_function_calls
                 );
                 // Record final iteration data before returning
-                trace.check_convergence_with_optimizer(
-                    *iteration,
-                    f_val,
-                    optimizer,
-                    input_floats,
-                    &gradient,
-                    step_result.step_size,
-                    start_time.elapsed(),
-                    *function_evaluations,
-                    *gradient_evaluations,
-                );
+                let iteration1 = *iteration;
+                let step_size = step_result.step_size;
+                let timestamp = start_time.elapsed();
+                let total_function_evaluations = *function_evaluations;
+                let total_gradient_evaluations = *gradient_evaluations;
+                trace.iterations.push(IterationData {
+                    iteration: iteration1,
+                    function_value: f_val,
+                    gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                    step_size,
+                    parameters: input_floats.to_vec(),
+                    timestamp: timestamp.into(),
+                    total_function_evaluations,
+                    total_gradient_evaluations,
+                });
                 return Ok(ConvergenceReason::MaxFunctionEvaluations);
             }
 
@@ -729,17 +710,21 @@ impl BenchmarkRunner {
                     iteration, step_result.step_size
                 );
                 // Record final iteration data before returning
-                trace.check_convergence_with_optimizer(
-                    *iteration - 1, // Use previous iteration number since we already incremented
-                    f_val,
-                    optimizer,
-                    input_floats,
-                    &gradient,
-                    step_result.step_size,
-                    start_time.elapsed(),
-                    *function_evaluations,
-                    *gradient_evaluations,
-                );
+                let iteration1 = *iteration - 1;
+                let step_size = step_result.step_size;
+                let timestamp = start_time.elapsed();
+                let total_function_evaluations = *function_evaluations;
+                let total_gradient_evaluations = *gradient_evaluations;
+                trace.iterations.push(IterationData {
+                    iteration: iteration1,
+                    function_value: f_val,
+                    gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                    step_size,
+                    parameters: input_floats.to_vec(),
+                    timestamp: timestamp.into(),
+                    total_function_evaluations,
+                    total_gradient_evaluations,
+                });
                 return Ok(ConvergenceReason::GradientTolerance);
             }
 
@@ -769,17 +754,21 @@ impl BenchmarkRunner {
             }
 
             // Record iteration data only after successful step
-            trace.check_convergence_with_optimizer(
-                *iteration - 1, // Use previous iteration number since we already incremented
-                f_val,
-                optimizer,
-                input_floats,
-                &gradient,
-                step_result.step_size,
-                start_time.elapsed(),
-                *function_evaluations,
-                *gradient_evaluations,
-            );
+            let iteration1 = *iteration - 1;
+            let step_size = step_result.step_size;
+            let timestamp = start_time.elapsed();
+            let total_function_evaluations = *function_evaluations;
+            let total_gradient_evaluations = *gradient_evaluations;
+            trace.iterations.push(IterationData {
+                iteration: iteration1,
+                function_value: f_val,
+                gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                step_size,
+                parameters: input_floats.to_vec(),
+                timestamp: timestamp.into(),
+                total_function_evaluations,
+                total_gradient_evaluations,
+            });
 
             // Check for numerical errors
             if input_floats.iter().any(|&xi| !xi.is_finite()) {

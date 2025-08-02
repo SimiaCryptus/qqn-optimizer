@@ -14,6 +14,7 @@ use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems
 use tokio::task::LocalSet;
 
 // #[tokio::test]
+#[allow(dead_code)]
 async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     // init_logging(false)?;
     // Enable no threshold mode for this test
@@ -53,27 +54,19 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     disable_no_threshold_mode();
-
     LocalSet::new().run_until(async move {
-        let prefix = &"results/full_";
-        let problems = all_problems();
-        let max_cpu = Some(8);
-        let time_limit = Duration::from_secs(600);
         run_benchmark(
-            &format!("{prefix}all_optimizers_"),
-            1000,
-            10,
-            time_limit,
-            max_cpu,
-            problems.clone(),
+            &"results/full_all_optimizers_",
+            5000,
+            20,
+            Duration::from_secs(600),
+            Some(8),
+            all_problems().clone(),
             all_optimizers(),
             2e-1,
         ).await
     }).await?;
-
-    // Explicitly flush any pending async operations
-    tokio::task::yield_now().await;
-
+    tokio::task::yield_now().await; // Explicitly flush any pending async operations
     Ok(())
 }
 
