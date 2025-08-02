@@ -22,8 +22,8 @@ The `Report` trait defines the interface that all reports must implement:
 pub trait Report {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
-    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String>;
-    fn export_to_file(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig, output_path: &Path) -> Result<()>;
+    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> Result<String>;
+    fn export_to_file(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig, output_path: &Path) -> Result<()>;
     fn validate_data(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<()>;
     fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata;
     fn supported_formats(&self) -> Vec<ReportFormat>;
@@ -52,7 +52,7 @@ let reports = ReportCollection::new()
     .add_report(SummaryStatisticsReport::new())
     .add_report(PerformanceTableReport::new());
 
-let metadata = reports.generate_all(&data, &config, &output_dir)?;
+let metadata = reports.generate_all(&data, &_config, &output_dir)?;
 ```
 
 ## Available Report Types
@@ -82,12 +82,12 @@ use qqn_optimizer::experiment_runner::{Report, ReportConfig, ReportFormat};
 use qqn_optimizer::experiment_runner::reports::unified_summary_statistics::SummaryStatisticsReport;
 
 let report = SummaryStatisticsReport::new();
-let config = ReportConfig {
+let _config = ReportConfig {
     format: ReportFormat::Html,
     ..Default::default()
 };
 
-let content = report.generate_content(&benchmark_data, &config)?;
+let content = report.generate_content(&benchmark_data, &_config)?;
 ```
 
 ### Batch Report Generation
@@ -100,14 +100,14 @@ let reports = ReportCollection::new()
     .add_report(PerformanceTableReport::new())
     .add_report(FamilyVsFamilyReport::new());
 
-let config = ReportConfig {
+let _config = ReportConfig {
     format: ReportFormat::Html,
     include_detailed_stats: true,
     include_plots: false,
     ..Default::default()
 };
 
-let metadata_list = reports.generate_all(&data, &config, &output_dir)?;
+let metadata_list = reports.generate_all(&data, &_config, &output_dir)?;
 ```
 
 ### Multiple Format Generation
@@ -117,8 +117,8 @@ let report = SummaryStatisticsReport::new();
 let formats = [ReportFormat::Html, ReportFormat::Markdown, ReportFormat::Csv];
 
 for format in formats {
-    let config = ReportConfig { format, ..Default::default() };
-    let content = report.generate_content(&data, &config)?;
+    let _config = ReportConfig { format, ..Default::default() };
+    let content = report.generate_content(&data, &_config)?;
     // Save content to appropriate file...
 }
 ```
@@ -186,11 +186,11 @@ impl Report for MyCustomReport {
         "Description of what this report provides"
     }
 
-    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], config: &ReportConfig) -> Result<String> {
+    fn generate_content(&self, data: &[(&ProblemSpec, BenchmarkResults)], _config: &ReportConfig) -> Result<String> {
         // Implementation for different formats
-        match config.format {
-            ReportFormat::Html => self.generate_html(data, config),
-            ReportFormat::Latex => self.generate_latex(data, config),
+        match _config.format {
+            ReportFormat::Html => self.generate_html(data, _config),
+            ReportFormat::Latex => self.generate_latex(data, _config),
             // ... etc
         }
     }

@@ -226,15 +226,6 @@ impl ExperimentRunner {
         Ok(())
     }
 
-    async fn run_problem_benchmarks(
-        &self,
-        problem: &ProblemSpec,
-        optimizers: &[(String, Arc<dyn Optimizer>)],
-        rng: &mut StdRng,
-    ) -> anyhow::Result<BenchmarkResults> {
-        let runner = BenchmarkRunner::new(self.config.clone());
-        Self::run_problem_benchmarks_static(problem, optimizers, &runner, rng).await
-    }
     /// Static version of run_problem_benchmarks for use in parallel tasks
     async fn run_problem_benchmarks_static(
         problem: &ProblemSpec,
@@ -293,7 +284,7 @@ impl ExperimentRunner {
     /// Static version of single benchmark run for parallel execution
     async fn run_single_benchmark_static(
         problem: &ProblemSpec,
-        mut optimizer: Arc<dyn Optimizer>,
+        optimizer: Arc<dyn Optimizer>,
         run_id: usize,
         opt_name: &str,
         config: BenchmarkConfig,
@@ -353,77 +344,6 @@ impl ExperimentRunner {
         Ok(result)
     }
 
-    /// Legacy method for backward compatibility
-    async fn run_problem_benchmarks_legacy(
-        &self,
-        problem: &ProblemSpec,
-        optimizers: &[(String, Arc<dyn Optimizer>)],
-    ) -> anyhow::Result<BenchmarkResults> {
-        let runner = BenchmarkRunner::new(self.config.clone());
-        let mut results = BenchmarkResults::new(self.config.clone());
-
-        for (opt_name, ref optimizer) in optimizers.iter() {
-            for run_id in 0..self.config.num_runs {
-                let mut result = match runner
-                    .run_single_benchmark(
-                        problem,
-                        &mut optimizer.clone_box(),
-                        run_id,
-                        opt_name,
-                        new_initial_point(
-                            problem,
-                            self.config.initial_point_noise,
-                            &mut StdRng::seed_from_u64(42),
-                        ),
-                    )
-                    .await
-                {
-                    Ok(result) => result,
-                    Err(e) => {
-                        error!(
-                            "Benchmark failed for {} with {}: {}",
-                            problem.get_name(),
-                            opt_name,
-                            e
-                        );
-                        // Create a failed result instead of propagating the error
-                        let mut failed_result = SingleResult::new(opt_name.clone(), run_id);
-                        failed_result.convergence_achieved = false;
-                        failed_result.final_value = f64::INFINITY;
-                        failed_result.error_message = Some(format!("Evaluation error: {e}"));
-                        results.add_result(failed_result);
-                        continue;
-                    }
-                };
-
-                if let Some(optimal_value) = problem.problem.optimal_value() {
-                    let success_threshold = optimal_value;
-                    result.convergence_achieved &=
-                        result.best_value.is_finite() && result.best_value < success_threshold;
-                } else {
-                    result.convergence_achieved = false;
-                }
-                // Additional check for non-finite best values
-                if !result.best_value.is_finite() {
-                    warn!(
-                        "Non-finite best value for {} with {}: {}",
-                        problem.get_name(),
-                        opt_name,
-                        result.best_value
-                    );
-                    result.convergence_achieved = false;
-                    if result.error_message.is_none() {
-                        result.error_message =
-                            Some(format!("Non-finite best value: {}", result.best_value));
-                    }
-                }
-
-                results.add_result(result);
-            }
-        }
-
-        Ok(results)
-    }
 }
 
 pub async fn run_benchmark(

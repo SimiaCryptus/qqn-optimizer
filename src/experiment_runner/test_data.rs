@@ -164,11 +164,11 @@ impl OptimizationProblem for MockProblem {
         todo!()
     }
 
-    fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+    fn evaluate_f64(&self, _x: &[f64]) -> anyhow::Result<f64> {
         todo!()
     }
 
-    fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+    fn gradient_f64(&self, _x: &[f64]) -> anyhow::Result<Vec<f64>> {
         todo!()
     }
 

@@ -38,7 +38,7 @@ The main optimizer class that orchestrates the optimization process.
 
 ```rust
 pub struct QQNOptimizer {
-    config: QQNConfig,
+    _config: QQNConfig,
     state: QQNState,
     line_search: Box<dyn LineSearch>,
 }
@@ -201,13 +201,13 @@ QQNConfig::lax()
 use candle_lbfgs::{QQNOptimizer, QQNConfig};
 
 // Create optimizer with custom configuration
-let config = QQNConfig {
+let _config = QQNConfig {
     lbfgs_history: 15,
     min_lbfgs_iterations: 3,
     verbose: true,
     ..QQNConfig::default()
 };
-let mut optimizer = QQNOptimizer::new(config);
+let mut optimizer = QQNOptimizer::new(_config);
 
 // Optimize
 let mut params = initial_params();

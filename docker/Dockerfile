@@ -3,7 +3,7 @@ FROM rust:1.75 as builder
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     libfontconfig1-dev \
-    pkg-config \
+    pkg-_config \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

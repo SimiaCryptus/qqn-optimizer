@@ -176,7 +176,6 @@ pub struct MemoryInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::{Device, Tensor};
 
     #[test]
     fn test_convergence_info_builder() {

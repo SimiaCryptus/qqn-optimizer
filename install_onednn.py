@@ -33,8 +33,8 @@ def install_onednn_ubuntu():
     run_command("sudo apt-get update")
     
     # Install required dependencies
-    run_command("sudo apt-get install -y build-essential cmake git")
-    
+    run_command("sudo apt-get install -y build-essential cmake git libc6-dev build-essential clang libclang-dev")
+
     # Install Intel oneAPI (which includes OneDNN)
     commands = [
         "wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null",
@@ -98,6 +98,7 @@ def main():
             install_onednn_source()
     
     print("\nTo test the installation, run:")
+    print("source /opt/intel/oneapi/setvars.sh")
     print("cargo build --features onednn")
     print("cargo test --features onednn")
 

@@ -231,7 +231,7 @@ Typical ranges per line search:
 
 ### Factory Pattern
 ```rust
-pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch>
+pub fn create_line_search(_config: LineSearchConfig) -> Box<dyn LineSearch>
 ```
 
 Supports dynamic algorithm selection based on configuration.

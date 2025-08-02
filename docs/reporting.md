@@ -24,7 +24,7 @@ The `ReportGenerator` is a comprehensive reporting system for optimization bench
 ```rust
 pub struct ReportGenerator {
     output_dir: String,                    // Directory for output files
-    config: BenchmarkConfig,               // Benchmark configuration
+    _config: BenchmarkConfig,               // Benchmark configuration
     statistical_analysis: StatisticalAnalysis, // Statistical analysis engine
 }
 ```
@@ -96,14 +96,14 @@ pub fn get_family(problem_name: &str) -> String {
 
 ```rust
 impl ReportGenerator {
-    pub fn new(output_dir: String, config: BenchmarkConfig) -> Self
+    pub fn new(output_dir: String, _config: BenchmarkConfig) -> Self
 ```
 
 Creates a new `ReportGenerator` instance.
 
 **Parameters:**
 - `output_dir`: Directory path where all output files will be generated
-- `config`: Benchmark configuration containing run parameters
+- `_config`: Benchmark configuration containing run parameters
 
 **Returns:** New `ReportGenerator` instance
 
@@ -335,17 +335,17 @@ use crate::experiment_runner::report_generator::ReportGenerator;
 use crate::benchmarks::evaluation::BenchmarkConfig;
 
 // Create configuration
-let config = BenchmarkConfig {
+let _config = BenchmarkConfig {
     num_runs: 30,
     max_iterations: 1000,
     time_limit: Some(Duration::from_secs(300)),
-    // ... other config parameters
+    // ... other _config parameters
 };
 
 // Create report generator
 let report_generator = ReportGenerator::new(
     "output/benchmark_results".to_string(),
-    config
+    _config
 );
 
 // Generate comprehensive report
@@ -364,7 +364,7 @@ report_generator.generate_main_report(&all_results, true).await?;
 ```rust
 let custom_generator = ReportGenerator::new(
     "/path/to/custom/output".to_string(),
-    config
+    _config
 );
 ```
 

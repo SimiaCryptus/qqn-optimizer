@@ -8,10 +8,8 @@ use crate::benchmarks::evaluation::{
     BenchmarkConfig, BenchmarkResults, ConvergenceReason, DurationWrapper, OptimizationTrace,
     PerformanceMetrics, ProblemSpec, SingleResult,
 };
-use crate::experiment_runner::reports::family_vs_family_report::FamilyVsFamilyReport;
-use crate::experiment_runner::reports::unified_summary_statistics::SummaryStatisticsReport;
 use crate::experiment_runner::unified_report::{
-    Report, ReportCollection, ReportConfig, ReportFormat,
+    Report, ReportConfig, ReportFormat,
 };
 use crate::SphereFunction;
 use anyhow::Result;
@@ -342,6 +340,7 @@ impl UnifiedReportTestSuite {
 /// Integration tests for the unified reporting system
 #[cfg(test)]
 mod tests {
+    use crate::experiment_runner::{FamilyVsFamilyReport, ReportCollection, SummaryStatisticsReport};
     use super::*;
 
     #[test]

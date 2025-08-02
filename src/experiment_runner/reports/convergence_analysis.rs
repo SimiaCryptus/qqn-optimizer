@@ -371,7 +371,7 @@ impl Default for ConvergenceAnalysisReport {
 // Legacy function for backward compatibility - now uses the unified report
 
 /// Generate convergence speed table content (without document wrapper)
-#[deprecated(note = "Use ConvergenceAnalysisReport::new().generate_content() instead")]
+//#[deprecated(note = "Use ConvergenceAnalysisReport::new().generate_content() instead")]
 pub fn generate_convergence_speed_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
 ) -> anyhow::Result<String> {
@@ -383,117 +383,8 @@ pub fn generate_convergence_speed_table_content(
     };
     report.generate_content(all_results, &config)
 }
-// Keep the original implementation for backward compatibility
-fn generate_convergence_speed_table_content_legacy(
-    all_results: &[(&ProblemSpec, BenchmarkResults)],
-) -> anyhow::Result<String> {
-    // Similar logic as generate_convergence_speed_latex_table but return just the table content
-    let mut optimizer_speed_data = std::collections::HashMap::new();
-    for (_, results) in all_results {
-        for result in &results.results {
-            if result.convergence_achieved && !result.trace.iterations.is_empty() {
-                let speed_data = optimizer_speed_data
-                    .entry(result.optimizer_name.clone())
-                    .or_insert(Vec::new());
-                let initial_value = result
-                    .trace
-                    .iterations
-                    .first()
-                    .map(|iter| iter.function_value)
-                    .unwrap_or(result.final_value);
-                let final_value = result.final_value;
-                let improvement_50 = initial_value - 0.5 * (initial_value - final_value);
-                let improvement_90 = initial_value - 0.9 * (initial_value - final_value);
-                let mut iter_to_50 = None;
-                let mut iter_to_90 = None;
-                for iter_data in &result.trace.iterations {
-                    if iter_to_50.is_none() && iter_data.function_value <= improvement_50 {
-                        iter_to_50 = Some(iter_data.iteration);
-                    }
-                    if iter_to_90.is_none() && iter_data.function_value <= improvement_90 {
-                        iter_to_90 = Some(iter_data.iteration);
-                    }
-                }
-                speed_data.push((
-                    iter_to_50.unwrap_or(result.iterations),
-                    iter_to_90.unwrap_or(result.iterations),
-                    result.iterations,
-                ));
-            }
-        }
-    }
-    if optimizer_speed_data.is_empty() {
-        return Ok(String::new());
-    }
-    let mut content = String::from(
-        r#"\begin{table}[H]
-\centering
-\caption{Convergence Speed Analysis: Mean Function Evaluations to Reach Improvement Milestones}
-\label{tab:convergence_speed}
-\adjustbox{width=\textwidth,center}{
-\begin{tabular}{lrrr}
-\toprule
-\textbf{Optimizer} & \textbf{Mean Function Evals} & \textbf{Mean Function Evals} & \textbf{Final Convergence} \\
- & \textbf{to 50\% Improvement} & \textbf{to 90\% Improvement} & \textbf{Function Evals} \\
-\midrule
-"#,
-    );
-    // Same calculation and sorting logic as the standalone table
-    let mut optimizer_averages = Vec::new();
-    for (optimizer, speed_data) in optimizer_speed_data {
-        if !speed_data.is_empty() {
-            let avg_50 = speed_data
-                .iter()
-                .map(|(iter_50, _, _)| *iter_50 as f64)
-                .sum::<f64>()
-                / speed_data.len() as f64;
-            let avg_90 = speed_data
-                .iter()
-                .map(|(_, iter_90, _)| *iter_90 as f64)
-                .sum::<f64>()
-                / speed_data.len() as f64;
-            let avg_final = speed_data
-                .iter()
-                .map(|(_, _, final_iter)| *final_iter as f64)
-                .sum::<f64>()
-                / speed_data.len() as f64;
-            optimizer_averages.push((optimizer, avg_50, avg_90, avg_final));
-        }
-    }
-    optimizer_averages.sort_by(|a, b| {
-        let score_a = 0.3 * a.1 + 0.4 * a.2 + 0.3 * a.3;
-        let score_b = 0.3 * b.1 + 0.4 * b.2 + 0.3 * b.3;
-        score_a
-            .partial_cmp(&score_b)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    for (i, (optimizer, avg_50, avg_90, avg_final)) in optimizer_averages.iter().enumerate() {
-        let optimizer_style = if i == 0 {
-            format!("\\textbf{{{}}}", report_generator::escape_latex(optimizer))
-        } else if optimizer.contains("QQN") {
-            format!(
-                "\\textcolor{{green!70!black}}{{{}}}",
-                report_generator::escape_latex(optimizer)
-            )
-        } else {
-            report_generator::escape_latex(optimizer)
-        };
-        content.push_str(&format!(
-            "{optimizer_style} & {avg_50:.1} & {avg_90:.1} & {avg_final:.1} \\\\\n"
-        ));
-    }
-    content.push_str(
-        r#"\bottomrule
-\end{tabular}
-}
-\end{table}
-\textbf{Purpose:} Compares convergence rates for different optimizers based on total function evaluations (function + gradient evaluations). Sorted by fastest overall convergence (weighted average). Best performer is highlighted in bold, QQN variants in green.
-"#,
-    );
-    Ok(content)
-}
-#[deprecated(note = "Use ConvergenceAnalysisReport for unified reporting")]
 
+// #[deprecated(note = "Use ConvergenceAnalysisReport for unified reporting")]
 pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
     let successful_runs: Vec<_> = runs.iter().filter(|r| r.convergence_achieved).collect();
     let failed_runs: Vec<_> = runs.iter().filter(|r| !r.convergence_achieved).collect();
@@ -566,7 +457,7 @@ pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<S
 }
 
 /// Generate convergence speed analysis LaTeX table
-#[deprecated(note = "Use ConvergenceAnalysisReport::export_to_file() instead")]
+// #[deprecated(note = "Use ConvergenceAnalysisReport::export_to_file() instead")]
 pub fn generate_convergence_speed_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,

@@ -186,7 +186,7 @@ The `BenchmarkRunner` orchestrates the execution of optimization benchmarks:
 
 ```rust
 pub struct BenchmarkRunner {
-    config: BenchmarkConfig,
+    _config: BenchmarkConfig,
 }
 ```
 
@@ -484,7 +484,7 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Configure benchmark parameters
-    let config = BenchmarkConfig {
+    let _config = BenchmarkConfig {
         max_iterations: 10000,
         maximum_function_calls: 50000,
         min_improvement_percent: 0.01,
@@ -493,7 +493,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     // Create runner and execute benchmarks
-    let runner = BenchmarkRunner::new(config);
+    let runner = BenchmarkRunner::new(_config);
     let results = runner.run_benchmarks(problems, optimizers).await?;
 
     // Save results
@@ -510,7 +510,7 @@ use experiment_runner::ExperimentRunner;
 
 let experiment = ExperimentRunner::new(
     "results/experiment_001".to_string(),
-    config
+    _config
 );
 
 experiment.run_comparative_benchmarks(

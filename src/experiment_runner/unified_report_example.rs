@@ -10,7 +10,6 @@ use crate::experiment_runner::{
 };
 use anyhow::Result;
 use std::path::Path;
-use tempfile::TempDir;
 
 /// Example usage of the unified reporting system
 pub struct UnifiedReportingExample;
@@ -119,6 +118,7 @@ impl UnifiedReportingExample {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
     use super::*;
 
     #[test]

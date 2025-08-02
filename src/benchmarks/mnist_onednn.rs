@@ -594,7 +594,8 @@ impl MnistOneDnnNeuralNetwork {
         #[cfg(feature = "onednn")]
         {
             // Initialize OneDNN layers with proper weight initialization
-            for (i, _layer) in self.layers.iter().enumerate() {
+            let layers = self.layers.read();
+            for i in 0..layers.len() {
                 let input_size = self.layer_sizes[i];
                 let output_size = self.layer_sizes[i + 1];
 
@@ -727,8 +728,8 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
             let mut batch_loss = 0.0;
             for (pred, target) in y_pred.iter().zip(batch_y.iter()) {
                 for (p, t) in pred.iter().zip(target.iter()) {
-                    let p_clamped = p.max(&1e-10f32).min(&(1.0 - 1e-10));
-                    batch_loss += -(*t as f64) * (*p_clamped as f64).ln();
+                    let p_clamped = p.max(1e-10f32).min(1.0 - 1e-10);
+                    batch_loss += -(*t as f64) * (p_clamped as f64).ln();
                 }
             }
             batch_loss /= batch_size as f64;

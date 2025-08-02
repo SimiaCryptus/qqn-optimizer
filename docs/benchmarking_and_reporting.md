@@ -404,7 +404,7 @@ pub struct BenchmarkConfig {
 ```rust
 pub fn custom_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
-        ("MyOptimizer".to_string(), Arc::new(MyOptimizer::new(config))),
+        ("MyOptimizer".to_string(), Arc::new(MyOptimizer::new(_config))),
     ]
 }
 ```

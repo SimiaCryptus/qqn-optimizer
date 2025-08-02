@@ -39,7 +39,7 @@ Here's detailed documentation for the statistical analysis module:
 +/// let analysis = StatisticalAnalysis::new();
 +/// let report = analysis.generate_statistical_analysis(
 +///     &benchmark_results,
-+///     &config,
++///     &_config,
 +///     "output/",
 +///     true  // use optimizer families
 +/// )?;

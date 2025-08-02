@@ -67,7 +67,6 @@ impl PerformanceAnalysisReport {
     fn generate_html(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-        config: &ReportConfig,
     ) -> Result<String> {
         let mut html = String::from(
             r#"<!DOCTYPE html>
@@ -96,8 +95,8 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
-                std::collections::HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
+                HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -128,7 +127,6 @@ impl PerformanceAnalysisReport {
     fn generate_latex(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-        config: &ReportConfig,
     ) -> Result<String> {
         let mut latex = String::from(
             r#"\documentclass{article}
@@ -152,8 +150,8 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
-                std::collections::HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
+                HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -189,7 +187,6 @@ impl PerformanceAnalysisReport {
     fn generate_markdown(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-        config: &ReportConfig,
     ) -> Result<String> {
         let mut markdown = String::from("# Performance Analysis Report\n\n");
 
@@ -200,8 +197,8 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
-                std::collections::HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
+                HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -223,14 +220,13 @@ impl PerformanceAnalysisReport {
     fn generate_csv(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-        config: &ReportConfig,
     ) -> Result<String> {
         let mut csv = String::from("Problem,Optimizer,Avg_Function_Evals,Avg_Gradient_Evals,Avg_Iterations,Avg_Time_Sec,Total_Function_Evals,Total_Gradient_Evals,Total_Time_Sec,Function_Gradient_Ratio\n");
 
         for (problem_spec, results) in data {
             // Group results by optimizer
-            let mut optimizer_results: std::collections::HashMap<String, Vec<&SingleResult>> =
-                std::collections::HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
+                HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -288,10 +284,10 @@ impl Report for PerformanceAnalysisReport {
         config: &ReportConfig,
     ) -> Result<String> {
         match config.format {
-            ReportFormat::Html => self.generate_html(data, config),
-            ReportFormat::Latex => self.generate_latex(data, config),
-            ReportFormat::Markdown => self.generate_markdown(data, config),
-            ReportFormat::Csv => self.generate_csv(data, config),
+            ReportFormat::Html => self.generate_html(data),
+            ReportFormat::Latex => self.generate_latex(data),
+            ReportFormat::Markdown => self.generate_markdown(data),
+            ReportFormat::Csv => self.generate_csv(data),
         }
     }
 
@@ -303,9 +299,9 @@ impl Report for PerformanceAnalysisReport {
     ) -> Result<()> {
         let content = self.generate_content(data, config)?;
         if let Some(parent) = output_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)?;
         }
-        std::fs::write(output_path, content)?;
+        fs::write(output_path, content)?;
         Ok(())
     }
 
@@ -367,7 +363,7 @@ impl Report for PerformanceAnalysisReport {
 }
 
 // Legacy function for backward compatibility
-pub fn generate_performance_analysis(runs: &[&SingleResult]) -> anyhow::Result<String> {
+pub fn generate_performance_analysis(runs: &[&SingleResult]) -> Result<String> {
     let report = PerformanceAnalysisReport::new();
     Ok(report.generate_analysis_content(runs))
 }
@@ -456,7 +452,7 @@ impl PerformanceTableReport {
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
         _config: &ReportConfig,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String> {
         let performance_data = self.calculate_performance_data(data);
         let mut html = String::from(
             r#"<!DOCTYPE html>
@@ -548,8 +544,7 @@ impl PerformanceTableReport {
     fn generate_latex(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-        config: &ReportConfig,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String> {
         let performance_data = self.calculate_performance_data(data);
         let mut latex_content = String::from(
             r#"\documentclass{article}
@@ -645,7 +640,7 @@ impl PerformanceTableReport {
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
         _config: &ReportConfig,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String> {
         let performance_data = self.calculate_performance_data(data);
         let mut markdown = String::from("# Performance Table Report\n\n");
         markdown
@@ -685,7 +680,7 @@ impl PerformanceTableReport {
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
         _config: &ReportConfig,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String> {
         let performance_data = self.calculate_performance_data(data);
         let mut csv = String::from("Problem,Optimizer,Mean Final Value,Std Dev,Best Value,Worst Value,Mean Func Evals,Success Rate (%),Mean Time (s)\n");
         for (problem_name, perf_data) in performance_data {
@@ -729,10 +724,10 @@ impl Report for PerformanceTableReport {
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
         config: &ReportConfig,
-    ) -> anyhow::Result<String> {
+    ) -> Result<String> {
         match config.format {
             ReportFormat::Html => self.generate_html(data, config),
-            ReportFormat::Latex => self.generate_latex(data, config),
+            ReportFormat::Latex => self.generate_latex(data),
             ReportFormat::Markdown => self.generate_markdown(data, config),
             ReportFormat::Csv => self.generate_csv(data, config),
         }
@@ -742,7 +737,7 @@ impl Report for PerformanceTableReport {
         data: &[(&ProblemSpec, BenchmarkResults)],
         config: &ReportConfig,
         output_path: &Path,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let content = self.generate_content(data, config)?;
         if let Some(parent) = output_path.parent() {
             fs::create_dir_all(parent).with_context(|| {
@@ -760,7 +755,7 @@ impl Report for PerformanceTableReport {
         })?;
         Ok(())
     }
-    fn validate_data(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> anyhow::Result<()> {
+    fn validate_data(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<()> {
         if data.is_empty() {
             return Err(anyhow::anyhow!("No benchmark data provided"));
         }
@@ -803,13 +798,13 @@ impl Report for PerformanceTableReport {
 pub fn generate_main_performance_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,
-) -> anyhow::Result<()> {
+) -> Result<()> {
     let report = PerformanceTableReport::new();
     let config = ReportConfig {
         format: ReportFormat::Latex,
         ..Default::default()
     };
-    let content = report.generate_content(all_results, &config)?;
+    report.generate_content(all_results, &config)?;
 
     let mut latex_content = String::from(
         r#"\documentclass{article}
@@ -979,7 +974,7 @@ pub fn generate_main_performance_latex_table(
 /// Generate main performance table content (without document wrapper)
 pub fn generate_main_performance_table_content(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
-) -> anyhow::Result<String> {
+) -> Result<String> {
     let mut content = String::from(
         r#"\footnotesize
 \begin{longtable}{|l|l|c|c|c|c|c|c|c|}

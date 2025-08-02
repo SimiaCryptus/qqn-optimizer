@@ -9,7 +9,6 @@ use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
 use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
-use rand_distr::num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use std::cmp::max;
@@ -497,7 +496,7 @@ impl BenchmarkRunner {
         } else {
             Ok(SingleResult {
                 problem_name: problem.get_name().to_string(),
-                optimizer_name: opt_name.clone().to_string(),
+                optimizer_name: opt_name.to_string(),
                 run_id,
                 final_value,
                 best_value: if best_value.is_finite() {
@@ -1110,8 +1109,7 @@ pub fn new_initial_point(
     // Randomize initial point to ensure variability
     for xi in x.iter_mut() {
         let random_delta: f64 = rng.random();
-        let scaled_delta = (random_delta * 2.0 - 1.0) * noise;
-        *xi += (scaled_delta); // Random perturbation
+        *xi += (random_delta * 2.0 - 1.0) * noise; // Random perturbation
     }
     Ok(x)
 }

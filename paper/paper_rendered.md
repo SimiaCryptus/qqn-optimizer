@@ -393,7 +393,7 @@ comparison:
       tions
     • Gradient Descent Variants (5): Basic GD, Momentum, Nesterov acceleration, Weight Decay, and
       Adaptive Momentum
-    • Adam Variants (5): Fast, Standard Adam, AMSGrad, Weight Decay (AdamW), and Robust config-
+    • Adam Variants (5): Fast, Standard Adam, AMSGrad, Weight Decay (AdamW), and Robust _config-
       urations
 
     All implementations use consistent convergence criteria:
