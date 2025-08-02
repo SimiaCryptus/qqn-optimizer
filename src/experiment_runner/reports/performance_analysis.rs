@@ -446,7 +446,9 @@ impl PerformanceTableReport {
                 perf_data.sort_by(|a, b| {
                     use std::cmp::Ordering;
                     match b.7.total_cmp(&a.7) {
-                        Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)),
+                        Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
+                            a.3.total_cmp(&b.3)
+                        },
                         other => other,
                     }
                 });
@@ -923,7 +925,9 @@ pub fn generate_main_performance_latex_table(
             perf_data.sort_by(|a, b| {
                 use std::cmp::Ordering;
                 match b.7.total_cmp(&a.7) {
-                    Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)),
+                    Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
+                        a.3.total_cmp(&b.3)
+                    },
                     other => other,
                 }
             });
@@ -1088,7 +1092,9 @@ pub fn generate_main_performance_table_content(
             perf_data.sort_by(|a, b| {
                 use std::cmp::Ordering;
                 match b.7.total_cmp(&a.7) {
-                    Ordering::Equal => (a.5 + a.6).total_cmp(&(b.5 + b.6)),
+                    Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
+                        a.3.total_cmp(&b.3)
+                    },
                     other => other,
                 }
             });
