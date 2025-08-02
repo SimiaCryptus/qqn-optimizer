@@ -16,8 +16,14 @@
 \usepackage{adjustbox}
 \usepackage{siunitx}
 \usepackage{makecell}
+\usepackage{colortbl}
+\usepackage{rotating}
+\definecolor{bestgreen}{RGB}{0,150,0}
+\definecolor{worstred}{RGB}{200,0,0}
+
 \providecommand{\tightlist}{%
-    \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+    \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+}
 
 % Fix any Unicode issues
 \DeclareUnicodeCharacter{2212}{-}
@@ -31,11 +37,15 @@
 \date{\today}
 
 \begin{document}
+
     \maketitle
 
     \input{content.tex}
 
     \bibliographystyle{plainnat}
     \bibliography{references}
+    \newpage
+
+    \input{appendix.tex}
 
 \end{document}

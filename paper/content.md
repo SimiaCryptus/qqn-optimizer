@@ -296,7 +296,7 @@ This two-phase approach provides a complete picture: which algorithms can solve 
 The summary results are presented in a win/loss/tie table, showing how many problems each algorithm won, lost, or tied against each other:
 
 ```{=latex}
-\input{../results/full_all_optimizers_20250802_002645/latex/comparison_matrix.tex}
+{\input{../results/full_all_optimizers_20250802_125719/latex/comparison_matrix.tex}}
 ```
 
 ## Algorithm Implementations
@@ -379,10 +379,10 @@ The results on the Rosenbrock function family reveal the challenges of ill-condi
 
 The following figure demonstrates QQN's superior performance on Rosenbrock and multimodal problems:
 
-![Rosenbrock 5D Log-Convergence Plot](../results/full_all_optimizers_20250802_002645/plots/Rosenbrock_5D/log_convergence.png){width=600 height=400}
+![Rosenbrock 5D Log-Convergence Plot](../results/full_all_optimizers_20250802_125719/plots/Rosenbrock_5D/log_convergence.png){width=600 height=400}
 
 ```{=latex}
-\input{../results/full_all_optimizers_20250802_002645/latex/Rosenbrock_5D_performance.tex}
+{\input{../results/full_all_optimizers_20250802_125719/latex/Rosenbrock_5D_performance.tex}}
 ```
 
 *Most optimizers achieved 0% success on Rosenbrock_5D, highlighting the problem's difficulty.
@@ -605,9 +605,3 @@ The authors declare no competing interests.
 # Data Availability
 
 All experimental data, including raw optimization trajectories and statistical analyses, are available at [https://github.com/SimiaCryptus/qqn-optimizer/](https://github.com/SimiaCryptus/qqn-optimizer/).
-
-# Appendix A: Problem Family vs Optimizer Family Comparison Matrix
-
-```{=latex}
-\input{../results/full_all_optimizers_20250802_002645/latex/family_vs_family_matrix.tex}
-```
