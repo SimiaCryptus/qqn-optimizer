@@ -2,39 +2,63 @@
 # This file provides citation information for the QQN Optimizer software
 # See https://citation-file-format.github.io/ for format specification
 
-cff-version: 1.2.0
+cff-version: 1.0.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "QQN Optimizer: A Rust Implementation of Quadratic Quasi-Newton Optimization"
+title: "QQN: A Quadratic Hybridization of Quasi-Newton Methods for Nonlinear Optimization"
 abstract: >
-  A comprehensive Rust-based implementation of the Quadratic Quasi-Newton (QQN) 
-  optimization algorithm for academic research and publication. The framework 
-  provides complete optimization toolkit with benchmarking capabilities, designed 
-  to validate QQN theoretical contributions and enable reproducible research results.
+  We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and 
+  quasi-Newton directions through quadratic interpolation. QQN constructs a parametric 
+  path d(t) = t(1-t)(-∇f) + t²d_L-BFGS and performs univariate optimization along this 
+  path, creating an adaptive interpolation that requires no additional hyperparameters 
+  beyond those of its constituent methods. Our comprehensive evaluation across 62 
+  benchmark problems demonstrates QQN's superior robustness and practical utility with 
+  statistical dominance over L-BFGS and Adam variants.
 
 authors:
-  - family-names: "Doe"
-    given-names: "John"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
-    affiliation: "University of Research"
-    email: "john.doe@university.edu"
+  - family-names: "Charneski"
+    given-names: "Andrew"
+    affiliation: "SimiaCryptus Software"
+    orcid: "https://orcid.org/0000-0000-0000-0000"  # Add if available
 
-repository-code: "https://github.com/your-org/qqn-optimizer"
-url: "https://your-org.github.io/qqn-optimizer"
+repository-code: "https://github.com/SimiaCryptus/qqn-optimizer"
+url: "https://simiacryptus.github.io/qqn-optimizer"
 license: MIT
 version: "1.0.0"
-date-released: "2024-01-15"
+date-released: "2025-08-02"
 
 keywords:
   - optimization
   - quasi-newton
+  - quadratic-interpolation
+  - l-bfgs
+  - gradient-descent
   - numerical-methods
   - machine-learning
   - rust
   - research-software
   - benchmarking
+  - nonlinear-optimization
+  - statistical-analysis
 
 references:
+  - type: article
+    title: "QQN: A Quadratic Hybridization of Quasi-Newton Methods for Nonlinear Optimization"
+    authors:
+      - family-names: "Charneski"
+        given-names: "Andrew"
+        affiliation: "SimiaCryptus Software"
+    journal: "arXiv preprint"
+    year: 2025
+    month: 8
+    url: "https://github.com/SimiaCryptus/qqn-optimizer/"
+    abstract: >
+      We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and 
+      quasi-Newton directions through quadratic interpolation. QQN constructs a parametric 
+      path and performs univariate optimization along this path, creating an adaptive 
+      interpolation that requires no additional hyperparameters beyond those of its 
+      constituent methods.
+
   - type: article
     title: "On the limited memory BFGS method for large scale optimization"
     authors:
@@ -47,7 +71,7 @@ references:
     issue: "1-3"
     start: 503
     end: 528
-    year: 2006
+    year: 1989
     doi: "10.1007/BF01589116"
 
   - type: book
@@ -62,30 +86,48 @@ references:
     edition: "2nd"
     isbn: "978-0-387-30303-1"
 
-  - type: article
-    title: "Benchmarking derivative-free optimization algorithms"
+  - type: software
+    title: "COCO: A platform for comparing continuous optimizers in a black-box setting"
     authors:
-      - family-names: "Moré"
-        given-names: "Jorge J."
-      - family-names: "Wild"
-        given-names: "Stefan M."
-    journal: "SIAM Journal on Optimization"
-    volume: 20
-    issue: 1
-    start: 172
-    end: 191
-    year: 2009
-    doi: "10.1137/080724083"
+      - family-names: "Hansen"
+        given-names: "Nikolaus"
+      - family-names: "Auger"
+        given-names: "Anne"
+      - family-names: "Ros"
+        given-names: "Raymond"
+      - family-names: "Mersmann"
+        given-names: "Olaf"
+      - family-names: "Tušar"
+        given-names: "Tea"
+      - family-names: "Brockhoff"
+        given-names: "Dimo"
+    year: 2016
+    doi: "10.48550/arXiv.1603.08785"
 
 preferred-citation:
-  type: software
-  title: "QQN Optimizer: A Rust Implementation of Quadratic Quasi-Newton Optimization"
+  type: article
+  title: "QQN: A Quadratic Hybridization of Quasi-Newton Methods for Nonlinear Optimization"
   authors:
-    - family-names: "Doe"
-      given-names: "John"
-      orcid: "https://orcid.org/0000-0000-0000-0000"
-  version: "1.0.0"
-  date-released: "2024-01-15"
-  url: "https://github.com/your-org/qqn-optimizer"
-  repository-code: "https://github.com/your-org/qqn-optimizer"
-  license: MIT
+    - family-names: "Charneski"
+      given-names: "Andrew"
+      affiliation: "SimiaCryptus Software"
+  journal: "arXiv preprint"
+  year: 2025
+  month: 8
+  url: "https://github.com/SimiaCryptus/qqn-optimizer/"
+  repository-code: "https://github.com/SimiaCryptus/qqn-optimizer"
+  abstract: >
+    We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and 
+    quasi-Newton directions through quadratic interpolation. QQN constructs a parametric 
+    path d(t) = t(1-t)(-∇f) + t²d_L-BFGS and performs univariate optimization along this 
+    path, creating an adaptive interpolation that requires no additional hyperparameters 
+    beyond those of its constituent methods. Our comprehensive evaluation across 62 
+    benchmark problems demonstrates QQN's superior robustness and practical utility.
+  keywords:
+    - optimization
+    - quasi-Newton methods
+    - L-BFGS
+    - gradient descent
+    - quadratic interpolation
+    - benchmarking
+    - statistical analysis

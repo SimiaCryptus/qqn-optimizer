@@ -2,23 +2,25 @@
 
 [![Rust](https://github.com/SimiaCryptus/qqn-optimizer/workflows/Rust/badge.svg)](https://github.com/SimiaCryptus/qqn-optimizer/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Crates.io](https://img.shields.io/crates/v/qqn-optimizer.svg)](https://crates.io/crates/qqn-optimizer)
+[![Documentation](https://docs.rs/qqn-optimizer/badge.svg)](https://docs.rs/qqn-optimizer)
 
 A comprehensive optimization library implementing the Quadratic-Quasi-Newton (QQN) algorithm alongside a rigorous benchmarking framework for optimization algorithm evaluation.
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [The QQN Algorithm](#the-qqn-algorithm)
-- [Benchmarking Framework](#benchmarking-framework)
-- [Usage Examples](#usage-examples)
-- [Benchmark Results](#benchmark-results)
-- [API Documentation](#api-documentation)
-- [Contributing](#contributing)
-- [Academic Paper](#academic-paper)
-- [License](#license)
+* [Overview](#overview)
+* [Key Features](#key-features)
+* [Installation](#installation)
+* [Quick Start](#quick-start)
+* [The QQN Algorithm](#the-qqn-algorithm)
+* [Benchmarking Framework](#benchmarking-framework)
+* [Usage Examples](#usage-examples)
+* [Benchmark Results](#benchmark-results)
+* [API Documentation](#api-documentation)
+* [Contributing](#contributing)
+* [Academic Paper](#academic-paper)
+* [License](#license)
 
 ## Overview
 
@@ -29,28 +31,28 @@ The QQN Optimizer introduces a novel optimization algorithm that combines gradie
 ## Key Features
 
 ### Algorithm Capabilities
-- **Robust Convergence**: Guaranteed descent property regardless of L-BFGS direction quality
-- **No Additional Hyperparameters**: Combines existing methods without introducing new tuning parameters
-- **Superlinear Local Convergence**: Inherits L-BFGS convergence properties near optima
-- **Multiple Line Search Methods**: Supports Backtracking, Strong Wolfe, Golden Section, Bisection, and more
+* **Robust Convergence**: Guaranteed descent property regardless of L-BFGS direction quality
+* **No Additional Hyperparameters**: Combines existing methods without introducing new tuning parameters
+* **Superlinear Local Convergence**: Inherits L-BFGS convergence properties near optima
+* **Multiple Line Search Methods**: Supports Backtracking, Strong Wolfe, Golden Section, Bisection, and more
 
 ### Comprehensive Benchmarking
-- **62 Benchmark Problems**: Covering convex, non-convex, multimodal, and ML problems
-- **21 Optimizer Variants**: QQN, L-BFGS, Trust Region, Gradient Descent, and Adam variants
-- **Statistical Rigor**: Automated statistical testing with Welch's t-test and effect size analysis
-- **Reproducible Results**: Fixed seeds and deterministic algorithms ensure reproducibility
+* **62 Benchmark Problems**: Covering convex, non-convex, multimodal, and ML problems
+* **21 Optimizer Variants**: QQN, L-BFGS, Trust Region, Gradient Descent, and Adam variants
+* **Statistical Rigor**: Automated statistical testing with Welch's t-test and effect size analysis
+* **Reproducible Results**: Fixed seeds and deterministic algorithms ensure reproducibility
 
 ### Reporting and Analysis
-- **Multi-Format Output**: Generates Markdown, LaTeX, CSV, and HTML reports
-- **Convergence Visualization**: Automatic generation of convergence plots and performance profiles
-- **Statistical Comparison**: Win/loss/tie matrices with significance testing
-- **Performance Metrics**: Success rates, function evaluations, and convergence analysis
+* **Multi-Format Output**: Generates Markdown, LaTeX, CSV, and HTML reports
+* **Convergence Visualization**: Automatic generation of convergence plots and performance profiles
+* **Statistical Comparison**: Win/loss/tie matrices with significance testing
+* **Performance Metrics**: Success rates, function evaluations, and convergence analysis
 
 ## Installation
 
 ### Prerequisites
-- Rust 1.75 or later
-- For report generation: `pandoc` and LaTeX distribution (optional)
+* For report generation: `pandoc` and LaTeX distribution with `pdflatex` (optional)
+* For OneDNN support: Intel OneDNN library (optional, see [OneDNN Installation](#onednn-installation))
 
 ### From Source
 ```bash
@@ -58,6 +60,17 @@ git clone https://github.com/SimiaCryptus/qqn-optimizer.git
 cd qqn-optimizer
 cargo build --release
 ```
+### OneDNN Installation
+For enhanced performance with neural network problems, you can install Intel OneDNN:
+```bash
+# Ubuntu/Debian systems
+./install_onednn.py
+# Or install from source
+./install_onednn.py --source
+# Then build with OneDNN support
+cargo build --release --features onednn
+```
+
 
 ### Using Docker
 ```bash
@@ -85,6 +98,9 @@ cargo run --release -- calibration
 # Run specific problem sets
 cargo run --release -- benchmark --problems analytic
 cargo run --release -- benchmark --problems ml
+# Generate reports from existing results
+./process_results_md.sh  # Convert markdown to HTML
+./process_results_tex.sh # Convert LaTeX tables to PDF
 ```
 
 ### Using QQN in Your Code
@@ -154,15 +170,15 @@ d(t) = t(1-t)(-∇f) + t²d_LBFGS
 
 ### Key Properties
 
-- **Guaranteed Descent**: The initial tangent condition ensures descent regardless of L-BFGS quality
-- **Adaptive Interpolation**: Automatically balances first-order and second-order information
-- **Robust to Failures**: Gracefully degrades to gradient descent when L-BFGS fails
-- **No Additional Parameters**: Uses existing L-BFGS and line search parameters
+* **Guaranteed Descent**: The initial tangent condition ensures descent regardless of L-BFGS quality
+* **Adaptive Interpolation**: Automatically balances first-order and second-order information
+* **Robust to Failures**: Gracefully degrades to gradient descent when L-BFGS fails
+* **No Additional Parameters**: Uses existing L-BFGS and line search parameters
 
 ### Convergence Guarantees
 
-- **Global Convergence**: Under standard assumptions, converges to stationary points
-- **Superlinear Local Convergence**: Near optima with positive definite Hessian, achieves superlinear convergence matching L-BFGS
+* **Global Convergence**: Under standard assumptions, converges to stationary points
+* **Superlinear Local Convergence**: Near optima with positive definite Hessian, achieves superlinear convergence matching L-BFGS
 
 ## Benchmarking Framework
 
@@ -170,21 +186,21 @@ d(t) = t(1-t)(-∇f) + t²d_LBFGS
 
 The benchmark suite includes 62 carefully selected problems across five categories:
 
-- **Convex Functions** (6): Sphere, Matyas, Zakharov variants
-- **Non-Convex Unimodal** (12): Rosenbrock, Beale, Levy variants
-- **Highly Multimodal** (24): Rastrigin, Ackley, Michalewicz, StyblinskiTang
-- **ML-Convex** (8): Linear regression, logistic regression, SVM
-- **ML-Non-Convex** (9): Neural networks with varying architectures
+* **Convex Functions** (6): Sphere, Matyas, Zakharov variants
+* **Non-Convex Unimodal** (12): Rosenbrock, Beale, Levy variants
+* **Highly Multimodal** (24): Rastrigin, Ackley, Michalewicz, StyblinskiTang
+* **ML-Convex** (8): Linear regression, logistic regression, SVM
+* **ML-Non-Convex** (9): Neural networks with varying architectures
 
 ### Statistical Analysis
 
 The framework employs rigorous statistical methods:
 
-- **Multiple Runs**: 50 runs per problem-optimizer pair for statistical validity
-- **Welch's t-test**: For comparing means with unequal variances
-- **Cohen's d**: For measuring effect sizes
-- **Bonferroni Correction**: For multiple comparison adjustment
-- **Win/Loss/Tie Analysis**: Comprehensive pairwise comparisons
+* **Multiple Runs**: 50 runs per problem-optimizer pair for statistical validity
+* **Welch's t-test**: For comparing means with unequal variances
+* **Cohen's d**: For measuring effect sizes
+* **Bonferroni Correction**: For multiple comparison adjustment
+* **Win/Loss/Tie Analysis**: Comprehensive pairwise comparisons
 
 ### Evaluation Methodology
 
@@ -279,30 +295,30 @@ fn my_custom_problem() -> ProblemSpec {
 
 Based on comprehensive evaluation across 62 problems with over 31,000 optimization runs:
 
-- **QQN Dominance**: QQN variants won 36 out of 62 problems (58%)
-- **Top Performers**:
-    - QQN-Bisection-1: 8 wins
-    - QQN-StrongWolfe: 7 wins
-    - L-BFGS: 6 wins
-    - QQN-GoldenSection: 6 wins
+* **QQN Dominance**: QQN variants won 36 out of 62 problems (58%)
+* **Top Performers**:
+    * QQN-Bisection-1: 8 wins
+    * QQN-StrongWolfe: 7 wins
+    * L-BFGS: 6 wins
+    * QQN-GoldenSection: 6 wins
 
 ### Performance by Problem Type
 
 **Convex Problems**:
-- QQN-Bisection: 100% success on Sphere problems with 12-16 evaluations
-- L-BFGS: 100% success on Sphere_10D with only 15 evaluations
+* QQN-Bisection: 100% success on Sphere problems with 12-16 evaluations
+* L-BFGS: 100% success on Sphere_10D with only 15 evaluations
 
 **Non-Convex Problems**:
-- QQN-StrongWolfe: 35% success on Rosenbrock_5D (best among all)
-- QQN-GoldenSection: 100% success on Beale_2D
+* QQN-StrongWolfe: 35% success on Rosenbrock_5D (best among all)
+* QQN-GoldenSection: 100% success on Beale_2D
 
 **Multimodal Problems**:
-- QQN-StrongWolfe: 90% success on StyblinskiTang_2D
-- Adam-Fast: Best on Michalewicz functions (45-60% success)
+* QQN-StrongWolfe: 90% success on StyblinskiTang_2D
+* Adam-Fast: Best on Michalewicz functions (45-60% success)
 
 **Machine Learning Problems**:
-- Adam-Fast: Best on neural networks (32.5-60% success)
-- L-BFGS variants: 100% success on SVM problems
+* Adam-Fast: Best on neural networks (32.5-60% success)
+* L-BFGS variants: 100% success on SVM problems
 
 ### Key Insights
 
@@ -342,11 +358,11 @@ pub trait LineSearch {
 
 ### QQN Optimizer Variants
 
-- `QQNOptimizer<BacktrackingLineSearch>`: Basic backtracking line search
-- `QQNOptimizer<StrongWolfeLineSearch>`: Strong Wolfe conditions
-- `QQNOptimizer<GoldenSectionLineSearch>`: Golden section search
-- `QQNOptimizer<BisectionLineSearch>`: Bisection on derivative
-- `QQNOptimizer<MoreThuenteLineSearch>`: Moré-Thuente line search
+* `QQNOptimizer<BacktrackingLineSearch>`: Basic backtracking line search
+* `QQNOptimizer<StrongWolfeLineSearch>`: Strong Wolfe conditions
+* `QQNOptimizer<GoldenSectionLineSearch>`: Golden section search
+* `QQNOptimizer<BisectionLineSearch>`: Bisection on derivative
+* `QQNOptimizer<MoreThuenteLineSearch>`: Moré-Thuente line search
 
 ### Benchmarking API
 
@@ -380,6 +396,20 @@ cd qqn-optimizer
 cargo build
 cargo test
 ```
+### Benchmark Report Processing
+The project includes scripts to process benchmark results into various formats:
+```bash
+# Process markdown reports to HTML
+./process_results_md.sh
+# Process LaTeX table exports to PDF
+./process_results_tex.sh
+```
+These scripts automatically:
+* Convert `.md` files to `.html` with proper link updates
+* Compile `.tex` files to `.pdf` using pdflatex
+* Handle recursive directory processing
+* Provide detailed logging and error handling
+
 
 ### Running Tests
 
@@ -392,6 +422,8 @@ cargo test --test benchmark_reports
 
 # Benchmark tests (slow)
 cargo test --release calibration
+# Test with OneDNN support (if installed)
+cargo test --release --features onednn
 ```
 
 ### Code Style
@@ -405,17 +437,13 @@ cargo clippy -- -D warnings
 
 ## Academic Paper
 
-This work is documented in our academic paper:
+This work is documented in our academic paper (in preparation):
 
 **"Quadratic-Quasi-Newton Optimization: Combining Gradient and Quasi-Newton Directions Through Quadratic Interpolation"**
 
 The paper provides:
-- Theoretical analysis and convergence proofs
-- Comprehensive experimental evaluation
-- Statistical comparison with existing methods
-- Detailed algorithmic descriptions
 
-Paper and supplementary materials available at: [https://github.com/SimiaCryptus/qqn-optimizer/](https://github.com/SimiaCryptus/qqn-optimizer/)
+Paper draft and supplementary materials available in the [`papers/`](papers/) directory.
 
 ## Citing This Work
 
@@ -437,15 +465,30 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- The QQN algorithm was originally developed in 2017
-- AI language models assisted in documentation and benchmarking framework development
-- Thanks to the Rust optimization community for inspiration and feedback
+* The QQN algorithm was originally developed in 2017
+* AI language models assisted in documentation and benchmarking framework development
+* Thanks to the Rust optimization community for inspiration and feedback
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/SimiaCryptus/qqn-optimizer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/SimiaCryptus/qqn-optimizer/discussions)
-- **Documentation**: [API Docs](https://docs.rs/qqn-optimizer)
+* **Documentation**: [API Docs](https://docs.rs/qqn-optimizer) (when published)
+
+## Project Structure
+
+```
+qqn-optimizer/
+├── src/                    # Core library source code
+│   ├── optimizers/        # Optimizer implementations
+│   ├── line_search/       # Line search algorithms
+│   ├── benchmarks/        # Benchmarking framework
+│   └── problem_sets/      # Test problem definitions
+├── papers/                # Academic paper drafts
+├── results/               # Benchmark results (generated)
+├── scripts/               # Utility scripts
+├── process_results_*.sh   # Report processing scripts
+├── install_onednn.py      # OneDNN installation script
+└── Dockerfile            # Container configuration
+```
 
 ---
 
