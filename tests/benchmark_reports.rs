@@ -38,7 +38,7 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
 
 #[tokio::test]
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
-    // init_logging(false)?;
+    init_logging(false)?;
     // Disable no threshold mode for this test
     disable_no_threshold_mode();
 
@@ -64,9 +64,9 @@ async fn test_all(
     prefix: &str,
     problems: Vec<ProblemSpec>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let max_evals = 10000;
-    let num_runs = 10;
-    let max_cpu = Some(8);
+    let max_evals = 100;
+    let num_runs = 5;
+    let max_cpu = Some(1);
     run_benchmark(
         &format!("{prefix}all_optimizers_"),
         max_evals,

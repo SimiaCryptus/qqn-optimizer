@@ -340,7 +340,7 @@ impl PlottingEngine {
         }
 
         // Color palette for different optimizers
-        let colors = [
+        let colors: [&RGBColor; 24] = [
             &RED,
             &BLUE,
             &GREEN,
@@ -372,13 +372,13 @@ impl PlottingEngine {
         for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
             let color = colors[optimizer_idx % colors.len()];
             let traces_for_optimizer = &optimizer_traces[optimizer_name];
-            debug!(
-                "Drawing {} traces for optimizer: {}",
+            info!(
+                "Drawing {} traces/runs for optimizer: {}",
                 traces_for_optimizer.len(),
                 optimizer_name
             );
 
-            for trace in traces_for_optimizer {
+            for (run_idx, trace) in traces_for_optimizer.iter().enumerate() {
                 let series_data: Vec<(usize, f64)> = trace
                     .evaluation_counts
                     .iter()
@@ -390,15 +390,23 @@ impl PlottingEngine {
                     debug!("Skipping empty series for {}", optimizer_name);
                     continue;
                 }
-                debug!(
-                    "Drawing series with {} data points for {}",
+                info!(
+                    "Drawing series with {} data points for {} (run {})",
                     series_data.len(),
-                    optimizer_name
+                    optimizer_name,
+                    run_idx
                 );
+                // Use slightly different line styles for multiple runs of the same optimizer
+                let line_style = if run_idx == 0 {
+                   (*color).to_rgba()
+                } else {
+                    // Make subsequent runs more transparent based on run index
+                   (*color).mix(0.8 - (run_idx as f64 * 0.05).min(0.3)).to_rgba()
+                };
 
                 // Draw series
                 chart
-                    .draw_series(LineSeries::new(series_data.clone(), color))
+                    .draw_series(LineSeries::new(series_data.clone(), &line_style))
                     .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
                 // Add markers at regular intervals for better visibility
                 let marker_interval = series_data.len().max(1) / 20 + 1;
@@ -408,7 +416,7 @@ impl PlottingEngine {
                         series_data
                             .iter()
                             .step_by(marker_interval)
-                            .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
+                            .map(|&(x, y)| Circle::new((x, y), 3, line_style.filled())),
                     )
                     .map_err(|e| anyhow::anyhow!("Marker drawing error: {}", e))?;
             }
@@ -606,7 +614,7 @@ impl PlottingEngine {
                 optimizer_name
             );
 
-            for trace in traces_for_optimizer {
+            for (run_idx, trace) in traces_for_optimizer.iter().enumerate() {
                 let series_data: Vec<(usize, f64)> = trace
                     .evaluation_counts
                     .iter()
@@ -622,11 +630,18 @@ impl PlottingEngine {
                 // Only draw if we have valid data points
                 if !series_data.is_empty() {
                     debug!(
-                        "Drawing log series with {} data points for {}",
+                        "Drawing log series with {} data points for {} (run {})",
                         series_data.len(),
-                        optimizer_name
+                        optimizer_name,
+                        run_idx
                     );
-                    chart.draw_series(LineSeries::new(series_data.clone(), color))?;
+                    // Use slightly different line styles for multiple runs of the same optimizer
+                    let line_style = if run_idx == 0 {
+                       (*color).to_rgba()
+                    } else {
+                        // Make subsequent runs slightly more transparent
+                       (*color).mix(0.7).to_rgba()
+                    };
 
                     // Add markers for better visibility
                     let marker_interval = series_data.len().max(1) / 20 + 1;
@@ -635,7 +650,7 @@ impl PlottingEngine {
                         series_data
                             .iter()
                             .step_by(marker_interval)
-                            .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
+                            .map(|&(x, y)| Circle::new((x, y), 3, line_style.filled())),
                     )?;
                 } else {
                     debug!("Skipping empty log series for {}", optimizer_name);

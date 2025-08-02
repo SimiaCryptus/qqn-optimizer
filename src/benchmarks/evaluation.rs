@@ -331,6 +331,12 @@ impl BenchmarkRunner {
         mut optimizers: Vec<Box<dyn Optimizer>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
+        info!(
+            "Running benchmarks with {} problems, {} optimizers, {} runs each",
+            problems.len(),
+            optimizers.len(),
+            self.config.num_runs
+        );
 
         for problem in &problems {
             for optimizer in &mut optimizers {
@@ -349,6 +355,10 @@ impl BenchmarkRunner {
                 }
             }
         }
+        info!(
+            "Benchmark complete: collected {} total results",
+            results.results.len()
+        );
 
         Ok(results)
     }

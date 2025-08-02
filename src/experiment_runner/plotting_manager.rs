@@ -40,6 +40,11 @@ impl PlottingManager {
         // Generate convergence plots for each problem
         for (problem, results) in all_results {
             let problem_name = problem.get_name();
+            info!(
+                "Processing problem '{}' with {} total results",
+                problem_name,
+                results.results.len()
+            );
             let traces: Vec<ExtendedOptimizationTrace> = results
                 .results
                 .iter()
@@ -63,7 +68,7 @@ impl PlottingManager {
 
             if !traces.is_empty() {
                 info!(
-                    "Generating plots for {} with {} optimizers",
+                    "Generating plots for {} with {} total traces",
                     problem_name,
                     traces.len()
                 );

@@ -15,11 +15,16 @@
 \usepackage{multirow}
 \usepackage{adjustbox}
 \usepackage{siunitx}
+\usepackage{makecell}
+\providecommand{\tightlist}{%
+    \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 % Fix any Unicode issues
 \DeclareUnicodeCharacter{2212}{-}
 \DeclareUnicodeCharacter{2264}{\leq}
 \DeclareUnicodeCharacter{2265}{\geq}
+\definecolor{bestgreen}{RGB}{0,150,0}
+\definecolor{worstred}{RGB}{200,0,0}
 
 \title{QQN: A Quadratic Hybridization of Quasi-Newton Methods for Nonlinear Optimization}
 \author{Andrew Charneski\\SimiaCryptus Software}
