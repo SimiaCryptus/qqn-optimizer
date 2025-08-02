@@ -64,9 +64,10 @@ async fn test_all(
     prefix: &str,
     problems: Vec<ProblemSpec>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let max_evals = 100;
-    let num_runs = 5;
-    let max_cpu = Some(1);
+    let max_evals = 10000;
+    let num_runs = 50;
+    let max_cpu = Some(8);
+    let initial_point_noise = 2e-1;
     run_benchmark(
         &format!("{prefix}all_optimizers_"),
         max_evals,
@@ -82,6 +83,7 @@ async fn test_all(
             optimizers.extend(trust_region_variants());
             optimizers
         },
+        initial_point_noise,
     )
     .await
 }
@@ -119,6 +121,7 @@ async fn test(
         Some(1),
         problems.clone(),
         qqn_variants(),
+        2e-1,
     )
     .await?;
 
@@ -130,6 +133,7 @@ async fn test(
         Some(1),
         problems.clone(),
         qqn_variants(),
+        2e-1,
     )
     .await?;
 
@@ -141,6 +145,7 @@ async fn test(
         Some(1),
         problems.clone(),
         lbfgs_variants(),
+        2e-1,
     )
     .await?;
 
@@ -152,6 +157,7 @@ async fn test(
         Some(1),
         problems.clone(),
         gd_variants(),
+        2e-1,
     )
     .await?;
 
@@ -163,6 +169,7 @@ async fn test(
         Some(1),
         problems.clone(),
         adam_variants(),
+        2e-1,
     )
     .await?;
 
@@ -174,6 +181,7 @@ async fn test(
         Some(1),
         problems.clone(),
         trust_region_variants(),
+        2e-1,
     )
     .await?;
     Ok(())

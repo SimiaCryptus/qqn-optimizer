@@ -4,11 +4,12 @@
 use super::PlottingManager;
 use super::ReportGenerator;
 use crate::benchmarks::evaluation::{
-    enable_no_threshold_mode, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper,
-    ProblemSpec, SingleResult,
+    enable_no_threshold_mode, new_initial_point, BenchmarkConfig, BenchmarkResults,
+    BenchmarkRunner, DurationWrapper, ProblemSpec, SingleResult,
 };
 use crate::Optimizer;
 use log::{error, info, warn};
+use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -134,12 +135,15 @@ impl ExperimentRunner {
             let completed_count = completed_count.clone();
             let problem = problem.clone();
 
+            let mut rng = StdRng::seed_from_u64(42);
             let future = async move {
+                let mut rng = StdRng::seed_from_u64(rng.random());
                 let _permit = semaphore.acquire().await.unwrap();
                 info!("Starting benchmarks for problem: {}", problem.get_name());
                 let runner = BenchmarkRunner::new(config);
                 let result =
-                    Self::run_problem_benchmarks_static(&problem, &optimizers, &runner).await;
+                    Self::run_problem_benchmarks_static(&problem, &optimizers, &runner, &mut rng)
+                        .await;
                 let completed = completed_count.fetch_add(1, Ordering::SeqCst) + 1;
                 info!(
                     "Completed problem {} ({}/{})",
@@ -226,15 +230,17 @@ impl ExperimentRunner {
         &self,
         problem: &ProblemSpec,
         optimizers: &[(String, Arc<dyn Optimizer>)],
+        rng: &mut StdRng,
     ) -> anyhow::Result<BenchmarkResults> {
         let runner = BenchmarkRunner::new(self.config.clone());
-        Self::run_problem_benchmarks_static(problem, optimizers, &runner).await
+        Self::run_problem_benchmarks_static(problem, optimizers, &runner, rng).await
     }
     /// Static version of run_problem_benchmarks for use in parallel tasks
     async fn run_problem_benchmarks_static(
         problem: &ProblemSpec,
         optimizers: &[(String, Arc<dyn Optimizer>)],
         runner: &BenchmarkRunner,
+        rng: &mut StdRng,
     ) -> anyhow::Result<BenchmarkResults> {
         let mut results = BenchmarkResults::new(runner.config.clone());
 
@@ -251,10 +257,11 @@ impl ExperimentRunner {
                 let problem = problem.clone();
                 let config = config.clone();
 
+                let mut rng = StdRng::seed_from_u64(rng.random());
                 let future = async move {
                     let _permit = semaphore.acquire().await.unwrap();
                     Self::run_single_benchmark_static(
-                        &problem, optimizer, run_id, &opt_name, config,
+                        &problem, optimizer, run_id, &opt_name, config, &mut rng,
                     )
                     .await
                 };
@@ -290,6 +297,7 @@ impl ExperimentRunner {
         run_id: usize,
         opt_name: &str,
         config: BenchmarkConfig,
+        rng: &mut StdRng,
     ) -> anyhow::Result<SingleResult> {
         let runner = BenchmarkRunner::new(config.clone());
         let mut result = match runner
@@ -298,7 +306,7 @@ impl ExperimentRunner {
                 &mut optimizer.clone_box(),
                 run_id,
                 &opt_name.to_string(),
-                config.initial_point_noise,
+                new_initial_point(problem, config.initial_point_noise, rng),
             )
             .await
         {
@@ -362,7 +370,11 @@ impl ExperimentRunner {
                         &mut optimizer.clone_box(),
                         run_id,
                         opt_name,
-                        self.config.initial_point_noise,
+                        new_initial_point(
+                            problem,
+                            self.config.initial_point_noise,
+                            &mut StdRng::seed_from_u64(42),
+                        ),
                     )
                     .await
                 {
@@ -422,6 +434,7 @@ pub async fn run_benchmark(
     max_concurrent_tasks: Option<usize>,
     problems: Vec<ProblemSpec>,
     optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+    initial_point_noise: f64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Enable no threshold mode for benchmarks
     enable_no_threshold_mode();
@@ -439,6 +452,7 @@ pub async fn run_benchmark(
                 max_iterations: max_evals,
                 maximum_function_calls: max_evals,
                 time_limit: DurationWrapper::from(time_limit),
+                initial_point_noise,
                 num_runs,
                 ..BenchmarkConfig::default()
             },

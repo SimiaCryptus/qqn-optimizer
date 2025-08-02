@@ -7,6 +7,7 @@ use crate::utils::math::DifferentiableFunction;
 use candle_core::Result as CandleResult;
 use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
+use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
 use rand_distr::num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -347,7 +348,11 @@ impl BenchmarkRunner {
                             optimizer,
                             run_id,
                             &optimizer.name().to_string(),
-                            self.config.initial_point_noise,
+                            new_initial_point(
+                                problem,
+                                self.config.initial_point_noise,
+                                &mut StdRng::seed_from_u64(42),
+                            ),
                         )
                         .await?;
 
@@ -370,7 +375,7 @@ impl BenchmarkRunner {
         optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
         opt_name: &str,
-        noise: f64,
+        initial_point: Result<Vec<f64>, Result<SingleResult, BenchmarkError>>,
     ) -> Result<SingleResult, BenchmarkError> {
         info!(
             "Starting benchmark: {} with {} (run {})",
@@ -382,19 +387,10 @@ impl BenchmarkRunner {
         // Reset optimizer for this run
         optimizer.reset();
 
-        // Initialize parameters
-        let mut x = problem.problem.initial_point();
-        // Validate initial point
-        if x.iter().any(|&xi| !xi.is_finite()) {
-            return Err(BenchmarkError::ProblemError(
-                "Initial point contains non-finite values".to_string(),
-            ));
-        }
-        // Randomize initial point to ensure variability
-        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-        for xi in x.iter_mut() {
-            *xi += rng.random_range(-noise..noise); // Random perturbation
-        }
+        let mut point = match initial_point {
+            Ok(value) => value,
+            Err(value) => return value,
+        };
 
         let mut iteration = 0;
         let mut function_evaluations = 0;
@@ -412,7 +408,7 @@ impl BenchmarkRunner {
             self.optimization_loop(
                 problem,
                 optimizer.as_mut(),
-                &mut x,
+                &mut point,
                 &mut iteration,
                 &mut function_evaluations,
                 &mut gradient_evaluations,
@@ -451,7 +447,7 @@ impl BenchmarkRunner {
         // Final evaluation
         let final_value = problem
             .problem
-            .evaluate_f64(&x)
+            .evaluate_f64(&point)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         if !final_value.is_finite() {
             return Err(BenchmarkError::ProblemError(format!(
@@ -460,7 +456,7 @@ impl BenchmarkRunner {
         }
         let final_gradient = problem
             .problem
-            .gradient_f64(&x)
+            .gradient_f64(&point)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
         let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
         // Update trace with final counts
@@ -1096,4 +1092,26 @@ impl ProblemSpec {
             .clone()
             .unwrap_or_else(|| self.problem.name().to_string())
     }
+}
+
+pub fn new_initial_point(
+    problem: &ProblemSpec,
+    noise: f64,
+    rng: &mut StdRng,
+) -> Result<Vec<f64>, Result<SingleResult, BenchmarkError>> {
+    // Initialize parameters
+    let mut x = problem.problem.initial_point();
+    // Validate initial point
+    if x.iter().any(|&xi| !xi.is_finite()) {
+        return Err(Err(BenchmarkError::ProblemError(
+            "Initial point contains non-finite values".to_string(),
+        )));
+    }
+    // Randomize initial point to ensure variability
+    for xi in x.iter_mut() {
+        let random_delta: f64 = rng.random();
+        let scaled_delta = (random_delta * 2.0 - 1.0) * noise;
+        *xi += (scaled_delta); // Random perturbation
+    }
+    Ok(x)
 }

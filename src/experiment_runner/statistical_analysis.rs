@@ -247,7 +247,8 @@ impl StatisticalAnalysis {
                             let non_qqn_mean: f64 = non_qqn_final_values.iter().sum::<f64>()
                                 / non_qqn_final_values.len() as f64;
 
-                            let winner = if significant {
+                            // Handle infinite t-statistics from zero variance cases
+                            let winner = if significant || t_stat.is_infinite() {
                                 if qqn_mean < non_qqn_mean {
                                     win_matrix
                                         .entry((qqn_opt.clone(), non_qqn_opt.clone()))
@@ -264,9 +265,19 @@ impl StatisticalAnalysis {
                             } else {
                                 "-".to_string()
                             };
+                            // Format t_stat handling infinity
+                            let t_stat_str = if t_stat.is_infinite() {
+                                if t_stat > 0.0 {
+                                    "Inf"
+                                } else {
+                                    "-Inf"
+                                }
+                            } else {
+                                &format!("{t_stat:.6}")
+                            };
 
                             csv_data.push(format!(
-                                "{family_name},{qqn_opt},{non_qqn_opt},Final_Objective_Value,{winner},{t_stat:.6},{p_value:.6},{significant},{effect_size:.3}"
+                                "{family_name},{qqn_opt},{non_qqn_opt},Final_Objective_Value,{winner},{t_stat_str},{p_value:.6},{significant},{effect_size:.3}"
                             ));
                         }
                         Err(e) => {
@@ -291,7 +302,7 @@ impl StatisticalAnalysis {
                             let non_qqn_mean_cost: f64 =
                                 costs_non_qqn.iter().sum::<f64>() / costs_non_qqn.len() as f64;
 
-                            let winner_name = if significant {
+                            let winner_name = if significant || t_stat.is_infinite() {
                                 if qqn_mean_cost < non_qqn_mean_cost {
                                     qqn_opt
                                 } else {
@@ -300,9 +311,19 @@ impl StatisticalAnalysis {
                             } else {
                                 "-"
                             };
+                            // Format t_stat handling infinity
+                            let t_stat_str = if t_stat.is_infinite() {
+                                if t_stat > 0.0 {
+                                    "Inf"
+                                } else {
+                                    "-Inf"
+                                }
+                            } else {
+                                &format!("{t_stat:.6}")
+                            };
 
                             csv_data.push(format!(
-                                "{family_name},{qqn_opt},{non_qqn_opt},Computational_Cost,{winner_name},{t_stat:.6},{p_value:.6},{significant},{effect_size:.3}"
+                                "{family_name},{qqn_opt},{non_qqn_opt},Computational_Cost,{winner_name},{t_stat_str},{p_value:.6},{significant},{effect_size:.3}"
                             ));
                         }
                         Err(e) => {
@@ -459,7 +480,31 @@ impl StatisticalAnalysis {
             if mean_a == mean_b {
                 return Ok((0.0, 1.0));
             } else {
-                return Err(anyhow::anyhow!("Zero variance with different means"));
+                // When both samples have zero variance but different means,
+                // the difference is deterministic and significant
+                // Return a large t-statistic and very small p-value
+                let t_stat = if mean_a > mean_b {
+                    f64::INFINITY
+                } else {
+                    f64::NEG_INFINITY
+                };
+                return Ok((t_stat, 0.0));
+            }
+        }
+        // Handle case where only one sample has zero variance
+        if var_a == 0.0 || var_b == 0.0 {
+            // If one sample has zero variance and means differ,
+            // the difference is significant
+            if mean_a != mean_b {
+                let t_stat = if mean_a > mean_b {
+                    f64::INFINITY
+                } else {
+                    f64::NEG_INFINITY
+                };
+                return Ok((t_stat, 0.0));
+            } else {
+                // If means are equal, no significant difference
+                return Ok((0.0, 1.0));
             }
         }
 
@@ -617,12 +662,19 @@ impl StatisticalAnalysis {
             / (sample_a.len() - 1) as f64;
         let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f64>()
             / (sample_b.len() - 1) as f64;
+        // Handle zero variance cases
+        if var_a == 0.0 && var_b == 0.0 {
+            // If both have zero variance, effect size is either 0 or infinite
+            return if mean_a == mean_b { 0.0 } else { f64::INFINITY };
+        }
 
         // Calculate pooled standard deviation
 
         let pooled_sd = ((var_a + var_b) / 2.0).sqrt();
         if pooled_sd == 0.0 {
-            return 0.0;
+            // This can happen if one variance is 0 and the other is very small
+            // In this case, if means differ, the effect is very large
+            return if mean_a == mean_b { 0.0 } else { f64::INFINITY };
         }
 
         // Return absolute effect size
@@ -1252,6 +1304,18 @@ mod tests {
         let (t_stat, p_value) = analysis.welch_t_test(&sample_a, &sample_b).unwrap();
         assert!(t_stat < 0.0); // sample_a has lower mean
         assert!(p_value < 0.05); // Should be significant
+                                 // Test zero variance with same means
+        let sample_a = vec![5.0, 5.0, 5.0];
+        let sample_b = vec![5.0, 5.0, 5.0];
+        let (t_stat, p_value) = analysis.welch_t_test(&sample_a, &sample_b).unwrap();
+        assert_eq!(t_stat, 0.0);
+        assert_eq!(p_value, 1.0);
+        // Test zero variance with different means
+        let sample_a = vec![3.0, 3.0, 3.0];
+        let sample_b = vec![5.0, 5.0, 5.0];
+        let (t_stat, p_value) = analysis.welch_t_test(&sample_a, &sample_b).unwrap();
+        assert!(t_stat.is_infinite());
+        assert_eq!(p_value, 0.0);
     }
     #[test]
     fn test_cohens_d() {
@@ -1266,6 +1330,15 @@ mod tests {
         let sample_b = vec![10.0, 11.0, 12.0];
         let d = analysis.cohens_d(&sample_a, &sample_b);
         assert!(d > COHEN_D_LARGE);
+        // Test zero variance cases
+        let sample_a = vec![5.0, 5.0, 5.0];
+        let sample_b = vec![5.0, 5.0, 5.0];
+        let d = analysis.cohens_d(&sample_a, &sample_b);
+        assert_eq!(d, 0.0);
+        let sample_a = vec![3.0, 3.0, 3.0];
+        let sample_b = vec![5.0, 5.0, 5.0];
+        let d = analysis.cohens_d(&sample_a, &sample_b);
+        assert!(d.is_infinite());
     }
     #[test]
     fn test_interpret_cohens_d() {

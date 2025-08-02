@@ -32,7 +32,10 @@ fn has_font_support() -> bool {
         Ok::<(), Box<dyn std::error::Error>>(())
     });
 
-    let ok = result.is_ok() && result.unwrap().is_ok();
+    let ok = match result {
+        Ok(inner_result) => inner_result.is_ok(),
+        Err(_) => false,
+    };
     info!("Font support available: {}", ok);
     ok
 }
@@ -898,11 +901,13 @@ impl PlottingEngine {
             // Add problem name as title if fonts are available
             if self.has_fonts {
                 debug!("Adding title for problem: {}", problem_name);
-                let _ = subplot.draw(&Text::new(
+                if let Err(e) = subplot.draw(&Text::new(
                     problem_name.as_str(),
                     (subplot_height as i32 / 2, 10),
                     ("sans-serif", 20).into_font().color(&BLACK),
-                ));
+                )) {
+                    warn!("Failed to draw problem title: {}", e);
+                }
             }
         }
 
@@ -1130,7 +1135,7 @@ impl PlottingEngine {
             // Add optimizer names as x-axis labels if fonts are available
             if self.has_fonts {
                 debug!("Adding x-axis label for: {}", name);
-                let _ = root.draw(&Text::new(
+                if let Err(e) = root.draw(&Text::new(
                     name.as_str(),
                     (
                         ((i as f64 + 0.5) * self.width as f64 / box_data.len() as f64) as i32,
@@ -1140,7 +1145,9 @@ impl PlottingEngine {
                         .into_font()
                         .color(&BLACK)
                         .pos(Pos::new(HPos::Center, VPos::Top)),
-                ));
+                )) {
+                    warn!("Failed to draw x-axis label for {}: {}", name, e);
+                }
             }
         }
 
@@ -1155,13 +1162,20 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        if traces.is_empty() {
+            debug!("No traces to export");
+            return Ok(());
+        }
+
         debug!("Exporting convergence data for {} traces", traces.len());
         fs::create_dir_all(&filename)
             .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
         let csv_path = format!("{}/data.csv", filename);
         info!("Writing convergence CSV to: {}", csv_path);
+
         let mut csv_content = String::from("Optimizer,MaxEvaluation,ObjectiveValue\n");
         let mut total_rows = 0;
+
         for trace in traces {
             let mut trace_rows = 0;
             for (eval_count, obj_value) in trace
@@ -1184,6 +1198,11 @@ impl PlottingEngine {
                 trace_rows, trace.optimizer_name
             );
         }
+        if total_rows == 0 {
+            warn!("No valid data rows to export");
+            return Ok(());
+        }
+
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
         info!(
@@ -1198,14 +1217,21 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        if traces.is_empty() {
+            debug!("No traces to export for log convergence");
+            return Ok(());
+        }
+
         debug!("Exporting log convergence data for {} traces", traces.len());
         fs::create_dir_all(&filename)
             .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
         let csv_path = format!("{}/log_data.csv", filename);
         info!("Writing log convergence CSV to: {}", csv_path);
+
         let mut csv_content =
             String::from("Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue\n");
         let mut total_rows = 0;
+
         for trace in traces {
             let mut trace_rows = 0;
             for (eval_count, obj_value) in trace
@@ -1230,6 +1256,11 @@ impl PlottingEngine {
                 trace_rows, trace.optimizer_name
             );
         }
+        if total_rows == 0 {
+            warn!("No valid log data rows to export");
+            return Ok(());
+        }
+
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
         info!(
@@ -1369,17 +1400,24 @@ impl PlottingEngine {
             values.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let n = values.len();
             if n > 0 {
-                let q1 = values[n / 4];
-                let median = values[n / 2];
-                let q3 = values[3 * n / 4];
+                // Use proper quartile calculation
+                let q1_idx = n / 4;
+                let median_idx = n / 2;
+                let q3_idx = (3 * n) / 4;
+
+                let q1 = values[q1_idx.min(n - 1)];
+                let median = values[median_idx.min(n - 1)];
+                let q3 = values[q3_idx.min(n - 1)];
                 let min = values[0];
                 let max = values[n - 1];
+
                 // Convert all values to a comma-separated string
                 let all_values_str = values
                     .iter()
                     .map(|v| format!("{v:.6e}"))
                     .collect::<Vec<_>>()
                     .join(";"); // Use semicolon to avoid CSV parsing issues
+
                 csv_content.push_str(&format!(
                     "{optimizer},{min:.6e},{q1:.6e},{median:.6e},{q3:.6e},{max:.6e},\"{all_values_str}\"\n"
                 ));
@@ -1409,36 +1447,47 @@ impl PlottingEngine {
             debug!("Skipping legend creation - no font support");
             return Ok(());
         }
+        // Ensure we have space for the legend
+        if self.width < 250 || self.height < 100 {
+            debug!("Plot too small for legend: {}x{}", self.width, self.height);
+            return Ok(());
+        }
+
         info!("Creating legend for {} optimizers", optimizer_names.len());
-        let legend_x = self.width as i32 - 200;
+        let legend_x = (self.width as i32).saturating_sub(200).max(50);
         let legend_y = 50;
         let line_height = 20;
+        // Calculate legend height and ensure it fits
+        let legend_height = optimizer_names.len() as i32 * line_height + 20;
+        if legend_y + legend_height > self.height as i32 - 50 {
+            debug!("Legend too tall for plot area, skipping");
+            return Ok(());
+        }
+
         debug!(
             "Legend position: ({}, {}), line height: {}",
             legend_x, legend_y, line_height
         );
         // Draw legend background
-        let _ = root.draw(&Rectangle::new(
+        root.draw(&Rectangle::new(
             [
                 (legend_x - 10, legend_y - 10),
-                (
-                    legend_x + 180,
-                    legend_y + optimizer_names.len() as i32 * line_height + 10,
-                ),
+                (legend_x + 180, legend_y + legend_height - 10),
             ],
             WHITE.mix(0.8).filled(),
-        ));
+        ))
+        .unwrap();
+
         // Draw legend border
-        let _ = root.draw(&Rectangle::new(
+        root.draw(&Rectangle::new(
             [
                 (legend_x - 10, legend_y - 10),
-                (
-                    legend_x + 180,
-                    legend_y + optimizer_names.len() as i32 * line_height + 10,
-                ),
+                (legend_x + 180, legend_y + legend_height - 10),
             ],
             BLACK,
-        ));
+        ))
+        .unwrap();
+
         // Draw legend entries
         for (i, optimizer_name) in optimizer_names.iter().enumerate() {
             let color = colors[i % colors.len()];
@@ -1447,20 +1496,25 @@ impl PlottingEngine {
                 "Drawing legend entry {}: {} at position ({}, {})",
                 i, optimizer_name, legend_x, y_pos
             );
+
             // Draw color line
-            let _ = root.draw(&PathElement::new(
+            root.draw(&PathElement::new(
                 vec![(legend_x, y_pos), (legend_x + 30, y_pos)],
                 color.stroke_width(2),
-            ));
-            // Try to draw text label (ignore errors)
-            let _ = root.draw(&Text::new(
+            ))
+            .unwrap();
+
+            // Draw text label
+            if let Err(e) = root.draw(&Text::new(
                 optimizer_name.as_str(),
                 (legend_x + 40, y_pos),
                 ("sans-serif", 15)
                     .into_font()
                     .color(&BLACK)
                     .pos(Pos::new(HPos::Left, VPos::Center)),
-            ));
+            )) {
+                warn!("Failed to draw legend text for {}: {}", optimizer_name, e);
+            }
         }
         info!("Legend creation completed");
         Ok(())
