@@ -376,7 +376,6 @@ The comprehensive evaluation with balanced optimizer representation (multiple va
 
 The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization:
 
-
 The following figure demonstrates QQN's superior performance on Rosenbrock and multimodal problems:
 
 ![Rosenbrock 5D Log-Convergence Plot](../results/full_all_optimizers_20250802_125719/plots/Rosenbrock_5D/log_convergence.png){width=600 height=400}
@@ -529,7 +528,6 @@ The framework's modular design encourages extension: researchers can easily add 
 
 **Algorithm Selection Guidelines**
 
-**Primary Recommendation**: Based on the 55% win rate and statistical dominance, prioritize QQN variants for most optimization tasks:
 **Primary Recommendation**: Based on the majority win rate and statistical dominance, prioritize QQN variants for most optimization tasks:
 
 * **General optimization**: QQN-StrongWolfe provides strongest overall performance with superior weighted score
