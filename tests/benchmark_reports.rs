@@ -1,11 +1,12 @@
 use std::error::Error;
+use std::sync::Arc;
 use std::time::Duration;
 
 use qqn_optimizer::benchmarks::evaluation::{
     disable_no_threshold_mode, enable_no_threshold_mode, ProblemSpec,
 };
 use qqn_optimizer::experiment_runner::experiment_runner::run_benchmark;
-use qqn_optimizer::init_logging;
+use qqn_optimizer::{init_logging, Optimizer};
 use qqn_optimizer::optimizer_sets::{
     adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants,
 };
@@ -26,7 +27,19 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
                 problems.extend(ml_problems());
                 problems
             };
-            test_all(&"results/calibration_", problems, 1000, 10, Some(8), 2e-1, Duration::from_secs(600)).await
+            let prefix = &"results/calibration_";
+            let max_cpu = Some(8);
+            let time_limit = Duration::from_secs(600);
+            run_benchmark(
+                &format!("{prefix}all_optimizers_"),
+                1000,
+                10,
+                time_limit,
+                max_cpu,
+                problems.clone(),
+                all_optimizers(),
+                2e-1,
+            ).await
         })
         .await?;
 
@@ -41,24 +54,22 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     disable_no_threshold_mode();
 
-    let local = LocalSet::new();
-    local
-        .run_until(async move {
-            test_all(
-                &"results/full_",
-                {
-                    let mut problems = analytic_problems();
-                    problems.extend(ml_problems());
-                    problems
-                },
-                5000,
-                20,
-                Some(8),
-                2e-1,
-                Duration::from_secs(600)
-            ).await
-        })
-        .await?;
+    LocalSet::new().run_until(async move {
+        let prefix = &"results/full_";
+        let problems = all_problems();
+        let max_cpu = Some(8);
+        let time_limit = Duration::from_secs(600);
+        run_benchmark(
+            &format!("{prefix}all_optimizers_"),
+            1000,
+            10,
+            time_limit,
+            max_cpu,
+            problems.clone(),
+            all_optimizers(),
+            2e-1,
+        ).await
+    }).await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;
@@ -66,24 +77,19 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
-async fn test_all(prefix: &&str, problems: Vec<ProblemSpec>, max_evals: usize, num_runs: usize, max_cpu: Option<usize>, initial_point_noise: f64, time_limit: Duration) -> Result<(), Box<dyn Error + Send + Sync>> {
-    run_benchmark(
-        &format!("{prefix}all_optimizers_"),
-        max_evals,
-        num_runs,
-        time_limit,
-        max_cpu,
-        problems.clone(),
-        {
-            let mut optimizers = qqn_variants();
-            optimizers.extend(lbfgs_variants());
-            optimizers.extend(gd_variants());
-            optimizers.extend(adam_variants());
-            optimizers.extend(trust_region_variants());
-            optimizers
-        },
-        initial_point_noise,
-    ).await
+fn all_problems() -> Vec<ProblemSpec> {
+    let mut problems = analytic_problems();
+    problems.extend(ml_problems());
+    problems
+}
+
+fn all_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
+    let mut optimizers = qqn_variants();
+    optimizers.extend(lbfgs_variants());
+    optimizers.extend(gd_variants());
+    optimizers.extend(adam_variants());
+    optimizers.extend(trust_region_variants());
+    optimizers
 }
 
 // #[tokio::test]
@@ -93,10 +99,7 @@ async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    let local = LocalSet::new();
-    local
-        .run_until(async move { test("results/mnist_", mnist_problems(1000)).await })
-        .await?;
+    LocalSet::new().run_until(async move { test("results/mnist_", mnist_problems(1000)).await }).await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;

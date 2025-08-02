@@ -1,5 +1,5 @@
 use super::{optimizer_problems, StatisticalAnalysis};
-use crate::benchmarks::evaluation::{BenchmarkConfig, BenchmarkResults, ProblemSpec, SingleResult};
+use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
 use crate::experiment_runner::reports::comparison_matrix;
 use crate::experiment_runner::reports::comparison_matrix::{
@@ -715,13 +715,21 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
 
             perf_data.push((optimizer.clone(), success_rate, mean_final, median_best));
         }
-        
-        // Sort by success rate first, then by mean final value
-        perf_data.sort_by(|a, b| match b.1.total_cmp(&a.1) {
-            std::cmp::Ordering::Equal => a.2.total_cmp(&b.2),
-            other => other,
-        });
-        
+
+        if is_no_threshold_mode() {
+            perf_data.sort_by(|a, b| {
+                b.1.partial_cmp(&a.1)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal))
+            });
+        } else {
+            perf_data.sort_by(|a, b| {
+                b.1.partial_cmp(&a.1)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal))
+            });
+        }
+
         if !perf_data.is_empty() {
             let winner = &perf_data[0];
             let runner_up = if perf_data.len() > 1 {

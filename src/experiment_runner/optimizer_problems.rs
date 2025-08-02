@@ -379,7 +379,7 @@ pub fn generate_problem_section(
             mean_grad_evals_fail,
         ));
     }
-    
+
     if is_no_threshold_mode() {
         // In no-threshold mode, sort by best value
         perf_data.sort_by(|a, b| {
@@ -395,7 +395,7 @@ pub fn generate_problem_section(
             }
         });
     }
-    
+
     for (
         i,
         (
@@ -715,11 +715,17 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
         ));
     }
 
-    // Sort by success rate first, then by mean final value
-    perf_data.sort_by(|a, b| match b.2.total_cmp(&a.2) {
-        std::cmp::Ordering::Equal => a.1.total_cmp(&b.1),
-        other => other,
-    });
+    if is_no_threshold_mode() {
+        // In no-threshold mode, sort by mean final value
+        perf_data.sort_by(|a, b| a.1.total_cmp(&b.1));
+    } else {
+        // Sort by success rate first, then by mean final value
+        perf_data.sort_by(|a, b| match b.2.total_cmp(&a.2) {
+            std::cmp::Ordering::Equal => a.1.total_cmp(&b.1),
+            other => other,
+        });
+    }
+
 
     for (i, (optimizer, mean_final, success_rate, mean_func_evals, mean_time)) in
         perf_data.iter().enumerate()

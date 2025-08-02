@@ -1,6 +1,6 @@
 //! Performance table report implementation using the unified report trait.
 
-use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
+use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec};
 use crate::experiment_runner::unified_report::{Report, ReportConfig, ReportFormat};
 use anyhow::Result;
 use std::collections::HashMap;
@@ -146,14 +146,30 @@ impl PerformanceTableReport {
             }
 
             // Sort by success rate, then by best value
-            perf_data.sort_by(|a, b| {
-                match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {
-                    std::cmp::Ordering::Equal => {
-                        a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+            // perf_data.sort_by(|a, b| {
+            //     match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {
+            //         std::cmp::Ordering::Equal => {
+            //             a.3.partial_cmp(&b.3).unwrap_or(std::cmp::Ordering::Equal)
+            //         }
+            //         other => other,
+            //     }
+            // });
+            if is_no_threshold_mode() {
+                perf_data.sort_by(|a, b| {
+                    b.3
+                        .partial_cmp(&a.3)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
+            } else {
+                perf_data.sort_by(|a, b| {
+                    match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {
+                        std::cmp::Ordering::Equal => {
+                            a.4.partial_cmp(&b.4).unwrap_or(std::cmp::Ordering::Equal)
+                        }
+                        other => other,
                     }
-                    other => other,
-                }
-            });
+                });
+            }
 
             for (
                 i,

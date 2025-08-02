@@ -4,7 +4,7 @@
 use super::PlottingManager;
 use super::ReportGenerator;
 use crate::benchmarks::evaluation::{
-    enable_no_threshold_mode, new_initial_point, BenchmarkConfig, BenchmarkResults,
+    new_initial_point, BenchmarkConfig, BenchmarkResults,
     BenchmarkRunner, DurationWrapper, ProblemSpec, SingleResult,
 };
 use crate::Optimizer;
@@ -381,8 +381,6 @@ pub async fn run_benchmark(
     optimizers: Vec<(String, Arc<dyn Optimizer>)>,
     initial_point_noise: f64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Enable no threshold mode for benchmarks
-    enable_no_threshold_mode();
 
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{report_path_prefix}{timestamp}");
