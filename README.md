@@ -6,6 +6,8 @@
 [![Documentation](https://docs.rs/qqn-optimizer/badge.svg)](https://docs.rs/qqn-optimizer)
 
 A comprehensive optimization library implementing the Quadratic-Quasi-Newton (QQN) algorithm alongside a rigorous benchmarking framework for optimization algorithm evaluation.
+📄 **[Read the Academic Paper](papers/intro/paper.pdf)** - Complete mathematical foundation and theoretical analysis
+
 
 ## Table of Contents
 
@@ -19,7 +21,7 @@ A comprehensive optimization library implementing the Quadratic-Quasi-Newton (QQ
 * [Benchmark Results](#benchmark-results)
 * [API Documentation](#api-documentation)
 * [Contributing](#contributing)
-* [Academic Paper](#academic-paper)
+* [Academic Paper](#academic-paper) 📄 **[PDF](papers/intro/paper.pdf)**
 * [License](#license)
 
 ## Overview
@@ -436,14 +438,20 @@ cargo clippy -- -D warnings
 ```
 
 ## Academic Paper
+📄 **[Download Full Paper (PDF)](papers/intro/paper.pdf)**
+
 
 This work is documented in our academic paper (in preparation):
 
 **"Quadratic-Quasi-Newton Optimization: Combining Gradient and Quasi-Newton Directions Through Quadratic Interpolation"**
 
 The paper provides:
+* Complete mathematical derivation of the QQN algorithm
+* Theoretical convergence analysis
+* Comprehensive experimental evaluation
+* Comparison with existing optimization methods
 
-Paper draft and supplementary materials available in the [`papers/`](papers/) directory.
+Paper draft and supplementary materials available in the [`papers/`](papers/) directory. **[Direct link to paper PDF](papers/intro/paper.pdf)**.
 
 ## Citing This Work
 
