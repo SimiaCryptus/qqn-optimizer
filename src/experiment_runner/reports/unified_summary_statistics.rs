@@ -456,6 +456,6 @@ mod tests {
 
         let content = report.generate_content(&data_refs, &config).unwrap();
         assert!(content.contains("Problem_Family,Optimizer"));
-        assert!(content.contains("Convex Unimodal,TestOptimizer"));
+        assert!(content.contains("Sphere,TestOptimizer"));
     }
 }

@@ -279,60 +279,6 @@ pub fn log_tensor(tensors: &[Tensor]) {
     }
 }
 
-/// Compute the relative difference between two magnitudes
-pub fn magnitude_relative_difference(mag1: f64, mag2: f64) -> f64 {
-    let max_mag = mag1.max(mag2);
-    if max_mag < f64::EPSILON {
-        0.0
-    } else {
-        (mag1 - mag2).abs() / max_mag
-    }
-}
-
-/// Compute L2 norm of a vector
-pub fn norm_l2(values: &[f64]) -> f64 {
-    values.iter().map(|x| x * x).sum::<f64>().sqrt()
-}
-
-/// Compute L1 norm of a vector
-pub fn norm_l1(values: &[f64]) -> f64 {
-    values.iter().map(|x| x.abs()).sum()
-}
-
-/// Compute infinity norm of a vector
-pub fn norm_inf(values: &[f64]) -> f64 {
-    values.iter().map(|x| x.abs()).fold(0.0, f64::max)
-}
-
-/// Check if all values in a vector are finite
-pub fn is_finite(values: &[f64]) -> bool {
-    values.iter().all(|x| x.is_finite())
-}
-
-/// Clamp vector values to a range
-pub fn clamp_vector(values: &[f64], min_val: f64, max_val: f64) -> Vec<f64> {
-    values.iter().map(|&x| x.clamp(min_val, max_val)).collect()
-}
-
-pub fn compute_parameter_change(p0: &[Tensor], p1: &[Tensor]) -> CandleResult<f64> {
-    if p0.len() != p1.len() {
-        return Err(candle_core::Error::Msg(
-            "Parameter vectors must have the same length".to_string(),
-        ));
-    }
-
-    let mut sum_of_squares = 0.0;
-    for (tensor0, tensor1) in p0.iter().zip(p1.iter()) {
-        let diff = tensor1.sub(tensor0)?;
-        let values = diff.flatten_all()?.to_vec1::<f64>()?;
-        for &val in &values {
-            sum_of_squares += val * val;
-        }
-    }
-
-    Ok(sum_of_squares.sqrt())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,28 +332,6 @@ mod tests {
         // Test empty vectors
         let empty: Vec<f64> = vec![];
         assert_eq!(dot_product_f64(&empty, &empty)?, 0.0);
-        Ok(())
-    }
-    #[test]
-    fn test_compute_parameter_change() -> CandleResult<()> {
-        let device = Device::Cpu;
-        let p0 = vec![
-            Tensor::from_slice(&[1.0, 2.0], &[2], &device)?,
-            Tensor::from_slice(&[3.0, 4.0], &[2], &device)?,
-        ];
-        let p1 = vec![
-            Tensor::from_slice(&[2.0, 4.0], &[2], &device)?,
-            Tensor::from_slice(&[6.0, 8.0], &[2], &device)?,
-        ];
-        let change = compute_parameter_change(&p0, &p1)?;
-        // Change is sqrt((1^2 + 2^2 + 3^2 + 4^2)) = sqrt(30) ≈ 5.477
-        assert_relative_eq!(change, 30.0_f64.sqrt(), epsilon = 1e-10);
-        // Test mismatched lengths
-        let p2 = vec![Tensor::from_slice(&[1.0], &[1], &device)?];
-        assert!(compute_parameter_change(&p0, &p2).is_err());
-        // Test no change
-        let no_change = compute_parameter_change(&p0, &p0)?;
-        assert_relative_eq!(no_change, 0.0, epsilon = 1e-10);
         Ok(())
     }
     #[test]
@@ -509,51 +433,5 @@ mod tests {
         assert_relative_eq!(scaled_values[1], 4.0, epsilon = 1e-10);
 
         Ok(())
-    }
-
-    #[test]
-    fn test_magnitude_relative_difference() {
-        assert_relative_eq!(
-            magnitude_relative_difference(10.0, 8.0),
-            0.2,
-            epsilon = 1e-10
-        );
-        assert_relative_eq!(
-            magnitude_relative_difference(0.0, 0.0),
-            0.0,
-            epsilon = 1e-10
-        );
-        assert_relative_eq!(
-            magnitude_relative_difference(5.0, 5.0),
-            0.0,
-            epsilon = 1e-10
-        );
-    }
-
-    #[test]
-    fn test_norms() {
-        let values = vec![3.0, -4.0, 0.0, 5.0];
-
-        assert_relative_eq!(
-            norm_l2(&values),
-            (9.0 + 16.0 + 0.0 + 25.0_f64).sqrt(),
-            epsilon = 1e-10
-        );
-        assert_relative_eq!(norm_l1(&values), 12.0, epsilon = 1e-10);
-        assert_relative_eq!(norm_inf(&values), 5.0, epsilon = 1e-10);
-    }
-
-    #[test]
-    fn test_is_finite() {
-        assert!(is_finite(&[1.0, 2.0, 3.0]));
-        assert!(!is_finite(&[1.0, f64::NAN, 3.0]));
-        assert!(!is_finite(&[1.0, f64::INFINITY, 3.0]));
-    }
-
-    #[test]
-    fn test_clamp_vector() {
-        let values = vec![-2.0, 0.5, 3.0, 10.0];
-        let clamped = clamp_vector(&values, 0.0, 5.0);
-        assert_eq!(clamped, vec![0.0, 0.5, 3.0, 5.0]);
     }
 }

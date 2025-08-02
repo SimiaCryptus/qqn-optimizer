@@ -802,7 +802,9 @@ pub(crate) fn shorten_optimizer_name(name: &str, max_length: usize) -> String {
             shortened
         } else {
             // Take first 7 chars + "..."
-            format!("{}...", &shortened[..(max_length - 3).min(shortened.len())])
+            let i = (max_length.max(3) - 3);
+            let x = shortened[..i].to_string();
+            format!("{}...", &x)
         }
     }
 }
