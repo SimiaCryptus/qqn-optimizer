@@ -525,3 +525,21 @@ We acknowledge the use of AI assistance in the development of this work. The cod
 ## Appendix C: Software Documentation
 
 [API reference and usage examples for the framework]
+The evaluation revealed significant performance variations across multiple optimizers tested on a comprehensive problem set with thousands of individual optimization runs with multiple runs per problem-optimizer pair. QQN variants dominated the winner's table, claiming the majority of problems.
+The comprehensive evaluation with balanced optimizer representation revealed several key insights:
+1. **QQN Dominance**: QQN variants won the majority of problems:
+   - QQN-StrongWolfe: Won the most problems, achieving top average ranking across all problems
+   - QQN-GoldenSection: Won a large number of problems, showing exceptional success on multimodal problems
+   - QQN-Bisection variants: Combined to succeed on most problems where at least one variant succeeds
+2. **Line Search Strategy Impact**: Among QQN variants, performance varied based on line search method:
+   - StrongWolfe: Achieved very high precision final values on convex problems
+   - GoldenSection: Perfect success on Rastrigin family across all dimensions
+   - Bisection variants: Required significantly fewer gradient evaluations vs line search variants
+3. **Scalability Challenges**: Performance degraded severely with dimensionality:
+   - QQN maintained very high success rates even on ill-conditioned problems
+   - L-BFGS: Success rates declined substantially with increasing dimensions
+   - Empirical scaling: QQN showed better than theoretical scaling behavior
+4. **Efficiency vs Success Trade-offs**: 
+   - L-BFGS on high-dimensional Sphere: Perfect success with very few evaluations
+   - QQN-StrongWolfe: Excellent success with moderate evaluation counts
+   - Return on Investment: QQN showed superior ROI compared to L-BFGS on convex problems

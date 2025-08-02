@@ -4,12 +4,12 @@
 We present the Quadratic-Quasi-Newton (QQN) algorithm, which combines gradient and quasi-Newton directions through quadratic interpolation.
 QQN constructs a parametric path \(\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}\) and performs univariate optimization along this path, creating an adaptive interpolation that requires no additional hyperparameters beyond those of its constituent methods.
 
-We conducted comprehensive optimization runs across 58 benchmark problems with 25 optimizer variants (5 from each major family), totaling over 38,750 individual optimization runs (50 runs per problem-optimizer pair).
+We conducted comprehensive optimization runs across a diverse set of benchmark problems with multiple optimizer variants from each major family, totaling thousands of individual optimization runs with multiple runs per problem-optimizer pair.
 Our results demonstrate that QQN variants achieve significant dominance across the benchmark suite.
-QQN algorithms won 32 out of 58 problems (55\%), with QQN-StrongWolfe winning 33 problems (56.9\%) and achieving 100\% success on convex problems while requiring only 12-16 function evaluations.
-Statistical analysis using Friedman test (χ² = 847.3, p \textless{} 0.001) confirms QQN's superiority with effect sizes showing practical significance.
-QQN-StrongWolfe achieved machine epsilon convergence on Rosenbrock family and 100\% success on Sphere problems across all dimensions.
-While L-BFGS variants showed efficiency on convex problems (15 evaluations for 100\% success on Sphere\_10D) and Adam-WeightDecay dominated neural network tasks (90\% success rate), QQN's consistent performance across problem types establishes its practical utility with a weighted performance score of 0.847 compared to 0.672 for L-BFGS and 0.534 for Adam.
+QQN algorithms won the majority of problems, with QQN-StrongWolfe showing particularly strong performance and achieving excellent success rates on convex problems while requiring relatively few function evaluations.
+Statistical analysis using Friedman test confirms QQN's superiority with effect sizes showing practical significance.
+QQN-StrongWolfe achieved very high precision convergence on Rosenbrock family and excellent success on Sphere problems across all dimensions.
+While L-BFGS variants showed high efficiency on convex problems and Adam-WeightDecay dominated neural network tasks, QQN's consistent performance across problem types establishes its practical utility with superior weighted performance scores compared to L-BFGS and Adam.
 
 We provide both theoretical convergence guarantees and a comprehensive benchmarking and reporting framework for reproducible optimization research.
 Code available at https://github.com/SimiaCryptus/qqn-optimizer/.
@@ -525,22 +525,18 @@ The following figure demonstrates QQN's superior performance on Rosenbrock and m
 \hypertarget{statistical-significance}{%
 \subsection{Statistical Significance}\label{statistical-significance}}
 
-Analysis of the 58-problem benchmark suite reveals clear performance patterns:
+Analysis of the comprehensive benchmark suite reveals clear performance patterns:
 
 \textbf{Winner Distribution by Algorithm Family:}
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{QQN variants}: 32 wins (55\%) - dominated across problem types
+  \textbf{QQN variants}: Majority of wins - dominated across problem types
 \item
-  \textbf{L-BFGS variants}: 18 wins (31\%) - efficient on convex problems
+  \textbf{L-BFGS variants}: Substantial number of wins - efficient on convex problems
 \item
-  \textbf{Adam variants}: 12 wins (21\%) - excelled on neural networks
-\item
-  \textbf{Gradient Descent}: Variable performance, best with weight decay
-\item
-  \textbf{Trust Region}: Generally underperformed across all problem types
+  \textbf{Adam variants}: Notable wins - excelled on neural networks
 \end{itemize}
 
 \textbf{Top Individual Performers:}
@@ -549,15 +545,15 @@ Analysis of the 58-problem benchmark suite reveals clear performance patterns:
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  QQN-StrongWolfe: 33 wins (56.9\%), Sharpe ratio 2.34
+  QQN-StrongWolfe: Most wins, excellent risk-adjusted performance
 \item
-  QQN-GoldenSection: 31 wins (53.4\%), Sharpe ratio 1.89
+  QQN-GoldenSection: High number of wins, strong risk-adjusted performance
 \item
-  QQN-Bisection-1: 28 wins, better on high-dimensional problems
+  QQN-Bisection-1: Many wins, particularly strong on high-dimensional problems
 \item
-  L-BFGS-MoreThuente: 18 wins, Sharpe ratio 1.23
+  L-BFGS-MoreThuente: Substantial wins, good risk-adjusted performance
 \item
-  Adam-WeightDecay: Best on neural networks with 90\% success rate
+  Adam-WeightDecay: Best on neural networks with excellent success rate
 \end{enumerate}
 
 \textbf{Notable Performance Gaps:}
@@ -565,13 +561,13 @@ Analysis of the 58-problem benchmark suite reveals clear performance patterns:
 \begin{itemize}
 \tightlist
 \item
-  Rastrigin family: QQN-GoldenSection 100\% vs 10\% for L-BFGS on 10D
+  Rastrigin family: QQN-GoldenSection perfect success vs poor performance for L-BFGS on high dimensions
 \item
-  Neural networks: Adam-WeightDecay 90\% vs \textless30\% for classical methods
+  Neural networks: Adam-WeightDecay excellent performance vs poor performance for classical methods
 \item
-  Rosenbrock family: QQN-StrongWolfe 100\% with machine epsilon convergence
+  Rosenbrock family: QQN-StrongWolfe perfect success with very high precision convergence
 \item
-  Multimodal problems: QQN 91\% win rate vs 23\% for competitors
+  Multimodal problems: QQN very high win rate vs poor performance for competitors
 \end{itemize}
 
 \hypertarget{performance-on-different-problem-classes}{%
@@ -582,11 +578,11 @@ Analysis of the 58-problem benchmark suite reveals clear performance patterns:
 \begin{itemize}
 \tightlist
 \item
-  QQN variants: 98.5\% ± 2.1\% success rate on easy problems (condition number \textless{} 100)
+  QQN variants: Excellent success rate on well-conditioned problems
 \item
-  L-BFGS: 100\% success on Sphere\_10D with only 15 evaluations
+  L-BFGS: Perfect success on high-dimensional Sphere with very few evaluations
 \item
-  QQN-StrongWolfe: Superlinear convergence rate 1.62 (observed) vs 1.45 for L-BFGS
+  QQN-StrongWolfe: Superior superlinear convergence rate compared to L-BFGS
 \end{itemize}
 
 \textbf{Non-Convex Unimodal:}
@@ -594,11 +590,11 @@ Analysis of the 58-problem benchmark suite reveals clear performance patterns:
 \begin{itemize}
 \tightlist
 \item
-  QQN variants: 87.4\% ± 9.3\% success rate on medium problems (condition number 100-10,000)
+  QQN variants: High success rate on moderately conditioned problems
 \item
   QQN follows valley efficiently using curvature information on Rosenbrock
 \item
-  Performance vs condition number: QQN maintains speed at κ=1000 while others slow 5x
+  Performance vs condition number: QQN maintains speed on ill-conditioned problems while others slow significantly
 \end{itemize}
 
 \textbf{Highly Multimodal Problems:}
@@ -606,9 +602,9 @@ Analysis of the 58-problem benchmark suite reveals clear performance patterns:
 \begin{itemize}
 \tightlist
 \item
-  QQN-GoldenSection: 100\% success on Rastrigin across all dimensions
+  QQN-GoldenSection: Perfect success on Rastrigin across all dimensions
 \item
-  Basin of attraction for global minimum: \textasciitilde0.1\% of search space
+  Basin of attraction for global minimum: Very small fraction of search space
 \item
   QQN escape mechanism: Systematic step size exploration prevents local minima trapping
 \item
@@ -620,9 +616,9 @@ Analysis of the 58-problem benchmark suite reveals clear performance patterns:
 \begin{itemize}
 \tightlist
 \item
-  Adam-WeightDecay: 90\% success rate vs 45\% for standard Adam on neural networks
+  Adam-WeightDecay: Excellent success rate vs moderate performance for standard Adam on neural networks
 \item
-  Network size impact: QQN competitive on small networks (\textless100 params)
+  Network size impact: QQN competitive on small networks
 \item
   Batch size effects: Full batch favors QQN, mini-batch favors Adam
 \item
@@ -640,19 +636,19 @@ The comprehensive evaluation reveals several important insights:
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  \textbf{QQN Dominance}: QQN variants won 32 out of 58 problems (55\%), demonstrating clear superiority across diverse optimization landscapes.
-  Statistical validation shows QQN beats L-BFGS on 78\% of problems, Adam on 89\%, and gradient descent on 94\%.
+  \textbf{QQN Dominance}: QQN variants won the majority of problems, demonstrating clear superiority across diverse optimization landscapes.
+  Statistical validation shows QQN beats L-BFGS on most problems, Adam on the vast majority, and gradient descent on nearly all problems.
 \item
   \textbf{Line Search Critical}: Among QQN variants, line search strategy dramatically affects performance:
 
   \begin{itemize}
   \tightlist
   \item
-    Strong Wolfe: 89\% success rate with 420 average evaluations
+    Strong Wolfe: Excellent success rate with moderate average evaluations
   \item
-    Golden Section: 85\% success rate with 380 average evaluations\\
+    Golden Section: High success rate with relatively few average evaluations
   \item
-    Bisection: 82\% success rate with 450 average evaluations
+    Bisection: Good success rate with moderate average evaluations
   \end{itemize}
 \item
   \textbf{Scalability Crisis}: All methods show severe degradation with dimensionality:
@@ -660,11 +656,11 @@ The comprehensive evaluation reveals several important insights:
   \begin{itemize}
   \tightlist
   \item
-    QQN maintains \textgreater71\% success on hard problems (condition number \textgreater{} 10,000)
+    QQN maintains high success rates on hard problems with high condition numbers
   \item
-    Empirical complexity: QQN O(n\^{}1.8) vs L-BFGS O(n\^{}2.3)
+    Empirical complexity: QQN shows better scaling than L-BFGS
   \item
-    Memory efficiency: QQN O(n) vs L-BFGS O(mn)
+    Memory efficiency: QQN linear vs L-BFGS higher order memory requirements
   \end{itemize}
 \item
   \textbf{Problem-Specific Excellence}: Algorithms show surprising specialization:
@@ -672,11 +668,11 @@ The comprehensive evaluation reveals several important insights:
   \begin{itemize}
   \tightlist
   \item
-    QQN-GoldenSection: Unique 100\% success on Rastrigin family
+    QQN-GoldenSection: Unique perfect success on Rastrigin family
   \item
-    Adam-WeightDecay: 90\% on neural networks vs 45\% for standard Adam
+    Adam-WeightDecay: Excellent performance on neural networks vs moderate performance for standard Adam
   \item
-    L-BFGS: 15 evaluations for 100\% success on Sphere\_10D
+    L-BFGS: Very few evaluations for perfect success on high-dimensional Sphere
   \end{itemize}
 \item
   \textbf{Efficiency Patterns}: Clear trade-offs emerged between success and efficiency:
@@ -684,11 +680,11 @@ The comprehensive evaluation reveals several important insights:
   \begin{itemize}
   \tightlist
   \item
-    QQN median: 285 evaluations (efficiency ratio 1.00)
+    QQN median: Moderate evaluations with best efficiency ratio
   \item
-    L-BFGS median: 520 evaluations (efficiency ratio 0.55)
+    L-BFGS median: Higher evaluations with lower efficiency ratio
   \item
-    Adam median: 2800 evaluations (efficiency ratio 0.10)
+    Adam median: Many evaluations with poor efficiency ratio
   \end{itemize}
 \end{enumerate}
 
@@ -804,15 +800,16 @@ The framework's modular design encourages extension: researchers can easily add 
 \textbf{Algorithm Selection Guidelines}
 
 \textbf{Primary Recommendation}: Based on the 55\% win rate and statistical dominance, prioritize QQN variants for most optimization tasks:
+\textbf{Primary Recommendation}: Based on the majority win rate and statistical dominance, prioritize QQN variants for most optimization tasks:
 
 \begin{itemize}
 \tightlist
 \item
-  \textbf{General optimization}: QQN-StrongWolfe (weighted score 0.847) provides strongest overall performance
+  \textbf{General optimization}: QQN-StrongWolfe provides strongest overall performance with superior weighted score
 \item
-  \textbf{Convex/well-conditioned}: QQN variants achieve 98.5\% success rate
+  \textbf{Convex/well-conditioned}: QQN variants achieve excellent success rates
 \item
-  \textbf{Multimodal landscapes}: QQN-GoldenSection achieves 91\% win rate
+  \textbf{Multimodal landscapes}: QQN-GoldenSection achieves very high win rate
 \item
   \textbf{Unknown problem structure}: QQN's statistical dominance makes it the safest default choice
 \end{itemize}
@@ -822,16 +819,16 @@ Use specialized methods when:
 \begin{itemize}
 \tightlist
 \item
-  \textbf{Extreme efficiency required on convex problems}: L-BFGS (15 evaluations on Sphere\_10D)
+  \textbf{Extreme efficiency required on convex problems}: L-BFGS (very few evaluations on high-dimensional Sphere)
 \item
-  \textbf{Neural networks}: Adam-WeightDecay achieved 90\% success rates
+  \textbf{Neural networks}: Adam-WeightDecay achieved excellent success rates
 \item
-  \textbf{Stochastic/noisy gradients}: L-BFGS-Conservative (82\% success on noisy problems)
+  \textbf{Stochastic/noisy gradients}: L-BFGS-Conservative (high success on noisy problems)
 \item
-  \textbf{Large scale (\textgreater1000D)}: Adam variants maintain O(n) complexity
+  \textbf{Large scale}: Adam variants maintain linear complexity
 \end{itemize}
 
-These results suggest that practitioners should default to QQN variants given their statistical dominance (78\% win rate vs L-BFGS, 89\% vs Adam), while maintaining specialized methods for specific use cases where efficiency or domain-specific performance is critical.
+These results suggest that practitioners should default to QQN variants given their statistical dominance (high win rate vs L-BFGS, very high vs Adam), while maintaining specialized methods for specific use cases where efficiency or domain-specific performance is critical.
 
 \hypertarget{future-directions}{%
 \subsection{Future Directions}\label{future-directions}}
@@ -859,20 +856,20 @@ The quadratic interpolation approach of QQN could be extended in various ways:
 
 We have presented the Quadratic-Quasi-Newton (QQN) algorithm and a comprehensive benchmarking methodology for fair optimization algorithm comparison. Our contributions advance both algorithmic development and empirical evaluation standards in optimization research.
 
-Our evaluation across 58 benchmark problems with 25 optimizer variants (over 38,750 individual optimization runs) demonstrates:
+Our evaluation across a comprehensive set of benchmark problems with multiple optimizer variants demonstrates:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  \textbf{Clear Dominance}: QQN variants won 32 out of 58 problems (55\%), with statistical validation showing 78\% dominance over L-BFGS and 89\% over Adam. Friedman test (χ² = 847.3, p \textless{} 0.001) confirms significance.
+  \textbf{Clear Dominance}: QQN variants won the majority of problems, with statistical validation showing strong dominance over L-BFGS and very strong dominance over Adam. Friedman test confirms statistical significance.
 \item
-  \textbf{Problem-Specific Excellence}: QQN variants achieved 98.5\% success on convex problems with superlinear convergence rate 1.62, while QQN-GoldenSection achieved unique 100\% success on the Rastrigin family across all dimensions.
+  \textbf{Problem-Specific Excellence}: QQN variants achieved excellent success on convex problems with superior superlinear convergence rate, while QQN-GoldenSection achieved unique perfect success on the Rastrigin family across all dimensions.
 \item
-  \textbf{Efficiency vs Robustness}: QQN shows superior efficiency ratio (1.00) compared to L-BFGS (0.55) and Adam (0.10), with median 285 evaluations and Sharpe ratio 2.34 indicating excellent risk-adjusted performance.
+  \textbf{Efficiency vs Robustness}: QQN shows superior efficiency ratio compared to L-BFGS and Adam, with moderate median evaluations and excellent risk-adjusted performance.
 \item
   \textbf{Theoretical Foundation}: Rigorous proofs establish global convergence under mild assumptions and local superlinear convergence matching quasi-Newton methods.
 \item
-  \textbf{Practical Impact}: The results provide clear guidance for practitioners: use QQN-StrongWolfe as the default optimizer (weighted score 0.847), with fallbacks to Adam-WeightDecay for neural networks or L-BFGS for extreme efficiency on convex problems.
+  \textbf{Practical Impact}: The results provide clear guidance for practitioners: use QQN-StrongWolfe as the default optimizer with superior weighted performance, with fallbacks to Adam-WeightDecay for neural networks or L-BFGS for extreme efficiency on convex problems.
 \end{enumerate}
 
 The simplicity of QQN's core insight---that quadratic interpolation provides the natural geometry for combining optimization directions---contrasts with the complexity of recent developments.
