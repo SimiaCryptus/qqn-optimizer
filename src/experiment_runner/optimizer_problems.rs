@@ -505,20 +505,18 @@ pub fn generate_problem_section(
     );
     // Add convergence plots for this problem
     let problem_filename = problem_name.replace(" ", "_");
-    let convergence_plot = format!("plots/convergence/{problem_filename}.png");
-    let log_convergence_plot = format!("plots/convergence/{problem_filename}_log.png");
+    let convergence_plot = format!("plots/{problem_filename}/convergence.png");
+    let log_convergence_plot = format!("plots/{problem_filename}/log_convergence.png");
     // Check if convergence plot exists
-    let convergence_path = Path::new(plots_dir).join(format!("convergence/{problem_filename}.png"));
-    if convergence_path.exists() {
+    let string = format!("{plots_dir}/{problem_filename}/convergence.png");
+    if Path::new(&string).exists() {
         section.push_str(&format!(
             r#"<img src="{convergence_plot}" alt="Convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">
 "#
         ));
     }
-    // Check if log convergence plot exists
-    let log_convergence_path =
-        Path::new(plots_dir).join(format!("convergence/{problem_filename}_log.png"));
-    if log_convergence_path.exists() {
+    let string = format!("{plots_dir}/{problem_filename}/log_convergence.png");
+    if Path::new(&string).exists() {
         section.push_str(&format!(
             r#"<img src="{log_convergence_plot}" alt="Log convergence plot for {problem_name}" style="max-width: 48%; height: auto; margin: 1%;">
 "#
@@ -529,7 +527,7 @@ pub fn generate_problem_section(
 **Figure:** Convergence plots for {problem_name} showing objective value vs iterations.
 Left: Linear scale, Right: Log scale for better visualization of convergence behavior.
 
-**Data:** [Linear scale data (CSV)](data/convergence/{problem_filename}_data.csv) | [Log scale data (CSV)](data/convergence/{problem_filename}_log_data.csv)
+**Data:** [Linear scale data (CSV)](data/{problem_filename}_data.csv) | [Log scale data (CSV)](data/{problem_filename}_log_data.csv)
 
 "#
     ));
@@ -623,8 +621,8 @@ fn generate_problem_analysis_report(
         r#"
 ## Convergence Analysis
 
-![Convergence Plot](../plots/convergence/{}.png)
-![Log Convergence Plot](../plots/convergence/{}_log.png)
+![Convergence Plot](../plots/{}.png)
+![Log Convergence Plot](../plots/{}_log.png)
 
 ## Raw Data
 

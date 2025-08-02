@@ -302,6 +302,9 @@ impl Report for PerformanceAnalysisReport {
         output_path: &Path,
     ) -> Result<()> {
         let content = self.generate_content(data, config)?;
+        if let Some(parent) = output_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(output_path, content)?;
         Ok(())
     }
@@ -741,6 +744,11 @@ impl Report for PerformanceTableReport {
         output_path: &Path,
     ) -> anyhow::Result<()> {
         let content = self.generate_content(data, config)?;
+        if let Some(parent) = output_path.parent() {
+            fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create parent directories for: {}", output_path.display())
+            })?;
+        }
         fs::write(output_path, content).with_context(|| {
             format!(
                 "Failed to write performance table report to: {}",
@@ -816,6 +824,8 @@ pub fn generate_main_performance_latex_table(
 \footnotesize
 \begin{longtable}{|l|l|c|c|c|c|c|c|c|}
 \caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
+...
+...
 \hline
 \toprule
 \textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
@@ -952,6 +962,8 @@ pub fn generate_main_performance_latex_table(
 "#,
     );
     let latex_path = latex_dir.join("main_performance_table.tex");
+    fs::create_dir_all(latex_dir)
+        .with_context(|| format!("Failed to create LaTeX directory: {}", latex_dir.display()))?;
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
     println!(

@@ -68,7 +68,10 @@ impl PlottingManager {
                     traces.len()
                 );
 
-                let filename = format!("convergence/{}", problem_name.replace(" ", "_"));
+
+                fs::create_dir_all(format!("{}/plots", self.output_dir))
+                    .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
+                let filename = format!("{}/plots/{}", self.output_dir, problem_name.replace(" ", "_"));
                 self.generate_plot_with_fallback(
                     || self.plotting_engine.convergence_plot(&traces, &filename),
                     &format!("convergence plot for {problem_name}"),
@@ -79,11 +82,13 @@ impl PlottingManager {
                     self.generate_plot_with_fallback(
                         || {
                             self.plotting_engine
-                                .log_convergence_plot(&traces, &format!("{filename}_log"))
+                                .log_convergence_plot(&traces, &format!("{filename}"))
                         },
                         &format!("log convergence plot for {problem_name}"),
                     )
                     .await;
+                } else {
+                    info!("Enhanced plots are disabled, skipping log convergence plot for {problem_name}");
                 }
             }
             tokio::task::yield_now().await;
@@ -111,6 +116,8 @@ impl PlottingManager {
                     "performance boxplot",
                 )
                 .await;
+            } else {
+                info!("Enhanced plots are disabled, skipping performance comparison plots");
             }
         }
 

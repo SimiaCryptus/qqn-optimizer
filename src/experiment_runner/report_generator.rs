@@ -117,12 +117,12 @@ impl ReportGenerator {
         // Create hierarchical directory structure
         let reports_dir = Path::new(&output_dir).join("reports");
         let data_dir = Path::new(&output_dir).join("data");
-        let convergence_dir = Path::new(&output_dir).join("convergence");
         let plots_dir = Path::new(&output_dir).join("plots");
         let latex_dir = Path::new(&output_dir).join("latex");
         fs::create_dir_all(&reports_dir)?;
         fs::create_dir_all(&data_dir)?;
-        fs::create_dir_all(&convergence_dir)?;
+        fs::create_dir_all(&Path::new(&data_dir).join("convergence"))?;
+        fs::create_dir_all(&Path::new(&plots_dir).join("convergence"))?;
         fs::create_dir_all(&plots_dir)?;
         fs::create_dir_all(&latex_dir)?;
 
@@ -163,6 +163,10 @@ impl ReportGenerator {
 
         let md_path = Path::new(&output_dir).join("benchmark_report.md");
         println!("Saving Markdown report to: {}", md_path.display());
+        // Ensure parent directory exists
+        if let Some(parent) = md_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         fs::write(&md_path, html_content.clone()).with_context(|| {
             format!("Failed to write Markdown report to: {}", md_path.display())
         })?;
@@ -239,6 +243,10 @@ pub async fn generate_report_index(
     path: String,
 ) -> anyhow::Result<()> {
     let index_path = Path::new(&path).join("report_index.html");
+    // Ensure parent directory exists
+    if let Some(parent) = index_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     let mut html_content = String::from(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -626,8 +634,8 @@ pub(crate) fn generate_detailed_report_footer(problem_name: &str, optimizer_name
 
 ## Data Files
 * [Raw CSV Data](../data/problems/{}_results.csv)
-* [Convergence Plot](../plots/convergence/{}.png)
-* [Log Scale Convergence Plot](../plots/convergence/{}_log.png)
+* [Convergence Plot](../plots/{}.png)
+* [Log Scale Convergence Plot](../plots/{}_log.png)
 
 
 ---
@@ -962,6 +970,10 @@ fn generate_csv_exports(
 
     let csv_path = Path::new(output_dir).join("detailed_results.csv");
     println!("Writing detailed results to: {}", csv_path.display());
+    // Ensure parent directory exists
+    if let Some(parent) = csv_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::write(&csv_path, csv_content)
         .with_context(|| format!("Failed to write CSV to: {}", csv_path.display()))?;
 
@@ -1113,6 +1125,10 @@ fn generate_csv_exports(
 
     let summary_path = Path::new(output_dir).join("summary_statistics.csv");
     println!("Writing summary statistics to: {}", summary_path.display());
+    // Ensure parent directory exists
+    if let Some(parent) = summary_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::write(&summary_path, summary_csv)
         .with_context(|| format!("Failed to write summary CSV to: {}", summary_path.display()))?;
 
@@ -1306,6 +1322,10 @@ All raw experimental data, convergence plots, and additional analysis files are 
 "#,
     );
     let latex_path = latex_dir.join("comprehensive_benchmark_report.tex");
+    // Ensure parent directory exists
+    if let Some(parent) = latex_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::write(&latex_path, latex_content).with_context(|| {
         format!(
             "Failed to write comprehensive LaTeX document to: {}",

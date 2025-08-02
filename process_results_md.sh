@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Enable error handling and detailed logging
-set -e  # Exit on error
-set -x  # Enable debug output (remove this line to reduce verbosity)
+set +e  # Exit on error
+set +x  # Enable debug output (remove this line to reduce verbosity)
 
 # Function to log messages with timestamp
 log() {
@@ -54,34 +54,18 @@ while IFS= read -r -d '' md_file; do
 
     log "Converting $md_file to $output_file"
 
-    # Create a temporary file with updated links (with .md extension for pandoc)
-    temp_file=$(mktemp --suffix=.md)
-
-    # Check if temp file was created successfully
-    if [ ! -f "$temp_file" ]; then
-        log_error "Failed to create temporary file"
-        ((error_count++))
-        continue
-    fi
-
-    # Replace .md links with .html links in the markdown content
-    if ! sed -e 's/\(\[[^]]*\]([^)]*\)\.md\()\)/\1.html\2/g' \
-           -e 's/\(href="[^"]*\)\.md"/\1.html"/g' \
-           -e "s/\(href='[^']*\)\.md'/\1.html'/g" "$md_file" > "$temp_file"; then
-        log_error "Failed to process markdown links in: $md_file"
-        rm -f "$temp_file"
-        ((error_count++))
-        continue
-    fi
-
     # Check file sizes for debugging
     original_size=$(wc -c < "$md_file")
-    temp_size=$(wc -c < "$temp_file")
-    log "File sizes - Original: ${original_size} bytes, Processed: ${temp_size} bytes"
+    log "File sizes - Original: ${original_size} bytes"
 
     # Run pandoc with timeout and better error handling
     log "Running pandoc conversion..."
-    if timeout 300 pandoc "$temp_file" -f markdown -t html -o "$output_file" 2>&1; then
+    if pandoc "$md_file" -f markdown -t html -o "$output_file" 2>&1; then
+
+        sed -e 's/\(href="[^"]*\)\.md"/\1.html"/g' \
+            -e "s/\(href='[^']*\)\.md'/\1.html'/g" \
+            -i "$output_file"
+
         log "Successfully converted: $md_file -> $output_file"
         ((processed_count++))
     else
@@ -97,14 +81,10 @@ while IFS= read -r -d '' md_file; do
         ((error_count++))
     fi
 
-    # Clean up temp file
-    rm -f "$temp_file"
-    temp_file=""
-
   else
     log "Skipping non-file or non-existent: $md_file"
   fi
-done < <(find results -name "*.md" -type f -print0 2>/dev/null)
+done < <(find results/ -name "*.md" -print0 2>/dev/null)
 
 # Final summary
 log "Processing complete!"

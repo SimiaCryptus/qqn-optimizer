@@ -1,5 +1,6 @@
 use crate::benchmarks::evaluation::{BenchmarkResults, OptimizationTrace};
 use anyhow::Result;
+use log::{debug, error, info, warn};
 use plotters::backend::BitMapBackend;
 use plotters::coord::Shift;
 use plotters::prelude::*;
@@ -9,12 +10,15 @@ use std::{fs, panic};
 
 /// Check if font rendering is available
 fn has_font_support() -> bool {
+    info!("Checking font rendering support...");
     // Check if we're in a CI/test environment where fonts might not be available
     if std::env::var("CI").is_ok() || std::env::var("TEST_ENV").is_ok() {
+        info!("Detected CI/test environment, disabling font support");
         return false;
     }
 
     // Try to create a simple font and actually draw text to see if it works
+    debug!("Testing font rendering with sample text...");
     let result = std::panic::catch_unwind(|| {
         use plotters::prelude::*;
 
@@ -29,7 +33,7 @@ fn has_font_support() -> bool {
     });
 
     let ok = result.is_ok() && result.unwrap().is_ok();
-    println!("[Plotting] Font support available: {ok}");
+    info!("Font support available: {}", ok);
     ok
 }
 
@@ -44,6 +48,7 @@ pub struct PlotConfig {
 }
 impl Default for PlotConfig {
     fn default() -> Self {
+        info!("Creating default plot configuration");
         Self {
             width: 1024,
             height: 768,
@@ -65,6 +70,11 @@ pub struct ExtendedOptimizationTrace {
 impl ExtendedOptimizationTrace {
     /// Sanitize trace data by filtering out NaN and infinite values
     fn sanitize(&mut self) {
+        debug!(
+            "Sanitizing trace data for optimizer: {}",
+            self.optimizer_name
+        );
+        let original_count = self.objective_values.len();
         let mut valid_indices = Vec::new();
         for (i, &val) in self.objective_values.iter().enumerate() {
             if val.is_finite() {
@@ -72,10 +82,13 @@ impl ExtendedOptimizationTrace {
             }
         }
         if valid_indices.len() < self.objective_values.len() {
-            eprintln!(
-                "[Plotting] Warning: Filtered {} non-finite values from trace for {}",
-                self.objective_values.len() - valid_indices.len(),
-                self.optimizer_name
+            let filtered_count = self.objective_values.len() - valid_indices.len();
+            warn!(
+                "Filtered {} non-finite values from trace for {} (kept {}/{})",
+                filtered_count,
+                self.optimizer_name,
+                valid_indices.len(),
+                original_count
             );
             self.objective_values = valid_indices
                 .iter()
@@ -89,12 +102,23 @@ impl ExtendedOptimizationTrace {
                     .map(|&i| self.evaluation_counts[i])
                     .collect();
             }
+        } else {
+            debug!(
+                "No non-finite values found in trace for {}",
+                self.optimizer_name
+            );
         }
+        info!(
+            "Trace sanitization complete for {}: {} valid data points",
+            self.optimizer_name,
+            self.objective_values.len()
+        );
     }
 }
 
 impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
     fn from(trace: &OptimizationTrace) -> Self {
+        debug!("Converting OptimizationTrace to ExtendedOptimizationTrace");
         let mut result = Self {
             optimizer_name: "Unknown".to_string(),
             objective_values: trace
@@ -108,6 +132,10 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
                 .map(|iter| iter.total_evaluations())
                 .collect(),
         };
+        info!(
+            "Created extended trace with {} iterations",
+            result.objective_values.len()
+        );
         result.sanitize();
         result
     }
@@ -123,12 +151,18 @@ pub struct PlottingEngine {
 
 impl PlottingEngine {
     pub fn new(output_dir: String) -> Self {
+        info!(
+            "Initializing PlottingEngine with output directory: {}",
+            output_dir
+        );
         let has_fonts = has_font_support();
         if !has_fonts {
-            eprintln!(
-                "Warning: Font support not available. Plots will be generated without text labels."
-            );
+            warn!("Font support not available. Plots will be generated without text labels.");
         }
+        info!(
+            "PlottingEngine initialized with dimensions {}x{}, fonts: {}",
+            1024, 768, has_fonts
+        );
         Self {
             output_dir,
             width: 1024,
@@ -139,6 +173,7 @@ impl PlottingEngine {
     }
 
     pub fn with_dimensions(mut self, width: u32, height: u32) -> Self {
+        info!("Setting plot dimensions to {}x{}", width, height);
         self.width = width;
         self.height = height;
         self.config.width = width;
@@ -146,6 +181,7 @@ impl PlottingEngine {
         self
     }
     pub fn with_config(mut self, config: PlotConfig) -> Self {
+        info!("Applying custom plot configuration: {:?}", config);
         self.width = config.width;
         self.height = config.height;
         self.config = config;
@@ -158,24 +194,26 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        info!(
+            "Creating convergence plot with {} traces, filename: {}",
+            traces.len(),
+            filename
+        );
         // Wrap in panic handler
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             self.convergence_plot_impl(traces, filename)
         }));
-        match result {
-            Ok(inner_result) => inner_result,
-            Err(e) => {
-                let msg = if let Some(s) = e.downcast_ref::<String>() {
-                    s.clone()
-                } else if let Some(s) = e.downcast_ref::<&str>() {
-                    s.to_string()
-                } else {
-                    "Unknown panic in convergence_plot".to_string()
-                };
-                eprintln!("[Plotting] Panic caught in convergence_plot: {msg}");
-                Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
-            }
-        }
+        result.unwrap_or_else(|e| {
+            let msg = if let Some(s) = e.downcast_ref::<String>() {
+                s.clone()
+            } else if let Some(s) = e.downcast_ref::<&str>() {
+                s.to_string()
+            } else {
+                "Unknown panic in convergence_plot".to_string()
+            };
+            error!("Panic caught in convergence_plot: {}", msg);
+            Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
+        })
     }
     fn convergence_plot_impl(
         &self,
@@ -183,19 +221,29 @@ impl PlottingEngine {
         filename: &str,
     ) -> Result<()> {
         if traces.is_empty() {
+            warn!("No traces provided for convergence plot, skipping");
             return Ok(());
         }
+        info!("Processing {} traces for convergence plot", traces.len());
         // Sanitize traces
         let mut sanitized_traces: Vec<ExtendedOptimizationTrace> = traces.to_vec();
         for trace in &mut sanitized_traces {
             trace.sanitize();
         }
         // Filter out empty traces
+        let original_trace_count = sanitized_traces.len();
         sanitized_traces.retain(|t| !t.objective_values.is_empty());
+        if sanitized_traces.len() < original_trace_count {
+            warn!(
+                "Filtered out {} empty traces",
+                original_trace_count - sanitized_traces.len()
+            );
+        }
         if sanitized_traces.is_empty() {
-            eprintln!("[Plotting] Warning: All traces were empty after sanitization");
+            warn!("All traces were empty after sanitization, skipping plot");
             return Ok(());
         }
+        info!("Using {} valid traces for plotting", sanitized_traces.len());
         // Group traces by optimizer name for consistent coloring
         let mut optimizer_traces: HashMap<String, Vec<&ExtendedOptimizationTrace>> = HashMap::new();
         for trace in &sanitized_traces {
@@ -207,11 +255,21 @@ impl PlottingEngine {
         // Create a sorted list of unique optimizer names for consistent color assignment
         let mut unique_optimizers: Vec<String> = optimizer_traces.keys().cloned().collect();
         unique_optimizers.sort();
+        info!(
+            "Found {} unique optimizers: {:?}",
+            unique_optimizers.len(),
+            unique_optimizers
+        );
 
         // Export CSV data for this plot
+        info!("Exporting convergence data to CSV");
         self.export_convergence_csv(&sanitized_traces, filename)?;
+        info!("Creating output directory: {}", filename);
 
-        let output_path = format!("{}/{}.png", self.output_dir, filename);
+        fs::create_dir_all(&filename)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
+        let output_path = format!("{}/convergence.png", filename);
+        info!("Generating convergence plot: {}", output_path);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
 
         root.fill(&WHITE)?;
@@ -230,9 +288,16 @@ impl PlottingEngine {
             .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &val| {
                 (min.min(val), max.max(val))
             });
+        info!(
+            "Data ranges - Evaluations: 0 to {}, Objective: {:.6e} to {:.6e}",
+            max_evaluations, min_obj, max_obj
+        );
         // Check if we have valid bounds
         if !min_obj.is_finite() || !max_obj.is_finite() || min_obj >= max_obj {
-            eprintln!("[Plotting] Warning: Invalid objective value bounds: [{min_obj}, {max_obj}]");
+            warn!(
+                "Invalid objective value bounds: [{:.6e}, {:.6e}], skipping plot",
+                min_obj, max_obj
+            );
             return Ok(());
         }
 
@@ -240,8 +305,16 @@ impl PlottingEngine {
         let obj_range = max_obj - min_obj;
         let padded_min = min_obj - obj_range * 0.1;
         let padded_max = max_obj + obj_range * 0.1;
+        debug!(
+            "Padded objective range: [{:.6e}, {:.6e}]",
+            padded_min, padded_max
+        );
 
         // Build chart without text elements to avoid font issues
+        info!(
+            "Building chart with dimensions {}x{}",
+            self.width, self.height
+        );
         let mut chart = ChartBuilder::on(&root)
             .margin(20)
             .x_label_area_size(if self.has_fonts { 30 } else { 0 })
@@ -251,12 +324,14 @@ impl PlottingEngine {
 
         // Configure mesh based on font availability
         if self.has_fonts {
+            debug!("Configuring chart with labels and descriptions");
             chart
                 .configure_mesh()
                 .x_desc("Max(Function, Gradient) Evaluations")
                 .y_desc("Objective Value")
                 .draw()?;
         } else {
+            debug!("Configuring chart without labels (no font support)");
             chart
                 .configure_mesh()
                 .disable_x_mesh()
@@ -293,9 +368,15 @@ impl PlottingEngine {
         ];
 
         // Plot traces grouped by optimizer name
+        info!("Drawing {} optimizer groups", unique_optimizers.len());
         for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
             let color = colors[optimizer_idx % colors.len()];
             let traces_for_optimizer = &optimizer_traces[optimizer_name];
+            debug!(
+                "Drawing {} traces for optimizer: {}",
+                traces_for_optimizer.len(),
+                optimizer_name
+            );
 
             for trace in traces_for_optimizer {
                 let series_data: Vec<(usize, f64)> = trace
@@ -306,8 +387,14 @@ impl PlottingEngine {
                     .map(|(&eval_count, &obj_val)| (eval_count, obj_val))
                     .collect();
                 if series_data.is_empty() {
+                    debug!("Skipping empty series for {}", optimizer_name);
                     continue;
                 }
+                debug!(
+                    "Drawing series with {} data points for {}",
+                    series_data.len(),
+                    optimizer_name
+                );
 
                 // Draw series
                 chart
@@ -315,6 +402,7 @@ impl PlottingEngine {
                     .map_err(|e| anyhow::anyhow!("Series drawing error: {}", e))?;
                 // Add markers at regular intervals for better visibility
                 let marker_interval = series_data.len().max(1) / 20 + 1;
+                debug!("Adding markers every {} points", marker_interval);
                 chart
                     .draw_series(
                         series_data
@@ -327,11 +415,19 @@ impl PlottingEngine {
         }
         // Try to add legend
         if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
+            info!("Adding legend for {} optimizers", unique_optimizers.len());
             self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
+        } else {
+            debug!(
+                "Skipping legend - enabled: {}, optimizers: {}, fonts: {}",
+                self.config.enable_legends,
+                unique_optimizers.len(),
+                self.has_fonts
+            );
         }
 
         root.present()?;
-        println!("Convergence plot saved to: {output_path}");
+        info!("Convergence plot saved to: {}", output_path);
         Ok(())
     }
 
@@ -341,6 +437,11 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
+        info!(
+            "Creating log-scale convergence plot with {} traces, filename: {}",
+            traces.len(),
+            filename
+        );
         // Wrap in panic handler
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             self.log_convergence_plot_impl(traces, filename)
@@ -355,7 +456,7 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in log_convergence_plot".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in log_convergence_plot: {msg}");
+                error!("Panic caught in log_convergence_plot: {}", msg);
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
@@ -366,19 +467,35 @@ impl PlottingEngine {
         filename: &str,
     ) -> Result<()> {
         if traces.is_empty() {
+            warn!("No traces provided for log convergence plot, skipping");
             return Ok(());
         }
+        info!(
+            "Processing {} traces for log convergence plot",
+            traces.len()
+        );
         // Sanitize traces
         let mut sanitized_traces: Vec<ExtendedOptimizationTrace> = traces.to_vec();
         for trace in &mut sanitized_traces {
             trace.sanitize();
         }
         // Filter out empty traces
+        let original_trace_count = sanitized_traces.len();
         sanitized_traces.retain(|t| !t.objective_values.is_empty());
+        if sanitized_traces.len() < original_trace_count {
+            warn!(
+                "Filtered out {} empty traces",
+                original_trace_count - sanitized_traces.len()
+            );
+        }
         if sanitized_traces.is_empty() {
-            eprintln!("[Plotting] Warning: All traces were empty after sanitization");
+            warn!("All traces were empty after sanitization, skipping log plot");
             return Ok(());
         }
+        info!(
+            "Using {} valid traces for log plotting",
+            sanitized_traces.len()
+        );
         // Group traces by optimizer name for consistent coloring
         let mut optimizer_traces: HashMap<String, Vec<&ExtendedOptimizationTrace>> = HashMap::new();
         for trace in &sanitized_traces {
@@ -392,9 +509,14 @@ impl PlottingEngine {
         unique_optimizers.sort();
 
         // Export CSV data for this plot
+        info!("Exporting log convergence data to CSV");
         self.export_log_convergence_csv(&sanitized_traces, filename)?;
+        info!("Creating output directory: {}", self.output_dir);
 
-        let output_path = format!("{}/{}.png", self.output_dir, filename);
+        fs::create_dir_all(&filename)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
+        let output_path = format!("{}/log_convergence.png", filename);
+        info!("`Generating log convergence plot`: {}", output_path);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
@@ -418,9 +540,16 @@ impl PlottingEngine {
             .filter(|&&val| val.is_finite())
             .fold(f64::NEG_INFINITY, |max, &val| max.max(val))
             .min(1e10); // Cap maximum to prevent overflow
-                        // Check if we have any valid positive values
+        info!(
+            "Log scale data ranges - Min positive: {:.6e}, Max: {:.6e}",
+            min_positive_obj, max_obj
+        );
+        // Check if we have any valid positive values
         if !min_positive_obj.is_finite() || !max_obj.is_finite() || min_positive_obj >= max_obj {
-            eprintln!("[Plotting] Warning: No valid positive values for log plot");
+            warn!(
+                "No valid positive values for log plot - min: {:.6e}, max: {:.6e}",
+                min_positive_obj, max_obj
+            );
             return Ok(());
         }
 
@@ -430,13 +559,19 @@ impl PlottingEngine {
 
         let log_min = safe_min.log10().clamp(-15.0, 15.0);
         let log_max = safe_max.log10().clamp(-15.0, 15.0);
+        debug!("Log bounds - Min: {:.3}, Max: {:.3}", log_min, log_max);
 
         // Ensure we have a valid range
         let (final_log_min, final_log_max) = if (log_max - log_min).abs() < 1e-10 {
+            debug!("Log range too small, expanding");
             (log_min - 1.0, log_min + 1.0)
         } else {
             (log_min, log_max)
         };
+        info!(
+            "Final log scale range: [{:.3}, {:.3}]",
+            final_log_min, final_log_max
+        );
 
         let mut chart = ChartBuilder::on(&root)
             .margin(20)
@@ -458,9 +593,18 @@ impl PlottingEngine {
         let colors = [&RED, &BLUE, &GREEN, &MAGENTA, &CYAN, &BLACK];
 
         // Plot traces grouped by optimizer name
+        info!(
+            "Drawing {} optimizer groups for log plot",
+            unique_optimizers.len()
+        );
         for (optimizer_idx, optimizer_name) in unique_optimizers.iter().enumerate() {
             let color = colors[optimizer_idx % colors.len()];
             let traces_for_optimizer = &optimizer_traces[optimizer_name];
+            debug!(
+                "Drawing {} traces for optimizer: {} (log scale)",
+                traces_for_optimizer.len(),
+                optimizer_name
+            );
 
             for trace in traces_for_optimizer {
                 let series_data: Vec<(usize, f64)> = trace
@@ -477,31 +621,48 @@ impl PlottingEngine {
 
                 // Only draw if we have valid data points
                 if !series_data.is_empty() {
+                    debug!(
+                        "Drawing log series with {} data points for {}",
+                        series_data.len(),
+                        optimizer_name
+                    );
                     chart.draw_series(LineSeries::new(series_data.clone(), color))?;
 
                     // Add markers for better visibility
                     let marker_interval = series_data.len().max(1) / 20 + 1;
+                    debug!("Adding log markers every {} points", marker_interval);
                     chart.draw_series(
                         series_data
                             .iter()
                             .step_by(marker_interval)
                             .map(|&(x, y)| Circle::new((x, y), 3, color.filled())),
                     )?;
+                } else {
+                    debug!("Skipping empty log series for {}", optimizer_name);
                 }
             }
         }
         // Try to add legend
         if self.config.enable_legends && unique_optimizers.len() > 1 && self.has_fonts {
+            info!(
+                "Adding legend for {} optimizers (log plot)",
+                unique_optimizers.len()
+            );
             self.add_legend_for_optimizers(&root, &unique_optimizers, &colors)?;
         }
 
         root.present()?;
-        println!("Log convergence plot saved to: {output_path}");
+        info!("Log convergence plot saved to: {}", output_path);
         Ok(())
     }
 
     /// Create performance comparison bar charts
     pub fn performance_comparison(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
+        info!(
+            "Creating performance comparison chart with {} results, filename: {}",
+            results.results.len(),
+            filename
+        );
         // Wrap in panic handler
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             self.performance_comparison_impl(results, filename)
@@ -516,7 +677,7 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in performance_comparison".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in performance_comparison: {msg}");
+                error!("Panic caught in performance_comparison: {}", msg);
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
@@ -527,12 +688,22 @@ impl PlottingEngine {
         filename: &str,
     ) -> Result<()> {
         if results.results.is_empty() {
+            warn!("No results provided for performance comparison, skipping");
             return Ok(());
         }
+        info!(
+            "Processing {} benchmark results for performance comparison",
+            results.results.len()
+        );
         // Export CSV data for this plot
+        info!("Exporting performance comparison data to CSV");
         self.export_performance_comparison_csv(results, filename)?;
+        info!("Creating output directory: {}", self.output_dir);
 
+        fs::create_dir_all(&self.output_dir)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
         let output_path = format!("{}/{}.png", self.output_dir, filename);
+        info!("Generating performance comparison plot: {}", output_path);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
@@ -548,18 +719,24 @@ impl PlottingEngine {
                 .push(if result.final_value.is_finite() {
                     result.final_value
                 } else {
-                    eprintln!(
-                        "[Plotting] Warning: Non-finite final value for {} on {}",
-                        result.optimizer_name, result.problem_name
+                    warn!(
+                        "Non-finite final value for {} on {}: {:.6e}",
+                        result.optimizer_name, result.problem_name, result.final_value
                     );
                     f64::NAN
                 });
         }
+        info!("Grouped results into {} problems", problem_results.len());
 
         // Calculate mean final values for each optimizer on each problem
         let mut chart_data: Vec<(String, Vec<(String, f64)>)> = Vec::new();
 
         for (problem, optimizers) in problem_results {
+            debug!(
+                "Processing problem: {} with {} optimizers",
+                problem,
+                optimizers.len()
+            );
             let mut optimizer_means = Vec::new();
             for (optimizer, values) in optimizers {
                 let finite_values: Vec<f64> =
@@ -568,22 +745,40 @@ impl PlottingEngine {
                 if !finite_values.is_empty() {
                     let mean = finite_values.iter().sum::<f64>() / finite_values.len() as f64;
                     if mean.is_finite() {
+                        debug!(
+                            "Optimizer {} on {}: mean = {:.6e} ({} runs)",
+                            optimizer,
+                            problem,
+                            mean,
+                            finite_values.len()
+                        );
                         optimizer_means.push((optimizer, mean));
                     }
                 }
             }
             optimizer_means.sort_by(|a, b| a.0.cmp(&b.0)); // Sort by optimizer name
             if !optimizer_means.is_empty() {
+                info!(
+                    "Problem {} has {} valid optimizer results",
+                    problem,
+                    optimizer_means.len()
+                );
                 chart_data.push((problem, optimizer_means));
             }
         }
         if chart_data.is_empty() {
+            warn!("No valid chart data after processing, skipping performance comparison");
             return Ok(());
         }
+        info!("Created chart data for {} problems", chart_data.len());
 
         // Create subplot for each problem
         let num_problems = chart_data.len();
         let subplot_height = self.height / num_problems as u32;
+        info!(
+            "Creating {} subplots with height {} each",
+            num_problems, subplot_height
+        );
         let colors = [
             &RED,
             &BLUE,
@@ -612,6 +807,7 @@ impl PlottingEngine {
         ];
 
         for (i, (problem_name, optimizer_data)) in chart_data.iter().enumerate() {
+            debug!("Drawing subplot {} for problem: {}", i, problem_name);
             let y_start = i as u32 * subplot_height;
             let y_end = (i + 1) as u32 * subplot_height;
 
@@ -628,7 +824,15 @@ impl PlottingEngine {
                 .map(|(_, val)| *val)
                 .filter(|&val| val.is_finite())
                 .fold(f64::INFINITY, f64::min);
+            debug!(
+                "Problem {} value range: [{:.6e}, {:.6e}]",
+                problem_name, min_value, max_value
+            );
             if !min_value.is_finite() || !max_value.is_finite() || min_value >= max_value {
+                warn!(
+                    "Invalid value range for problem {}, skipping subplot",
+                    problem_name
+                );
                 continue;
             }
 
@@ -668,6 +872,7 @@ impl PlottingEngine {
 
             // Add problem name as title if fonts are available
             if self.has_fonts {
+                debug!("Adding title for problem: {}", problem_name);
                 let _ = subplot.draw(&Text::new(
                     problem_name.as_str(),
                     (subplot_height as i32 / 2, 10),
@@ -677,12 +882,17 @@ impl PlottingEngine {
         }
 
         root.present()?;
-        println!("Performance comparison saved to: {output_path}");
+        info!("Performance comparison saved to: {}", output_path);
         Ok(())
     }
 
     /// Create box plots showing distribution of results
     pub fn performance_boxplot(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
+        info!(
+            "Creating performance boxplot with {} results, filename: {}",
+            results.results.len(),
+            filename
+        );
         // Wrap in panic handler
         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
             self.performance_boxplot_impl(results, filename)
@@ -697,19 +907,29 @@ impl PlottingEngine {
                 } else {
                     "Unknown panic in performance_boxplot".to_string()
                 };
-                eprintln!("[Plotting] Panic caught in performance_boxplot: {msg}");
+                error!("Panic caught in performance_boxplot: {}", msg);
                 Err(anyhow::anyhow!("Plotting failed due to panic: {}", msg))
             }
         }
     }
     fn performance_boxplot_impl(&self, results: &BenchmarkResults, filename: &str) -> Result<()> {
         if results.results.is_empty() {
+            warn!("No results provided for performance boxplot, skipping");
             return Ok(());
         }
+        info!(
+            "Processing {} benchmark results for boxplot",
+            results.results.len()
+        );
         // Export CSV data for this plot
+        info!("Exporting performance boxplot data to CSV");
         self.export_performance_boxplot_csv(results, filename)?;
+        info!("Creating output directory: {}", self.output_dir);
 
+        fs::create_dir_all(&self.output_dir)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
         let output_path = format!("{}/{}.png", self.output_dir, filename);
+        info!("Generating performance boxplot: {}", output_path);
         let root = BitMapBackend::new(&output_path, (self.width, self.height)).into_drawing_area();
         root.fill(&WHITE)?;
 
@@ -723,22 +943,36 @@ impl PlottingEngine {
                 .push(if result.final_value.is_finite() {
                     result.final_value
                 } else {
-                    eprintln!(
-                        "[Plotting] Warning: Non-finite final value for {}",
-                        result.optimizer_name
+                    warn!(
+                        "Non-finite final value for {}: {:.6e}",
+                        result.optimizer_name, result.final_value
                     );
                     f64::NAN
                 });
         }
+        info!("Grouped results by {} optimizers", optimizer_results.len());
 
         // Calculate statistics for each optimizer
         let mut box_data: Vec<(String, BoxPlotData)> = Vec::new();
 
         for (optimizer, mut values) in optimizer_results {
+            debug!(
+                "Processing optimizer: {} with {} values",
+                optimizer,
+                values.len()
+            );
             // Filter out non-finite values
+            let original_count = values.len();
             values.retain(|&v| v.is_finite());
+            if values.len() < original_count {
+                debug!(
+                    "Filtered {} non-finite values for {}",
+                    original_count - values.len(),
+                    optimizer
+                );
+            }
             if values.is_empty() {
-                eprintln!("[Plotting] Warning: No finite values for optimizer {optimizer}");
+                warn!("No finite values for optimizer {}, skipping", optimizer);
                 continue;
             }
 
@@ -751,6 +985,8 @@ impl PlottingEngine {
                 let q3 = values[3 * n / 4];
                 let min = values[0];
                 let max = values[n - 1];
+                info!("Boxplot stats for {}: min={:.6e}, q1={:.6e}, median={:.6e}, q3={:.6e}, max={:.6e}", 
+                      optimizer, min, q1, median, q3, max);
 
                 box_data.push((
                     optimizer,
@@ -767,8 +1003,10 @@ impl PlottingEngine {
 
         box_data.sort_by(|a, b| a.0.cmp(&b.0));
         if box_data.is_empty() {
+            warn!("No valid boxplot data after processing, skipping");
             return Ok(());
         }
+        info!("Created boxplot data for {} optimizers", box_data.len());
 
         let global_min = box_data
             .iter()
@@ -780,8 +1018,15 @@ impl PlottingEngine {
             .map(|(_, data)| data.max)
             .filter(|&v| v.is_finite())
             .fold(f64::NEG_INFINITY, f64::max);
+        info!(
+            "Global boxplot range: [{:.6e}, {:.6e}]",
+            global_min, global_max
+        );
         if !global_min.is_finite() || !global_max.is_finite() || global_min >= global_max {
-            eprintln!("[Plotting] Warning: Invalid global bounds for boxplot");
+            warn!(
+                "Invalid global bounds for boxplot: [{:.6e}, {:.6e}]",
+                global_min, global_max
+            );
             return Ok(());
         }
 
@@ -806,7 +1051,9 @@ impl PlottingEngine {
         }
 
         // Draw box plots
+        info!("Drawing {} box plots", box_data.len());
         for (i, (name, data)) in box_data.iter().enumerate() {
+            debug!("Drawing box plot {} for optimizer: {}", i, name);
             let x = i as f64;
             let box_width = 0.3;
 
@@ -857,6 +1104,7 @@ impl PlottingEngine {
 
             // Add optimizer names as x-axis labels if fonts are available
             if self.has_fonts {
+                debug!("Adding x-axis label for: {}", name);
                 let _ = root.draw(&Text::new(
                     name.as_str(),
                     (
@@ -872,7 +1120,7 @@ impl PlottingEngine {
         }
 
         root.present()?;
-        println!("Performance boxplot saved to: {output_path}");
+        info!("Performance boxplot saved to: {}", output_path);
         Ok(())
     }
 
@@ -882,9 +1130,15 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
-        let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        debug!("Exporting convergence data for {} traces", traces.len());
+        fs::create_dir_all(&filename)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
+        let csv_path = format!("{}/data.csv", filename);
+        info!("Writing convergence CSV to: {}", csv_path);
         let mut csv_content = String::from("Optimizer,MaxEvaluation,ObjectiveValue\n");
+        let mut total_rows = 0;
         for trace in traces {
+            let mut trace_rows = 0;
             for (eval_count, obj_value) in trace
                 .evaluation_counts
                 .iter()
@@ -897,11 +1151,20 @@ impl PlottingEngine {
                     "{},{},{:.6e}\n",
                     trace.optimizer_name, eval_count, obj_value
                 ));
+                trace_rows += 1;
+                total_rows += 1;
             }
+            debug!(
+                "Exported {} rows for optimizer: {}",
+                trace_rows, trace.optimizer_name
+            );
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Convergence data exported to: {csv_path}");
+        info!(
+            "Convergence data exported to: {} ({} total rows)",
+            csv_path, total_rows
+        );
         Ok(())
     }
     /// Export log convergence plot data to CSV
@@ -910,10 +1173,16 @@ impl PlottingEngine {
         traces: &[ExtendedOptimizationTrace],
         filename: &str,
     ) -> Result<()> {
-        let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        debug!("Exporting log convergence data for {} traces", traces.len());
+        fs::create_dir_all(&filename)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
+        let csv_path = format!("{}/log_data.csv", filename);
+        info!("Writing log convergence CSV to: {}", csv_path);
         let mut csv_content =
             String::from("Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue\n");
+        let mut total_rows = 0;
         for trace in traces {
+            let mut trace_rows = 0;
             for (eval_count, obj_value) in trace
                 .evaluation_counts
                 .iter()
@@ -928,11 +1197,20 @@ impl PlottingEngine {
                     "{},{},{:.6e},{:.6e}\n",
                     trace.optimizer_name, eval_count, obj_value, log_val
                 ));
+                trace_rows += 1;
+                total_rows += 1;
             }
+            debug!(
+                "Exported {} log rows for optimizer: {}",
+                trace_rows, trace.optimizer_name
+            );
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Log convergence data exported to: {csv_path}");
+        info!(
+            "Log convergence data exported to: {} ({} total rows)",
+            csv_path, total_rows
+        );
         Ok(())
     }
     /// Export performance comparison data to CSV
@@ -941,7 +1219,14 @@ impl PlottingEngine {
         results: &BenchmarkResults,
         filename: &str,
     ) -> Result<()> {
+        debug!(
+            "Exporting performance comparison data for {} results",
+            results.results.len()
+        );
+        fs::create_dir_all(&self.output_dir)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        info!("Writing performance comparison CSV to: {}", csv_path);
         let mut csv_content = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
         // Group results by problem and optimizer
         let mut problem_results: HashMap<String, HashMap<String, Vec<f64>>> = HashMap::new();
@@ -953,7 +1238,13 @@ impl PlottingEngine {
                 .or_default()
                 .push(result.final_value);
         }
+        let mut total_rows = 0;
         for (problem, optimizers) in problem_results {
+            debug!(
+                "Processing problem: {} with {} optimizers",
+                problem,
+                optimizers.len()
+            );
             for (optimizer, values) in optimizers {
                 let optimizer_results: Vec<_> = results
                     .results
@@ -965,6 +1256,10 @@ impl PlottingEngine {
                         values.iter().filter(|&&v| v.is_finite()).copied().collect();
 
                     if finite_values.is_empty() {
+                        debug!(
+                            "No finite values for {} on {}, skipping",
+                            optimizer, problem
+                        );
                         continue;
                     }
 
@@ -1000,12 +1295,20 @@ impl PlottingEngine {
                     csv_content.push_str(&format!(
                         "{problem},{optimizer},{mean_final:.6e},{std_final:.6e},{mean_iterations:.1},{mean_function_evals:.1},{mean_gradient_evals:.1},{success_rate:.3}\n"
                     ));
+                    total_rows += 1;
+                    debug!(
+                        "Added performance row for {} on {}: mean={:.6e}, success_rate={:.3}",
+                        optimizer, problem, mean_final, success_rate
+                    );
                 }
             }
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Performance comparison data exported to: {csv_path}");
+        info!(
+            "Performance comparison data exported to: {} ({} total rows)",
+            csv_path, total_rows
+        );
         Ok(())
     }
     /// Export performance boxplot data to CSV
@@ -1014,7 +1317,14 @@ impl PlottingEngine {
         results: &BenchmarkResults,
         filename: &str,
     ) -> Result<()> {
+        debug!(
+            "Exporting performance boxplot data for {} results",
+            results.results.len()
+        );
+        fs::create_dir_all(&self.output_dir)
+            .map_err(|e| anyhow::anyhow!("Failed to create output directory: {}", e))?;
         let csv_path = format!("{}/{}_data.csv", self.output_dir, filename);
+        info!("Writing performance boxplot CSV to: {}", csv_path);
         let mut csv_content = String::from("Optimizer,Min,Q1,Median,Q3,Max,AllValues\n");
         // Group results by optimizer across all problems
         let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
@@ -1024,7 +1334,13 @@ impl PlottingEngine {
                 .or_default()
                 .push(result.final_value);
         }
+        let mut total_rows = 0;
         for (optimizer, mut values) in optimizer_results {
+            debug!(
+                "Processing boxplot data for optimizer: {} with {} values",
+                optimizer,
+                values.len()
+            );
             values.sort_by(|a, b| a.partial_cmp(b).unwrap());
             let n = values.len();
             if n > 0 {
@@ -1042,11 +1358,19 @@ impl PlottingEngine {
                 csv_content.push_str(&format!(
                     "{optimizer},{min:.6e},{q1:.6e},{median:.6e},{q3:.6e},{max:.6e},\"{all_values_str}\"\n"
                 ));
+                total_rows += 1;
+                debug!(
+                    "Added boxplot row for {}: median={:.6e}, range=[{:.6e}, {:.6e}]",
+                    optimizer, median, min, max
+                );
             }
         }
         fs::write(&csv_path, csv_content)
             .map_err(|e| anyhow::anyhow!("Failed to write CSV file {}: {}", csv_path, e))?;
-        println!("Performance boxplot data exported to: {csv_path}");
+        info!(
+            "Performance boxplot data exported to: {} ({} total rows)",
+            csv_path, total_rows
+        );
         Ok(())
     }
     /// Helper function to add legend for unique optimizers
@@ -1057,11 +1381,17 @@ impl PlottingEngine {
         colors: &[&RGBColor],
     ) -> Result<()> {
         if !self.has_fonts {
+            debug!("Skipping legend creation - no font support");
             return Ok(());
         }
+        info!("Creating legend for {} optimizers", optimizer_names.len());
         let legend_x = self.width as i32 - 200;
         let legend_y = 50;
         let line_height = 20;
+        debug!(
+            "Legend position: ({}, {}), line height: {}",
+            legend_x, legend_y, line_height
+        );
         // Draw legend background
         let _ = root.draw(&Rectangle::new(
             [
@@ -1088,6 +1418,10 @@ impl PlottingEngine {
         for (i, optimizer_name) in optimizer_names.iter().enumerate() {
             let color = colors[i % colors.len()];
             let y_pos = legend_y + i as i32 * line_height;
+            debug!(
+                "Drawing legend entry {}: {} at position ({}, {})",
+                i, optimizer_name, legend_x, y_pos
+            );
             // Draw color line
             let _ = root.draw(&PathElement::new(
                 vec![(legend_x, y_pos), (legend_x + 30, y_pos)],
@@ -1103,6 +1437,7 @@ impl PlottingEngine {
                     .pos(Pos::new(HPos::Left, VPos::Center)),
             ));
         }
+        info!("Legend creation completed");
         Ok(())
     }
 }

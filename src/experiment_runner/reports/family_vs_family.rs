@@ -37,6 +37,14 @@ pub async fn generate_family_vs_family_latex_table(
     if optimizer_families.is_empty() || problem_families.is_empty() {
         return Ok(());
     }
+   // Ensure parent directory exists
+   if let Some(parent) = latex_dir.parent() {
+       fs::create_dir_all(parent)
+           .with_context(|| format!("Failed to create parent directory: {}", parent.display()))?;
+   }
+   fs::create_dir_all(latex_dir)
+       .with_context(|| format!("Failed to create latex directory: {}", latex_dir.display()))?;
+
     // Calculate column specification dynamically
     let col_spec = format!("l{}", "c".repeat(optimizer_families.len()));
 
@@ -664,7 +672,7 @@ mod tests {
     async fn test_render_family_vs_family_examples() -> anyhow::Result<()> {
         // Create a target directory for manual checking
         let target_dir = Path::new("target/test_output/family_vs_family_examples");
-        fs::create_dir_all(target_dir)?;
+       fs::create_dir_all(target_dir)?;
         // Create test data
         let test_data = test_data::create_test_data();
         let test_data_refs: Vec<(&ProblemSpec, BenchmarkResults)> = test_data
@@ -676,6 +684,10 @@ mod tests {
         // Generate HTML table content
         let html_content = generate_family_vs_family_comparison_table(&test_data_refs)?;
         let html_file_path = target_dir.join("family_vs_family_comparison.html");
+       // Ensure parent directory exists before writing HTML file
+       if let Some(parent) = html_file_path.parent() {
+           fs::create_dir_all(parent)?;
+       }
         // Wrap the content in a complete HTML document for better viewing
         let full_html = format!(
             r#"<!DOCTYPE html>
@@ -705,6 +717,10 @@ mod tests {
         // Generate table content only (for inclusion in larger documents)
         let table_content = generate_family_vs_family_table_content(&test_data_refs)?;
         let latex_content_path = target_dir.join("family_vs_family_table_content.tex");
+       // Ensure parent directory exists before writing LaTeX content file
+       if let Some(parent) = latex_content_path.parent() {
+           fs::create_dir_all(parent)?;
+       }
         fs::write(&latex_content_path, table_content)?;
         // Create a README file explaining the test outputs
         let readme_content = format!(
@@ -740,6 +756,10 @@ And the following optimizer families:
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
         );
         let readme_path = target_dir.join("README.md");
+       // Ensure parent directory exists before writing README file
+       if let Some(parent) = readme_path.parent() {
+           fs::create_dir_all(parent)?;
+       }
         fs::write(&readme_path, readme_content)?;
         println!(
             "✅ Family vs family comparison examples rendered to: {}",
