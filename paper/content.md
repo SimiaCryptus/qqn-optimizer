@@ -453,20 +453,10 @@ The comprehensive evaluation reveals several important insights:
    * Golden Section: High success rate with relatively few average evaluations
    * Bisection: Good success rate with moderate average evaluations
 
-3. **Scalability Crisis**: All methods show severe degradation with dimensionality:
-   * QQN maintains high success rates on hard problems with high condition numbers
-   * Empirical complexity: QQN shows better scaling than L-BFGS
-   * Memory efficiency: QQN linear vs L-BFGS higher order memory requirements
-
-4. **Problem-Specific Excellence**: Algorithms show surprising specialization:
+3. **Problem-Specific Excellence**: Algorithms show significant specialization:
    * QQN-GoldenSection: Unique perfect success on Rastrigin family
    * Adam-WeightDecay: Excellent performance on neural networks vs moderate performance for standard Adam
    * L-BFGS: Very few evaluations for perfect success on high-dimensional Sphere
-
-5. **Efficiency Patterns**: Clear trade-offs emerged between success and efficiency:
-   * QQN median: Moderate evaluations with best efficiency ratio
-   * L-BFGS median: Higher evaluations with lower efficiency ratio
-   * Adam median: Many evaluations with poor efficiency ratio
 
 ## The Benchmarking and Reporting Framework
 
