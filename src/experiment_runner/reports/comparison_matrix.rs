@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+const P_THRESHOLD: f64 = 0.001;
+
 /// Generate comparison matrix LaTeX table
 pub fn generate_comparison_matrix_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
@@ -113,7 +115,7 @@ pub fn generate_comparison_matrix_latex_table(
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
                             {
-                                if p_value < 0.05 {
+                                if p_value < P_THRESHOLD {
                                     if qqn_mean < non_qqn_mean {
                                         wins += 1;
                                     } else {
@@ -259,7 +261,7 @@ pub fn generate_comparison_matrix_table_content(
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
                             {
-                                if p_value < 0.05 {
+                                if p_value < P_THRESHOLD {
                                     if qqn_mean < non_qqn_mean {
                                         wins += 1;
                                     } else {
@@ -390,7 +392,7 @@ pub fn generate_family_comparison_matrix_table_content(
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
                             {
-                                if p_value < 0.05 {
+                                if p_value < P_THRESHOLD {
                                     if qqn_mean < non_qqn_mean {
                                         wins += 1;
                                     } else {
@@ -535,7 +537,7 @@ pub fn generate_family_comparison_matrix_latex_table(
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
                             {
-                                if p_value < 0.05 {
+                                if p_value < P_THRESHOLD {
                                     if qqn_mean < non_qqn_mean {
                                         wins += 1;
                                     } else {

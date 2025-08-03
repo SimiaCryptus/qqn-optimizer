@@ -348,7 +348,7 @@ We apply Bonferroni correction for multiple comparisons with adjusted significan
 ## Overall Performance
 
 The comprehensive evaluation across 62 benchmark problems with 25 optimizer variants revealed clear performance hierarchies. QQN variants dominated the results, winning the majority of problems across all categories. Key findings include:
-* **QQN variants won 45 out of 62 test problems** (72.6% win rate)
+* **QQN variants won 46 out of 62 test problems** (74.2% win rate)
 * **Statistical significance**: Friedman test p-value < 0.001 confirms algorithm performance differences
 * **Top performers**: QQN-StrongWolfe (12 wins), QQN-GoldenSection (11 wins), QQN-Bisection-1 (9 wins)
 
