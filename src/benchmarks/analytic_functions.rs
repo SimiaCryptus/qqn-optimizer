@@ -1371,7 +1371,8 @@ impl OptimizationProblem for BarrierFunction {
         }
         // Check feasibility
         if x.iter().any(|&xi| xi <= 0.0) {
-            return Err(anyhow::anyhow!("Barrier function requires x > 0"));
+            // return Err(anyhow::anyhow!("Barrier function requires x > 0"));
+            return Ok(f64::INFINITY); // Return a large value for infeasible points
         }
         let objective: f64 = x.iter().map(|&xi| xi * xi).sum();
         let x1: Vec<f64> = x.iter().map(|&xi| xi.ln()).collect();
@@ -1383,7 +1384,8 @@ impl OptimizationProblem for BarrierFunction {
             return Err(anyhow::anyhow!("Input dimension mismatch"));
         }
         if x.iter().any(|&xi| xi <= 0.0) {
-            return Err(anyhow::anyhow!("Barrier function requires x > 0"));
+            // return Err(anyhow::anyhow!("Barrier function requires x > 0"));
+            return Ok(vec![f64::INFINITY; self.dimension]); // Return large gradient for infeasible points
         }
         let grad: Vec<f64> = x.iter().map(|&xi| 2.0 * xi - self.mu / xi).collect();
         Ok(grad)

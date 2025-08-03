@@ -2,6 +2,28 @@
 
 # Clean up any existing files
 rm -f content.tex appendix.tex paper.aux paper.bbl paper.blg paper.log paper.pdf
+rm -rf results/
+mkdir -p results/latex results/plots
+
+# Copy referenced files from results directory
+RESULTS_DIR="../../results/full_all_optimizers_20250803_142238"
+
+# Copy LaTeX files
+if [ -f "$RESULTS_DIR/latex/comparison_matrix.tex" ]; then
+  cp "$RESULTS_DIR/latex/comparison_matrix.tex" results/latex/
+fi
+if [ -f "$RESULTS_DIR/latex/family_vs_family_matrix.tex" ]; then
+  cp "$RESULTS_DIR/latex/family_vs_family_matrix.tex" results/latex/
+fi
+if [ -f "$RESULTS_DIR/latex/Rosenbrock_5D_performance.tex" ]; then
+  cp "$RESULTS_DIR/latex/Rosenbrock_5D_performance.tex" results/latex/
+fi
+
+# Copy plot files
+if [ -f "$RESULTS_DIR/plots/Rosenbrock_5D/log_convergence.png" ]; then
+  mkdir -p results/plots/Rosenbrock_5D/
+  cp "$RESULTS_DIR/plots/Rosenbrock_5D/log_convergence.png" results/plots/Rosenbrock_5D/
+fi
 
 if [ ! -f content.tex ]; then
   pandoc content.md -o content.tex \
@@ -9,7 +31,7 @@ if [ ! -f content.tex ]; then
     --citeproc \
     --wrap=preserve \
     --top-level-division=section \
-   --resource-path=.. \
+    --resource-path=.. \
     --natbib
 else
   echo "content.tex already exists, skipping pandoc generation"
@@ -26,17 +48,18 @@ if [ ! -f appendix.tex ]; then
 else
   echo "appendix.tex already exists, skipping pandoc generation"
 fi
+# First LaTeX pass
 
-pdflatex paper.tex
+pdflatex -interaction=nonstopmode paper.tex
 
 # Process bibliography
 bibtex paper
 
 # Second LaTeX pass (for cross-references)
-pdflatex paper.tex
+pdflatex -interaction=nonstopmode paper.tex
 
 # Third LaTeX pass (to ensure everything is resolved)
-pdflatex paper.tex
+pdflatex -interaction=nonstopmode paper.tex
 
 # Convert the final PDF back to markdown for agent analysis
 if [ -f paper.pdf ]; then
@@ -62,8 +85,42 @@ doc.close()
   else
     echo "Warning: No PDF-to-text converter found. Install poppler-utils (pdftotext) or PyMuPDF"
     echo "Creating placeholder paper_rendered.md"
-    echo "# Rendered Paper\n\nPDF conversion not available. Please install pdftotext or PyMuPDF." > paper_rendered.md
+    echo -e "# Rendered Paper\n\nPDF conversion not available. Please install pdftotext or PyMuPDF." > paper_rendered.md
   fi
 else
   echo "Warning: paper.pdf not found, skipping markdown conversion"
+fi
+# Prepare arXiv submission zip
+if [ -f paper.pdf ]; then
+  echo "Preparing arXiv submission package..."
+  # Create temporary directory for arXiv files
+  ARXIV_DIR="arxiv_submission"
+  rm -rf "$ARXIV_DIR"
+  mkdir -p "$ARXIV_DIR"
+  # Copy main LaTeX files
+  cp paper.tex "$ARXIV_DIR/"
+  cp content.tex "$ARXIV_DIR/"
+  cp appendix.tex "$ARXIV_DIR/"
+  cp references.bib "$ARXIV_DIR/"
+  # Copy any style files if they exist
+  if [ -f "*.cls" ]; then cp *.cls "$ARXIV_DIR/"; fi
+  if [ -f "*.sty" ]; then cp *.sty "$ARXIV_DIR/"; fi
+  # Copy results directory (figures and tables)
+  if [ -d "results" ]; then
+    cp -r results "$ARXIV_DIR/"
+  fi
+  # Copy any additional image files
+  if [ -d "figures" ]; then cp -r figures "$ARXIV_DIR/"; fi
+  if [ -d "images" ]; then cp -r images "$ARXIV_DIR/"; fi
+  # Create the zip file
+  cd "$ARXIV_DIR"
+  zip -r "../arxiv_submission.zip" .
+  cd ..
+  # Clean up temporary directory
+  rm -rf "$ARXIV_DIR"
+  echo "arXiv submission package created: arxiv_submission.zip"
+  echo "Contents:"
+  unzip -l arxiv_submission.zip
+else
+  echo "Warning: paper.pdf not found, skipping arXiv package creation"
 fi

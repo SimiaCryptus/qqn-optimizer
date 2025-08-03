@@ -297,7 +297,7 @@ The summary results are presented in a win/loss/tie table, showing how many prob
 ```{=latex}
 \begin{table}[H]
 \centering
-{\input{../../results/full_all_optimizers_20250803_002620/latex/comparison_matrix.tex}}
+{\input{results/latex/comparison_matrix.tex}}
 \end{table}
 ```
 
@@ -386,14 +386,14 @@ The results on the Rosenbrock function family reveal the challenges of ill-condi
 
 The following figure demonstrates QQN's superior performance on Rosenbrock and multimodal problems:
 
-![Rosenbrock 5D Log-Convergence Plot](../../results/full_all_optimizers_20250803_002620/plots/Rosenbrock_5D/log_convergence.png){width=600 height=400}
+![Rosenbrock 5D Log-Convergence Plot](results/plots/Rosenbrock_5D/log_convergence.png){width=600 height=400}
 
 The following table shows detailed performance results on the challenging Rosenbrock_5D problem:
 
 *Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock_5D.*
 
 ```{=latex}
-{\input{../../results/full_all_optimizers_20250803_002620/latex/Rosenbrock_5D_performance.tex}}
+{\input{results/latex/Rosenbrock_5D_performance.tex}}
 ```
 
 *Most optimizers achieved 0% success on Rosenbrock_5D, highlighting the problem's difficulty.
