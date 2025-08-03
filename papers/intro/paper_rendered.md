@@ -161,7 +161,7 @@ A quadratic polynomial d(t) = at2 + bt + c provides the minimal solution.
    Therefore: a = dLBFGS + ∇f (xk )
    This yields the canonical form:
 
-                                      d(t) = t(1 − t)(−∇f ) + t2 dLBFGS
+                                    d(t) = t(1 − t)(−∇f ) + t2 dL-BFGS
 
    This creates a parabolic arc in optimization space that starts tangent to the gradient descent direction
 and curves smoothly toward the quasi-Newton direction.
@@ -201,7 +201,7 @@ for k = 0, 1, 2, ... do
 end for
 
 
-                                                     4
+                                                    4
    The one-dimensional optimization can use a variety of established methods, e.g. golden section search,
 Brent’s method, or bisection on the derivative. Note that while the quadratic path is defined for t [0,1], the
 optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality and
@@ -214,7 +214,7 @@ quadratic interpolation mechanism provides graceful degradation to gradient-base
     Lemma 1 (Universal Descent Property): For any direction dLBFGS —even ascent directions or random
 vectors—the curve d(t) = t(1 − t)(−∇f ) + t2 dLBFGS satisfies d′ (0) = −∇f (xk ). This guarantees a neigh-
 borhood (0, ϵ) where the objective function decreases along the path. This property enables interesting
-variations; virtually any point guessing strategy can be used as dLBFGS .
+variations; virtually any point guessing strategy can be used as dL-BFGS .
     The framework naturally filters any proposed direction through the lens of guaranteed initial descent,
 making it exceptionally robust to direction quality.
     Theorem 1 (Descent Property): For any dLBFGS , there exists t̄ > 0 such that ϕ(t) = f (xk + d(t))
@@ -350,9 +350,9 @@ won, lost, or tied against each other:
  Non-QQN Optimizer            QQN-Bisection-1     QQN-Bisection-2    QQN-CubicQuadraticInterpolation       QQN-GoldenSection      QQN-StrongWolfe
  Adam                             47W-3L-9T          40W-7L-10T                  41W-4L-14T                     41W-3L-15T            43W-5L-11T
  Adam-AMSGrad                     49W-2L-8T          41W-6L-10T                  44W-4L-11T                     44W-3L-12T            45W-4L-10T
- Adam-Fast                       45W-4L-10T          40W-4L-13T                  35W-5L-19T                     40W-5L-14T            42W-3L-14T
+ Adam-Fast                       44W-4L-11T          39W-4L-14T                  35W-5L-19T                     40W-5L-14T            42W-3L-14T
  Adam-Robust                     47W-1L-11T          41W-1L-15T                  41W-2L-16T                     44W-1L-14T            45W-0L-14T
- Adam-WeightDecay                39W-1L-19T          34W-3L-20T                  33W-4L-22T                     36W-1L-22T            35W-2L-22T
+ Adam-WeightDecay                38W-1L-20T          34W-3L-20T                  33W-4L-22T                     36W-1L-22T            35W-2L-22T
  GD                              38W-1L-20T          38W-3L-16T                  38W-3L-18T                     39W-2L-18T            40W-2L-17T
  GD-AdaptiveMomentum             46W-1L-12T          45W-2L-10T                  40W-3L-16T                     44W-1L-14T            46W-0L-13T
  GD-Momentum                     48W-0L-11T          43W-0L-14T                  44W-1L-14T                     46W-1L-12T            48W-0L-11T
@@ -360,11 +360,11 @@ won, lost, or tied against each other:
  GD-WeightDecay                  36W-1L-22T          34W-3L-20T                  29W-3L-27T                     33W-3L-23T            35W-2L-22T
  L-BFGS                          32W-1L-26T          32W-3L-22T                  32W-3L-24T                     31W-3L-25T            37W-3L-19T
  L-BFGS-Aggressive               43W-2L-14T          42W-2L-13T                  40W-3L-16T                     41W-3L-15T            43W-1L-15T
- L-BFGS-Conservative             28W-3L-28T          26W-7L-24T                  23W-8L-28T                     25W-6L-28T            22W-5L-32T
- L-BFGS-Limited                  20W-1L-38T          16W-4L-37T                  18W-7L-34T                     16W-6L-37T            23W-3L-33T
- L-BFGS-MoreThuente              16W-4L-39T          16W-2L-39T                  20W-5L-34T                     15W-7L-37T            21W-3L-35T
- Trust Region-Adaptive           45W-0L-14T          42W-1L-14T                  39W-0L-20T                     44W-0L-15T            44W-0L-15T
- Trust Region-Aggressive         45W-0L-14T          43W-0L-14T                  42W-0L-17T                     43W-0L-16T            43W-0L-16T
+ L-BFGS-Conservative             27W-3L-29T          25W-7L-25T                  22W-8L-29T                     24W-6L-29T            22W-5L-32T
+ L-BFGS-Limited                  19W-1L-39T          15W-4L-38T                  18W-7L-34T                     15W-6L-38T            22W-3L-34T
+ L-BFGS-MoreThuente              16W-4L-39T          16W-2L-39T                  20W-5L-34T                     15W-7L-37T            20W-3L-36T
+ Trust Region-Adaptive           46W-0L-13T          43W-1L-13T                  40W-0L-19T                     45W-0L-14T            45W-0L-14T
+ Trust Region-Aggressive         44W-0L-15T          42W-0L-15T                  41W-0L-18T                     42W-0L-17T            42W-0L-17T
  Trust Region-Conservative        54W-0L-5T           50W-0L-7T                  47W-2L-10T                      50W-0L-9T             53W-0L-6T
  Trust Region-Precise             51W-0L-8T           50W-1L-6T                  44W-0L-15T                     47W-0L-12T             50W-0L-9T
  Trust Region-Standard           44W-0L-15T          42W-0L-15T                  39W-0L-20T                     41W-0L-18T            43W-0L-16T
@@ -459,8 +459,8 @@ several key insights:
      method:
         • StrongWolfe: Achieved very high precision on convex problems
         • GoldenSection: Perfect success on Rastrigin family across all dimensions
-        • Bisection variants: Fewer gradient evaluations vs line search variants, with QQN-Bisection-1
-          achieving 100% success on Rosenbrock 10D using only 8.47e0 mean final value
+        • Bisection variants: Fewer gradient evaluations vs line search variants, showing strong performance
+          on high-dimensional problems
         • CubicQuadraticInterpolation: Excelled on sparse problems with 55% success rate on SparseRosen-
           brock 10D
   3. Scalability Challenges: Performance degraded with dimensionality:
@@ -474,12 +474,13 @@ several key insights:
           80% success with 1893.5 evaluations (12x more)
 
 6.3    Ill-Conditioned Problems: Rosenbrock Function
-The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization: * QQN-
-StrongWolfe achieved 100% success on Rosenbrock 5D with 3.45e-1 mean final value * QQN-CubicQuadraticInterpolation
-achieved 75% success on IllConditionedRosenbrock 10D * L-BFGS variants showed <20% success rates on
-ill-conditioned variants
-     The following figure demonstrates QQN’s superior performance on Rosenbrock and multimodal problems:
-     *Most optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty.
+The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization: *
+QQN-StrongWolfe achieved 100% success on Rosenbrock 5D with mean final value of 3.45e-1 * QQN-
+CubicQuadraticInterpolation achieved 70% success on Rosenbrock 5D with mean final value of 4.25e-1 *
+Most other optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty
+   The following table shows detailed performance results on the challenging Rosenbrock 5D problem:
+   Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock 5D.
+   *Most optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty.
 
 6.4    Statistical Significance
 Analysis of the comprehensive benchmark suite reveals clear performance patterns:
@@ -495,22 +496,21 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
   2. QQN-GoldenSection: High number of wins, strong risk-adjusted performance
   3. QQN-Bisection-1: Many wins, particularly strong on high-dimensional problems
   4. L-BFGS-MoreThuente: Substantial wins, good risk-adjusted performance
-  5. Adam-WeightDecay: Best on neural networks with excellent success rate
 
 
-                                                    9
+                                                     9
                       Table 2: Performance Results for Rosenbrock 5D Problem
 Optimizer        Mean Final     Std Dev    Best     Worst Mean Func        Success   Mean Time
                    Value                   Value Value          Evals     Rate (%)      (s)
 QQN-                6.13e-1     3.74e-1   2.60e-1    1.61e0    3314.1      55.0        0.061
 GoldenSection
-Adam-Robust         1.46e1      6.99e0    6.12e0     2.99e1    2502.0       0.0        0.058
-Adam-               4.40e0      3.25e-1   3.25e0     4.82e0    2442.0       0.0        0.056
+Adam-Robust         1.46e1      6.99e0    6.12e0     2.99e1    2502.0       0.0        0.059
+Adam-               4.40e0      3.25e-1   3.25e0     4.82e0    2442.0       0.0        0.057
 AMSGrad
 Adam                3.92e0      4.66e-1   2.83e0     4.65e0    2471.6       0.0        0.050
 QQN-                4.25e-1     1.40e-1   2.38e-1    7.25e-1   1199.2      70.0        0.049
 CubicQuadraticInterpolation
-L-BFGS-             4.21e-1     3.55e-2   3.92e-1    5.47e-1   3855.4      45.0        0.045
+L-BFGS-             4.21e-1     3.55e-2   3.92e-1    5.47e-1   3855.4      45.0        0.044
 Limited
 QQN-Bisection-      4.48e-1     1.63e-1   2.15e-1    9.11e-1   1588.3      55.0        0.039
 2
@@ -520,18 +520,18 @@ QQN-Bisection-      6.94e-1      1.01e0   2.50e-1    4.64e0    1147.7      85.0 
 1
 L-BFGS-             8.07e2       4.06e2   1.72e1     1.19e3    3851.6       0.0        0.029
 Aggressive
-Adam-               2.07e0       2.05e0   3.93e-1    4.66e0    1128.9      60.0        0.024
+Adam-               2.07e0       2.05e0   3.93e-1    4.66e0    1128.9      60.0        0.025
 WeightDecay
-QQN-                3.45e-1     4.37e-2   2.58e-1    3.95e-1   792.6       100.0       0.024
+QQN-                3.45e-1     4.37e-2   2.58e-1    3.95e-1   792.6       100.0       0.023
 StrongWolfe
-Trust Region-       1.02e3       1.63e2   7.14e2     1.31e3    3002.0       0.0        0.021
+Trust Region-       1.02e3       1.63e2   7.14e2     1.31e3    3002.0       0.0        0.020
 Conservative
-Trust Region-       1.01e3       1.27e2   8.08e2     1.35e3    3002.0       0.0        0.019
+Trust Region-       1.01e3       1.27e2   8.08e2     1.35e3    3002.0       0.0        0.020
 Precise
+Trust Region-       8.41e2       1.37e2   5.05e2     1.11e3    3002.0       0.0        0.020
+Adaptive
 L-BFGS-             9.01e-1      1.03e0   2.37e-1    3.50e0    1090.7      70.0        0.019
 MoreThuente
-Trust Region-       8.41e2       1.37e2   5.05e2     1.11e3    3002.0       0.0        0.019
-Adaptive
 Trust Region-       6.23e1       7.73e1   4.66e0     2.53e2    2827.2       0.0        0.018
 Standard
 GD-Nesterov         4.24e0      5.00e0    3.90e-1    1.31e1    335.4       10.0        0.011
@@ -550,38 +550,35 @@ GD-Momentum         3.55e1       8.91e0   1.96e1     4.95e1     20.8        0.0 
 
 
                                                 10
-                           Figure 1: Rosenbrock 5D Log-Convergence Plot
+    5. Adam-WeightDecay: Best on neural networks with excellent success rate
 
+    Notable Performance Gaps:
 
-  Notable Performance Gaps:
+    • Rastrigin family: QQN-GoldenSection perfect success vs poor performance for L-BFGS on high di-
+      mensions
+    • Neural networks: Adam-WeightDecay excellent performance vs poor performance for classical methods
+    • Rosenbrock family: QQN-StrongWolfe perfect success with very high precision convergence
+    • Multimodal problems: QQN very high win rate vs poor performance for competitors
 
-  • Rastrigin family: QQN-GoldenSection perfect success vs poor performance for L-BFGS on high di-
-    mensions
-  • Neural networks: Adam-WeightDecay excellent performance vs poor performance for classical methods
-  • Rosenbrock family: QQN-StrongWolfe perfect success with very high precision convergence
-  • Multimodal problems: QQN very high win rate vs poor performance for competitors
-
-6.5   Performance on Different Problem Classes
+6.5     Performance on Different Problem Classes
 Convex Problems:
 
-  • QQN variants: 100% success rate on well-conditioned problems with minimal evaluations
-  • QQN-Bisection-2 on Sphere 10D: 0.00e0 final value with only 13 function evaluations
-  • L-BFGS-Aggressive: Matched performance but required more gradient evaluations
-  • QQN-StrongWolfe: Superior superlinear convergence rate with 50-80% fewer evaluations than L-BFGS
+    • QQN variants: 100% success rate on well-conditioned problems with minimal evaluations
+    • QQN-Bisection-2 on Sphere 10D: 0.00e0 final value with only 13 function evaluations
+    • L-BFGS-Aggressive: Matched performance but required more gradient evaluations
+    • QQN-StrongWolfe: Superior superlinear convergence rate with 50-80% fewer evaluations than L-BFGS
 
-  Non-Convex Unimodal:
+    Non-Convex Unimodal:
 
-  • QQN variants: 70-100% success rates on moderately conditioned problems
-  • QQN-StrongWolfe on Rosenbrock 5D: 100% success vs 70% for best L-BFGS variant
-  • QQN follows valley efficiently using curvature information on Rosenbrock
-  • Performance vs condition number: QQN maintains speed on ill-conditioned problems while others slow
-    significantly
+    • QQN variants: 70-100% success rates on moderately conditioned problems
+    • QQN-StrongWolfe on Rosenbrock 5D: 100% success vs 70% for best L-BFGS variant
+    • QQN follows valley efficiently using curvature information on Rosenbrock
+    • Performance vs condition number: QQN maintains speed on ill-conditioned problems while others slow
+      significantly
 
-  Highly Multimodal Problems:
+    Highly Multimodal Problems:
 
-
-                                                 11
-    • QQN-GoldenSection: 100% success on Rastrigin 2D with 64.2 evaluations
+    • QQN-GoldenSection: 100% success on Rastrigin 2D with 64.2 evaluations
     • QQN-CubicQuadraticInterpolation: 80% success on Rastrigin 2D
     • Basin of attraction for global minimum: Very small fraction of search space
     • QQN escape mechanism: Systematic step size exploration prevents local minima trapping
@@ -597,46 +594,47 @@ Convex Problems:
     • Regularization synergy: Weight decay prevents overfitting in high dimensions
 
 
-7       Discussion
+7     Discussion
 7.1     Key Findings
 The comprehensive evaluation reveals several important insights:
 
     1. QQN Dominance: QQN variants won the majority of problems, demonstrating clear superiority
+       across diverse optimization landscapes.
+    2. Clear Dominance: QQN variants won the majority of problems, demonstrating clear superiority
        across diverse optimization landscapes. Statistical validation shows QQN beats L-BFGS on most
-       problems, Adam on the vast majority, and gradient descent on nearly all problems. QQN-Bisection-1
-       achieved the highest win rate with 54W-0L-5T against Trust Region-Conservative.
-    2. Line Search Critical: Among QQN variants, line search strategy dramatically affects performance:
+       problems, Adam on the vast majority, and gradient descent on nearly all problems. QQN variants
+       consistently outperformed other optimizer families across the benchmark suite.
 
-         • Strong Wolfe: Excellent success rate with moderate average evaluations
-         • Golden Section: 90-100% success rate on 2D problems with relatively few average evaluations
-         • Bisection: 100% success on Rosenbrock 10D with minimal evaluations
-         • Cubic-Quadratic Interpolation: 55% success on sparse problems, best for ill-conditioned objectives
 
-    3. Problem-Specific Excellence: Algorithms show significant specialization:
+                                                   11
+  3. Line Search Critical: Among QQN variants, line search strategy dramatically affects performance:
 
-         • QQN-GoldenSection: Achieved 1.81e-7 on Levy 2D with only 159.8 function evaluations
-         • QQN-CubicQuadraticInterpolation: 75% success on IllConditionedRosenbrock 10D
-         • Adam-WeightDecay: Excellent performance on neural networks vs moderate performance for
-           standard Adam
-         • L-BFGS-Conservative: 80% success on IllConditionedRosenbrock 2D but required 1800.6 evalua-
-           tions
+        • Strong Wolfe: Excellent success rate with moderate average evaluations
+        • Golden Section: 90-100% success rate on 2D problems with relatively few average evaluations
+        • Bisection: 100% success on Rosenbrock 10D with minimal evaluations
+        • Cubic-Quadratic Interpolation: 55% success on sparse problems, best for ill-conditioned objectives
+
+  4. Problem-Specific Excellence: Algorithms show significant specialization:
+
+        • QQN-GoldenSection: Achieved 1.81e-7 on Levy 2D with only 159.8 function evaluations
+        • QQN-CubicQuadraticInterpolation: 70% success on Rosenbrock 5D with strong performance on
+          ill-conditioned problems
+        • Adam-WeightDecay: Excellent performance on neural networks vs moderate performance for
+          standard Adam
+        • L-BFGS variants: Generally poor performance on ill-conditioned problems like Rosenbrock
 
 7.2     The Benchmarking and Reporting Framework
-7.2.1    Methodological Contributions
+7.2.1   Methodological Contributions
 Our benchmarking framework represents a significant methodological advance in optimization algorithm
 evaluation:
 
-    1. Statistical Rigor: Automated statistical testing with Welch’s t-test, Cohen’s d effect size, and Bon-
-       ferroni correction ensures results are not artifacts of random variation. The framework generates
-       comprehensive statistical comparison matrices that reveal true performance relationships.
-
-    2. Reproducibility Infrastructure: Fixed seeds, deterministic algorithms, and automated report gen-
-       eration eliminate common sources of irreproducibility in optimization research. All results can be
-       regenerated with a single command.
-
-
-                                                     12
-  3. Diverse Problem Suite: The 74-problem benchmark suite covers a wide range of optimization
+  1. Statistical Rigor: Automated statistical testing with Welch’s t-test, Cohen’s d effect size, and Bon-
+     ferroni correction ensures results are not artifacts of random variation. The framework generates
+     comprehensive statistical comparison matrices that reveal true performance relationships.
+  2. Reproducibility Infrastructure: Fixed seeds, deterministic algorithms, and automated report gen-
+     eration eliminate common sources of irreproducibility in optimization research. All results can be
+     regenerated with a single command.
+  3. Diverse Problem Suite: The 62-problem benchmark suite covers a wide range of optimization
      challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned
      problems, and constrained optimization scenarios.
   4. Multi-Format Reporting: The system generates:
@@ -660,7 +658,10 @@ The comprehensive reporting revealed patterns invisible to traditional evaluatio
      revealed cases where statistically significant differences have negligible practical impact (e.g., 10 vs 12
      function evaluations on Sphere).
 
-7.2.3   Framework Design Decisions
+
+
+                                                      12
+7.2.3   Framework Design Decisions
 Several design choices proved crucial for meaningful evaluation:
 
   1. Function Evaluation Fairness: Counting function evaluations rather than iterations ensures fair
@@ -687,10 +688,7 @@ While comprehensive, the framework has limitations that suggest future extension
 7.2.5   Impact on Optimization Research
 This benchmarking framework addresses several chronic issues in optimization research:
 
-
-
-                                                      13
-  1. Reproducibility Crisis: Many optimization papers report results that cannot be reproduced due to
+  1. Reproducibility Crisis: Many optimization papers report results that cannot be reproduced due to
      missing details, implementation differences, or cherry-picked results. Our framework ensures complete
      reproducibility.
   2. Fair Comparison: Different papers use different problem sets, termination criteria, and metrics. Our
@@ -704,7 +702,7 @@ This benchmarking framework addresses several chronic issues in optimization res
 lems, or analysis methods while maintaining compatibility with the existing infrastructure. We envision this
 becoming a standard tool for optimization algorithm development and evaluation.
 
-7.3    When to Use QQN
+7.3     When to Use QQN
 Algorithm Selection Guidelines
    Primary Recommendation: Based on the majority win rate and statistical dominance, prioritize QQN
 variants for most optimization tasks:
@@ -715,38 +713,38 @@ variants for most optimization tasks:
      ations (13-15 for Sphere 10D)
    • Multimodal landscapes: QQN-GoldenSection achieves 90-100% success on 2D problems
    • Sparse/ill-conditioned: QQN-CubicQuadraticInterpolation achieves 55% success on sparse problems
-     and 75% on ill-conditioned variants
-   • Unknown problem structure: QQN’s statistical dominance makes it the safest default choice
+     and strong performance on ill-conditioned variants
 
-   Use specialized methods when:
 
-   • Extreme efficiency required on convex problems: L-BFGS-Aggressive when gradient evaluations
-     are expensive
-   • Neural networks with mini-batches: Adam-WeightDecay for stochastic optimization
-   • Extremely noisy gradients: L-BFGS-Conservative when QQN variants show instability
-   • Large scale: Adam variants maintain linear complexity
+                                                    13
+    • Unknown problem structure: QQN’s statistical dominance makes it the safest default choice
+
+    Use specialized methods when:
+
+    • Extreme efficiency required on convex problems: L-BFGS-Aggressive when gradient evaluations
+      are expensive
+    • Neural networks with mini-batches: Adam-WeightDecay for stochastic optimization
+    • Extremely noisy gradients: L-BFGS-Conservative when QQN variants show instability
+    • Large scale: Adam variants maintain linear complexity
 
    These results suggest that practitioners should default to QQN variants given their statistical dominance
-(54W-0L-5T best case, 70-100% success rates), while maintaining specialized methods for specific use cases
-where efficiency or domain-specific performance is critical. The quadratic approximation in QQN provides
-superior convergence properties with 50-80% fewer evaluations than traditional quasi-Newton methods.
+across the benchmark suite, while maintaining specialized methods for specific use cases where efficiency or
+domain-specific performance is critical. The quadratic approximation in QQN provides superior convergence
+properties with 50-80% fewer evaluations than traditional quasi-Newton methods.
 
-7.4    Future Directions
+7.4     Future Directions
 The quadratic interpolation approach of QQN could be extended in various ways:
 
-   • Deep Learning Applications: Adapting QQN for stochastic optimization in neural network training,
-     including mini-batch variants and adaptive learning rate schedules.
-   • Gradient Scaling ( parameter): In deep learning contexts where gradients are often small, in-
-     troducing an adaptive gradient scaling factor could improve convergence speed without sacrificing
-     robustness.
-   • Momentum Integration: Incorporating momentum terms into the quadratic path construction to
-     accelerate convergence on problems with consistent gradient directions.
-   • PSO-Like QQN: Using a global population optimum to guide the quadratic path, similar to particle
-     swarm optimization.
-
-
-                                                    14
-    • Constrained Optimization: Extending QQN to handle constraints through trust region-based pro-
+    • Deep Learning Applications: Adapting QQN for stochastic optimization in neural network training,
+      including mini-batch variants and adaptive learning rate schedules.
+    • Gradient Scaling ( parameter): In deep learning contexts where gradients are often small, in-
+      troducing an adaptive gradient scaling factor could improve convergence speed without sacrificing
+      robustness.
+    • Momentum Integration: Incorporating momentum terms into the quadratic path construction to
+      accelerate convergence on problems with consistent gradient directions.
+    • PSO-Like QQN: Using a global population optimum to guide the quadratic path, similar to particle
+      swarm optimization.
+    • Constrained Optimization: Extending QQN to handle constraints through trust region-based pro-
       jective geometry.
     • Stochastic Extensions: Adapting QQN for stochastic optimization problems, particularly by opti-
       mizing the one-dimensional search under noise.
@@ -763,17 +761,20 @@ demonstrates:
        54W-0L-5T against Trust Region-Conservative. Statistical validation shows strong dominance over
        L-BFGS and very strong dominance over Adam. Friedman test confirms statistical significance.
     2. Problem-Specific Excellence: QQN variants achieved 100% success on convex problems with 50-
-       80% fewer evaluations than L-BFGS. QQN-GoldenSection achieved 90-100% success on 2D problems,
-       while QQN-CubicQuadraticInterpolation excelled on sparse problems with 55% success rate.
-    3. Efficiency vs Robustness: QQN shows superior efficiency ratio with examples like QQN-Bisection-
-       1 achieving 100% success on Sphere 10D with only 15 evaluations vs L-BFGS-Conservative’s 197.5
-       evaluations (13x improvement).
+       80% fewer evaluations than L-BFGS. QQN-StrongWolfe achieved 100% success on challenging problems
+       like Rosenbrock 5D, while QQN-CubicQuadraticInterpolation excelled on sparse problems.
+    3. Efficiency vs Robustness: QQN shows superior efficiency with strong success rates across problem
+       types while requiring fewer function evaluations than traditional methods.
     4. Theoretical Foundation: Rigorous proofs establish global convergence under mild assumptions and
        local superlinear convergence matching quasi-Newton methods.
-    5. Practical Impact: The results provide clear guidance for practitioners: use QQN-Bisection variants
-       for high-dimensional problems (70-100% success with linear scaling), QQN-GoldenSection for low-
-       dimensional optimization, and QQN-CubicQuadraticInterpolation for sparse or ill-conditioned prob-
-       lems.
+
+
+
+
+                                                    14
+    5. Practical Impact: The results provide clear guidance for practitioners: use QQN-StrongWolfe for
+       general optimization, QQN-Bisection variants for high-dimensional problems, QQN-GoldenSection for
+       multimodal landscapes, and QQN-CubicQuadraticInterpolation for sparse or ill-conditioned problems.
 
     The simplicity of QQN’s core insight—that quadratic interpolation provides the natural geometry for
 combining optimization directions—contrasts with the complexity of recent developments. Combined with
@@ -799,29 +800,37 @@ collaborative approach between human expertise and AI assistance facilitated the
 the method.
 
 
-                                                    15
-10     Supplementary Material
+10      Supplementary Material
 All code, data, and results are available at https://github.com/SimiaCryptus/qqn-optimizer/ to ensure
 reproducibility and enable further research. We encourage the community to build upon this work and
 explore the broader potential of interpolation-based optimization methods.
 
 
-11     Competing Interests
+11      Competing Interests
 The authors declare no competing interests.
 
 
-12     Data Availability
+12      Data Availability
 All experimental data, including raw optimization trajectories and statistical analyses, are available at
-https://github.com/SimiaCryptus/qqn-optimizer/.
+https://github.com/SimiaCryptus/qqn-optimizer/. The evaluation revealed significant performance
+variations across multiple optimizers tested on a comprehensive problem set with thousands of individual
+optimization runs (multiple runs per problem-optimizer pair). QQN variants dominated the winner’s table,
+claiming most problems. Specifically, QQN-StrongWolfe achieved the highest overall performance across
+problems, while QQN-Bisection-1 showed particularly strong performance against Trust Region methods
+with 54W-0L-5T against Trust Region-Conservative.
 
 
 References
 Vahid Beiranvand, Warren Hare, and Yves Lucet. Best practices for comparing optimization algorithms.
   Optimization and Engineering, 18(4):815–848, 2017. doi: 10.1007/s11081-017-9366-1.
-Michael C Biggs. Minimization algorithms making use of non-quadratic properties of the objective function.
+
+
+                                                    15
+Michael C Biggs. Minimization algorithms making use of non-quadratic properties of the objective function.
  IMA Journal of Applied Mathematics, 12(3):337–357, 1973.
 Charles George Broyden. The convergence of a class of double-rank minimization algorithms 1. General
   considerations. IMA Journal of Applied Mathematics, 6(1):76–90, 1970. doi: 10.1093/imamat/6.1.76.
+
 Augustin Cauchy. Méthode générale pour la résolution des systèmes d’équations simultanées. Comptes
  Rendus de l’Académie des Sciences, 25:536–538, 1847.
 Andrew R Conn, Nicholas IM Gould, and Philippe L Toint. Trust Region Methods. SIAM, 2000. ISBN
@@ -830,7 +839,6 @@ Kenneth Alan De Jong. An analysis of the behavior of a class of genetic adaptive
   University of Michigan, Ann Arbor, MI, 1975.
 Roger Fletcher. A new approach to variable metric algorithms. The Computer Journal, 13(3):317–322, 1970.
   doi: 10.1093/comjnl/13.3.317.
-
 Donald Goldfarb. A family of variable-metric methods derived by variational means. Mathematics of Com-
  putation, 24(109):23–26, 1970. doi: 10.1090/S0025-5718-1970-0258249-6.
 Nikolaus Hansen, Anne Auger, Raymond Ros, Olaf Mersmann, Tea Tušar, and Dimo Brockhoff. COCO: A
@@ -841,24 +849,23 @@ Momin Jamil and Xin-She Yang. A literature survey of benchmark functions for glo
  10.1504/IJMMNO.2013.055204.
 Diederik P Kingma and Jimmy Ba. Adam: A method for stochastic optimization.                 arXiv preprint
   arXiv:1412.6980, 2015. doi: 10.48550/arXiv.1412.6980.
+
 Jing J Liang, Bo Yang Qu, Ponnuthurai Nagaratnam Suganthan, and Alfredo G Hernández-Dı́az. Problem
   definitions and evaluation criteria for the CEC 2013 special session on real-parameter optimization. Com-
   putational Intelligence Laboratory, Zhengzhou University, Zhengzhou, China and Nanyang Technological
   University, Singapore, Technical Report, 201212, 2013.
-
-
-                                                    16
-Dong C Liu and Jorge Nocedal. On the limited memory BFGS method for large scale optimization. Mathe-
+Dong C Liu and Jorge Nocedal. On the limited memory BFGS method for large scale optimization. Mathe-
  matical Programming, 45(1-3):503–528, 1989. doi: 10.1007/BF01589116.
 José Luis Morales and Jorge Nocedal. Automatic preconditioning by limited memory quasi-Newton updating.
   SIAM Journal on Optimization, 10(4):1079–1096, 2000. doi: 10.1137/S1052623497327854.
-
 Jorge J Moré and Danny C Sorensen. Computing a trust region step. SIAM Journal on Scientific and
   Statistical Computing, 4(3):553–572, 1983. doi: 10.1137/0904038.
+
 Yurii Nesterov. A method for unconstrained convex minimization problem with the rate of convergence
   O(1/k²). Doklady AN USSR, 269:543–547, 1983.
 Boris T Polyak. Some methods of speeding up the convergence of iteration methods. USSR Computational
   Mathematics and Mathematical Physics, 4(5):1–17, 1964. doi: 10.1016/0041-5553(64)90137-5.
+
 Robin M Schmidt, Frank Schneider, and Philipp Hennig. Descending through a crowded valley–benchmarking
   deep learning optimizers. International Conference on Machine Learning, pages 9367–9376, 2021.
 David F Shanno. Conditioning of quasi-Newton methods for function minimization. Mathematics of Com-
@@ -867,72 +874,73 @@ David F Shanno. Conditioning of quasi-Newton methods for function minimization. 
 
 
 
-                                                  17
+                                                    16
 13     Appendix A: Problem Family vs Optimizer Family Compari-
        son Matrix
 
-
-
-
-                                                                                                 Trust Region
-                                                                 L-BFGS
-                                Adam
+                   Table 3: Optimizer Family vs Problem Family Performance Matrix
 
 
 
 
-                                                                                 QQN
-                                                GD
+                                                                                                    Trust Region
+                                                                    L-BFGS
+                                   Adam
+
+
+
+
+                                                                                    QQN
+                                                   GD
         Problem
          Family
 
 
-                            16.3 / 12.0     16.5 / 9.7       6.5 / 2.3        5.1 / 1.0      20.7 / 13.7
-Ackley                     Adam-AMSGrad         GD            L-BFGS          Bisection-2    Conservative
-                             Adam-Fast    GD-Momentum       Conservative    GoldenSection     Aggressive
-                             8.5 / 3.0      6.2 / 1.0        3.7 / 2.3        inf / inf      13.1 / 8.0
-Barrier                     WeightDecay         GD           Conservative       N/A          Conservative
-                             Adam-Fast    AdaptiveMom...   L-BFGS-Limited       N/A           Aggressive
-                             19.0 / 8.0      8.8 / 3.0      10.0 / 2.0        8.8 / 1.0      18.4 / 15.0
-Beale                       WeightDecay     GD-Nesterov     MoreThuente     GoldenSection      Precise
-                             Adam-Fast     GD-Momentum       Aggressive      Bisection-2      Standard
-                            19.2 / 11.0    14.6 / 10.0      11.0 / 6.0        3.0 / 1.0      17.2 / 12.0
-Booth                       WeightDecay         GD          MoreThuente     CubicQuadIn...    Adaptive
-                            Adam-Robust   GD-Momentum        Aggressive     GoldenSection    Conservative
-                            13.2 / 10.0     15.2 / 9.0      10.4 / 5.0        3.2 / 1.0      23.0 / 21.0
-GoldsteinPrice             Adam-AMSGrad   GD-Momentum       MoreThuente     GoldenSection     Aggressive
-                             Adam-Fast          GD           Aggressive       Bisection-2       Precise
-                            17.7 / 12.0     12.0 / 7.7       7.9 / 3.7        6.3 / 1.0      21.1 / 13.7
-Griewank                     Adam-Fast    GD-Momentum        Aggressive      StrongWolfe     Conservative
-                            Adam-Robust         GD            L-BFGS        CubicQuadIn...    Aggressive
-                            18.8 / 11.0     14.6 / 9.0      11.2 / 5.0        3.4 / 1.0      17.0 / 8.0
-Himmelblau                  WeightDecay         GD         L-BFGS-Limited   GoldenSection     Adaptive
-                            Adam-Robust   AdaptiveMom...     Aggressive       Bisection-1    Conservative
-                            14.2 / 9.0      12.5 / 7.0      12.5 / 4.7        4.1 / 1.7      21.8 / 16.7
-IllConditionedRosenbrock    WeightDecay    GD-Nesterov      MoreThuente     CubicQuadIn...    Aggressive
-                            Adam-Robust   GD-Momentum        Aggressive     GoldenSection    Conservative
-                            14.4 / 11.0     14.6 / 9.0      11.6 / 3.0        3.8 / 1.0      20.6 / 13.0
-Levi                        Adam-Robust   GD-Momentum      L-BFGS-Limited   GoldenSection    Conservative
-                             Adam-Fast    GD-WeightDecay     Aggressive       Bisection-1     Aggressive
-                            15.9 / 10.0     16.2 / 7.7       9.1 / 6.7        3.0 / 1.0      20.8 / 16.0
-Levy                        WeightDecay   GD-WeightDecay    Conservative      Bisection-2    Conservative
-                           Adam-AMSGrad   AdaptiveMom...     Aggressive     GoldenSection     Aggressive
-                            13.2 / 10.0    16.0 / 12.0       8.8 / 3.0        4.0 / 1.0      23.0 / 21.0
-Matyas                       Adam-Fast    GD-Momentum         L-BFGS         StrongWolfe     Conservative
-                           Adam-AMSGrad   AdaptiveMom...     Aggressive       Bisection-1       Precise
-                             6.2 / 1.0      12.1 / 6.7      14.3 / 7.0       11.9 / 6.7      20.5 / 16.3
-Michalewicz                    Adam       AdaptiveMom...    MoreThuente      Bisection-2     Conservative
-                            Adam-Robust   GD-WeightDecay     Aggressive     CubicQuadIn...    Aggressive
-                             9.1 / 3.5     19.4 / 16.0      11.3 / 8.0        3.6 / 1.0      21.6 / 18.5
-Neural Networks             WeightDecay   GD-WeightDecay    Conservative      Bisection-2      Adaptive
-                            Adam-Robust   AdaptiveMom...      L-BFGS         StrongWolfe      Aggressive
+                              16.3 / 12.0      16.5 / 9.7       6.5 / 2.3        5.1 / 1.0      20.7 / 13.7
+Ackley                       Adam-AMSGrad          GD            L-BFGS          Bisection-2    Conservative
+                               Adam-Fast     GD-Momentum       Conservative    GoldenSection     Aggressive
+                               8.5 / 3.0       6.2 / 1.0        3.7 / 2.3        inf / inf      13.1 / 8.0
+Barrier                       WeightDecay          GD           Conservative       N/A          Conservative
+                               Adam-Fast      GD-Nesterov     L-BFGS-Limited       N/A           Aggressive
+                               19.0 / 8.0       8.8 / 3.0      10.0 / 2.0        8.8 / 1.0      18.4 / 15.0
+Beale                          WeightDecay     GD-Nesterov     MoreThuente     GoldenSection      Precise
+                                Adam-Fast     GD-Momentum       Aggressive      Bisection-2      Standard
+                               19.2 / 11.0    14.6 / 10.0      11.0 / 6.0        3.0 / 1.0      17.2 / 12.0
+Booth                          WeightDecay         GD          MoreThuente     CubicQuadIn...    Adaptive
+                               Adam-Robust   GD-Momentum        Aggressive     GoldenSection    Conservative
+                              13.2 / 10.0      15.2 / 9.0      10.4 / 5.0        3.2 / 1.0      23.0 / 21.0
+GoldsteinPrice               Adam-AMSGrad    GD-Momentum       MoreThuente     GoldenSection     Aggressive
+                               Adam-Fast           GD           Aggressive       Bisection-2       Precise
+                              17.7 / 12.0      12.0 / 7.7       7.9 / 3.7        6.3 / 1.0      21.1 / 13.7
+Griewank                       Adam-Fast     GD-Momentum        Aggressive      StrongWolfe     Conservative
+                              Adam-Robust          GD         L-BFGS-Limited   CubicQuadIn...    Aggressive
+                               18.8 / 11.0     14.6 / 9.0      11.2 / 5.0        3.4 / 1.0      17.0 / 8.0
+Himmelblau                     WeightDecay         GD         L-BFGS-Limited   GoldenSection     Adaptive
+                               Adam-Robust   AdaptiveMom...     Aggressive       Bisection-1    Conservative
+                               14.2 / 9.0      12.5 / 7.0      12.5 / 4.7        4.1 / 1.7      21.8 / 16.7
+IllConditionedRosenbrock         Adam         GD-Nesterov      MoreThuente     CubicQuadIn...    Aggressive
+                              Adam-Robust    GD-Momentum        Aggressive     GoldenSection    Conservative
+                              14.4 / 11.0      14.6 / 9.0      11.6 / 3.0        3.8 / 1.0      20.6 / 13.0
+Levi                          Adam-Robust    GD-Momentum      L-BFGS-Limited   GoldenSection    Conservative
+                               Adam-Fast     GD-WeightDecay     Aggressive       Bisection-1     Aggressive
+                              15.9 / 10.0      16.2 / 7.7       9.1 / 6.7        3.0 / 1.0      20.8 / 16.0
+Levy                          WeightDecay    GD-WeightDecay    Conservative      Bisection-2    Conservative
+                             Adam-AMSGrad    AdaptiveMom...     Aggressive      StrongWolfe      Aggressive
+                              13.2 / 10.0     16.0 / 12.0       8.8 / 3.0        4.0 / 1.0      23.0 / 21.0
+Matyas                         Adam-Fast     GD-Momentum         L-BFGS         StrongWolfe     Conservative
+                             Adam-AMSGrad    AdaptiveMom...     Aggressive       Bisection-1       Precise
+                                6.2 / 1.0      12.1 / 6.7      14.3 / 7.0       11.9 / 6.7      20.5 / 16.3
+Michalewicz                     Adam-Fast    AdaptiveMom...    MoreThuente      Bisection-2     Conservative
+                               Adam-Robust   GD-WeightDecay     Aggressive     CubicQuadIn...    Aggressive
+                               9.2 / 3.0      19.6 / 16.0      11.0 / 8.0        3.8 / 1.0      21.4 / 18.0
+Neural Networks               WeightDecay    GD-WeightDecay    Conservative      Bisection-2      Adaptive
+                              Adam-Robust    AdaptiveMom...    MoreThuente      StrongWolfe      Aggressive
 
 Continued on next page
 
 
 
-
-                                           18
+                                              17
 Table 3 – continued from previous page
 
 
@@ -955,13 +963,13 @@ Continued on next page
 NoisySphere                      Adam-Fast     AdaptiveMom...      Conservative    StrongWolfe     Conservative
                                    Adam        GD-WeightDecay       Aggressive    CubicQuadIn...      Precise
                                   8.1 / 4.3      12.3 / 9.7        14.3 / 5.7       7.5 / 1.0      22.9 / 20.7
-PenaltyI                       Adam-AMSGrad          GD            Conservative   CubicQuadIn...     Adaptive
+PenaltyI                       Adam-AMSGrad          GD            Conservative   CubicQuadIn...    Aggressive
                                  Adam-Fast      GD-Nesterov         Aggressive      Bisection-2       Precise
                                  11.4 / 4.7      14.2 / 7.7        14.1 / 3.7       9.9 / 3.0      15.4 / 7.0
 Rastrigin                      Adam-AMSGrad    GD-WeightDecay      MoreThuente    CubicQuadIn...     Adaptive
                                  Adam-Fast     GD-Momentum          Aggressive      Bisection-2    Conservative
                                 18.5 / 13.2      13.6 / 8.2         8.9 / 4.8       3.4 / 1.0      20.6 / 17.2
-Regression                       Adam-Fast     AdaptiveMom...      Conservative     Bisection-1      Adaptive
+Regression                       Adam-Fast     GD-WeightDecay      Conservative     Bisection-1      Adaptive
                                 Adam-Robust          GD              L-BFGS       GoldenSection    Conservative
                                  13.4 / 6.0      12.1 / 5.0        12.6 / 4.0       4.9 / 2.0      22.0 / 17.7
 Rosenbrock                       Adam-Fast      GD-Nesterov        MoreThuente     StrongWolfe      Aggressive
@@ -976,7 +984,7 @@ Schwefel                          Adam-Fast    GD-WeightDecay      Conservative 
 SparseQuadratic                  WeightDecay   GD-WeightDecay      MoreThuente    GoldenSection       Precise
                                Adam-AMSGrad    AdaptiveMom...        L-BFGS         Bisection-1     Aggressive
                                  12.9 / 8.0      11.8 / 6.0        15.2 / 4.5       3.7 / 1.0      21.4 / 19.0
-SparseRosenbrock                 Adam-Fast      GD-Nesterov     L-BFGS-Limited    CubicQuadIn...     Standard
+SparseRosenbrock                 Adam-Fast      GD-Nesterov        MoreThuente    CubicQuadIn...     Standard
                                 Adam-Robust    GD-Momentum          Aggressive      Bisection-2    Conservative
                                  20.1 / 14.5    13.9 / 10.0         6.1 / 1.0       5.3 / 3.0      19.6 / 14.0
 Sphere                           WeightDecay   GD-Momentum          Aggressive     StrongWolfe     Conservative
@@ -988,7 +996,7 @@ StyblinskiTang                   WeightDecay   GD-WeightDecay      Conservative 
 Trigonometric                      Adam              GD            MoreThuente    CubicQuadIn...      Precise
                                  Adam-Fast     GD-Momentum          Aggressive      Bisection-2     Aggressive
                                  13.4 / 9.3      14.7 / 7.3        11.7 / 6.0       3.0 / 1.0      22.2 / 19.0
-Zakharov                         WeightDecay         GD            MoreThuente    GoldenSection      Adaptive
+Zakharov                         WeightDecay         GD            MoreThuente      Bisection-1      Adaptive
                                 Adam-Robust    AdaptiveMom...        L-BFGS        StrongWolfe     Conservative
 
 
@@ -1000,12 +1008,12 @@ Zakharov                         WeightDecay         GD            MoreThuente  
  • Bottom line: Worst performing variant in this optimizer family
 
 
-                                                19
+                                                18
 Green cells indicate the best performing optimizer family for that problem family. Red cells indicate the
 worst performing optimizer family.
 
 
 
 
-                                                   20
+                                                   19
 

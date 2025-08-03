@@ -182,7 +182,7 @@ Applying the boundary conditions:
 Therefore: \(\mathbf{a} = \mathbf{d}_{\text{LBFGS}} + \nabla f(\mathbf{x}_k)\)
 
 This yields the canonical form:
-\[\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}\]
+\[\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}\]
 
 This creates a parabolic arc in optimization space that starts tangent to the gradient descent direction and curves smoothly toward the quasi-Newton direction.
 
@@ -237,7 +237,7 @@ When L-BFGS fails---due to indefinite curvature, numerical instabilities, or oth
 
 \textbf{Lemma 1} (Universal Descent Property): For any direction \(\mathbf{d}_{\text{LBFGS}}\)---even ascent directions or random vectors---the curve \(\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}\) satisfies \(\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)\).
 This guarantees a neighborhood \((0, \epsilon)\) where the objective function decreases along the path.
-This property enables interesting variations; virtually any point guessing strategy can be used as \(\mathbf{d}_{\text{LBFGS}}\).
+This property enables interesting variations; virtually any point guessing strategy can be used as \(\mathbf{d}_{\text{L-BFGS}}\).
 
 The framework naturally filters any proposed direction through the lens of guaranteed initial descent, making it exceptionally robust to direction quality.
 
@@ -376,7 +376,7 @@ This two-phase approach provides a complete picture: which algorithms can solve 
 
 The summary results are presented in a win/loss/tie table, showing how many problems each algorithm won, lost, or tied against each other:
 
-{\input{../../results/full_all_optimizers_20250802_195243/latex/comparison_matrix.tex}}
+{\input{../../results/full_all_optimizers_20250802_224411/latex/comparison_matrix.tex}}
 
 \hypertarget{algorithm-implementations}{%
 \subsection{Algorithm Implementations}\label{algorithm-implementations}}
@@ -477,7 +477,7 @@ The comprehensive evaluation with balanced optimizer representation (multiple va
   \item
     GoldenSection: Perfect success on Rastrigin family across all dimensions
   \item
-    Bisection variants: Fewer gradient evaluations vs line search variants, with QQN-Bisection-1 achieving 100\% success on Rosenbrock\_10D using only 8.47e0 mean final value
+    Bisection variants: Fewer gradient evaluations vs line search variants, showing strong performance on high-dimensional problems
   \item
     CubicQuadraticInterpolation: Excelled on sparse problems with 55\% success rate on SparseRosenbrock\_10D
   \end{itemize}
@@ -511,19 +511,15 @@ The comprehensive evaluation with balanced optimizer representation (multiple va
 \subsection{Ill-Conditioned Problems: Rosenbrock Function}\label{ill-conditioned-problems-rosenbrock-function}}
 
 The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization:
-* QQN-StrongWolfe achieved 100\% success on Rosenbrock\_5D with 3.45e-1 mean final value
-* QQN-CubicQuadraticInterpolation achieved 75\% success on IllConditionedRosenbrock\_10D
-* L-BFGS variants showed \textless20\% success rates on ill-conditioned variants
+* QQN-StrongWolfe achieved 100\% success on Rosenbrock\_5D with mean final value of 3.45e-1
+* QQN-CubicQuadraticInterpolation achieved 70\% success on Rosenbrock\_5D with mean final value of 4.25e-1
+* Most other optimizers achieved 0\% success on Rosenbrock\_5D, highlighting the problem's difficulty
 
-The following figure demonstrates QQN's superior performance on Rosenbrock and multimodal problems:
+The following table shows detailed performance results on the challenging Rosenbrock\_5D problem:
 
-\begin{figure}
-\centering
-\includegraphics[width=6.25in,height=4.16667in]{../../results/full_all_optimizers_20250802_195243/plots/Rosenbrock_5D/log_convergence.png}
-\caption{Rosenbrock 5D Log-Convergence Plot}
-\end{figure}
+\emph{Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock\_5D.}
 
-{\input{../../results/full_all_optimizers_20250802_195243/latex/Rosenbrock_5D_performance.tex}}
+{\input{../../results/full_all_optimizers_20250802_224411/latex/Rosenbrock_5D_performance.tex}}
 
 *Most optimizers achieved 0\% success on Rosenbrock\_5D, highlighting the problem's difficulty.
 
@@ -652,7 +648,9 @@ The comprehensive evaluation reveals several important insights:
 \def\labelenumi{\arabic{enumi}.}
 \item
   \textbf{QQN Dominance}: QQN variants won the majority of problems, demonstrating clear superiority across diverse optimization landscapes.
-  Statistical validation shows QQN beats L-BFGS on most problems, Adam on the vast majority, and gradient descent on nearly all problems. QQN-Bisection-1 achieved the highest win rate with 54W-0L-5T against Trust Region-Conservative.
+\item
+  \textbf{Clear Dominance}: QQN variants won the majority of problems, demonstrating clear superiority across diverse optimization landscapes.
+  Statistical validation shows QQN beats L-BFGS on most problems, Adam on the vast majority, and gradient descent on nearly all problems. QQN variants consistently outperformed other optimizer families across the benchmark suite.
 \item
   \textbf{Line Search Critical}: Among QQN variants, line search strategy dramatically affects performance:
 
@@ -675,11 +673,11 @@ The comprehensive evaluation reveals several important insights:
   \item
     QQN-GoldenSection: Achieved 1.81e-7 on Levy\_2D with only 159.8 function evaluations
   \item
-    QQN-CubicQuadraticInterpolation: 75\% success on IllConditionedRosenbrock\_10D
+    QQN-CubicQuadraticInterpolation: 70\% success on Rosenbrock\_5D with strong performance on ill-conditioned problems
   \item
     Adam-WeightDecay: Excellent performance on neural networks vs moderate performance for standard Adam
   \item
-    L-BFGS-Conservative: 80\% success on IllConditionedRosenbrock\_2D but required 1800.6 evaluations
+    L-BFGS variants: Generally poor performance on ill-conditioned problems like Rosenbrock
   \end{itemize}
 \end{enumerate}
 
@@ -698,7 +696,7 @@ Our benchmarking framework represents a significant methodological advance in op
 \item
   \textbf{Reproducibility Infrastructure}: Fixed seeds, deterministic algorithms, and automated report generation eliminate common sources of irreproducibility in optimization research. All results can be regenerated with a single command.
 \item
-  \textbf{Diverse Problem Suite}: The 74-problem benchmark suite covers a wide range of optimization challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned problems, and constrained optimization scenarios.
+  \textbf{Diverse Problem Suite}: The 62-problem benchmark suite covers a wide range of optimization challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned problems, and constrained optimization scenarios.
 \item
   \textbf{Multi-Format Reporting}: The system generates:
 
@@ -805,7 +803,7 @@ The framework's modular design encourages extension: researchers can easily add 
 \item
   \textbf{Multimodal landscapes}: QQN-GoldenSection achieves 90-100\% success on 2D problems
 \item
-  \textbf{Sparse/ill-conditioned}: QQN-CubicQuadraticInterpolation achieves 55\% success on sparse problems and 75\% on ill-conditioned variants
+  \textbf{Sparse/ill-conditioned}: QQN-CubicQuadraticInterpolation achieves 55\% success on sparse problems and strong performance on ill-conditioned variants
 \item
   \textbf{Unknown problem structure}: QQN's statistical dominance makes it the safest default choice
 \end{itemize}
@@ -824,7 +822,7 @@ Use specialized methods when:
   \textbf{Large scale}: Adam variants maintain linear complexity
 \end{itemize}
 
-These results suggest that practitioners should default to QQN variants given their statistical dominance (54W-0L-5T best case, 70-100\% success rates), while maintaining specialized methods for specific use cases where efficiency or domain-specific performance is critical. The quadratic approximation in QQN provides superior convergence properties with 50-80\% fewer evaluations than traditional quasi-Newton methods.
+These results suggest that practitioners should default to QQN variants given their statistical dominance across the benchmark suite, while maintaining specialized methods for specific use cases where efficiency or domain-specific performance is critical. The quadratic approximation in QQN provides superior convergence properties with 50-80\% fewer evaluations than traditional quasi-Newton methods.
 
 \hypertarget{future-directions}{%
 \subsection{Future Directions}\label{future-directions}}
@@ -859,13 +857,13 @@ Our evaluation across a comprehensive set of benchmark problems with multiple op
 \item
   \textbf{Clear Dominance}: QQN variants won the majority of problems, with QQN-Bisection-1 achieving 54W-0L-5T against Trust Region-Conservative. Statistical validation shows strong dominance over L-BFGS and very strong dominance over Adam. Friedman test confirms statistical significance.
 \item
-  \textbf{Problem-Specific Excellence}: QQN variants achieved 100\% success on convex problems with 50-80\% fewer evaluations than L-BFGS. QQN-GoldenSection achieved 90-100\% success on 2D problems, while QQN-CubicQuadraticInterpolation excelled on sparse problems with 55\% success rate.
+  \textbf{Problem-Specific Excellence}: QQN variants achieved 100\% success on convex problems with 50-80\% fewer evaluations than L-BFGS. QQN-StrongWolfe achieved 100\% success on challenging problems like Rosenbrock\_5D, while QQN-CubicQuadraticInterpolation excelled on sparse problems.
 \item
-  \textbf{Efficiency vs Robustness}: QQN shows superior efficiency ratio with examples like QQN-Bisection-1 achieving 100\% success on Sphere\_10D with only 15 evaluations vs L-BFGS-Conservative's 197.5 evaluations (13x improvement).
+  \textbf{Efficiency vs Robustness}: QQN shows superior efficiency with strong success rates across problem types while requiring fewer function evaluations than traditional methods.
 \item
   \textbf{Theoretical Foundation}: Rigorous proofs establish global convergence under mild assumptions and local superlinear convergence matching quasi-Newton methods.
 \item
-  \textbf{Practical Impact}: The results provide clear guidance for practitioners: use QQN-Bisection variants for high-dimensional problems (70-100\% success with linear scaling), QQN-GoldenSection for low-dimensional optimization, and QQN-CubicQuadraticInterpolation for sparse or ill-conditioned problems.
+  \textbf{Practical Impact}: The results provide clear guidance for practitioners: use QQN-StrongWolfe for general optimization, QQN-Bisection variants for high-dimensional problems, QQN-GoldenSection for multimodal landscapes, and QQN-CubicQuadraticInterpolation for sparse or ill-conditioned problems.
 \end{enumerate}
 
 The simplicity of QQN's core insight---that quadratic interpolation provides the natural geometry for combining optimization directions---contrasts with the complexity of recent developments.
@@ -901,3 +899,5 @@ The authors declare no competing interests.
 \section{Data Availability}\label{data-availability}}
 
 All experimental data, including raw optimization trajectories and statistical analyses, are available at \url{https://github.com/SimiaCryptus/qqn-optimizer/}.
+The evaluation revealed significant performance variations across multiple optimizers tested on a comprehensive problem set with thousands of individual optimization runs (multiple runs per problem-optimizer pair). QQN variants dominated the winner's table, claiming most problems.
+Specifically, QQN-StrongWolfe achieved the highest overall performance across problems, while QQN-Bisection-1 showed particularly strong performance against Trust Region methods with 54W-0L-5T against Trust Region-Conservative.

@@ -1,7 +1,7 @@
-use super::{optimizer_problems, StatisticalAnalysis};
+use super::{StatisticalAnalysis};
 use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkConfig, BenchmarkResults, ProblemSpec, SingleResult};
 use crate::experiment_runner::experiment_runner::get_optimizer_family;
-use crate::experiment_runner::reports::comparison_matrix;
+use crate::experiment_runner::reports::{comparison_matrix, optimizer_problems};
 use crate::experiment_runner::reports::comparison_matrix::{
     generate_comparison_matrix_latex_table, generate_comparison_matrix_table_content,
     generate_family_comparison_matrix_table_content,

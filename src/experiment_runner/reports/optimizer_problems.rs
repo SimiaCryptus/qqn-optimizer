@@ -867,8 +867,8 @@ pub fn generate_problem_latex_table(
         // Sort by success rate first, then by total evaluations
         perf_data.sort_by(|a, b| {
             use std::cmp::Ordering;
-            match b.7.total_cmp(&a.7) {
-                Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
+            match b.6.total_cmp(&a.6) {
+                Ordering::Equal => if b.6 > 0.0 { a.5.total_cmp(&(b.5)) } else {
                     a.3.total_cmp(&b.3)
                 },
                 other => other,

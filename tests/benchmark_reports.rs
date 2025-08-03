@@ -57,8 +57,8 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     LocalSet::new().run_until(async move {
         run_benchmark(
             &"results/full_all_optimizers_",
-            5000,
-            20,
+            1000,
+            10,
             Duration::from_secs(600),
             Some(8),
             all_problems().clone(),

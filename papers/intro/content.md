@@ -296,7 +296,7 @@ This two-phase approach provides a complete picture: which algorithms can solve 
 The summary results are presented in a win/loss/tie table, showing how many problems each algorithm won, lost, or tied against each other:
 
 ```{=latex}
-{\input{../../results/full_all_optimizers_20250802_195243/latex/comparison_matrix.tex}}
+{\input{../../results/full_all_optimizers_20250802_224411/latex/comparison_matrix.tex}}
 ```
 
 ## Algorithm Implementations
@@ -386,7 +386,7 @@ The following table shows detailed performance results on the challenging Rosenb
 *Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock_5D.*
 
 ```{=latex}
-{\input{../../results/full_all_optimizers_20250802_195243/latex/Rosenbrock_5D_performance.tex}}
+{\input{../../results/full_all_optimizers_20250802_224411/latex/Rosenbrock_5D_performance.tex}}
 ```
 
 *Most optimizers achieved 0% success on Rosenbrock_5D, highlighting the problem's difficulty.

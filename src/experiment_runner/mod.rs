@@ -19,7 +19,6 @@ pub use reports::family_vs_family_report::FamilyVsFamilyReport;
 pub use reports::heatmap::SuccessRateHeatmapReport;
 pub use reports::unified_performance_table::PerformanceTableReport;
 pub use reports::unified_summary_statistics::SummaryStatisticsReport;
-mod optimizer_problems;
 pub mod unified_report_example;
 
 pub use experiment_runner::ExperimentRunner;

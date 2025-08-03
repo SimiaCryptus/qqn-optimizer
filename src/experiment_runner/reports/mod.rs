@@ -11,3 +11,4 @@ pub(crate) mod run_by_run;
 pub mod summary_statistics;
 pub mod unified_performance_table;
 pub mod unified_summary_statistics;
+pub mod optimizer_problems;
