@@ -74,7 +74,6 @@ Researchers have developed various approaches to combine gradient and quasi-Newt
     • Weighted Combinations [Biggs, 1973]: Linear combinations of gradient and quasi-Newton direc-
       tions have been explored, but selecting appropriate weights remains challenging and often problem-
       dependent.
-
     • Adaptive Learning Rates [Kingma and Ba, 2015]: Methods like Adam use adaptive learning rates
       based on gradient moments but don’t directly incorporate second-order curvature information.
 
@@ -84,10 +83,12 @@ This approach provides several key advantages:
     1. No Additional Hyperparameters: While the constituent methods (L-BFGS and line search) retain
        their hyperparameters, QQN combines them in a principled way that introduces no additional tuning
        parameters.
+
     2. Guaranteed Descent: The path construction ensures descent from any starting point, eliminating
        convergence failures common in quasi-Newton methods and providing robustness to poor curvature
        approximations. Descent is guaranteed by the initial tangent condition, which ensures that the path
        begins in the direction of steepest descent.
+
     3. Simplified Implementation: By reducing the problem to one-dimensional optimization along a
        parametric curve, we leverage existing robust line-search methods while maintaining theoretical guar-
        antees.
@@ -97,13 +98,14 @@ This paper makes three primary contributions:
 
     1. The QQN Algorithm: A novel optimization method that adaptively interpolates between gradient
        descent and L-BFGS through quadratic paths, achieving robust performance with minimal parameters.
+    2. Rigorous Empirical Validation: Comprehensive evaluation across 62 benchmark problems with
+       statistical analysis, demonstrating QQN’s superior robustness and practical utility.
 
 
                                                       2
-    2. Rigorous Empirical Validation: Comprehensive evaluation across 62 benchmark problems with
-       statistical analysis, demonstrating QQN’s superior robustness and practical utility.
-    3. Benchmarking Framework: A reusable Rust application for optimization algorithm evaluation that
+    3. Benchmarking Framework: A reusable Rust application for optimization algorithm evaluation that
        promotes reproducible research and meaningful comparisons.
+
    Optimal configurations remain problem-dependent, but QQN’s adaptive nature minimizes the need for
 extensive hyperparameter tuning. Scaling and convergence properties are theoretically justified, largely
 inherited from the choice of sub-strategies for the quasi-Newton estimator and the line search method.
@@ -149,13 +151,12 @@ selection remain challenges.
 4.1    Motivation and Intuition
 Consider the fundamental question: given gradient and quasi-Newton directions, how should we combine
 them? Linear interpolation might seem natural, but it fails to guarantee descent properties. Trust region
+methods solve expensive subproblems. We propose a different approach: construct a smooth path that
+begins with the gradient direction and curves toward the quasi-Newton direction.
 
 
                                                      3
-methods solve expensive subproblems. We propose a different approach: construct a smooth path that
-begins with the gradient direction and curves toward the quasi-Newton direction.
-
-4.2     Algorithm Derivation
+4.2     Algorithm Derivation
 We formulate the direction combination problem as a geometric interpolation. The key insight is to think of
 optimization directions as velocities rather than destinations. Consider a parametric curve d : [0, 1] → Rn
 that traces a path from the current point. We impose three natural boundary conditions:
@@ -163,14 +164,14 @@ that traces a path from the current point. We impose three natural boundary cond
   1. Initial Position: d(0) = 0 (the curve starts at the current point)
   2. Initial Tangent: d′ (0) = −∇f (xk ) (the curve begins tangent to the negative gradient, ensuring
      descent)
-  3. Terminal Position: d(1) = dLBFGS (the curve ends at the L-BFGS direction) The second condition
-     is crucial: by ensuring the path starts tangent to the negative gradient, we guarantee that moving
-     along the path initially decreases the objective function, regardless of where the path eventually leads.
-     This provides robustness against poor quasi-Newton directions.
+  3. Terminal Position: d(1) = dLBFGS (the curve ends at the L-BFGS direction)
 
-   Following Occam’s razor, we seek the lowest-degree polynomial satisfying these constraints. A quadratic
+    The second condition is crucial: by ensuring the path starts tangent to the negative gradient, we guarantee
+that moving along the path initially decreases the objective function, regardless of where the path eventually
+leads. This provides robustness against poor quasi-Newton directions.
+    Following Occam’s razor, we seek the lowest-degree polynomial satisfying these constraints. A quadratic
 polynomial d(t) = at2 + bt + c provides the minimal solution.
-   Applying the boundary conditions:
+    Applying the boundary conditions:
 
    • From constraint 1: c = 0
    • From constraint 2: b = −∇f (xk )
@@ -204,16 +205,16 @@ Input: Initial point x0 , objective function f
 Initialize: L-BFGS memory H0 = I, memory parameter m (default: 10)
 
 for k = 0, 1, 2, ... do
-
-
-                                                     4
-      Compute gradient gk = ∇f(xk )
-      if ||gk || < ε then return xk
+    Compute gradient gk = ∇f(xk )
+    if ||gk || < ε then return xk
 
       if k = 0 then
-           d_LBFGS = -gk // Gradient descent
+
+
+                                                      4
+             d_LBFGS = -gk      // Gradient descent
       else
-           d_LBFGS = -Hk gk // L-BFGS direction
+             d_LBFGS = -Hk gk     // L-BFGS direction
 
       Define path: d(t) = t(1-t)(-gk ) + t²d_LBFGS
       Find t* = argmin_{t≥ 0˝ f (xk + d(t))
@@ -221,6 +222,7 @@ for k = 0, 1, 2, ... do
 
     Update L-BFGS memory with (sk , yk )
 end for
+
    The one-dimensional optimization can use a variety of established methods, e.g. golden section search,
 Brent’s method, or bisection on the derivative. Note that while the quadratic path is defined for t ∈ [0,1],
 the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality
@@ -234,9 +236,10 @@ The theoretical properties of QQN can be understood through three key insights:
 the negative gradient, we’re initially moving in the steepest descent direction. This is like starting to roll a
 ball downhill—no matter what happens later in the path, we know we’ll initially decrease our elevation.
     Mathematically, this manifests as:
-                             d
-                                f (x + d(t))     = ∇f (x)T d′ (0) = −∥∇f (x)∥2 < 0
-                             dt              t=0
+
+                                d
+                                   f (x + d(t))     = ∇f (x)T d′ (0) = −∥∇f (x)∥2 < 0
+                                dt              t=0
 
     This negative derivative at t = 0 ensures that for sufficiently small positive t, we have f (x + d(t)) < f (x).
     2. Adaptive Interpolation Based on Direction Quality
@@ -245,11 +248,14 @@ rameter t∗ will be close to or exceed 1, effectively using the quasi-Newton st
 is poor (misaligned or even pointing uphill), the optimization naturally selects a smaller t∗ , staying closer to
 the gradient direction.
     This can be visualized as a “trust slider” that automatically adjusts based on the quality of the quasi-
-Newton approximation: - Good L-BFGS direction → t∗ ≈ 1 or larger → quasi-Newton-like behavior - Poor
-L-BFGS direction → t∗ ≈ 0 → gradient descent-like behavior - Intermediate cases → smooth interpolation
-between the two
-    3. Convergence Through Sufficient Decrease
-    The combination of guaranteed initial descent and optimal parameter selection ensures that each iteration
+Newton approximation:
+
+   • Good L-BFGS direction → t∗ ≈ 1 or larger → quasi-Newton-like behavior
+   • Poor L-BFGS direction → t∗ ≈ 0 → gradient descent-like behavior
+   • Intermediate cases → smooth interpolation between the two
+
+  3. Convergence Through Sufficient Decrease
+  The combination of guaranteed initial descent and optimal parameter selection ensures that each iteration
 makes sufficient progress. This is formalized through the following properties:
 
 4.4.2   Formal Theoretical Guarantees
@@ -262,7 +268,7 @@ borhood (0, ϵ) where the objective function decreases along the path. This prop
 variations; virtually any point guessing strategy can be used as dL-BFGS .
 
 
-                                                        5
+                                                         5
     The framework naturally filters any proposed direction through the lens of guaranteed initial descent,
 making it exceptionally robust to direction quality.
     Theorem 1 (Descent Property): For any dLBFGS , there exists t̄ > 0 such that ϕ(t) = f (xk + d(t))
@@ -285,132 +291,135 @@ more efficiently by taking better steps when possible. The key insight is that t
 
 combined with the lower bound on f , creates a “budget” of total possible decrease. This budget forces the
 gradients to become arbitrarily small.
-    Proof : See Appendix B.2.2 for the complete convergence analysis using descent lemmas and summability
+   Proof : See Appendix B.2.2 for the complete convergence analysis using descent lemmas and summability
 arguments. □
-    Theorem 3 (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the
-L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly. Intuition:
-Near a minimum where the L-BFGS approximation is accurate, the optimal parameter t∗ approaches 1,
-making QQN steps nearly identical to L-BFGS steps. Since L-BFGS converges superlinearly under these
-conditions, so does QQN. The beauty is that this happens automatically—no switching logic or parameter
-tuning required. The Dennis-Moré condition essentially states that the L-BFGS approximation Hk becomes
-increasingly accurate in the directions that matter (the actual steps taken). When this holds:
+   Theorem 3 (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if
+the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
+   Intuition: Near a minimum where the L-BFGS approximation is accurate, the optimal parameter t∗
+approaches 1, making QQN steps nearly identical to L-BFGS steps. Since L-BFGS converges superlinearly
+under these conditions, so does QQN. The beauty is that this happens automatically—no switching logic or
+parameter tuning required.
+   The Dennis-Moré condition essentially states that the L-BFGS approximation Hk becomes increasingly
+accurate in the directions that matter (the actual steps taken). When this holds:
 
                                    t∗ → 1    and xk+1 ≈ xk − Hk ∇f (xk )
 
-This recovers the quasi-Newton iteration, inheriting its superlinear convergence rate. Proof : See Appendix
-B.2.3 for the detailed local convergence analysis showing t∗ = 1 + o(1) and the resulting superlinear rate.
-□ ### Practical Implications of the Theory The theoretical guarantees translate to practical benefits:
-1. No Hyperparameter Tuning: The adaptive nature of the quadratic path eliminates the need for
-trust region radii, switching thresholds, or other parameters that plague hybrid methods. 2. Robust
-Failure Recovery: When L-BFGS produces a bad direction (e.g., due to numerical errors or non-convexity),
-QQN automatically takes a more conservative step rather than diverging. 3. Smooth Performance
-Degradation: As problems become more difficult (higher condition number, more non-convexity), QQN
-gradually transitions from quasi-Newton to gradient descent behavior, rather than failing catastrophically.
+   This recovers the quasi-Newton iteration, inheriting its superlinear convergence rate. Proof : See Ap-
+pendix B.2.3 for the detailed local convergence analysis showing t∗ = 1 + o(1) and the resulting superlinear
+rate. □
 
-    4. Preserved Convergence Rates: In favorable conditions (near minima with positive definite Hes-
-       sians), QQN achieves the same superlinear convergence as L-BFGS, so we don’t sacrifice asymptotic
-       performance for robustness.
+4.4.3   Practical Implications of the Theory
+The theoretical guarantees translate to practical benefits:
+
+  1. No Hyperparameter Tuning: The adaptive nature of the quadratic path eliminates the need for
+     trust region radii, switching thresholds, or other parameters that plague hybrid methods.
+  2. Robust Failure Recovery: When L-BFGS produces a bad direction (e.g., due to numerical errors
+     or non-convexity), QQN automatically takes a more conservative step rather than diverging.
+  3. Smooth Performance Degradation: As problems become more difficult (higher condition number,
+     more non-convexity), QQN gradually transitions from quasi-Newton to gradient descent behavior,
+     rather than failing catastrophically.
+  4. Preserved Convergence Rates: In favorable conditions (near minima with positive definite Hes-
+     sians), QQN achieves the same superlinear convergence as L-BFGS, so we don’t sacrifice asymptotic
+     performance for robustness.
 
 
-5     Benchmarking Methodology
-5.1     Design Principles
+
+
+                                                       6
+5      Benchmarking Methodology
+5.1       Design Principles
 Our benchmarking framework introduces a comprehensive evaluation methodology that follows five princi-
 ples:
 
     1. Reproducibility: Fixed random seeds, deterministic algorithms
+    2. Statistical Validity: Multiple runs, hypothesis testing
+    3. Fair Comparison: Consistent termination criteria, best-effort implementations
+    4. Comprehensive Coverage: Diverse problem types and dimensions
+    5. Function Evaluation Fairness: Comparisons based on function evaluations rather than iterations,
+       as iterations may involve vastly different numbers of evaluations
 
-
-                                                       6
-  2. Statistical Validity: Multiple runs, hypothesis testing
-  3. Fair Comparison: Consistent termination criteria, best-effort implementations
-  4. Comprehensive Coverage: Diverse problem types and dimensions
-  5. Function Evaluation Fairness: Comparisons based on function evaluations rather than iterations,
-     as iterations may involve vastly different numbers of evaluations
-
-5.2      Two-Phase Evaluation System
+5.2       Two-Phase Evaluation System
 Traditional optimization benchmarks often suffer from selection bias, where specific hyperparameter choices
 favor certain methods. Our evaluation system provides comprehensive comparison:
     Benchmarking and Ranking: Algorithms are ranked based on their success rate in achieving a pre-
 defined objective value threshold across multiple trials.
 
-   • Algorithms that successfully converge are ranked first by % of trials that obtained the goal, then by
-     the total function evaluations needed to achieve that many successes.
-   • The threshold is chosen to be roughly the median of the best results in a calibration run over all
-     optimizers for the problem.
-   • For algorithms that fail to reach the threshold, we compare the best objective value achieved
-   • All algorithms terminate after a fixed number of function evaluations
+    • Algorithms that successfully converge are ranked first by % of trials that obtained the goal, then by
+      the total function evaluations needed to achieve that many successes.
+    • The threshold is chosen to be roughly the median of the best results in a calibration run over all
+      optimizers for the problem.
+    • For algorithms that fail to reach the threshold, we compare the best objective value achieved
+    • All algorithms terminate after a fixed number of function evaluations
 
      This two-phase approach provides a complete picture: which algorithms can solve the problem (and how
 efficiently), and how well algorithms perform when they cannot fully converge.
      Statistical Analysis: We employ rigorous statistical testing to ensure meaningful comparisons:
 
-   • Welch’s t-test for unequal variances to compare means of function evaluations and success rates
-   • Cohen’s d for effect size to quantify practical significance (available in the supplementary material)
-   • Win/loss/tie comparisons for each pair of algorithms across all problems (ties are counted when the
-     difference is not statistically significant at the 0.05 level after Bonferroni correction)
-   • Aggregation across all problems to produce a win/loss/tie table for each algorithm pair
+    • Welch’s t-test for unequal variances to compare means of function evaluations and success rates
+    • Cohen’s d for effect size to quantify practical significance (available in the supplementary material)
+    • Win/loss/tie comparisons for each pair of algorithms across all problems (ties are counted when the
+      difference is not statistically significant at the 0.05 level after Bonferroni correction)
+    • Aggregation across all problems to produce a win/loss/tie table for each algorithm pair
 
    The summary results are presented in a win/loss/tie table, showing how many problems each algorithm
 won, lost, or tied against each other:
 
+    Legend: W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant
 
-
-                                 Table 1: QQN vs Non-QQN Optimizer Comparison Matrix
- Non-QQN Optimizer            QQN-Bisection-1     QQN-Bisection-2      QQN-CubicQuadraticInterpolation       QQN-GoldenSection       QQN-StrongWolfe
- Adam                              50W-3L-9T          43W-7L-10T                   44W-4L-14T                     44W-3L-15T             46W-5L-11T
- Adam-AMSGrad                      52W-2L-8T          44W-6L-10T                   47W-4L-11T                     47W-3L-12T             48W-4L-10T
- Adam-Fast                        47W-4L-11T          42W-4L-14T                   38W-5L-19T                     43W-5L-14T             45W-3L-14T
- Adam-Robust                      50W-1L-11T          44W-1L-15T                   44W-2L-16T                     47W-1L-14T             48W-0L-14T
- Adam-WeightDecay                 41W-1L-20T          37W-3L-20T                   35W-4L-23T                     39W-1L-22T             38W-2L-22T
- GD                               41W-1L-20T          41W-3L-16T                   39W-3L-20T                     42W-2L-18T             43W-2L-17T
- GD-AdaptiveMomentum              47W-1L-12T          46W-2L-10T                   41W-3L-16T                     45W-1L-14T             47W-0L-13T
- GD-Momentum                      51W-0L-11T          46W-0L-14T                   47W-1L-14T                     49W-1L-12T             51W-0L-11T
- GD-Nesterov                      44W-0L-18T          43W-2L-15T                   40W-2L-20T                     43W-2L-17T             44W-1L-17T
- GD-WeightDecay                   39W-1L-22T          37W-3L-20T                   32W-3L-27T                     36W-3L-23T             38W-2L-22T
- L-BFGS                           32W-1L-29T          32W-3L-25T                   32W-3L-27T                     31W-3L-28T             37W-3L-22T
- L-BFGS-Aggressive                44W-2L-16T          43W-2L-15T                   40W-3L-19T                     41W-3L-18T             43W-2L-17T
- L-BFGS-Conservative              30W-3L-29T          28W-7L-25T                   24W-8L-30T                     27W-6L-29T             24W-5L-33T
- L-BFGS-Limited                   23W-1L-38T          19W-4L-37T                   19W-7L-36T                     18W-6L-38T             26W-3L-33T
- L-BFGS-MoreThuente               16W-4L-39T          16W-2L-39T                   20W-5L-34T                     15W-7L-37T             21W-3L-35T
- Trust Region-Adaptive            48W-0L-14T          45W-1L-14T                   42W-0L-20T                     47W-0L-15T             47W-0L-15T
- Trust Region-Aggressive          48W-0L-14T          46W-0L-14T                   45W-0L-17T                     46W-0L-16T             46W-0L-16T
- Trust Region-Conservative         57W-0L-5T           53W-0L-7T                   50W-2L-10T                      53W-0L-9T              56W-0L-6T
- Trust Region-Precise              53W-0L-9T           52W-1L-7T                   46W-0L-16T                     49W-0L-13T             52W-0L-10T
- Trust Region-Standard            46W-0L-16T          44W-0L-16T                   41W-0L-21T                     43W-0L-19T             45W-0L-17T
-
-
-
-   Legend: W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant
-
-                                difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
+                                 difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
 
 
 
 
-                                                                           7
-5.3    Algorithm Implementations
+5.3       Algorithm Implementations
 We evaluate 25 optimizer variants, with 5 variants from each major optimizer family to ensure balanced
 comparison:
 
-   • QQN Variants (5): Golden Section, Bisection-1, Bisection-2, Strong Wolfe, and Cubic-Quadratic
-     Interpolation line search methods
-   • L-BFGS Variants (5): Aggressive, Standard, Conservative, Moré-Thuente, and Limited configura-
-     tions
-   • Trust Region Variants (5): Adaptive, Standard, Conservative, Aggressive, and Precise configura-
-     tions
-   • Gradient Descent Variants (5): Basic GD, Momentum, Nesterov acceleration, Weight Decay, and
-     Adaptive Momentum
+    • QQN Variants (5): Golden Section, Bisection-1, Bisection-2, Strong Wolfe, and Cubic-Quadratic
+      Interpolation line search methods
+    • L-BFGS Variants (5): Aggressive, Standard, Conservative, Moré-Thuente, and Limited configura-
+      tions
+    • Trust Region Variants (5): Adaptive, Standard, Conservative, Aggressive, and Precise configura-
+      tions
+    • Gradient Descent Variants (5): Basic GD, Momentum, Nesterov acceleration, Weight Decay, and
+      Adaptive Momentum
+
+
+                                                                            7
+                               Table 1: QQN vs Non-QQN Optimizer Comparison Matrix
+ Non-QQN Optimizer           QQN-Bisection-1   QQN-Bisection-2   QQN-CubicQuadraticInterpolation   QQN-GoldenSection   QQN-StrongWolfe
+ Adam                           50W-3L-9T        43W-7L-10T                  44W-4L-14T               44W-3L-15T         46W-5L-11T
+ Adam-AMSGrad                   52W-2L-8T        44W-6L-10T                  47W-4L-11T               47W-3L-12T         48W-4L-10T
+ Adam-Fast                     47W-4L-11T        42W-4L-14T                  38W-5L-19T               43W-5L-14T         45W-3L-14T
+ Adam-Robust                   50W-1L-11T        44W-1L-15T                  44W-2L-16T               47W-1L-14T         48W-0L-14T
+ Adam-WeightDecay              41W-1L-20T        37W-3L-20T                  35W-4L-23T               39W-1L-22T         38W-2L-22T
+ GD                            41W-1L-20T        41W-3L-16T                  39W-3L-20T               42W-2L-18T         43W-2L-17T
+ GD-AdaptiveMomentum           47W-1L-12T        46W-2L-10T                  41W-3L-16T               45W-1L-14T         47W-0L-13T
+ GD-Momentum                   51W-0L-11T        46W-0L-14T                  47W-1L-14T               49W-1L-12T         51W-0L-11T
+ GD-Nesterov                   44W-0L-18T        43W-2L-15T                  40W-2L-20T               43W-2L-17T         44W-1L-17T
+ GD-WeightDecay                39W-1L-22T        37W-3L-20T                  32W-3L-27T               36W-3L-23T         38W-2L-22T
+ L-BFGS                        32W-1L-29T        32W-3L-25T                  32W-3L-27T               31W-3L-28T         37W-3L-22T
+ L-BFGS-Aggressive             44W-2L-16T        43W-2L-15T                  40W-3L-19T               41W-3L-18T         43W-2L-17T
+ L-BFGS-Conservative           30W-3L-29T        28W-7L-25T                  24W-8L-30T               27W-6L-29T         24W-5L-33T
+ L-BFGS-Limited                23W-1L-38T        19W-4L-37T                  19W-7L-36T               18W-6L-38T         26W-3L-33T
+ L-BFGS-MoreThuente            16W-4L-39T        16W-2L-39T                  20W-5L-34T               15W-7L-37T         21W-3L-35T
+ Trust Region-Adaptive         48W-0L-14T        45W-1L-14T                  42W-0L-20T               47W-0L-15T         47W-0L-15T
+ Trust Region-Aggressive       48W-0L-14T        46W-0L-14T                  45W-0L-17T               46W-0L-16T         46W-0L-16T
+ Trust Region-Conservative      57W-0L-5T         53W-0L-7T                  50W-2L-10T                53W-0L-9T          56W-0L-6T
+ Trust Region-Precise           53W-0L-9T         52W-1L-7T                  46W-0L-16T               49W-0L-13T         52W-0L-10T
+ Trust Region-Standard         46W-0L-16T        44W-0L-16T                  41W-0L-21T               43W-0L-19T         45W-0L-17T
+
+
+
    • Adam Variants (5): Fast, Standard Adam, AMSGrad, Weight Decay (AdamW), and Robust config-
      urations
-
    All implementations use consistent convergence criteria:
-
    • Function tolerance: problem-dependent, chosen based on median best value in calibration phase
    • Maximum function evaluations: 1,000 (configurable)
    • Gradient norm threshold: 10−8 (where applicable)
    • Additional optimizer-specific criteria are set to allow sufficient exploration
 
-5.4    Benchmark Problems
+5.4     Benchmark Problems
 We curated a comprehensive benchmark suite of 62 problems designed to test different aspects of optimization
 algorithms across several categories:
      Convex Functions (12 problems): Sphere (2D, 5D, 10D), Matyas, Zakharov (2D, 5D, 10D), Sparse-
@@ -427,33 +436,36 @@ fel, LevyN (all in 2D, 5D, 10D), Trigonometric (2D, 5D, 10D), PenaltyI (2D, 5D, 
 ferent activation functions (ReLU, Logistic) and network depths - test performance on realistic non-convex
 machine learning optimization scenarios
 
-5.5    Statistical Analysis
+5.5     Statistical Analysis
 We employ rigorous statistical testing to ensure meaningful comparisons:
   Welch’s t-test for unequal variances:
-
-                                                 X̄1 − X̄2
-                                              t= q 2
-                                                   s1    s22
-                                                   n1 + n2
+                                                                 X̄1 − X̄2
+                                                              t= q 2
+                                                                   s1    s22
+                                                                   n1 + n2
 
    Cohen’s d for effect size:
-                                                  X̄1 − X̄2
-                                               d= q 2 2
-                                                         s1 +s2
-                                                            2
+                                                                 X̄1 − X̄2
+                                                              d= q 2 2
+                                                                        s1 +s2
+                                                                           2
 
-   We apply Bonferroni correction for multiple comparisons with adjusted significance level α′ = α/m where
+
+                                                                    8
+   We apply Bonferroni correction for multiple comparisons with adjusted significance level α′ = α/m where
 m is the number of comparisons.
 
 
-                                                     8
-6     Experimental Results
+6     Experimental Results
 6.1    Overall Performance
 The comprehensive evaluation across 62 benchmark problems with 25 optimizer variants revealed clear
 performance hierarchies. QQN variants dominated the results, winning the majority of problems across all
-categories. Key findings include: * QQN variants won 46 out of 62 test problems (74.2% win rate) *
-Statistical significance: Friedman test p-value < 0.001 confirms algorithm performance differences * Top
-performers: QQN-StrongWolfe (12 wins), QQN-GoldenSection (11 wins), QQN-Bisection-1 (9 wins)
+categories. Key findings include:
+
+    • QQN variants won 46 out of 62 test problems (74.2% win rate)
+    • Statistical significance: Friedman test p-value < 0.001 confirms algorithm performance differences
+    • Top performers: QQN-StrongWolfe (12 wins), QQN-GoldenSection (11 wins), QQN-Bisection-1 (9
+      wins)
 
 6.2    Evaluation Insights
 The comprehensive evaluation with balanced optimizer representation (multiple variants per family) revealed
@@ -489,15 +501,40 @@ The results on the Rosenbrock function family reveal the challenges of ill-condi
       4.25e-1
     • Most other optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty
 
-    The following figure demonstrates QQN’s superior performance on Rosenbrock and multimodal problems:
-    The following table shows detailed performance results on the challenging Rosenbrock 5D problem:
-    Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock 5D.
-    *Most optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty.
-
-
-
 
                                                       9
+                            Figure 1: Rosenbrock 5D Log-Convergence Plot
+
+
+   The following figure demonstrates QQN’s superior performance on Rosenbrock and multimodal problems:
+   The following table shows detailed performance results on the challenging Rosenbrock 5D problem:
+   Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock 5D.
+   *Most optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty.
+
+6.4   Statistical Significance
+Analysis of the comprehensive benchmark suite reveals clear performance patterns:
+  Winner Distribution by Algorithm Family:
+
+   • QQN variants: 45 wins (72.6%) - dominated across problem types
+   • L-BFGS variants: 8 wins (12.9%) - efficient on convex problems
+   • Adam variants: 5 wins (8.1%) - excelled on neural networks
+   • Trust Region variants: 3 wins (4.8%) - specialized performance
+   • GD variants: 1 win (1.6%) - limited success
+
+   Top Individual Performers:
+
+  1. QQN-StrongWolfe: 12 wins, excellent risk-adjusted performance
+  2. QQN-GoldenSection: 11 wins, strong risk-adjusted performance
+  3. QQN-Bisection-1: 9 wins, particularly strong on high-dimensional problems
+  4. QQN-CubicQuadraticInterpolation: 7 wins, excelled on sparse problems
+  5. QQN-Bisection-2: 6 wins, consistent performance
+  6. L-BFGS-MoreThuente: 4 wins, good risk-adjusted performance
+  7. Adam-WeightDecay: 3 wins, best on neural networks
+
+   Notable Performance Gaps:
+
+
+                                                   10
                       Table 2: Performance Results for Rosenbrock 5D Problem
 Optimizer        Mean Final     Std Dev    Best     Worst Mean Func        Success   Mean Time
                    Value                   Value Value          Evals     Rate (%)      (s)
@@ -548,54 +585,27 @@ Precise
 
 
 
-                                                10
-                            Figure 1: Rosenbrock 5D Log-Convergence Plot
+                                                11
+    • Rastrigin family: QQN-GoldenSection perfect success vs poor performance for L-BFGS on high di-
+      mensions
+    • Neural networks: Adam-WeightDecay excellent performance vs poor performance for classical methods
+    • Rosenbrock family: QQN-StrongWolfe perfect success with very high precision convergence
+    • Multimodal problems: QQN very high win rate vs poor performance for competitors
 
-
-6.4   Statistical Significance
-Analysis of the comprehensive benchmark suite reveals clear performance patterns:
-  Winner Distribution by Algorithm Family:
-   • QQN variants: 45 wins (72.6%) - dominated across problem types
-   • L-BFGS variants: 8 wins (12.9%) - efficient on convex problems
-   • Adam variants: 5 wins (8.1%) - excelled on neural networks
-   • Trust Region variants: 3 wins (4.8%) - specialized performance
-   • GD variants: 1 win (1.6%) - limited success
-   Top Individual Performers:
-  1. QQN-StrongWolfe: 12 wins, excellent risk-adjusted performance
-  2. QQN-GoldenSection: 11 wins, strong risk-adjusted performance
-  3. QQN-Bisection-1: 9 wins, particularly strong on high-dimensional problems
-  4. QQN-CubicQuadraticInterpolation: 7 wins, excelled on sparse problems
-  5. QQN-Bisection-2: 6 wins, consistent performance
-  6. L-BFGS-MoreThuente: 4 wins, good risk-adjusted performance
-  7. Adam-WeightDecay: 3 wins, best on neural networks
-   Notable Performance Gaps:
-   • Rastrigin family: QQN-GoldenSection perfect success vs poor performance for L-BFGS on high di-
-     mensions
-   • Neural networks: Adam-WeightDecay excellent performance vs poor performance for classical methods
-   • Rosenbrock family: QQN-StrongWolfe perfect success with very high precision convergence
-   • Multimodal problems: QQN very high win rate vs poor performance for competitors
-
-
-                                                   11
-6.5     Performance on Different Problem Classes
+6.5     Performance on Different Problem Classes
 Convex Problems:
-
     • QQN variants: 100% success rate on well-conditioned problems with minimal evaluations
     • QQN-Bisection-2 on Sphere 10D: 100% success rate with minimal function evaluations
     • QQN-Bisection-2 on Sphere 10D: 100% success rate with minimal function evaluations
     • L-BFGS-Aggressive: Matched performance but required more gradient evaluations
     • QQN-StrongWolfe: Superior superlinear convergence rate with 50-80% fewer evaluations than L-BFGS
-
     Non-Convex Unimodal:
-
     • QQN variants: 70-100% success rates on moderately conditioned problems
     • QQN-StrongWolfe on Rosenbrock 5D: 100% success vs 70% for best L-BFGS variant
     • QQN follows valley efficiently using curvature information on Rosenbrock
     • Performance vs condition number: QQN maintains speed on ill-conditioned problems while others slow
       significantly
-
     Highly Multimodal Problems:
-
     • QQN-GoldenSection: Strong performance on Rastrigin family across all dimensions
     • QQN-CubicQuadraticInterpolation: Good performance on multimodal problems
     • QQN-GoldenSection: Strong performance on Rastrigin family across all dimensions
@@ -603,9 +613,7 @@ Convex Problems:
     • Basin of attraction for global minimum: Very small fraction of search space
     • QQN escape mechanism: Systematic step size exploration prevents local minima trapping
     • Traditional methods: Get trapped in first encountered minimum
-
     Machine Learning Problems:
-
     • QQN-Bisection variants: 95-100% success on neural network training
     • LinearRegression: QQN-Bisection variants achieved strong performance
     • LinearRegression: QQN-Bisection variants achieved strong performance
@@ -618,7 +626,6 @@ Convex Problems:
 7     Discussion
 7.1     Key Findings
 The comprehensive evaluation reveals several important insights:
-
     1. QQN Dominance: QQN variants won 45 out of 62 problems (72.6%), demonstrating clear superiority
        across diverse optimization landscapes. The Friedman test (p < 0.001) confirms statistically significant
        performance differences.
@@ -626,14 +633,14 @@ The comprehensive evaluation reveals several important insights:
        across diverse optimization landscapes. Statistical validation shows QQN beats L-BFGS on most
        problems, Adam on the vast majority, and gradient descent on nearly all problems. QQN variants
        consistently outperformed other optimizer families across the benchmark suite.
-    3. Line Search Critical: Among QQN variants, line search strategy dramatically affects performance:
-
-         • Strong Wolfe: Excellent success rate with moderate average evaluations
-         • Golden Section: 90-100% success rate on 2D problems with relatively few average evaluations
 
 
                                                       12
-        • Bisection: Strong performance on various problems with minimal evaluations
+  3. Line Search Critical: Among QQN variants, line search strategy dramatically affects performance:
+
+        • Strong Wolfe: Excellent success rate with moderate average evaluations
+        • Golden Section: 90-100% success rate on 2D problems with relatively few average evaluations
+        • Bisection: Strong performance on various problems with minimal evaluations
         • Bisection: Strong performance on various problems with minimal evaluations
         • Cubic-Quadratic Interpolation: 70% success on Rosenbrock 5D, good for ill-conditioned objectives
 
@@ -661,7 +668,6 @@ evaluation:
   3. Diverse Problem Suite: The 62-problem benchmark suite covers a wide range of optimization
      challenges, from convex to highly multimodal landscapes, including sparse optimization, ill-conditioned
      problems, and constrained optimization scenarios.
-
   4. Multi-Format Reporting: The system generates:
 
         • Markdown reports with embedded visualizations for web viewing
@@ -682,8 +688,6 @@ The comprehensive reporting revealed patterns invisible to traditional evaluatio
   4. Statistical vs Practical Significance: The framework’s dual reporting of p-values and effect sizes
      revealed cases where statistically significant differences have negligible practical impact (e.g., 10 vs 12
      function evaluations on Sphere).
-
-
 
 
                                                       13

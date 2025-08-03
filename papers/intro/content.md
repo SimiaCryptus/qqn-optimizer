@@ -41,11 +41,8 @@ This tension intensifies in modern applications characterized by high dimensiona
 Researchers have developed various approaches to combine gradient and quasi-Newton directions:
 
 * **Trust Region Methods** [@conn2000trust]: These methods constrain the step size within a region where the quadratic model is trusted to approximate the objective function. While effective, they require solving a constrained optimization subproblem at each iteration.
-
 * **Line Search with Switching** [@morales2000automatic]: Some methods alternate between gradient and quasi-Newton directions based on heuristic criteria, but this can lead to discontinuous behavior and convergence issues.
-
 * **Weighted Combinations** [@biggs1973minimization]: Linear combinations of gradient and quasi-Newton directions have been explored, but selecting appropriate weights remains challenging and often problem-dependent.
-
 * **Adaptive Learning Rates** [@kingma2015adam]: Methods like Adam use adaptive learning rates based on gradient moments but don't directly incorporate second-order curvature information.
 
 We propose quadratic interpolation as a simple geometric solution to this direction combination problem.
@@ -63,9 +60,7 @@ This approach provides several key advantages:
 This paper makes three primary contributions:
 
 1. **The QQN Algorithm**: A novel optimization method that adaptively interpolates between gradient descent and L-BFGS through quadratic paths, achieving robust performance with minimal parameters.
-
 2. **Rigorous Empirical Validation**: Comprehensive evaluation across 62 benchmark problems with statistical analysis, demonstrating QQN's superior robustness and practical utility.
-
 3. **Benchmarking Framework**: A reusable Rust application for optimization algorithm evaluation that promotes reproducible research and meaningful comparisons.
 
 Optimal configurations remain problem-dependent, but QQN's adaptive nature minimizes the need for extensive hyperparameter tuning.
@@ -120,10 +115,9 @@ We formulate the direction combination problem as a geometric interpolation. The
 $\mathbf{d}: [0,1] \rightarrow \mathbb{R}^n$ that traces a path from the current point. We impose three natural boundary conditions:
 
 1. **Initial Position**: $\mathbf{d}(0) = \mathbf{0}$ (the curve starts at the current point)
-   
-2. **Initial Tangent**: $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$ (the curve begins tangent to the negative gradient, ensuring descent)
-   
+2. **Initial Tangent**: $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$ (the curve begins tangent to the negative gradient, ensuring descent) 
 3. **Terminal Position**: $\mathbf{d}(1) = \mathbf{d}_{\text{LBFGS}}$ (the curve ends at the L-BFGS direction)
+
 The second condition is crucial: by ensuring the path starts tangent to the negative gradient, we guarantee that moving along the path initially decreases the objective function, regardless of where the path eventually leads. This provides robustness against poor quasi-Newton directions.
 
 
@@ -204,6 +198,7 @@ This negative derivative at $t=0$ ensures that for sufficiently small positive $
 When the L-BFGS direction is high-quality (well-aligned with the negative gradient), the optimal parameter $t^*$ will be close to or exceed 1, effectively using the quasi-Newton step. When the L-BFGS direction is poor (misaligned or even pointing uphill), the optimization naturally selects a smaller $t^*$, staying closer to the gradient direction.
 
 This can be visualized as a "trust slider" that automatically adjusts based on the quality of the quasi-Newton approximation:
+
 - Good L-BFGS direction → $t^* \approx 1$ or larger → quasi-Newton-like behavior
 - Poor L-BFGS direction → $t^* \approx 0$ → gradient descent-like behavior
 - Intermediate cases → smooth interpolation between the two
@@ -233,40 +228,25 @@ The key insight is that the sufficient decrease property:
 $$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) - c\|\nabla f(\mathbf{x}_k)\|^2$$
 combined with the lower bound on $f$, creates a "budget" of total possible decrease. This budget forces the gradients to become arbitrarily small.
 
-
-
-
-
-   
-   
-
 *Proof*: See Appendix B.2.2 for the complete convergence analysis using descent lemmas and summability arguments. $\square$
 
 **Theorem 3** (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
+
 *Intuition*: Near a minimum where the L-BFGS approximation is accurate, the optimal parameter $t^*$ approaches 1, making QQN steps nearly identical to L-BFGS steps. Since L-BFGS converges superlinearly under these conditions, so does QQN. The beauty is that this happens automatically—no switching logic or parameter tuning required.
+
 The Dennis-Moré condition essentially states that the L-BFGS approximation $\mathbf{H}_k$ becomes increasingly accurate in the directions that matter (the actual steps taken). When this holds:
 $$t^* \to 1 \quad \text{and} \quad \mathbf{x}_{k+1} \approx \mathbf{x}_k - \mathbf{H}_k\nabla f(\mathbf{x}_k)$$
+
 This recovers the quasi-Newton iteration, inheriting its superlinear convergence rate.
 *Proof*: See Appendix B.2.3 for the detailed local convergence analysis showing $t^* = 1 + o(1)$ and the resulting superlinear rate. $\square$
+
 ### Practical Implications of the Theory
+
 The theoretical guarantees translate to practical benefits:
+
 1. **No Hyperparameter Tuning**: The adaptive nature of the quadratic path eliminates the need for trust region radii, switching thresholds, or other parameters that plague hybrid methods.
 2. **Robust Failure Recovery**: When L-BFGS produces a bad direction (e.g., due to numerical errors or non-convexity), QQN automatically takes a more conservative step rather than diverging.
 3. **Smooth Performance Degradation**: As problems become more difficult (higher condition number, more non-convexity), QQN gradually transitions from quasi-Newton to gradient descent behavior, rather than failing catastrophically.
-
-
-   
-
-
-
-
-
-   
-   
-   
-
-
-
 4. **Preserved Convergence Rates**: In favorable conditions (near minima with positive definite Hessians), QQN achieves the same superlinear convergence as L-BFGS, so we don't sacrifice asymptotic performance for robustness.
 
 # Benchmarking Methodology
@@ -357,6 +337,7 @@ We apply Bonferroni correction for multiple comparisons with adjusted significan
 ## Overall Performance
 
 The comprehensive evaluation across 62 benchmark problems with 25 optimizer variants revealed clear performance hierarchies. QQN variants dominated the results, winning the majority of problems across all categories. Key findings include:
+
 * **QQN variants won 46 out of 62 test problems** (74.2% win rate)
 * **Statistical significance**: Friedman test p-value < 0.001 confirms algorithm performance differences
 * **Top performers**: QQN-StrongWolfe (12 wins), QQN-GoldenSection (11 wins), QQN-Bisection-1 (9 wins)
