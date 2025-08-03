@@ -116,14 +116,16 @@ We propose a different approach: construct a smooth path that begins with the gr
 
 ## Algorithm Derivation
 
-We formulate the direction combination problem as a geometric interpolation. Consider a parametric curve 
-$\mathbf{d}: [0,1] \rightarrow \mathbb{R}^n$ that must satisfy three boundary conditions:
+We formulate the direction combination problem as a geometric interpolation. The key insight is to think of optimization directions as velocities rather than destinations. Consider a parametric curve 
+$\mathbf{d}: [0,1] \rightarrow \mathbb{R}^n$ that traces a path from the current point. We impose three natural boundary conditions:
 
 1. **Initial Position**: $\mathbf{d}(0) = \mathbf{0}$ (the curve starts at the current point)
    
 2. **Initial Tangent**: $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$ (the curve begins tangent to the negative gradient, ensuring descent)
    
 3. **Terminal Position**: $\mathbf{d}(1) = \mathbf{d}_{\text{LBFGS}}$ (the curve ends at the L-BFGS direction)
+The second condition is crucial: by ensuring the path starts tangent to the negative gradient, we guarantee that moving along the path initially decreases the objective function, regardless of where the path eventually leads. This provides robustness against poor quasi-Newton directions.
+
 
 Following Occam's razor, we seek the lowest-degree polynomial satisfying these constraints.
 A quadratic polynomial $\mathbf{d}(t) = \mathbf{a}t^2 + \mathbf{b}t + \mathbf{c}$ provides the minimal solution.
@@ -184,8 +186,35 @@ Note that while the quadratic path is defined for t ∈ [0,1], the optimization 
 
 ## Theoretical Properties
 
-**Robustness to Poor Curvature Approximations**: QQN remains robust when L-BFGS produces poor directions. 
-When L-BFGS fails—due to indefinite curvature, numerical instabilities, or other issues—the quadratic interpolation mechanism provides graceful degradation to gradient-based optimization:
+### Intuitive Understanding
+
+The theoretical properties of QQN can be understood through three key insights:
+
+**1. Guaranteed Descent Through Initial Tangent Control**
+
+Consider what happens when we start moving along the QQN path. Since the path begins tangent to the negative gradient, we're initially moving in the steepest descent direction. This is like starting to roll a ball downhill—no matter what happens later in the path, we know we'll initially decrease our elevation.
+
+Mathematically, this manifests as:
+$$\frac{d}{dt}f(\mathbf{x} + \mathbf{d}(t))\bigg|_{t=0} = \nabla f(\mathbf{x})^T \mathbf{d}'(0) = -\|\nabla f(\mathbf{x})\|^2 < 0$$
+
+This negative derivative at $t=0$ ensures that for sufficiently small positive $t$, we have $f(\mathbf{x} + \mathbf{d}(t)) < f(\mathbf{x})$.
+
+**2. Adaptive Interpolation Based on Direction Quality**
+
+When the L-BFGS direction is high-quality (well-aligned with the negative gradient), the optimal parameter $t^*$ will be close to or exceed 1, effectively using the quasi-Newton step. When the L-BFGS direction is poor (misaligned or even pointing uphill), the optimization naturally selects a smaller $t^*$, staying closer to the gradient direction.
+
+This can be visualized as a "trust slider" that automatically adjusts based on the quality of the quasi-Newton approximation:
+- Good L-BFGS direction → $t^* \approx 1$ or larger → quasi-Newton-like behavior
+- Poor L-BFGS direction → $t^* \approx 0$ → gradient descent-like behavior
+- Intermediate cases → smooth interpolation between the two
+
+**3. Convergence Through Sufficient Decrease**
+
+The combination of guaranteed initial descent and optimal parameter selection ensures that each iteration makes sufficient progress. This is formalized through the following properties:
+
+### Formal Theoretical Guarantees
+
+**Robustness to Poor Curvature Approximations**: QQN remains robust when L-BFGS produces poor directions. The quadratic interpolation mechanism provides graceful degradation to gradient-based optimization:
 
 **Lemma 1** (Universal Descent Property): For any direction $\mathbf{d}_{\text{LBFGS}}$—even ascent directions or random vectors—the curve $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{LBFGS}}$ satisfies $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$. 
 This guarantees a neighborhood $(0, \epsilon)$ where the objective function decreases along the path.
@@ -195,70 +224,50 @@ The framework naturally filters any proposed direction through the lens of guara
 
 **Theorem 1** (Descent Property): For any $\mathbf{d}_{\text{LBFGS}}$, there exists $\bar{t} > 0$ such that $\phi(t) = f(\mathbf{x}_k + \mathbf{d}(t))$ satisfies $\phi(t) < \phi(0)$ for all $t \in (0, \bar{t}]$.
 
-*Proof*: Since $\mathbf{d}'(0) = -\nabla f(\mathbf{x}_k)$:
-$$\phi'(0) = \nabla f(\mathbf{x}_k)^T (-\nabla f(\mathbf{x}_k)) = -\|\nabla f(\mathbf{x}_k)\|^2 < 0$$
-By continuity of $\phi'$ (assuming $f$ is continuously differentiable), there exists $\bar{t} > 0$ such that $\phi'(t) < 0$ for all $t \in (0, \bar{t}]$. By the fundamental theorem of calculus, this implies $\phi(t) < \phi(0)$ for all $t \in (0, \bar{t}]$. $\square$
+*Intuition*: Since we start moving downhill (negative derivative at $t=0$), continuity ensures we keep going downhill for some positive distance. The formal proof in Appendix B.2.1 makes this rigorous using the fundamental theorem of calculus.
 
 **Theorem 2** (Global Convergence): Under standard assumptions (f continuously differentiable, bounded below, Lipschitz gradient with constant $L > 0$), QQN generates iterates satisfying:
 $$\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$$
+*Intuition*: Each iteration decreases the objective by an amount proportional to $\|\nabla f(\mathbf{x}_k)\|^2$. Since the objective is bounded below, these decreases must sum to a finite value, which forces the gradient norms to approach zero. This is the same mechanism that ensures gradient descent converges, but QQN achieves it more efficiently by taking better steps when possible.
+The key insight is that the sufficient decrease property:
+$$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) - c\|\nabla f(\mathbf{x}_k)\|^2$$
+combined with the lower bound on $f$, creates a "budget" of total possible decrease. This budget forces the gradients to become arbitrarily small.
 
-*Proof*: We establish global convergence through the following steps:
 
-1. **Monotonic Descent**: By Theorem 1, for each iteration where $\nabla f(\mathbf{x}_k) \neq \mathbf{0}$, there exists $\bar{t}_k > 0$ such that $\phi_k(t) := f(\mathbf{x}_k + \mathbf{d}_k(t))$ satisfies $\phi_k(t) < \phi_k(0)$ for all $t \in (0, \bar{t}_k]$.
 
-2. **Sufficient Decrease**: The univariate optimization finds $t_k^* \in \arg\min_{t \in [0,1]} \phi_k(t)$. 
-   Since $\phi_k'(0) = -\|\nabla f(\mathbf{x}_k)\|_2^2 < 0$, we must have $t_k^* > 0$ with $\phi_k(t_k^*) < \phi_k(0)$.
 
-3. **Function Value Convergence**: Since f is bounded below and decreases monotonically, $\{f(\mathbf{x}_k)\}$ converges to some limit $f^*$.
 
-4. **Gradient Summability**: Define $\Delta_k := f(\mathbf{x}_k) - f(\mathbf{x}_{k+1})$. Using the descent lemma:
-   $$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) + \nabla f(\mathbf{x}_k)^T \mathbf{d}_k(t_k^*) + \frac{L}{2}\|\mathbf{d}_k(t_k^*)\|_2^2$$
    
-   Analysis of the quadratic path yields a constant $c > 0$ such that $\Delta_k \geq c\|\nabla f(\mathbf{x}_k)\|_2^2$.
    
-5. **Asymptotic Stationarity**: Since $\sum_{k=0}^{\infty} \Delta_k = f(\mathbf{x}_0) - f^* < \infty$ and 
-   $\Delta_k \geq c\|\nabla f(\mathbf{x}_k)\|_2^2$, we have $\sum_{k=0}^{\infty} \|\nabla f(\mathbf{x}_k)\|_2^2 < \infty$, 
-   implying $\liminf_{k \to \infty} \|\nabla f(\mathbf{x}_k)\|_2 = 0$. $\square$
 
-The constant $c > 0$ in step 4 arises from the quadratic path construction, which ensures that for small $t$, the decrease is dominated by the gradient term, yielding $f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - ct\|\nabla f(\mathbf{x}_k)\|_2^2$ for some $c$ related to the Lipschitz constant.
+*Proof*: See Appendix B.2.2 for the complete convergence analysis using descent lemmas and summability arguments. $\square$
 
 **Theorem 3** (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
+*Intuition*: Near a minimum where the L-BFGS approximation is accurate, the optimal parameter $t^*$ approaches 1, making QQN steps nearly identical to L-BFGS steps. Since L-BFGS converges superlinearly under these conditions, so does QQN. The beauty is that this happens automatically—no switching logic or parameter tuning required.
+The Dennis-Moré condition essentially states that the L-BFGS approximation $\mathbf{H}_k$ becomes increasingly accurate in the directions that matter (the actual steps taken). When this holds:
+$$t^* \to 1 \quad \text{and} \quad \mathbf{x}_{k+1} \approx \mathbf{x}_k - \mathbf{H}_k\nabla f(\mathbf{x}_k)$$
+This recovers the quasi-Newton iteration, inheriting its superlinear convergence rate.
+*Proof*: See Appendix B.2.3 for the detailed local convergence analysis showing $t^* = 1 + o(1)$ and the resulting superlinear rate. $\square$
+### Practical Implications of the Theory
+The theoretical guarantees translate to practical benefits:
+1. **No Hyperparameter Tuning**: The adaptive nature of the quadratic path eliminates the need for trust region radii, switching thresholds, or other parameters that plague hybrid methods.
+2. **Robust Failure Recovery**: When L-BFGS produces a bad direction (e.g., due to numerical errors or non-convexity), QQN automatically takes a more conservative step rather than diverging.
+3. **Smooth Performance Degradation**: As problems become more difficult (higher condition number, more non-convexity), QQN gradually transitions from quasi-Newton to gradient descent behavior, rather than failing catastrophically.
 
-*Proof*: We establish superlinear convergence in a neighborhood of a strict local minimum. Let $\mathbf{x}^*$ be a local minimum with $\nabla f(\mathbf{x}^*) = \mathbf{0}$ and $\nabla^2 f(\mathbf{x}^*) = H^* \succ 0$.
 
-1. **Dennis-Moré Condition**: The L-BFGS approximation $H_k$ satisfies:
-   $$\lim_{k \to \infty} \frac{\|(H_k - (H^*)^{-1})(\mathbf{x}_{k+1} - \mathbf{x}_k)\|}{\|\mathbf{x}_{k+1} - \mathbf{x}_k\|} = 0$$
    
-   This condition ensures that $H_k$ approximates $(H^*)^{-1}$ accurately along the step direction.
 
-2. **Neighborhood Properties**: By continuity of $\nabla^2 f$, there exists a neighborhood $\mathcal{N}$ of $\mathbf{x}^*$ and constants $0 < \mu \leq L$ such that:
-   $$\mu I \preceq \nabla^2 f(\mathbf{x}) \preceq L I, \quad \forall \mathbf{x} \in \mathcal{N}$$
 
-3. **Optimal Parameter Analysis**: Define $\phi(t) = f(\mathbf{x}_k + \mathbf{d}(t))$ where $\mathbf{d}(t) = t(1-t)(-\nabla f(\mathbf{x}_k)) + t^2\mathbf{d}_{\text{LBFGS}}$.
 
-   The derivative is:
-   $$\phi'(t) = \nabla f(\mathbf{x}_k + \mathbf{d}(t))^T[(1-2t)(-\nabla f(\mathbf{x}_k)) + 2t\mathbf{d}_{\text{LBFGS}}]$$
 
-   At $t = 1$:
-   $$\phi'(1) = \nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}})^T \mathbf{d}_{\text{LBFGS}}$$
 
-   Using Taylor expansion: $\nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}}) = \nabla f(\mathbf{x}_k) + \nabla^2 f(\mathbf{x}_k)\mathbf{d}_{\text{LBFGS}} + O(\|\mathbf{d}_{\text{LBFGS}}\|^2)$
    
-   Since $\mathbf{d}_{\text{LBFGS}} = -H_k\nabla f(\mathbf{x}_k)$ and by the Dennis-Moré condition:
-   $$\nabla f(\mathbf{x}_k + \mathbf{d}_{\text{LBFGS}}) = [I - \nabla^2 f(\mathbf{x}_k)H_k]\nabla f(\mathbf{x}_k) + O(\|\nabla f(\mathbf{x}_k)\|^2)$$
    
-   As $k \to \infty$, $H_k \to (H^*)^{-1}$ and $\nabla^2 f(\mathbf{x}_k) \to H^*$, so:
-   $$\phi'(1) = o(\|\nabla f(\mathbf{x}_k)\|^2)$$
    
-   This implies that for sufficiently large $k$, the minimum of $\phi(t)$ satisfies $t^* = 1 + o(1)$.
 
-4. **Convergence Rate**: With $t^* = 1 + o(1)$, we have:
-   $$\mathbf{x}_{k+1} = \mathbf{x}_k + \mathbf{d}(t^*) = \mathbf{x}_k - H_k\nabla f(\mathbf{x}_k) + o(\|\nabla f(\mathbf{x}_k)\|)$$
 
-   By standard quasi-Newton theory with the Dennis-Moré condition:
-   $$\|\mathbf{x}_{k+1} - \mathbf{x}^*\| = o(\|\mathbf{x}_k - \mathbf{x}^*\|)$$
 
-   establishing superlinear convergence. $\square$
+4. **Preserved Convergence Rates**: In favorable conditions (near minima with positive definite Hessians), QQN achieves the same superlinear convergence as L-BFGS, so we don't sacrifice asymptotic performance for robustness.
 
 # Benchmarking Methodology
 
@@ -327,7 +336,7 @@ We curated a comprehensive benchmark suite of 62 problems designed to test diffe
 
 **Highly Multimodal** (24 problems): Rastrigin, Ackley, Michalewicz, StyblinskiTang, Griewank, Schwefel, LevyN (all in 2D, 5D, 10D), Trigonometric (2D, 5D, 10D), PenaltyI (2D, 5D, 10D), NoisySphere (2D, 5D, 10D) - test global optimization capability and robustness to local minima and noise
 
-**ML-Convex** (4 problems): Linear regression, logistic regression, SVM with varying sample sizes (50, 200 samples) - test performance on practical convex machine learning problems
+**ML-Convex** (4 problems): Linear regression, logistic regression, SVM with varying sample sizes (20, 200 samples) - test performance on practical convex machine learning problems
 
 **ML-Non-Convex** (4 problems): Neural networks with varying architectures on MNIST, including different activation functions (ReLU, Logistic) and network depths - test performance on realistic non-convex machine learning optimization scenarios
 
@@ -525,7 +534,7 @@ Several design choices proved crucial for meaningful evaluation:
 
 1. **Function Evaluation Fairness**: Counting function evaluations rather than iterations ensures fair comparison across algorithms with different evaluation patterns (e.g., line search vs trust region).
 2. **Problem-Specific Thresholds**: Using calibration runs to set convergence thresholds ensures each problem is neither trivially easy nor impossibly hard for the optimizer set.
-3. **Multiple Runs**: Running each optimizer 50 times per problem enables robust statistical analysis and reveals consistency patterns.
+3. **Multiple Runs**: Running each optimizer 20 times per problem enables robust statistical analysis and reveals consistency patterns.
 4. **Hierarchical Reporting**: The multi-level report structure (summary → problem-specific → detailed per-run) allows both quick overview and deep investigation.
 
 ### Limitations and Extensions

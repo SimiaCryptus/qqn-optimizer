@@ -156,13 +156,17 @@ them? Linear interpolation might seem natural, but it fails to guarantee descent
 begins with the gradient direction and curves toward the quasi-Newton direction.
 
 4.2     Algorithm Derivation
-We formulate the direction combination problem as a geometric interpolation. Consider a parametric curve
-d : [0, 1] → Rn that must satisfy three boundary conditions:
+We formulate the direction combination problem as a geometric interpolation. The key insight is to think of
+optimization directions as velocities rather than destinations. Consider a parametric curve d : [0, 1] → Rn
+that traces a path from the current point. We impose three natural boundary conditions:
 
   1. Initial Position: d(0) = 0 (the curve starts at the current point)
   2. Initial Tangent: d′ (0) = −∇f (xk ) (the curve begins tangent to the negative gradient, ensuring
      descent)
-  3. Terminal Position: d(1) = dLBFGS (the curve ends at the L-BFGS direction)
+  3. Terminal Position: d(1) = dLBFGS (the curve ends at the L-BFGS direction) The second condition
+     is crucial: by ensuring the path starts tangent to the negative gradient, we guarantee that moving
+     along the path initially decreases the objective function, regardless of where the path eventually leads.
+     This provides robustness against poor quasi-Newton directions.
 
    Following Occam’s razor, we seek the lowest-degree polynomial satisfying these constraints. A quadratic
 polynomial d(t) = at2 + bt + c provides the minimal solution.
@@ -200,16 +204,16 @@ Input: Initial point x0 , objective function f
 Initialize: L-BFGS memory H0 = I, memory parameter m (default: 10)
 
 for k = 0, 1, 2, ... do
-    Compute gradient gk = ∇f(xk )
-    if ||gk || < ε then return xk
-
-      if k = 0 then
 
 
                                                      4
-             d_LBFGS = -gk      // Gradient descent
+      Compute gradient gk = ∇f(xk )
+      if ||gk || < ε then return xk
+
+      if k = 0 then
+           d_LBFGS = -gk // Gradient descent
       else
-             d_LBFGS = -Hk gk    // L-BFGS direction
+           d_LBFGS = -Hk gk // L-BFGS direction
 
       Define path: d(t) = t(1-t)(-gk ) + t²d_LBFGS
       Find t* = argmin_{t≥ 0˝ f (xk + d(t))
@@ -217,204 +221,196 @@ for k = 0, 1, 2, ... do
 
     Update L-BFGS memory with (sk , yk )
 end for
-
    The one-dimensional optimization can use a variety of established methods, e.g. golden section search,
 Brent’s method, or bisection on the derivative. Note that while the quadratic path is defined for t ∈ [0,1],
 the optimization allows t > 1, which is particularly important when the L-BFGS direction is high quality
 and the objective function has small curvature along the path.
 
-4.4    Theoretical Properties
+4.4     Theoretical Properties
+4.4.1   Intuitive Understanding
+The theoretical properties of QQN can be understood through three key insights:
+    1. Guaranteed Descent Through Initial Tangent Control
+    Consider what happens when we start moving along the QQN path. Since the path begins tangent to
+the negative gradient, we’re initially moving in the steepest descent direction. This is like starting to roll a
+ball downhill—no matter what happens later in the path, we know we’ll initially decrease our elevation.
+    Mathematically, this manifests as:
+                             d
+                                f (x + d(t))     = ∇f (x)T d′ (0) = −∥∇f (x)∥2 < 0
+                             dt              t=0
+
+    This negative derivative at t = 0 ensures that for sufficiently small positive t, we have f (x + d(t)) < f (x).
+    2. Adaptive Interpolation Based on Direction Quality
+    When the L-BFGS direction is high-quality (well-aligned with the negative gradient), the optimal pa-
+rameter t∗ will be close to or exceed 1, effectively using the quasi-Newton step. When the L-BFGS direction
+is poor (misaligned or even pointing uphill), the optimization naturally selects a smaller t∗ , staying closer to
+the gradient direction.
+    This can be visualized as a “trust slider” that automatically adjusts based on the quality of the quasi-
+Newton approximation: - Good L-BFGS direction → t∗ ≈ 1 or larger → quasi-Newton-like behavior - Poor
+L-BFGS direction → t∗ ≈ 0 → gradient descent-like behavior - Intermediate cases → smooth interpolation
+between the two
+    3. Convergence Through Sufficient Decrease
+    The combination of guaranteed initial descent and optimal parameter selection ensures that each iteration
+makes sufficient progress. This is formalized through the following properties:
+
+4.4.2   Formal Theoretical Guarantees
 Robustness to Poor Curvature Approximations: QQN remains robust when L-BFGS produces poor
-directions. When L-BFGS fails—due to indefinite curvature, numerical instabilities, or other issues—the
-quadratic interpolation mechanism provides graceful degradation to gradient-based optimization:
+directions. The quadratic interpolation mechanism provides graceful degradation to gradient-based opti-
+mization:
     Lemma 1 (Universal Descent Property): For any direction dLBFGS —even ascent directions or random
 vectors—the curve d(t) = t(1 − t)(−∇f ) + t2 dLBFGS satisfies d′ (0) = −∇f (xk ). This guarantees a neigh-
 borhood (0, ϵ) where the objective function decreases along the path. This property enables interesting
 variations; virtually any point guessing strategy can be used as dL-BFGS .
-    The framework naturally filters any proposed direction through the lens of guaranteed initial descent,
+
+
+                                                        5
+    The framework naturally filters any proposed direction through the lens of guaranteed initial descent,
 making it exceptionally robust to direction quality.
     Theorem 1 (Descent Property): For any dLBFGS , there exists t̄ > 0 such that ϕ(t) = f (xk + d(t))
 satisfies ϕ(t) < ϕ(0) for all t ∈ (0, t̄].
-    Proof : Since d′ (0) = −∇f (xk ):
-
-                                 ϕ′ (0) = ∇f (xk )T (−∇f (xk )) = −∥∇f (xk )∥2 < 0
-
-By continuity of ϕ′ (assuming f is continuously differentiable), there exists t̄ > 0 such that ϕ′ (t) < 0 for all
-t ∈ (0, t̄]. By the fundamental theorem of calculus, this implies ϕ(t) < ϕ(0) for all t ∈ (0, t̄]. □
+    Intuition: Since we start moving downhill (negative derivative at t = 0), continuity ensures we keep
+going downhill for some positive distance. The formal proof in Appendix B.2.1 makes this rigorous using
+the fundamental theorem of calculus.
     Theorem 2 (Global Convergence): Under standard assumptions (f continuously differentiable, bounded
 below, Lipschitz gradient with constant L > 0), QQN generates iterates satisfying:
 
-                                               lim inf ∥∇f (xk )∥2 = 0
-                                                k→∞
+                                            lim inf ∥∇f (xk )∥2 = 0
+                                             k→∞
 
-   Proof : We establish global convergence through the following steps:
+Intuition: Each iteration decreases the objective by an amount proportional to ∥∇f (xk )∥2 . Since the
+objective is bounded below, these decreases must sum to a finite value, which forces the gradient norms to
+approach zero. This is the same mechanism that ensures gradient descent converges, but QQN achieves it
+more efficiently by taking better steps when possible. The key insight is that the sufficient decrease property:
 
-  1. Monotonic Descent: By Theorem 1, for each iteration where ∇f (xk ) ̸= 0, there exists t̄k > 0 such
-     that ϕk (t) := f (xk + dk (t)) satisfies ϕk (t) < ϕk (0) for all t ∈ (0, t̄k ].
-  2. Sufficient Decrease: The univariate optimization finds t∗k ∈ arg mint∈[0,1] ϕk (t). Since ϕ′k (0) =
-     −∥∇f (xk )∥22 < 0, we must have t∗k > 0 with ϕk (t∗k ) < ϕk (0).
-  3. Function Value Convergence: Since f is bounded below and decreases monotonically, {f (xk )}
-     converges to some limit f ∗ .
-  4. Gradient Summability: Define ∆k := f (xk ) − f (xk+1 ). Using the descent lemma:
-                                                                                 L
-                                   f (xk+1 ) ≤ f (xk ) + ∇f (xk )T dk (t∗k ) +     ∥dk (t∗k )∥22
-                                                                                 2
+                                       f (xk+1 ) ≤ f (xk ) − c∥∇f (xk )∥2
 
-      Analysis of the quadratic path yields a constant c > 0 such that ∆k ≥ c∥∇f (xk )∥22 .
+combined with the lower bound on f , creates a “budget” of total possible decrease. This budget forces the
+gradients to become arbitrarily small.
+    Proof : See Appendix B.2.2 for the complete convergence analysis using descent lemmas and summability
+arguments. □
+    Theorem 3 (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if the
+L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly. Intuition:
+Near a minimum where the L-BFGS approximation is accurate, the optimal parameter t∗ approaches 1,
+making QQN steps nearly identical to L-BFGS steps. Since L-BFGS converges superlinearly under these
+conditions, so does QQN. The beauty is that this happens automatically—no switching logic or parameter
+tuning required. The Dennis-Moré condition essentially states that the L-BFGS approximation Hk becomes
+increasingly accurate in the directions that matter (the actual steps taken). When this holds:
 
+                                   t∗ → 1    and xk+1 ≈ xk − Hk ∇f (xk )
 
-                                                           5
-                                        P∞                     ∗                       2
-  5. Asymptotic
-     P∞            Stationarity: Since    k=0 ∆k = f (x0 ) − f < ∞ and ∆k ≥ c∥∇f (xk )∥2 , we have
-                    2
-      k=0 ∥∇f (xk )∥2 < ∞, implying lim inf k→∞ ∥∇f (xk )∥2 = 0. □
+This recovers the quasi-Newton iteration, inheriting its superlinear convergence rate. Proof : See Appendix
+B.2.3 for the detailed local convergence analysis showing t∗ = 1 + o(1) and the resulting superlinear rate.
+□ ### Practical Implications of the Theory The theoretical guarantees translate to practical benefits:
+1. No Hyperparameter Tuning: The adaptive nature of the quadratic path eliminates the need for
+trust region radii, switching thresholds, or other parameters that plague hybrid methods. 2. Robust
+Failure Recovery: When L-BFGS produces a bad direction (e.g., due to numerical errors or non-convexity),
+QQN automatically takes a more conservative step rather than diverging. 3. Smooth Performance
+Degradation: As problems become more difficult (higher condition number, more non-convexity), QQN
+gradually transitions from quasi-Newton to gradient descent behavior, rather than failing catastrophically.
 
-    The constant c > 0 in step 4 arises from the quadratic path construction, which ensures that for small
-t, the decrease is dominated by the gradient term, yielding f (xk + d(t)) ≤ f (xk ) − ct∥∇f (xk )∥22 for some c
-related to the Lipschitz constant.
-    Theorem 3 (Local Superlinear Convergence): Near a local minimum with positive definite Hessian, if
-the L-BFGS approximation satisfies standard Dennis-Moré conditions, QQN converges superlinearly.
-    Proof : We establish superlinear convergence in a neighborhood of a strict local minimum. Let x∗ be a
-local minimum with ∇f (x∗ ) = 0 and ∇2 f (x∗ ) = H ∗ ≻ 0.
-
-  1. Dennis-Moré Condition: The L-BFGS approximation Hk satisfies:
-
-                                          ∥(Hk − (H ∗ )−1 )(xk+1 − xk )∥
-                                       lim                               =0
-                                      k→∞         ∥xk+1 − xk ∥
-
-     This condition ensures that Hk approximates (H ∗ )−1 accurately along the step direction.
-  2. Neighborhood Properties: By continuity of ∇2 f , there exists a neighborhood N of x∗ and constants
-     0 < µ ≤ L such that:
-                                   µI ⪯ ∇2 f (x) ⪯ LI, ∀x ∈ N
-
-  3. Optimal Parameter Analysis: Define ϕ(t) = f (xk + d(t)) where d(t) = t(1 − t)(−∇f (xk )) +
-     t2 dLBFGS .
-     The derivative is:
-                             ϕ′ (t) = ∇f (xk + d(t))T [(1 − 2t)(−∇f (xk )) + 2tdLBFGS ]
-
-     At t = 1:
-                                        ϕ′ (1) = ∇f (xk + dLBFGS )T dLBFGS
-
-     Using Taylor expansion: ∇f (xk + dLBFGS ) = ∇f (xk ) + ∇2 f (xk )dLBFGS + O(∥dLBFGS ∥2 )
-     Since dLBFGS = −Hk ∇f (xk ) and by the Dennis-Moré condition:
-
-                          ∇f (xk + dLBFGS ) = [I − ∇2 f (xk )Hk ]∇f (xk ) + O(∥∇f (xk )∥2 )
-
-     As k → ∞, Hk → (H ∗ )−1 and ∇2 f (xk ) → H ∗ , so:
-
-                                                ϕ′ (1) = o(∥∇f (xk )∥2 )
-
-     This implies that for sufficiently large k, the minimum of ϕ(t) satisfies t∗ = 1 + o(1).
-  4. Convergence Rate: With t∗ = 1 + o(1), we have:
-
-                               xk+1 = xk + d(t∗ ) = xk − Hk ∇f (xk ) + o(∥∇f (xk )∥)
-
-     By standard quasi-Newton theory with the Dennis-Moré condition:
-
-                                             ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥)
-
-     establishing superlinear convergence. □
+    4. Preserved Convergence Rates: In favorable conditions (near minima with positive definite Hes-
+       sians), QQN achieves the same superlinear convergence as L-BFGS, so we don’t sacrifice asymptotic
+       performance for robustness.
 
 
-
-
-                                                        6
-5      Benchmarking Methodology
-5.1       Design Principles
+5     Benchmarking Methodology
+5.1     Design Principles
 Our benchmarking framework introduces a comprehensive evaluation methodology that follows five princi-
 ples:
 
     1. Reproducibility: Fixed random seeds, deterministic algorithms
-    2. Statistical Validity: Multiple runs, hypothesis testing
-    3. Fair Comparison: Consistent termination criteria, best-effort implementations
-    4. Comprehensive Coverage: Diverse problem types and dimensions
-    5. Function Evaluation Fairness: Comparisons based on function evaluations rather than iterations,
-       as iterations may involve vastly different numbers of evaluations
 
-5.2       Two-Phase Evaluation System
+
+                                                       6
+  2. Statistical Validity: Multiple runs, hypothesis testing
+  3. Fair Comparison: Consistent termination criteria, best-effort implementations
+  4. Comprehensive Coverage: Diverse problem types and dimensions
+  5. Function Evaluation Fairness: Comparisons based on function evaluations rather than iterations,
+     as iterations may involve vastly different numbers of evaluations
+
+5.2      Two-Phase Evaluation System
 Traditional optimization benchmarks often suffer from selection bias, where specific hyperparameter choices
 favor certain methods. Our evaluation system provides comprehensive comparison:
     Benchmarking and Ranking: Algorithms are ranked based on their success rate in achieving a pre-
 defined objective value threshold across multiple trials.
 
-    • Algorithms that successfully converge are ranked first by % of trials that obtained the goal, then by
-      the total function evaluations needed to achieve that many successes.
-    • The threshold is chosen to be roughly the median of the best results in a calibration run over all
-      optimizers for the problem.
-    • For algorithms that fail to reach the threshold, we compare the best objective value achieved
-    • All algorithms terminate after a fixed number of function evaluations
+   • Algorithms that successfully converge are ranked first by % of trials that obtained the goal, then by
+     the total function evaluations needed to achieve that many successes.
+   • The threshold is chosen to be roughly the median of the best results in a calibration run over all
+     optimizers for the problem.
+   • For algorithms that fail to reach the threshold, we compare the best objective value achieved
+   • All algorithms terminate after a fixed number of function evaluations
 
      This two-phase approach provides a complete picture: which algorithms can solve the problem (and how
 efficiently), and how well algorithms perform when they cannot fully converge.
      Statistical Analysis: We employ rigorous statistical testing to ensure meaningful comparisons:
 
-    • Welch’s t-test for unequal variances to compare means of function evaluations and success rates
-    • Cohen’s d for effect size to quantify practical significance (available in the supplementary material)
-    • Win/loss/tie comparisons for each pair of algorithms across all problems (ties are counted when the
-      difference is not statistically significant at the 0.05 level after Bonferroni correction)
-    • Aggregation across all problems to produce a win/loss/tie table for each algorithm pair
+   • Welch’s t-test for unequal variances to compare means of function evaluations and success rates
+   • Cohen’s d for effect size to quantify practical significance (available in the supplementary material)
+   • Win/loss/tie comparisons for each pair of algorithms across all problems (ties are counted when the
+     difference is not statistically significant at the 0.05 level after Bonferroni correction)
+   • Aggregation across all problems to produce a win/loss/tie table for each algorithm pair
 
    The summary results are presented in a win/loss/tie table, showing how many problems each algorithm
 won, lost, or tied against each other:
 
-    Legend: W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant
-
-                                 difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
 
 
+                                 Table 1: QQN vs Non-QQN Optimizer Comparison Matrix
+ Non-QQN Optimizer            QQN-Bisection-1     QQN-Bisection-2      QQN-CubicQuadraticInterpolation       QQN-GoldenSection       QQN-StrongWolfe
+ Adam                              50W-3L-9T          43W-7L-10T                   44W-4L-14T                     44W-3L-15T             46W-5L-11T
+ Adam-AMSGrad                      52W-2L-8T          44W-6L-10T                   47W-4L-11T                     47W-3L-12T             48W-4L-10T
+ Adam-Fast                        47W-4L-11T          42W-4L-14T                   38W-5L-19T                     43W-5L-14T             45W-3L-14T
+ Adam-Robust                      50W-1L-11T          44W-1L-15T                   44W-2L-16T                     47W-1L-14T             48W-0L-14T
+ Adam-WeightDecay                 41W-1L-20T          37W-3L-20T                   35W-4L-23T                     39W-1L-22T             38W-2L-22T
+ GD                               41W-1L-20T          41W-3L-16T                   39W-3L-20T                     42W-2L-18T             43W-2L-17T
+ GD-AdaptiveMomentum              47W-1L-12T          46W-2L-10T                   41W-3L-16T                     45W-1L-14T             47W-0L-13T
+ GD-Momentum                      51W-0L-11T          46W-0L-14T                   47W-1L-14T                     49W-1L-12T             51W-0L-11T
+ GD-Nesterov                      44W-0L-18T          43W-2L-15T                   40W-2L-20T                     43W-2L-17T             44W-1L-17T
+ GD-WeightDecay                   39W-1L-22T          37W-3L-20T                   32W-3L-27T                     36W-3L-23T             38W-2L-22T
+ L-BFGS                           32W-1L-29T          32W-3L-25T                   32W-3L-27T                     31W-3L-28T             37W-3L-22T
+ L-BFGS-Aggressive                44W-2L-16T          43W-2L-15T                   40W-3L-19T                     41W-3L-18T             43W-2L-17T
+ L-BFGS-Conservative              30W-3L-29T          28W-7L-25T                   24W-8L-30T                     27W-6L-29T             24W-5L-33T
+ L-BFGS-Limited                   23W-1L-38T          19W-4L-37T                   19W-7L-36T                     18W-6L-38T             26W-3L-33T
+ L-BFGS-MoreThuente               16W-4L-39T          16W-2L-39T                   20W-5L-34T                     15W-7L-37T             21W-3L-35T
+ Trust Region-Adaptive            48W-0L-14T          45W-1L-14T                   42W-0L-20T                     47W-0L-15T             47W-0L-15T
+ Trust Region-Aggressive          48W-0L-14T          46W-0L-14T                   45W-0L-17T                     46W-0L-16T             46W-0L-16T
+ Trust Region-Conservative         57W-0L-5T           53W-0L-7T                   50W-2L-10T                      53W-0L-9T              56W-0L-6T
+ Trust Region-Precise              53W-0L-9T           52W-1L-7T                   46W-0L-16T                     49W-0L-13T             52W-0L-10T
+ Trust Region-Standard            46W-0L-16T          44W-0L-16T                   41W-0L-21T                     43W-0L-19T             45W-0L-17T
 
 
-5.3       Algorithm Implementations
+
+   Legend: W = Wins (statistically significant better performance), L = Losses (statistically significant worse performance), T = Ties (no significant
+
+                                difference). Green indicates QQN variant dominance, red indicates non-QQN dominance.
+
+
+
+
+                                                                           7
+5.3    Algorithm Implementations
 We evaluate 25 optimizer variants, with 5 variants from each major optimizer family to ensure balanced
 comparison:
 
-    • QQN Variants (5): Golden Section, Bisection-1, Bisection-2, Strong Wolfe, and Cubic-Quadratic
-      Interpolation line search methods
-    • L-BFGS Variants (5): Aggressive, Standard, Conservative, Moré-Thuente, and Limited configura-
-      tions
-    • Trust Region Variants (5): Adaptive, Standard, Conservative, Aggressive, and Precise configura-
-      tions
-    • Gradient Descent Variants (5): Basic GD, Momentum, Nesterov acceleration, Weight Decay, and
-      Adaptive Momentum
-
-
-                                                                            7
-                               Table 1: QQN vs Non-QQN Optimizer Comparison Matrix
- Non-QQN Optimizer           QQN-Bisection-1   QQN-Bisection-2   QQN-CubicQuadraticInterpolation   QQN-GoldenSection   QQN-StrongWolfe
- Adam                           50W-3L-9T        43W-7L-10T                  44W-4L-14T               44W-3L-15T         46W-5L-11T
- Adam-AMSGrad                   52W-2L-8T        44W-6L-10T                  47W-4L-11T               47W-3L-12T         48W-4L-10T
- Adam-Fast                     47W-4L-11T        42W-4L-14T                  38W-5L-19T               43W-5L-14T         45W-3L-14T
- Adam-Robust                   50W-1L-11T        44W-1L-15T                  44W-2L-16T               47W-1L-14T         48W-0L-14T
- Adam-WeightDecay              41W-1L-20T        37W-3L-20T                  35W-4L-23T               39W-1L-22T         38W-2L-22T
- GD                            41W-1L-20T        41W-3L-16T                  39W-3L-20T               42W-2L-18T         43W-2L-17T
- GD-AdaptiveMomentum           47W-1L-12T        46W-2L-10T                  41W-3L-16T               45W-1L-14T         47W-0L-13T
- GD-Momentum                   51W-0L-11T        46W-0L-14T                  47W-1L-14T               49W-1L-12T         51W-0L-11T
- GD-Nesterov                   44W-0L-18T        43W-2L-15T                  40W-2L-20T               43W-2L-17T         44W-1L-17T
- GD-WeightDecay                39W-1L-22T        37W-3L-20T                  32W-3L-27T               36W-3L-23T         38W-2L-22T
- L-BFGS                        32W-1L-29T        32W-3L-25T                  32W-3L-27T               31W-3L-28T         37W-3L-22T
- L-BFGS-Aggressive             44W-2L-16T        43W-2L-15T                  40W-3L-19T               41W-3L-18T         43W-2L-17T
- L-BFGS-Conservative           30W-3L-29T        28W-7L-25T                  24W-8L-30T               27W-6L-29T         24W-5L-33T
- L-BFGS-Limited                23W-1L-38T        19W-4L-37T                  19W-7L-36T               18W-6L-38T         26W-3L-33T
- L-BFGS-MoreThuente            16W-4L-39T        16W-2L-39T                  20W-5L-34T               15W-7L-37T         21W-3L-35T
- Trust Region-Adaptive         48W-0L-14T        45W-1L-14T                  42W-0L-20T               47W-0L-15T         47W-0L-15T
- Trust Region-Aggressive       48W-0L-14T        46W-0L-14T                  45W-0L-17T               46W-0L-16T         46W-0L-16T
- Trust Region-Conservative      57W-0L-5T         53W-0L-7T                  50W-2L-10T                53W-0L-9T          56W-0L-6T
- Trust Region-Precise           53W-0L-9T         52W-1L-7T                  46W-0L-16T               49W-0L-13T         52W-0L-10T
- Trust Region-Standard         46W-0L-16T        44W-0L-16T                  41W-0L-21T               43W-0L-19T         45W-0L-17T
-
-
-
+   • QQN Variants (5): Golden Section, Bisection-1, Bisection-2, Strong Wolfe, and Cubic-Quadratic
+     Interpolation line search methods
+   • L-BFGS Variants (5): Aggressive, Standard, Conservative, Moré-Thuente, and Limited configura-
+     tions
+   • Trust Region Variants (5): Adaptive, Standard, Conservative, Aggressive, and Precise configura-
+     tions
+   • Gradient Descent Variants (5): Basic GD, Momentum, Nesterov acceleration, Weight Decay, and
+     Adaptive Momentum
    • Adam Variants (5): Fast, Standard Adam, AMSGrad, Weight Decay (AdamW), and Robust config-
      urations
+
    All implementations use consistent convergence criteria:
+
    • Function tolerance: problem-dependent, chosen based on median best value in calibration phase
    • Maximum function evaluations: 1,000 (configurable)
    • Gradient norm threshold: 10−8 (where applicable)
    • Additional optimizer-specific criteria are set to allow sufficient exploration
 
-5.4     Benchmark Problems
+5.4    Benchmark Problems
 We curated a comprehensive benchmark suite of 62 problems designed to test different aspects of optimization
 algorithms across several categories:
      Convex Functions (12 problems): Sphere (2D, 5D, 10D), Matyas, Zakharov (2D, 5D, 10D), Sparse-
@@ -425,43 +421,44 @@ Himmelblau, IllConditionedRosenbrock (2D, 5D, 10D), SparseRosenbrock (2D, 5D, 10
      Highly Multimodal (24 problems): Rastrigin, Ackley, Michalewicz, StyblinskiTang, Griewank, Schwe-
 fel, LevyN (all in 2D, 5D, 10D), Trigonometric (2D, 5D, 10D), PenaltyI (2D, 5D, 10D), NoisySphere (2D,
 5D, 10D) - test global optimization capability and robustness to local minima and noise
-     ML-Convex (4 problems): Linear regression, logistic regression, SVM with varying sample sizes (50,
+     ML-Convex (4 problems): Linear regression, logistic regression, SVM with varying sample sizes (20,
 200 samples) - test performance on practical convex machine learning problems
      ML-Non-Convex (4 problems): Neural networks with varying architectures on MNIST, including dif-
 ferent activation functions (ReLU, Logistic) and network depths - test performance on realistic non-convex
 machine learning optimization scenarios
 
-5.5     Statistical Analysis
+5.5    Statistical Analysis
 We employ rigorous statistical testing to ensure meaningful comparisons:
   Welch’s t-test for unequal variances:
-                                                                 X̄1 − X̄2
-                                                              t= q 2
-                                                                   s1    s22
-                                                                   n1 + n2
+
+                                                 X̄1 − X̄2
+                                              t= q 2
+                                                   s1    s22
+                                                   n1 + n2
 
    Cohen’s d for effect size:
-                                                                 X̄1 − X̄2
-                                                              d= q 2 2
-                                                                        s1 +s2
-                                                                           2
+                                                  X̄1 − X̄2
+                                               d= q 2 2
+                                                         s1 +s2
+                                                            2
 
-
-                                                                    8
-   We apply Bonferroni correction for multiple comparisons with adjusted significance level α′ = α/m where
+   We apply Bonferroni correction for multiple comparisons with adjusted significance level α′ = α/m where
 m is the number of comparisons.
 
 
-6     Experimental Results
+                                                     8
+6     Experimental Results
 6.1    Overall Performance
 The comprehensive evaluation across 62 benchmark problems with 25 optimizer variants revealed clear
 performance hierarchies. QQN variants dominated the results, winning the majority of problems across all
-categories. Key findings include: * QQN variants won 45 out of 62 test problems (72.6% win rate) *
+categories. Key findings include: * QQN variants won 46 out of 62 test problems (74.2% win rate) *
 Statistical significance: Friedman test p-value < 0.001 confirms algorithm performance differences * Top
 performers: QQN-StrongWolfe (12 wins), QQN-GoldenSection (11 wins), QQN-Bisection-1 (9 wins)
 
 6.2    Evaluation Insights
 The comprehensive evaluation with balanced optimizer representation (multiple variants per family) revealed
 several key insights:
+
     1. QQN Dominance: QQN variants won most problems:
          • QQN-StrongWolfe: Won most problems, achieving top average ranking across all problems
          • QQN-GoldenSection: Won many problems, achieving high success on multimodal problems
@@ -486,14 +483,18 @@ several key insights:
 
 6.3    Ill-Conditioned Problems: Rosenbrock Function
 The results on the Rosenbrock function family reveal the challenges of ill-conditioned optimization:
+
     • QQN-StrongWolfe achieved 100% success on Rosenbrock 5D with mean final value of 3.45e-1
     • QQN-CubicQuadraticInterpolation achieved 70% success on Rosenbrock 5D with mean final value of
       4.25e-1
     • Most other optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty
+
     The following figure demonstrates QQN’s superior performance on Rosenbrock and multimodal problems:
     The following table shows detailed performance results on the challenging Rosenbrock 5D problem:
     Table 2 below shows comprehensive performance metrics for all optimizers on Rosenbrock 5D.
     *Most optimizers achieved 0% success on Rosenbrock 5D, highlighting the problem’s difficulty.
+
+
 
 
                                                       9
@@ -693,7 +694,7 @@ Several design choices proved crucial for meaningful evaluation:
      comparison across algorithms with different evaluation patterns (e.g., line search vs trust region).
   2. Problem-Specific Thresholds: Using calibration runs to set convergence thresholds ensures each
      problem is neither trivially easy nor impossibly hard for the optimizer set.
-  3. Multiple Runs: Running each optimizer 50 times per problem enables robust statistical analysis and
+  3. Multiple Runs: Running each optimizer 20 times per problem enables robust statistical analysis and
      reveals consistency patterns.
   4. Hierarchical Reporting: The multi-level report structure (summary → problem-specific → detailed
      per-run) allows both quick overview and deep investigation.
@@ -1038,7 +1039,317 @@ Zakharov                         WeightDecay         GD            MoreThuente  
 worst performing optimizer family.
 
 
+14       Appendix B: Theoretical Foundations and Proofs
+14.1     B.1 Algorithm Derivation
+14.1.1    B.1.1 The Direction Combination Problem
+Consider the fundamental problem of combining multiple optimization directions. Given: - Gradient direc-
+tion: −∇f (x) providing guaranteed descent - Quasi-Newton direction: dQN offering potential superlinear
+convergence
+    We seek a principled method to combine these directions that:
+
+  1. Guarantees descent from any starting point
+  2. Smoothly interpolates between the directions
+  3. Requires no additional hyperparameters
+  4. Maintains computational efficiency
+
+14.1.2    B.1.2 Geometric Formulation
+We formulate direction combination as a boundary value problem in parametric space. Consider a parametric
+curve d : [0, 1] → Rn satisfying:
+
+  1. Initial position: d(0) = 0
+  2. Initial tangent: d′ (0) = −∇f (x) (ensures descent)
+  3. Terminal position: d(1) = dL-BFGS
+
+   The minimal polynomial satisfying these constraints is quadratic:
+
+                                             d(t) = at2 + bt + c
+
+   Applying boundary conditions:
+
+   • From condition 1: c = 0
+   • From condition 2: b = −∇f (x)
+   • From condition 3: a + b = dL-BFGS
+
+   Therefore: a = dL-BFGS + ∇f (x)
+   This yields the canonical QQN path:
+
+                                     d(t) = t(1 − t)(−∇f ) + t2 dL-BFGS
+
+14.2     B.2 Convergence Analysis
+14.2.1    B.2.1 Universal Descent Property
+Lemma B.1 (Universal Descent): For any direction dL-BFGS ∈ Rn , the QQN path satisfies:
+
+                                              d′ (0) = −∇f (x)
+
+   Proof : Direct differentiation of d(t) = t(1 − t)(−∇f ) + t2 dL-BFGS gives:
+
+                                    d′ (t) = (1 − 2t)(−∇f ) + 2tdL-BFGS
+
+    Evaluating at t = 0: d′ (0) = −∇f (x). □ Theorem B.1 (Descent Property): For any dL-BFGS , there
+exists t̄ > 0 such that ϕ(t) = f (x + d(t)) satisfies ϕ(t) < ϕ(0) for all t ∈ (0, t̄].
 
 
-                                                   20
+                                                      20
+   Proof : Since d′ (0) = −∇f (x):
+                                 ϕ′ (0) = ∇f (x)T (−∇f (x)) = −∥∇f (x)∥2 < 0
+    By continuity of ϕ′ (assuming f is continuously differentiable), there exists t̄ > 0 such that ϕ′ (t) < 0 for
+all t ∈ (0, t̄]. By the fundamental theorem of calculus:
+                                                       Z t
+                                         ϕ(t) − ϕ(0) =     ϕ′ (s)ds < 0
+                                                            0
+
+   for all t ∈ (0, t̄]. □
+
+14.2.2    B.2.2 Global Convergence Analysis
+Theorem B.2 (Global Convergence): Under standard assumptions:
+  1. f : Rn → R is continuously differentiable
+  2. f is bounded below: f (x) ≥ finf > −∞
+  3. ∇f is Lipschitz continuous with constant L > 0
+  4. The univariate optimization finds a point satisfying the Armijo condition
+   QQN generates iterates satisfying:
+                                                lim inf ∥∇f (xk )∥ = 0
+                                                 k→∞
+    Proof : We establish convergence through a descent lemma approach.
+    Step 1: Monotonic Decrease
+    By Theorem B.1, each iteration produces f (xk+1 ) < f (xk ) whenever ∇f (xk ) ̸= 0.
+    Step 2: Sufficient Decrease
+    Define ϕk (t) = f (xk + dk (t)). Since ϕ′k (0) = −∥∇f (xk )∥2 < 0, by the Armijo condition, there exists
+c1 ∈ (0, 1) and t̄ > 0 such that:
+                              ϕk (t) ≤ ϕk (0) + c1 tϕ′k (0) = f (xk ) − c1 t∥∇f (xk )∥2
+   for all t ∈ (0, t̄].
+   Step 3: Quantifying Decrease
+   Using the descent lemma with Lipschitz constant L:
+                                                                            L
+                              f (xk+1 ) ≤ f (xk ) + ∇f (xk )T dk (t∗k ) +     ∥dk (t∗k )∥2
+                                                                            2
+   For the quadratic path with t∗k ∈ (0, t̄]:
+                                ∥dk (t)∥2 = ∥t(1 − t)(−∇f (xk )) + t2 dL-BFGS ∥2
+
+
+                                     ≤ 2t2 (1 − t)2 ∥∇f (xk )∥2 + 2t4 ∥dL-BFGS ∥2
+   For small t, the gradient term dominates, giving:
+                                          f (xk ) − f (xk+1 ) ≥ c∥∇f (xk )∥2
+   for some c > 0 independent of k.
+   Step 4: Summability
+   Since f is bounded below and decreases monotonically:
+                               ∞
+                               X
+                                     [f (xk ) − f (xk+1 )] = f (x0 ) − lim f (xk ) < ∞
+                                                                    k→∞
+                               k=0
+
+   Combined with Step 3:
+                                                ∞
+                                                X
+                                                      ∥∇f (xk )∥2 < ∞
+                                                k=0
+
+   Step 5: Conclusion The summability of ∥∇f (xk )∥2 implies lim inf k→∞ ∥∇f (xk )∥ = 0. □
+
+
+                                                          21
+14.2.3    B.2.3 Local Superlinear Convergence
+Theorem B.3 (Local Superlinear Convergence): Let x∗ be a local minimum with ∇f (x∗ ) = 0 and
+∇2 f (x∗ ) = H ∗ ≻ 0. Assume:
+  1. ∇2 f is Lipschitz continuous in a neighborhood of x∗
+  2. The L-BFGS approximation satisfies the Dennis-Moré condition:
+
+                                         ∥(Hk − (H ∗ )−1 )(xk+1 − xk )∥
+                                     lim                                =0
+                                   k→∞           ∥xk+1 − xk ∥
+   Then QQN converges superlinearly: ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥).
+   Proof : We analyze the behavior near the optimum.
+   Step 1: Neighborhood Properties
+   By continuity of ∇2 f , there exists a neighborhood N of x∗ and constants 0 < µ ≤ L such that:
+                                           µI ⪯ ∇2 f (x) ⪯ LI,      ∀x ∈ N
+   Step 2: Optimal Parameter Analysis
+   Define ϕ(t) = f (xk + d(t)) where d(t) = t(1 − t)(−∇f (xk )) + t2 dL-BFGS . The first derivative is:
+                           ϕ′ (t) = ∇f (xk + d(t))T [(1 − 2t)(−∇f (xk )) + 2tdL-BFGS ]
+   The second derivative is:
+         ϕ′′ (t) = [(1 − 2t)(−∇f (xk )) + 2tdL-BFGS ]T ∇2 f (xk + d(t))[(1 − 2t)(−∇f (xk )) + 2tdL-BFGS ]
+
+
+                                 +∇f (xk + d(t))T [−2(−∇f (xk )) + 2dL-BFGS ]
+   At t = 1:
+                                     ϕ′ (1) = ∇f (xk + dL-BFGS )T dL-BFGS
+   Using Taylor expansion:
+                     ∇f (xk + dL-BFGS ) = ∇f (xk ) + ∇2 f (xk )dL-BFGS + O(∥dL-BFGS ∥2 )
+   Since dL-BFGS = −Hk ∇f (xk ):
+                       ∇f (xk + dL-BFGS ) = [I − ∇2 f (xk )Hk ]∇f (xk ) + O(∥∇f (xk )∥2 )
+   By the Dennis-Moré condition, as k → ∞:
+                                              ∥I − ∇2 f (xk )Hk ∥ → 0
+   Therefore:
+                                              ϕ′ (1) = o(∥∇f (xk )∥2 )
+    Step 3: Optimal Parameter Convergence
+    Since ϕ′ (0) = −∥∇f (xk )∥2 < 0 and ϕ′ (1) = o(∥∇f (xk )∥2 ), by the intermediate value theorem and the
+fact that ϕ is strongly convex near t = 1 (due to positive definite Hessian), the minimizer satisfies:
+                                                   t∗k = 1 + o(1)
+   Step 4: Convergence Rate
+   With t∗k = 1 + o(1):
+                        xk+1 = xk + d(t∗k ) = xk + (1 + o(1))dL-BFGS + o(∥dL-BFGS ∥)
+
+
+                                       = xk − Hk ∇f (xk ) + o(∥∇f (xk )∥)
+   By standard quasi-Newton theory with the Dennis-Moré condition:
+
+                                           ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥)
+   establishing superlinear convergence. □
+
+
+                                                        22
+14.3     B.3 Robustness Analysis
+14.3.1    B.3.1 Graceful Degradation
+Theorem B.4 (Graceful Degradation): Let θk be the angle between −∇f (xk ) and dL-BFGS . If θk > π/2
+(obtuse angle), then the optimal parameter satisfies t∗ ∈ [0, 1/2], ensuring gradient-dominated steps.
+   Proof : When θk > π/2, we have ∇f (xk )T dL-BFGS > 0.
+   The derivative of our objective along the path is:
+                                   d
+                                      f (xk + d(t)) = ∇f (xk + d(t))T d′ (t)
+                                   dt
+   At t = 1/2:
+                                                  1
+                                      d′ (1/2) = − ∇f (xk ) + dL-BFGS
+                                                  2
+   For small steps from xk :
+                                        ∇f (xk + d(1/2)) ≈ ∇f (xk )
+   Therefore:
+                          d                                    1
+                             f (xk + d(t))       ≈ ∇f (xk )T [− ∇f (xk ) + dL-BFGS ]
+                          dt               t=1/2               2
+                                    1
+                                 = − ∥∇f (xk )∥2 + ∇f (xk )T dL-BFGS > 0
+                                    2
+    when ∇f (xk )T dL-BFGS > 21 ∥∇f (xk )∥2 .
+    This implies the function increases beyond t = 1/2, so the univariate optimization will find t∗ ≤ 1/2,
+giving:
+
+                                     xk+1 ≈ xk + t∗ (1 − t∗ )(−∇f (xk ))
+   Since t∗ ≤ 1/2, we have t∗ (1 − t∗ ) ≥ t∗ (1/2), ensuring a gradient-dominated step. □
+
+14.3.2    B.3.2 Stability Under Numerical Errors
+Theorem B.5 (Numerical Stability): Let d̃L-BFGS = dL-BFGS + ϵ where ϵ represents numerical errors with
+∥ϵ∥ ≤ δ. The perturbed QQN path:
+
+                                     d̃(t) = t(1 − t)(−∇f ) + t2 d̃L-BFGS
+
+   satisfies:
+                                             ∥d̃(t) − d(t)∥ ≤ t2 δ
+   Proof : Direct computation:
+
+                          ∥d̃(t) − d(t)∥ = ∥t2 (d̃L-BFGS − dL-BFGS )∥ = t2 ∥ϵ∥ ≤ t2 δ
+   For small t (near the initial descent phase), the error is O(t2 δ), providing quadratic error suppression. □
+
+14.4     B.4 Computational Complexity
+Theorem B.6 (Computational Complexity): Each QQN iteration requires:
+
+   • O(n) operations for path construction
+   • O(mn) operations for L-BFGS direction computation
+   • O(k) function evaluations for univariate optimization
+
+   where n is the dimension, m is the L-BFGS memory size, and k is typically small (3-10).
+   Proof :
+
+
+
+                                                      23
+  1. Path construction: Computing d(t) = t(1−t)(−∇f )+t2 dL-BFGS requires O(n) operations for vector
+     arithmetic.
+  2. L-BFGS direction: The two-loop recursion requires O(mn) operations to compute Hk ∇f (xk ).
+  3. Line search: Each function evaluation along the path requires O(n) operations to compute xk + d(t),
+     plus the cost of evaluating f .
+
+   Total complexity per iteration: O(mn + kn) + k · cost(f ). □
+
+14.5     B.5 Extensions and Variants
+14.5.1   B.5.1 Gradient Scaling
+The basic QQN formulation can be enhanced with gradient scaling:
+
+                                    d(t) = t(1 − t)α(−∇f ) + t2 dL-BFGS
+
+   where α > 0 is a scaling factor.
+   Proposition B.1 (Scaling Invariance): The set of points reachable by the QQN path is invariant to the
+choice of α. Only the parametrization changes.
+   Proof : Consider the mapping s = β(t) where β is chosen such that:
+
+                        t(1 − t)α(−∇f ) + t2 dL-BFGS = s(1 − s)(−∇f ) + s2 dL-BFGS
+
+   This gives a bijection between parametrizations, showing that any point reachable with one α is reachable
+with another. □
+
+14.5.2   B.5.2 Cubic Extension with Momentum
+Incorporating momentum leads to cubic interpolation:
+
+                          d(t) = t(1 − t)(1 − 2t)m + t(1 − t)α(−∇f ) + t2 dL-BFGS
+
+   where m is the momentum vector.
+   This satisfies:
+
+   • d(0) = 0
+   • d′ (0) = α(−∇f ) + m
+   • d(1) = dL-BFGS
+   • d′′ (0) = −6m + 2α(−∇f ) + 2dL-BFGS
+
+    Theorem B.7 (Cubic Convergence Properties): The cubic variant maintains all convergence guarantees
+of the quadratic version while potentially improving the convergence constant through momentum accelera-
+tion.
+
+14.5.3   B.5.3 Trust Region Integration
+QQN naturally extends to trust regions by constraining the univariate search:
+
+                                       t∗ = arg     min        f (x + d(t))
+                                                  t:∥d(t)∥≤∆
+
+    where ∆ is the trust region radius.
+    Proposition B.2 (Trust Region Feasibility): For any ∆ > 0, there exists tmax > 0 such that ∥d(t)∥ ≤ ∆
+for all t ∈ [0, tmax ].
+    Proof : Since d(0) = 0 and d is continuous, by the intermediate value theorem, the set {t : ∥d(t)∥ ≤ ∆}
+contains an interval [0, tmax ] for some tmax > 0. □
+
+
+
+
+                                                       24
+14.6     B.6 Comparison with Related Methods
+14.6.1   B.6.1 Relationship to Trust Region Methods
+Trust region methods solve:
+                                             1
+                                  min gT s + sT Bs s.t. ∥s∥ ≤ ∆
+                                    s        2
+   QQN can be viewed as solving a related but different problem:
+
+                                              min f (x + d(t))
+                                               t≥0
+
+   where d(t) is the quadratic path. Key differences:
+
+   • Trust region: Solves 2D subproblem, then line search
+   • QQN: Direct 1D optimization along quadratic path
+   • Trust region: Requires trust region radius management
+   • QQN: Parameter-free, automatic adaptation
+
+14.6.2   B.6.2 Relationship to Line Search Methods
+Traditional line search methods optimize:
+                                               min f (x + αd)
+                                               α>0
+
+   QQN generalizes this by optimizing along a parametric path:
+
+                                              min f (x + d(t))
+                                               t≥0
+
+   The key insight is that the direction itself changes with the parameter, providing additional flexibility.
+
+14.6.3   B.6.3 Relationship to Hybrid Methods
+Previous hybrid approaches typically use discrete switching:
+                                        (
+                                          dgradient      if condition A
+                                   d=
+                                          dquasi-Newton if condition B
+
+   QQN provides continuous interpolation, eliminating discontinuities and the need for switching logic.
+
+
+
+
+                                                     25
 
