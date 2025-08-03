@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-const P_THRESHOLD: f64 = 0.001;
+const P_THRESHOLD: f64 = 0.05;
 
 /// Generate comparison matrix LaTeX table
 pub fn generate_comparison_matrix_latex_table(
