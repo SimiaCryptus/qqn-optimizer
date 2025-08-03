@@ -86,6 +86,7 @@ $$\mathbf{d}'(0) = -\nabla f(\mathbf{x})$$
 
 *Proof*: Direct differentiation of $\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}$ gives:
 $$\mathbf{d}'(t) = (1-2t)(-\nabla f) + 2t\mathbf{d}_{\text{L-BFGS}}$$
+
 Evaluating at $t=0$: $\mathbf{d}'(0) = -\nabla f(\mathbf{x})$. $\square$
 This property ensures descent regardless of the quality of $\mathbf{d}_{\text{L-BFGS}}$.
 
@@ -93,6 +94,7 @@ This property ensures descent regardless of the quality of $\mathbf{d}_{\text{L-
 
 *Proof*: Since $\mathbf{d}'(0) = -\nabla f(\mathbf{x})$:
 $$\phi'(0) = \nabla f(\mathbf{x})^T(-\nabla f(\mathbf{x})) = -\|\nabla f(\mathbf{x})\|^2 < 0$$
+
 By continuity of $\phi'$, there exists $\bar{t} > 0$ such that $\phi'(t) < 0$ for $t \in (0, \bar{t}]$. $\square$
 
 ### Global Convergence Analysis
@@ -119,7 +121,9 @@ By Theorem 1, each iteration produces $f(\mathbf{x}_{k+1}) < f(\mathbf{x}_k)$ wh
 Define $\phi_k(t) = f(\mathbf{x}_k + \mathbf{d}_k(t))$. Since $\phi_k'(0) = -\|\nabla f(\mathbf{x}_k)\|^2 < 0$, by the Armijo condition, there exists $\bar{t} > 0$ such that:
 
 $$\phi_k(t) \leq \phi_k(0) + c_1 t \phi_k'(0) = f(\mathbf{x}_k) - c_1 t \|\nabla f(\mathbf{x}_k)\|^2$$
+
 for all $t \in (0, \bar{t}]$ and some $c_1 \in (0, 1)$.
+
 The univariate optimization ensures $t_k^* \geq \min\{\bar{t}, 1\}$, giving:
 $$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) - c_1 \min\{\bar{t}, 1\} \|\nabla f(\mathbf{x}_k)\|^2$$
 
@@ -127,6 +131,7 @@ $$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) - c_1 \min\{\bar{t}, 1\} \|\nabla f(\
 
 Using the descent lemma with Lipschitz constant $L$:
 $$f(\mathbf{x}_{k+1}) \leq f(\mathbf{x}_k) + \nabla f(\mathbf{x}_k)^T \mathbf{d}_k(t_k^*) + \frac{L}{2}\|\mathbf{d}_k(t_k^*)\|^2$$
+
 For the quadratic path, we can show there exists $c > 0$ such that:
 $$f(\mathbf{x}_k) - f(\mathbf{x}_{k+1}) \geq c\|\nabla f(\mathbf{x}_k)\|^2$$
 
@@ -134,6 +139,7 @@ $$f(\mathbf{x}_k) - f(\mathbf{x}_{k+1}) \geq c\|\nabla f(\mathbf{x}_k)\|^2$$
 
 Since $f$ is bounded below and decreases monotonically:
 $$\sum_{k=0}^{\infty} [f(\mathbf{x}_k) - f(\mathbf{x}_{k+1})] = f(\mathbf{x}_0) - \lim_{k \to \infty} f(\mathbf{x}_k) < \infty$$
+
 Combined with Step 3:
 $$\sum_{k=0}^{\infty} \|\nabla f(\mathbf{x}_k)\|^2 < \infty$$
 
@@ -147,6 +153,7 @@ The summability of $\|\nabla f(\mathbf{x}_k)\|^2$ implies $\liminf_{k \to \infty
 
 1. $\nabla^2 f$ is Lipschitz continuous in a neighborhood of $\mathbf{x}^*$
 2. The L-BFGS approximation satisfies the Dennis-Moré condition:
+
 $$\lim_{k \to \infty} \frac{\|(\mathbf{H}_k - (\nabla^2 f(\mathbf{x}^*))^{-1})(\mathbf{x}_{k+1} - \mathbf{x}_k)\|}{\|\mathbf{x}_{k+1} - \mathbf{x}_k\|} = 0$$
 Then QQN converges superlinearly: $\|\mathbf{x}_{k+1} - \mathbf{x}^*\| = o(\|\mathbf{x}_k - \mathbf{x}^*\|)$.
 

@@ -108,33 +108,34 @@ return x
 3.3.1   Universal Descent Property
 Lemma 1 (Universal Descent): For any direction dL-BFGS ∈ Rn , the QQN path satisfies:
 
-                                                   d′ (0) = −∇f (x)
+                                                  d′ (0) = −∇f (x)
 
    Proof : Direct differentiation of d(t) = t(1 − t)(−∇f ) + t2 dL-BFGS gives:
 
-                                        d′ (t) = (1 − 2t)(−∇f ) + 2tdL-BFGS
+                                       d′ (t) = (1 − 2t)(−∇f ) + 2tdL-BFGS
 
-Evaluating at t = 0: d′ (0) = −∇f (x). □ This property ensures descent regardless of the quality of dL-BFGS .
+    Evaluating at t = 0: d′ (0) = −∇f (x). □ This property ensures descent regardless of the quality of
+dL-BFGS .
     Theorem 1 (Descent Property): For any dL-BFGS , there exists t̄ > 0 such that ϕ(t) = f (x + d(t))
 satisfies ϕ(t) < ϕ(0) for all t ∈ (0, t̄].
     Proof : Since d′ (0) = −∇f (x):
 
                                   ϕ′ (0) = ∇f (x)T (−∇f (x)) = −∥∇f (x)∥2 < 0
 
-By continuity of ϕ′ , there exists t̄ > 0 such that ϕ′ (t) < 0 for t ∈ (0, t̄]. □
+   By continuity of ϕ′ , there exists t̄ > 0 such that ϕ′ (t) < 0 for t ∈ (0, t̄]. □
 
 3.3.2   Global Convergence Analysis
 Theorem 2 (Global Convergence): Under standard assumptions:
 
-   1. f : Rn → R is continuously differentiable
-   2. f is bounded below: f (x) ≥ finf > −∞
-   3. ∇f is Lipschitz continuous with constant L > 0
-   4. The univariate optimization finds a point satisfying the Armijo condition
+  1. f : Rn → R is continuously differentiable
+  2. f is bounded below: f (x) ≥ finf > −∞
+  3. ∇f is Lipschitz continuous with constant L > 0
+  4. The univariate optimization finds a point satisfying the Armijo condition
 
    QQN generates iterates satisfying:
 
-                                                lim inf ∥∇f (xk )∥ = 0
-                                                 k→∞
+                                               lim inf ∥∇f (xk )∥ = 0
+                                                k→∞
 
     Proof : We establish convergence through a descent lemma approach.
     Step 1: Monotonic Decrease
@@ -144,58 +145,57 @@ Theorem 2 (Global Convergence): Under standard assumptions:
 t̄ > 0 such that:
 
                                ϕk (t) ≤ ϕk (0) + c1 tϕ′k (0) = f (xk ) − c1 t∥∇f (xk )∥2
-for all t ∈ (0, t̄] and some c1 ∈ (0, 1). The univariate optimization ensures t∗k ≥ min{t̄, 1}, giving:
+   for all t ∈ (0, t̄] and some c1 ∈ (0, 1).
+   The univariate optimization ensures t∗k ≥ min{t̄, 1}, giving:
 
-                                    f (xk+1 ) ≤ f (xk ) − c1 min{t̄, 1}∥∇f (xk )∥2
+                                   f (xk+1 ) ≤ f (xk ) − c1 min{t̄, 1}∥∇f (xk )∥2
 
    Step 3: Quantifying Decrease
    Using the descent lemma with Lipschitz constant L:
-                                                                              L
-                                f (xk+1 ) ≤ f (xk ) + ∇f (xk )T dk (t∗k ) +     ∥dk (t∗k )∥2
-                                                                              2
-For the quadratic path, we can show there exists c > 0 such that:
+                                                                             L
+                               f (xk+1 ) ≤ f (xk ) + ∇f (xk )T dk (t∗k ) +     ∥dk (t∗k )∥2
+                                                                             2
+   For the quadratic path, we can show there exists c > 0 such that:
 
-                                          f (xk ) − f (xk+1 ) ≥ c∥∇f (xk )∥2
+                                         f (xk ) − f (xk+1 ) ≥ c∥∇f (xk )∥2
 
    Step 4: Summability
 
 
-
-                                                           3
+                                                          3
    Since f is bounded below and decreases monotonically:
                               ∞
                               X
                                     [f (xk ) − f (xk+1 )] = f (x0 ) − lim f (xk ) < ∞
-                                                                    k→∞
+                                                                   k→∞
                               k=0
 
-Combined with Step 3:
-                                                ∞
-                                                X
-                                                      ∥∇f (xk )∥2 < ∞
-                                                k=0
+   Combined with Step 3:
+                                               ∞
+                                               X
+                                                     ∥∇f (xk )∥2 < ∞
+                                               k=0
 
    Step 5: Conclusion
    The summability of ∥∇f (xk )∥2 implies lim inf k→∞ ∥∇f (xk )∥ = 0. □
 
-3.3.3     Local Superlinear Convergence
+3.3.3   Local Superlinear Convergence
 Theorem 3 (Local Superlinear Convergence): Let x∗ be a local minimum with ∇f (x∗ ) = 0 and ∇2 f (x∗ ) ≻
 0. Assume:
 
   1. ∇2 f is Lipschitz continuous in a neighborhood of x∗
   2. The L-BFGS approximation satisfies the Dennis-Moré condition:
 
-                                         ∥(Hk − (∇2 f (x∗ ))−1 )(xk+1 − xk )∥
-                                      lim                                     =0
-                                     k→∞          ∥xk+1 − xk ∥
 
-        Then QQN converges superlinearly: ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥).
-
+                                    ∥(Hk − (∇2 f (x∗ ))−1 )(xk+1 − xk )∥
+                                 lim                                     =0
+                                k→∞          ∥xk+1 − xk ∥
+Then QQN converges superlinearly: ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥).
    Proof : We analyze the behavior near the optimum.
    Step 1: Neighborhood Properties
    By continuity of ∇2 f , there exists a neighborhood N of x∗ and constants 0 < µ ≤ L such that:
 
-                                            µI ⪯ ∇2 f (x) ⪯ LI,   ∀x ∈ N
+                                          µI ⪯ ∇2 f (x) ⪯ LI,     ∀x ∈ N
 
    Step 2: Optimal Parameter Analysis
    Define ϕ(t) = f (xk + d(t)) where d(t) = t(1 − t)(−∇f (xk )) + t2 dL-BFGS .
@@ -203,7 +203,7 @@ Theorem 3 (Local Superlinear Convergence): Let x∗ be a local minimum with ∇f
                                    ϕ′ (1) = ∇f (xk + dL-BFGS )T dL-BFGS
    Using Taylor expansion and the Dennis-Moré condition, we can show:
 
-                                               ϕ′ (1) = o(∥∇f (xk )∥2 )
+                                              ϕ′ (1) = o(∥∇f (xk )∥2 )
 
    This implies t∗ = 1 + o(1) for sufficiently large k.
    Step 3: Convergence Rate
@@ -213,14 +213,14 @@ Theorem 3 (Local Superlinear Convergence): Let x∗ be a local minimum with ∇f
 
    By standard quasi-Newton theory with the Dennis-Moré condition:
 
-                                            ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥)
+                                           ∥xk+1 − x∗ ∥ = o(∥xk − x∗ ∥)
 
    establishing superlinear convergence. □
 
 
 
 
-                                                           4
+                                                          4
 3.4     Robustness Analysis
 3.4.1    Graceful Degradation
 Theorem 4 (Graceful Degradation): Let θk be the angle between −∇f (xk ) and dL-BFGS . If θk > π/2
@@ -620,12 +620,62 @@ dominates.
 8.6.3   F.3 Comparison with Other Methods
 
 
-             Method             Per-iteration ops    Memory   Function evals   Robustness
-             Gradient Descent   O(n)                 O(n)     1-5              High
-             L-BFGS             O(mn)                O(mn)    3-20             Medium
-             QQN                O(mn)                O(mn)    3-10             High
-             Newton             O(n3 )               O(n2 )   1                Low
-             Trust Region       O(n3 )               O(n2 )   1-10             High
+                                                 () () () () ()
+                                             * * * * *
+                                                       Per-
+                                             0.2400Method    Function
+                                                   0.1333Memory
+                                                         0.1600Robustness
+                                                       iteration
+                                                      0.2133 evals
+                                                0.2533ops
+                                                  () () () () ()
+                                             * * * * *
+                                             0.2400Gra-
+                                                 0.2533O(n)
+                                                    0.1333O(n)
+                                                       0.21331-
+                                                          0.1600High
+                                             di-       5
+                                             ent
+                                             De-
+                                             scent
+                                                  () () () () ()
+                                             * * * * *
+                                             0.2400L-
+                                                 0.2533O(mn)
+                                                    0.1333O(mn)
+                                                       0.21333-
+                                                          0.1600Medium
+                                             BFGS 20
+                                                  () () () () ()
+                                             * * * * *
+                                                          0.1600High
+                                                       0.21333-
+                                                    0.1333O(mn)
+                                                 0.2533O(mn)
+                                             0.2400QQN
+                                                       10
+                                                  () () () () ()
+                                             * * * * *
+                                                             3 2
+                                                          0.1600Low
+                                                       0.21331
+                                                    0.1333O(n
+                                                 0.2533O(n
+                                             0.2400New-       ) )
+                                             ton
+                                                  () () () () ()
+                                             * * * * *
+                                                             3 2
+                                             0.2400Trust
+                                                 0.2533O(n
+                                                    0.1333O(n
+                                                       0.21331-
+                                                          0.1600High
+                                                              ) )
+                                             Re-       10
+                                             gion
 
 
    QQN matches L-BFGS complexity while providing gradient descent robustness and often requiring fewer
@@ -634,5 +684,5 @@ function evaluations due to better step selection.
 
 
 
-                                                    13
+                                                 13
 
