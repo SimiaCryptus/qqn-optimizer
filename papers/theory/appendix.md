@@ -1,5 +1,7 @@
 # Appendix
+
 ## A. Detailed Proofs
+
 ### A.1 Proof of Sufficient Decrease Constant
 
 **Lemma A.1** (Sufficient Decrease): Under the assumptions of Theorem 2, there exists a constant $c > 0$ independent of $k$ such that:
@@ -208,12 +210,12 @@ Total: $O(mn + kn)$ operations plus $k$ function evaluations, where the function
 
 ### F.3 Comparison with Other Methods
 
-| Method | Per-iteration ops | Memory | Function evals | Robustness |
-|--------|------------------|---------|----------------|------------|
-| Gradient Descent | $O(n)$ | $O(n)$ | 1-5 | High |
-| L-BFGS | $O(mn)$ | $O(mn)$ | 3-20 | Medium |
-| QQN | $O(mn)$ | $O(mn)$ | 3-10 | High |
-| Newton | $O(n^3)$ | $O(n^2)$ | 1 | Low |
-| Trust Region | $O(n^3)$ | $O(n^2)$ | 1-10 | High |
+| Method           | Per-iteration ops | Memory   | Function evals | Robustness |
+|------------------|-------------------|----------|----------------|------------|
+| Gradient Descent | $O(n)$            | $O(n)$   | 1-5            | High       |
+| L-BFGS           | $O(mn)$           | $O(mn)$  | 3-20           | Medium     |
+| QQN              | $O(mn)$           | $O(mn)$  | 3-10           | High       |
+| Newton           | $O(n^3)$          | $O(n^2)$ | 1              | Low        |
+| Trust Region     | $O(n^3)$          | $O(n^2)$ | 1-10           | High       |
 
 QQN matches L-BFGS complexity while providing gradient descent robustness and often requiring fewer function evaluations due to better step selection.
