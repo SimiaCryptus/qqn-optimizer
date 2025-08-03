@@ -1,0 +1,59 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{siunitx}
+\usepackage{makecell}
+\usepackage{colortbl}
+\usepackage{rotating}
+\definecolor{bestgreen}{RGB}{0,150,0}
+\definecolor{worstred}{RGB}{200,0,0}
+% Add theorem environments
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+
+
+\providecommand{\tightlist}{%
+    \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+}
+
+% Fix any Unicode issues
+\DeclareUnicodeCharacter{2212}{-}
+\DeclareUnicodeCharacter{2264}{\leq}
+\DeclareUnicodeCharacter{2265}{\geq}
+\definecolor{bestgreen}{RGB}{0,150,0}
+\definecolor{worstred}{RGB}{200,0,0}
+
+\title{Theoretical Analysis of the Quadratic-Quasi-Newton Algorithm: Convergence Properties and Geometric Insights}
+\author{Andrew Charneski\\SimiaCryptus Software}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+    \input{content.tex}
+
+    \bibliographystyle{plainnat}
+    \bibliography{references}
+    \newpage
+
+    \input{appendix.tex}
+
+\end{document}

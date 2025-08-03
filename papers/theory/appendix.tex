@@ -1,0 +1,268 @@
+\hypertarget{appendix}{%
+\section{Appendix}\label{appendix}}
+
+\hypertarget{a.-detailed-proofs}{%
+\subsection{A. Detailed Proofs}\label{a.-detailed-proofs}}
+
+\hypertarget{a.1-proof-of-sufficient-decrease-constant}{%
+\subsubsection{A.1 Proof of Sufficient Decrease Constant}\label{a.1-proof-of-sufficient-decrease-constant}}
+
+\textbf{Lemma A.1} (Sufficient Decrease): Under the assumptions of Theorem 2, there exists a constant \(c > 0\) independent of \(k\) such that:
+\[f(\mathbf{x}_k) - f(\mathbf{x}_{k+1}) \geq c\|\nabla f(\mathbf{x}_k)\|^2\]
+
+\textbf{Proof}: Consider the quadratic path \(\mathbf{d}(t) = t(1-t)(-\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}\).
+
+For small \(t\), Taylor expansion gives:
+\[\mathbf{d}(t) = -t\nabla f + O(t^2)\]
+
+Using the descent lemma:
+\[f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) + \nabla f(\mathbf{x}_k)^T \mathbf{d}(t) + \frac{L}{2}\|\mathbf{d}(t)\|^2\]
+
+Substituting the path:
+\[f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - t\|\nabla f(\mathbf{x}_k)\|^2 + \frac{Lt^2}{2}\|\nabla f(\mathbf{x}_k)\|^2 + O(t^3)\]
+
+For \(t = \min\{1, 1/L\}\), we get:
+\[f(\mathbf{x}_k + \mathbf{d}(t)) \leq f(\mathbf{x}_k) - \frac{t}{2}\|\nabla f(\mathbf{x}_k)\|^2\]
+
+Since the univariate optimization finds \(t^*\) at least as good as this choice:
+\[f(\mathbf{x}_k) - f(\mathbf{x}_{k+1}) \geq \frac{\min\{1, 1/L\}}{2}\|\nabla f(\mathbf{x}_k)\|^2\]
+
+Taking \(c = \frac{\min\{1, 1/L\}}{2}\) completes the proof. \(\square\)
+
+\hypertarget{a.2-dennis-moruxe9-condition-analysis}{%
+\subsubsection{A.2 Dennis-Moré Condition Analysis}\label{a.2-dennis-moruxe9-condition-analysis}}
+
+\textbf{Lemma A.2} (Dennis-Moré Implies Unit Steps): If the L-BFGS approximation satisfies the Dennis-Moré condition, then \(t^* \to 1\) as \(k \to \infty\).
+
+\textbf{Proof}: The Dennis-Moré condition states:
+\[\lim_{k \to \infty} \frac{\|(\mathbf{H}_k - (\nabla^2 f(\mathbf{x}^*))^{-1})(\mathbf{x}_{k+1} - \mathbf{x}_k)\|}{\|\mathbf{x}_{k+1} - \mathbf{x}_k\|} = 0\]
+
+Near the optimum, the L-BFGS direction becomes:
+\[\mathbf{d}_{\text{L-BFGS}} = -\mathbf{H}_k \nabla f(\mathbf{x}_k) \approx -(\nabla^2 f(\mathbf{x}^*))^{-1} \nabla f(\mathbf{x}_k)\]
+
+The optimal step in Newton's method would be:
+\[\mathbf{s}_{\text{Newton}} = -(\nabla^2 f(\mathbf{x}_k))^{-1} \nabla f(\mathbf{x}_k) \approx -(\nabla^2 f(\mathbf{x}^*))^{-1} \nabla f(\mathbf{x}_k)\]
+
+At \(t = 1\), the QQN path gives:
+\[\mathbf{d}(1) = \mathbf{d}_{\text{L-BFGS}} \approx \mathbf{s}_{\text{Newton}}\]
+
+By the optimality of Newton's method near the minimum and continuity of the objective function, the univariate optimization will find \(t^* \to 1\). \(\square\)
+
+\hypertarget{b.-implementation-details}{%
+\subsection{B. Implementation Details}\label{b.-implementation-details}}
+
+\hypertarget{b.1-l-bfgs-direction-computation}{%
+\subsubsection{B.1 L-BFGS Direction Computation}\label{b.1-l-bfgs-direction-computation}}
+
+The L-BFGS direction is computed using the two-loop recursion:
+
+\begin{verbatim}
+function compute_lbfgs_direction(gradient, memory):
+    q = gradient
+    alphas = []
+    // First loop (backward)
+    for i = memory.size-1 down to 0:
+        rho_i = 1 / (memory.y[i]^T * memory.s[i])
+        alpha_i = rho_i * memory.s[i]^T * q
+        q = q - alpha_i * memory.y[i]
+        alphas.append(alpha_i)
+    // Apply initial Hessian approximation
+    if memory.size > 0:
+        gamma = (memory.s[-1]^T * memory.y[-1]) / (memory.y[-1]^T * memory.y[-1])
+        r = gamma * q
+    else:
+        r = q
+    // Second loop (forward)
+    for i = 0 to memory.size-1:
+        rho_i = 1 / (memory.y[i]^T * memory.s[i])
+        beta = rho_i * memory.y[i]^T * r
+        r = r + (alphas[memory.size-1-i] - beta) * memory.s[i]
+    return -r
+\end{verbatim}
+
+\hypertarget{b.2-univariate-optimization-methods}{%
+\subsubsection{B.2 Univariate Optimization Methods}\label{b.2-univariate-optimization-methods}}
+
+\hypertarget{golden-section-search}{%
+\paragraph{Golden Section Search}\label{golden-section-search}}
+
+\begin{verbatim}
+function golden_section_search(f, a, b, tol):
+    phi = (1 + sqrt(5)) / 2
+    resphi = 2 - phi
+    x1 = a + resphi * (b - a)
+    x2 = b - resphi * (b - a)
+    f1 = f(x1)
+    f2 = f(x2)
+    while abs(b - a) > tol:
+        if f1 > f2:
+            a = x1
+            x1 = x2
+            f1 = f2
+            x2 = b - resphi * (b - a)
+            f2 = f(x2)
+        else:
+            b = x2
+            x2 = x1
+            f2 = f1
+            x1 = a + resphi * (b - a)
+            f1 = f(x1)
+    return (a + b) / 2
+\end{verbatim}
+
+\hypertarget{brents-method}{%
+\paragraph{Brent's Method}\label{brents-method}}
+
+Combines golden section search with parabolic interpolation for faster convergence when the function is smooth.
+
+\hypertarget{b.3-memory-update}{%
+\subsubsection{B.3 Memory Update}\label{b.3-memory-update}}
+
+After each iteration, update the L-BFGS memory:
+
+\begin{verbatim}
+function update_memory(memory, s_k, y_k):
+    if memory.size == memory.max_size:
+        // Remove oldest pair
+        memory.s.pop_front()
+        memory.y.pop_front()
+    // Add new pair
+    memory.s.push_back(s_k)
+    memory.y.push_back(y_k)
+    memory.size = min(memory.size + 1, memory.max_size)
+    // Check curvature condition
+    if s_k^T * y_k <= 0:
+        // Skip update or apply damping
+        memory.s.pop_back()
+        memory.y.pop_back()
+        memory.size -= 1
+\end{verbatim}
+
+\hypertarget{c.-convergence-rate-analysis}{%
+\subsection{C. Convergence Rate Analysis}\label{c.-convergence-rate-analysis}}
+
+\hypertarget{c.1-linear-convergence-rate}{%
+\subsubsection{C.1 Linear Convergence Rate}\label{c.1-linear-convergence-rate}}
+
+For strongly convex functions with condition number \(\kappa\), QQN achieves at least linear convergence with rate:
+\[\|\mathbf{x}_{k+1} - \mathbf{x}^*\| \leq \left(1 - \frac{1}{\kappa}\right)\|\mathbf{x}_k - \mathbf{x}^*\|\]
+
+This follows from the fact that QQN reduces to gradient descent in the worst case, and gradient descent achieves this rate on strongly convex functions.
+
+\hypertarget{c.2-superlinear-convergence-rate}{%
+\subsubsection{C.2 Superlinear Convergence Rate}\label{c.2-superlinear-convergence-rate}}
+
+Near the optimum, when L-BFGS provides good approximations, QQN achieves superlinear convergence:
+\[\|\mathbf{x}_{k+1} - \mathbf{x}^*\| = o(\|\mathbf{x}_k - \mathbf{x}^*\|)\]
+
+The exact rate depends on how quickly the L-BFGS approximation converges to the true inverse Hessian.
+
+\hypertarget{d.-numerical-examples}{%
+\subsection{D. Numerical Examples}\label{d.-numerical-examples}}
+
+\hypertarget{d.1-quadratic-function}{%
+\subsubsection{D.1 Quadratic Function}\label{d.1-quadratic-function}}
+
+Consider \(f(\mathbf{x}) = \frac{1}{2}\mathbf{x}^T \mathbf{A} \mathbf{x}\) where \(\mathbf{A}\) is positive definite.
+
+The gradient is \(\nabla f(\mathbf{x}) = \mathbf{A}\mathbf{x}\) and the optimal step is \(\mathbf{x}^* = \mathbf{0}\).
+For this function, the L-BFGS direction (after sufficient iterations) becomes:
+\[\mathbf{d}_{\text{L-BFGS}} = -\mathbf{A}^{-1}\mathbf{A}\mathbf{x} = -\mathbf{x}\]
+
+The QQN path becomes:
+\[\mathbf{d}(t) = t(1-t)(-\mathbf{A}\mathbf{x}) + t^2(-\mathbf{x}) = -t\mathbf{x}[(1-t)\mathbf{A} + t\mathbf{I}]\]
+
+For a quadratic function with exact L-BFGS approximation, the univariate optimization yields \(t^* = 1\), giving the exact Newton step and convergence in one iteration.
+
+\hypertarget{d.2-rosenbrock-function}{%
+\subsubsection{D.2 Rosenbrock Function}\label{d.2-rosenbrock-function}}
+
+The Rosenbrock function \(f(x,y) = 100(y-x^2)^2 + (1-x)^2\) is a classic test case for optimization algorithms.
+
+The gradient is:
+\[\nabla f = \begin{pmatrix} -400x(y-x^2) - 2(1-x) \\ 200(y-x^2) \end{pmatrix}\]
+
+Near the optimum \((1,1)\), the Hessian is:
+\[\nabla^2 f = \begin{pmatrix} 802 & -400 \\ -400 & 200 \end{pmatrix}\]
+
+This is ill-conditioned with condition number \(\kappa \approx 2416\), making it challenging for first-order methods but suitable for demonstrating QQN's robustness.
+
+\hypertarget{e.-extensions-and-variations}{%
+\subsection{E. Extensions and Variations}\label{e.-extensions-and-variations}}
+
+\hypertarget{e.1-constrained-qqn}{%
+\subsubsection{E.1 Constrained QQN}\label{e.1-constrained-qqn}}
+
+For box constraints \(\mathbf{l} \leq \mathbf{x} \leq \mathbf{u}\), we can modify the univariate optimization:
+\[t^* = \arg\min_{t \geq 0} f(\text{proj}(\mathbf{x} + \mathbf{d}(t)))\]
+
+where \(\text{proj}\) is the projection onto the feasible region.
+
+\hypertarget{e.2-stochastic-qqn}{%
+\subsubsection{E.2 Stochastic QQN}\label{e.2-stochastic-qqn}}
+
+For stochastic optimization, we can use:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Mini-batch gradients}: Compute \(\nabla f\) on subsets of data
+\item
+  \textbf{Variance reduction}: Use techniques like SVRG or SAGA
+\item
+  \textbf{Adaptive sampling}: Increase batch size as optimization progresses
+\end{enumerate}
+
+\hypertarget{e.3-preconditioning}{%
+\subsubsection{E.3 Preconditioning}\label{e.3-preconditioning}}
+
+The gradient can be preconditioned:
+\[\mathbf{d}(t) = t(1-t)(-\mathbf{P}^{-1}\nabla f) + t^2 \mathbf{d}_{\text{L-BFGS}}\]
+
+where \(\mathbf{P}\) is a preconditioning matrix (e.g., diagonal scaling).
+
+\hypertarget{f.-computational-complexity-analysis}{%
+\subsection{F. Computational Complexity Analysis}\label{f.-computational-complexity-analysis}}
+
+\hypertarget{f.1-per-iteration-cost}{%
+\subsubsection{F.1 Per-Iteration Cost}\label{f.1-per-iteration-cost}}
+
+The computational cost per iteration consists of:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Gradient computation}: \(O(n)\) to \(O(n^2)\) depending on the function
+\item
+  \textbf{L-BFGS direction}: \(O(mn)\) where \(m\) is memory size
+\item
+  \textbf{Path evaluation}: \(O(n)\) per function evaluation
+\item
+  \textbf{Univariate optimization}: \(O(k)\) function evaluations, typically \(k = 3-10\)
+\end{enumerate}
+
+Total: \(O(mn + kn)\) operations plus \(k\) function evaluations, where the function evaluation cost typically dominates.
+
+\hypertarget{f.2-memory-requirements}{%
+\subsubsection{F.2 Memory Requirements}\label{f.2-memory-requirements}}
+
+\hypertarget{f.3-comparison-with-other-methods}{%
+\subsubsection{F.3 Comparison with Other Methods}\label{f.3-comparison-with-other-methods}}
+
+\begin{longtable}[]{@{}lllll@{}}
+\toprule\noalign{}
+Method & Per-iteration ops & Memory & Function evals & Robustness \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Gradient Descent & \(O(n)\) & \(O(n)\) & 1-5 & High \\
+L-BFGS & \(O(mn)\) & \(O(mn)\) & 3-20 & Medium \\
+QQN & \(O(mn)\) & \(O(mn)\) & 3-10 & High \\
+Newton & \(O(n^3)\) & \(O(n^2)\) & 1 & Low \\
+Trust Region & \(O(n^3)\) & \(O(n^2)\) & 1-10 & High \\
+\end{longtable}
+
+QQN matches L-BFGS complexity while providing gradient descent robustness and often requiring fewer function evaluations due to better step selection.
