@@ -1,0 +1,866 @@
+<h1
+id="detailed-analysis-trust-region-aggressive-on-svm_100samples_5features_c1">Detailed
+Analysis: Trust Region-Aggressive on SVM_100samples_5features_C1</h1>
+<p><a href="benchmark_report.html">← Back to Main Report</a> ## Executive
+Summary <strong>Problem:</strong> SVM_100samples_5features_C1
+<strong>Optimizer:</strong> Trust Region-Aggressive <strong>Problem
+Family:</strong> SVM <strong>Dimension:</strong> 5 <strong>Success
+Threshold:</strong> 6.430e-1 <strong>Total Runs:</strong> 20
+<strong>Successful Runs:</strong> 0 (0.0%)</p>
+<h3 id="quick-statistics">Quick Statistics</h3>
+<ul>
+<li><strong>Best Final Value:</strong> 6.565844e-1</li>
+<li><strong>Worst Final Value:</strong> 1.999343e4</li>
+<li><strong>Mean Final Value:</strong> 1.001326e3</li>
+<li><strong>Success Rate:</strong> 0.0%</li>
+</ul>
+<h2 id="run-by-run-analysis">Run-by-Run Analysis</h2>
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 12px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Run
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Final Value
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Gradient Norm
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Iterations
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Evals
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Evals
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Time (s)
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Converged
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Reason
+</th>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.120e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.912e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+7.197e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5.494e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+14
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+45
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+30
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.013
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.973e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.818e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+4
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.965e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.841e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.126e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.940e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.999e4
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.000e2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+12
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+38
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+26
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.011
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+7
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.010e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.853e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.957e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.828e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+9
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.017e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.864e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+10
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.955e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.818e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+11
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.093e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.903e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.003
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+12
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.066e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.883e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+13
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6.566e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.281e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+10
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+33
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+22
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.009
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+14
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.074e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.911e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+15
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.209e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.964e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+16
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.765e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.704e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+17
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.118e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.909e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+18
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6.578e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.326e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+14
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+45
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+30
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.013
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+19
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6.672e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.094e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+14
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+45
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+30
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.013
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #f8d7da;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+20
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.937e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.826e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+No
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Tol
+</td>
+</tr>
+</table>
+<h2 id="convergence-analysis">Convergence Analysis</h2>
+<h3 id="failed-runs-20-out-of-20">Failed Runs (20 out of 20)</h3>
+<p><strong>Failure Reasons:</strong> - GradientTolerance: 16 runs -
+FunctionTolerance: 4 runs</p>
+<h2 id="parameter-evolution-analysis">Parameter Evolution Analysis</h2>
+<h3 id="best-run-analysis-run-13">Best Run Analysis (Run 13)</h3>
+<p><strong>Final Value:</strong> 6.565844e-1 <strong>Final Gradient
+Norm:</strong> 2.281297e-1 <strong>Iterations:</strong> 10
+<strong>Convergence Reason:</strong> FunctionTolerance</p>
+<h4 id="parameter-evolution-selected-iterations">Parameter Evolution
+(Selected Iterations)</h4>
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 4px;">
+Iteration
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Function Value
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Gradient Norm
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Step Size
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Parameters (first 5)
+</th>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+8.514e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.739e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[3.182e-2, 4.701e-2, 1.545e-1, 8.034e-2, 6.564e-2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+8.514e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.739e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[-3.928e-2, 5.203e-1, 1.033e0, 1.360e0, 1.232e0]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.548e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.146e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.864e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[1.122e-1, 7.775e-2, 1.455e-1, 1.422e-1, 2.396e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.627e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+6.493e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+8.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[-1.217e0, 1.955e0, 4.446e0, 5.483e0, 3.658e0]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3.478e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+8.326e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.687e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[3.344e-2, 1.534e-1, 2.911e-1, 3.505e-1, 3.922e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+5
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+5.265e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3.244e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3.156e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[-1.870e-1, -5.848e-2, 2.598e-1, 4.425e-1, 3.127e-2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.967e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.101e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.280e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[6.524e1, 5.443e1, 5.713e0, -1.852e1, 9.355e1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+8.208e3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.281e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.279e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[-1.542e-1, 7.768e-2, 2.406e-1, 3.965e-1, 8.818e-2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.285e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+5.212e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.000e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[1.061e2, 4.420e1, 5.012e1, 1.200e1, 1.555e2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+9
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.005e4
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.002e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.998e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[3.079e-2, 1.144e-1, 3.112e-1, 3.316e-1, 2.531e-1]
+</td>
+</tr>
+</table>
+<h2 id="performance-analysis">Performance Analysis</h2>
+<h3 id="computational-efficiency">Computational Efficiency</h3>
+<ul>
+<li><strong>Average Function Evaluations per Run:</strong> 16.3</li>
+<li><strong>Average Gradient Evaluations per Run:</strong> 11.4</li>
+<li><strong>Average Iterations per Run:</strong> 4.7</li>
+<li><strong>Average Time per Run:</strong> 0.005s</li>
+<li><strong>Function Evaluations per Second:</strong> 3380.6</li>
+<li><strong>Iterations per Second:</strong> 974.8 ### Resource
+Utilization</li>
+<li><strong>Total Function Evaluations:</strong> 326</li>
+<li><strong>Total Gradient Evaluations:</strong> 228</li>
+<li><strong>Total Computation Time:</strong> 0.1s</li>
+<li><strong>Function/Gradient Ratio:</strong> 1.43 ## Failure
+Analysis</li>
+</ul>
+<h3 id="failure-patterns">Failure Patterns</h3>
+<ul>
+<li><strong>Early Failures (&lt; 10 iterations):</strong> 0</li>
+<li><strong>Timeout Failures:</strong> 0</li>
+<li><strong>Numerical Errors:</strong> 0</li>
+<li><strong>Maximum Iterations Reached:</strong> 0</li>
+</ul>
+<h2 id="data-files">Data Files</h2>
+<ul>
+<li><a
+href="../data/problems/SVM_100samples_5features_C1_results.csv">Raw CSV
+Data</a></li>
+<li><a href="../plots/SVM_100samples_5features_C1.png">Convergence
+Plot</a></li>
+<li><a href="../plots/SVM_100samples_5features_C1_log.png">Log Scale
+Convergence Plot</a></li>
+</ul>
+<hr />
+<p><em>Detailed report for Trust Region-Aggressive on
+SVM_100samples_5features_C1</em> <em>Generated on: 2025-08-03 15:33:46
+UTC</em> <em><a href="../benchmark_report.html">← Back to Main
+Report</a></em></p>

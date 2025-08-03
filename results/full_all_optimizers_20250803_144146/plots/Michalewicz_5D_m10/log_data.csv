@@ -1,0 +1,13 @@
+Optimizer,MaxEvaluation,ObjectiveValue,LogObjectiveValue
+L-BFGS-Aggressive,4960,2.406207e-7,-6.618667e0
+L-BFGS-Aggressive,4968,1.183571e-7,-6.926806e0
+L-BFGS-Aggressive,4976,7.095824e-8,-7.148997e0
+L-BFGS-Aggressive,4984,4.488162e-8,-7.347932e0
+L-BFGS-Aggressive,4992,2.824176e-8,-7.549108e0
+L-BFGS-Aggressive,2923,1.971570e-2,-1.705188e0
+L-BFGS-Aggressive,2935,4.392649e-5,-4.357274e0
+L-BFGS-Aggressive,3318,1.603789e-1,-7.948527e-1
+L-BFGS-Aggressive,3330,7.206715e-1,-1.422627e-1
+L-BFGS-Aggressive,326,6.730324e-4,-3.171964e0
+L-BFGS-MoreThuente,56,7.389090e-1,-1.314091e-1
+L-BFGS-MoreThuente,94,7.288151e-1,-1.373826e-1

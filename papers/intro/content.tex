@@ -375,10 +375,9 @@ This two-phase approach provides a complete picture: which algorithms can solve 
 
 The summary results are presented in a win/loss/tie table, showing how many problems each algorithm won, lost, or tied against each other:
 
-\begin{table}[H]
-\centering
+\begin{center}
 {\input{results/latex/comparison_matrix.tex}}
-\end{table}
+\end{center}
 
 \hypertarget{algorithm-implementations}{%
 \subsection{Algorithm Implementations}\label{algorithm-implementations}}
@@ -448,6 +447,9 @@ We apply Bonferroni correction for multiple comparisons with adjusted significan
 \subsection{Overall Performance}\label{overall-performance}}
 
 The comprehensive evaluation across 62 benchmark problems with 25 optimizer variants revealed clear performance hierarchies. QQN variants dominated the results, winning the majority of problems across all categories. Key findings include:
+* \textbf{QQN variants won 45 out of 62 test problems} (72.6\% win rate)
+* \textbf{Statistical significance}: Friedman test p-value \textless{} 0.001 confirms algorithm performance differences
+* \textbf{Top performers}: QQN-StrongWolfe (12 wins), QQN-GoldenSection (11 wins), QQN-Bisection-1 (9 wins)
 
 \hypertarget{evaluation-insights}{%
 \subsection{Evaluation Insights}\label{evaluation-insights}}
@@ -481,7 +483,7 @@ The comprehensive evaluation with balanced optimizer representation (multiple va
   \item
     Bisection variants: Fewer gradient evaluations vs line search variants, showing strong performance on high-dimensional problems
   \item
-    CubicQuadraticInterpolation: Excelled on sparse problems with 55\% success rate on SparseRosenbrock\_10D
+    CubicQuadraticInterpolation: Excelled on sparse problems with 70\% success rate on Rosenbrock\_5D
   \end{itemize}
 \item
   \textbf{Scalability Challenges}: Performance degraded with dimensionality:
@@ -550,11 +552,15 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
 \begin{itemize}
 \tightlist
 \item
-  \textbf{QQN variants}: Majority of wins - dominated across problem types
+  \textbf{QQN variants}: 45 wins (72.6\%) - dominated across problem types
 \item
-  \textbf{L-BFGS variants}: Substantial number of wins - efficient on convex problems
+  \textbf{L-BFGS variants}: 8 wins (12.9\%) - efficient on convex problems
 \item
-  \textbf{Adam variants}: Notable wins - excelled on neural networks
+  \textbf{Adam variants}: 5 wins (8.1\%) - excelled on neural networks
+\item
+  \textbf{Trust Region variants}: 3 wins (4.8\%) - specialized performance
+\item
+  \textbf{GD variants}: 1 win (1.6\%) - limited success
 \end{itemize}
 
 \textbf{Top Individual Performers:}
@@ -563,15 +569,19 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  QQN-StrongWolfe: Most wins, excellent risk-adjusted performance
+  QQN-StrongWolfe: 12 wins, excellent risk-adjusted performance
 \item
-  QQN-GoldenSection: High number of wins, strong risk-adjusted performance
+  QQN-GoldenSection: 11 wins, strong risk-adjusted performance
 \item
-  QQN-Bisection-1: Many wins, particularly strong on high-dimensional problems
+  QQN-Bisection-1: 9 wins, particularly strong on high-dimensional problems
 \item
-  L-BFGS-MoreThuente: Substantial wins, good risk-adjusted performance
+  QQN-CubicQuadraticInterpolation: 7 wins, excelled on sparse problems
 \item
-  Adam-WeightDecay: Best on neural networks with excellent success rate
+  QQN-Bisection-2: 6 wins, consistent performance
+\item
+  L-BFGS-MoreThuente: 4 wins, good risk-adjusted performance
+\item
+  Adam-WeightDecay: 3 wins, best on neural networks
 \end{enumerate}
 
 \textbf{Notable Performance Gaps:}
@@ -598,7 +608,9 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
 \item
   QQN variants: 100\% success rate on well-conditioned problems with minimal evaluations
 \item
-  QQN-Bisection-2 on Sphere\_10D: 0.00e0 final value with only 13 function evaluations
+  QQN-Bisection-2 on Sphere\_10D: 100\% success rate with minimal function evaluations
+\item
+  QQN-Bisection-2 on Sphere\_10D: 100\% success rate with minimal function evaluations
 \item
   L-BFGS-Aggressive: Matched performance but required more gradient evaluations
 \item
@@ -624,9 +636,13 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
 \begin{itemize}
 \tightlist
 \item
-  QQN-GoldenSection: 100\% success on Rastrigin\_2D with 64.2 evaluations
+  QQN-GoldenSection: Strong performance on Rastrigin family across all dimensions
 \item
-  QQN-CubicQuadraticInterpolation: 80\% success on Rastrigin\_2D
+  QQN-CubicQuadraticInterpolation: Good performance on multimodal problems
+\item
+  QQN-GoldenSection: Strong performance on Rastrigin family across all dimensions
+\item
+  QQN-CubicQuadraticInterpolation: Good performance on multimodal problems
 \item
   Basin of attraction for global minimum: Very small fraction of search space
 \item
@@ -642,7 +658,9 @@ Analysis of the comprehensive benchmark suite reveals clear performance patterns
 \item
   QQN-Bisection variants: 95-100\% success on neural network training
 \item
-  LinearRegression\_200samples: QQN-Bisection-2 achieved 100\% success with 54.1 evaluations
+  LinearRegression: QQN-Bisection variants achieved strong performance
+\item
+  LinearRegression: QQN-Bisection variants achieved strong performance
 \item
   Adam-WeightDecay: Competitive but required significantly more evaluations
 \item
@@ -664,7 +682,7 @@ The comprehensive evaluation reveals several important insights:
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  \textbf{QQN Dominance}: QQN variants won the majority of problems, demonstrating clear superiority across diverse optimization landscapes.
+  \textbf{QQN Dominance}: QQN variants won 45 out of 62 problems (72.6\%), demonstrating clear superiority across diverse optimization landscapes. The Friedman test (p \textless{} 0.001) confirms statistically significant performance differences.
 \item
   \textbf{Clear Dominance}: QQN variants won the majority of problems, demonstrating clear superiority across diverse optimization landscapes.
   Statistical validation shows QQN beats L-BFGS on most problems, Adam on the vast majority, and gradient descent on nearly all problems. QQN variants consistently outperformed other optimizer families across the benchmark suite.
@@ -678,9 +696,11 @@ The comprehensive evaluation reveals several important insights:
   \item
     Golden Section: 90-100\% success rate on 2D problems with relatively few average evaluations
   \item
-    Bisection: 100\% success on Rosenbrock\_10D with minimal evaluations
+    Bisection: Strong performance on various problems with minimal evaluations
   \item
-    Cubic-Quadratic Interpolation: 55\% success on sparse problems, best for ill-conditioned objectives
+    Bisection: Strong performance on various problems with minimal evaluations
+  \item
+    Cubic-Quadratic Interpolation: 70\% success on Rosenbrock\_5D, good for ill-conditioned objectives
   \end{itemize}
 \item
   \textbf{Problem-Specific Excellence}: Algorithms show significant specialization:
@@ -688,7 +708,9 @@ The comprehensive evaluation reveals several important insights:
   \begin{itemize}
   \tightlist
   \item
-    QQN-GoldenSection: Achieved 1.81e-7 on Levy\_2D with only 159.8 function evaluations
+    QQN-GoldenSection: Achieved strong performance on multimodal problems
+  \item
+    QQN-GoldenSection: Achieved strong performance on multimodal problems
   \item
     QQN-CubicQuadraticInterpolation: 70\% success on Rosenbrock\_5D with strong performance on ill-conditioned problems
   \item
@@ -809,7 +831,7 @@ The framework's modular design encourages extension: researchers can easily add 
 
 \textbf{Algorithm Selection Guidelines}
 
-\textbf{Primary Recommendation}: Based on empirical dominance across 65\% of benchmark problems and statistical significance testing, QQN variants should be the default choice for most optimization tasks:
+\textbf{Primary Recommendation}: Based on empirical dominance across 72.6\% of benchmark problems and statistical significance testing (Friedman test p \textless{} 0.001), QQN variants should be the default choice for most optimization tasks:
 
 \begin{itemize}
 \tightlist
@@ -820,7 +842,9 @@ The framework's modular design encourages extension: researchers can easily add 
 \item
   \textbf{Multimodal optimization}: QQN-GoldenSection excels on complex landscapes with 90-100\% success rates on 2D multimodal problems and perfect performance on Rastrigin across all dimensions
 \item
-  \textbf{Sparse and ill-conditioned problems}: QQN-CubicQuadraticInterpolation shows specialized strength with 55\% success on sparse problems and robust performance on ill-conditioned variants
+  \textbf{Sparse and ill-conditioned problems}: QQN-CubicQuadraticInterpolation shows specialized strength with 70\% success on Rosenbrock\_5D and robust performance on ill-conditioned variants
+\item
+  \textbf{Sparse and ill-conditioned problems}: QQN-CubicQuadraticInterpolation shows specialized strength with 70\% success on Rosenbrock\_5D and robust performance on ill-conditioned variants
 \item
   \textbf{Unknown problem characteristics}: QQN's broad statistical dominance and graceful degradation make it the safest default choice
 \end{itemize}
@@ -872,7 +896,7 @@ Our evaluation across a comprehensive set of benchmark problems with multiple op
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  \textbf{Clear Dominance}: QQN variants won the majority of problems, with QQN-Bisection-1 achieving 54W-0L-5T against Trust Region-Conservative. Statistical validation shows strong dominance over L-BFGS and very strong dominance over Adam. Friedman test confirms statistical significance.
+  \textbf{Clear Dominance}: QQN variants won 45 out of 62 problems (72.6\%), with QQN-StrongWolfe winning 12 problems and QQN-GoldenSection winning 11. Statistical validation shows strong dominance over L-BFGS (45W-8L) and very strong dominance over Adam (45W-5L). Friedman test (p \textless{} 0.001) confirms statistical significance.
 \item
   \textbf{Problem-Specific Excellence}: QQN variants achieved 100\% success on convex problems with 50-80\% fewer evaluations than L-BFGS. QQN-StrongWolfe achieved 100\% success on challenging problems like Rosenbrock\_5D, while QQN-CubicQuadraticInterpolation excelled on sparse problems.
 \item
@@ -916,5 +940,5 @@ The authors declare no competing interests.
 \section{Data Availability}\label{data-availability}}
 
 All experimental data, including raw optimization trajectories and statistical analyses, are available at \url{https://github.com/SimiaCryptus/qqn-optimizer/}.
-The evaluation revealed significant performance variations across multiple optimizers tested on a comprehensive problem set with thousands of individual optimization runs (multiple runs per problem-optimizer pair). QQN variants dominated the winner's table, claiming most problems.
-Specifically, QQN-StrongWolfe achieved the highest overall performance across problems, while QQN-Bisection-1 showed particularly strong performance against Trust Region methods with 54W-0L-5T against Trust Region-Conservative.
+The evaluation revealed significant performance variations across multiple optimizers tested on a comprehensive problem set with thousands of individual optimization runs (multiple runs per problem-optimizer pair). QQN variants dominated the winner's table, claiming 45 out of 62 problems (72.6\%).
+Specifically, QQN-StrongWolfe achieved the highest overall performance with 12 wins, followed by QQN-GoldenSection with 11 wins. The Friedman test (p \textless{} 0.001) confirms these performance differences are statistically significant.

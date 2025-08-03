@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Sphere\_10D Problem}
+\label{tab:sphere_10d}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS-MoreThuente} & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 10.0 & 100.0 & 0.000 \\
+L-BFGS-Aggressive & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 10.0 & 100.0 & 0.000 \\
+QQN-StrongWolfe & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 11.0 & 100.0 & 0.000 \\
+QQN-CubicQuadraticInterpolation & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 12.0 & 100.0 & 0.000 \\
+QQN-Bisection-2 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 13.0 & 100.0 & 0.000 \\
+QQN-Bisection-1 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 15.0 & 100.0 & 0.000 \\
+L-BFGS & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 15.0 & 100.0 & 0.000 \\
+L-BFGS-Limited & 1.08e-3 & 1.10e-3 & 5.57e-7 & 4.03e-3 & 40.3 & 100.0 & 0.001 \\
+QQN-GoldenSection & 1.60e-13 & 1.03e-14 & 1.45e-13 & 1.79e-13 & 46.0 & 100.0 & 0.000 \\
+GD-WeightDecay & 4.61e-3 & 1.67e-4 & 4.33e-3 & 4.92e-3 & 62.5 & 100.0 & 0.002 \\
+GD & 4.91e-3 & 5.40e-5 & 4.82e-3 & 5.00e-3 & 192.4 & 100.0 & 0.005 \\
+L-BFGS-Conservative & 4.51e-3 & 2.33e-4 & 4.20e-3 & 4.95e-3 & 197.5 & 100.0 & 0.005 \\
+Adam-WeightDecay & 4.92e-3 & 3.21e-5 & 4.88e-3 & 4.98e-3 & 968.0 & 100.0 & 0.022 \\
+Adam & 4.98e-3 & 5.65e-5 & 4.94e-3 & 5.21e-3 & 2391.8 & 95.0 & 0.053 \\
+GD-Momentum & 1.70e-1 & 2.92e-1 & 2.45e-5 & 7.34e-1 & 19.4 & 75.0 & 0.001 \\
+GD-Nesterov & 1.59e-1 & 2.14e-1 & 1.53e-5 & 4.62e-1 & 19.9 & 65.0 & 0.001 \\
+Trust Region-Precise & 5.27e-1 & 7.84e-1 & 1.01e-4 & 2.83e0 & 504.0 & 65.0 & 0.003 \\
+GD-AdaptiveMomentum & 5.51e-1 & 6.74e-1 & 2.42e-4 & 1.41e0 & 18.4 & 60.0 & 0.001 \\
+Trust Region-Conservative & 3.41e-1 & 3.63e-1 & 1.07e-3 & 1.34e0 & 2968.8 & 35.0 & 0.020 \\
+Trust Region-Adaptive & 7.30e2 & 5.96e2 & 2.03e-4 & 1.22e3 & 139.3 & 30.0 & 0.001 \\
+Trust Region-Standard & 6.75e2 & 1.25e3 & 2.86e-5 & 6.06e3 & 51.8 & 15.0 & 0.000 \\
+Adam-Robust & 1.08e-1 & 3.40e-2 & 4.84e-2 & 1.71e-1 & 2502.0 & 0.0 & 0.060 \\
+Adam-AMSGrad & 2.64e-1 & 4.59e-2 & 1.95e-1 & 3.63e-1 & 2502.0 & 0.0 & 0.059 \\
+Adam-Fast & 6.12e-1 & 2.40e-2 & 5.73e-1 & 6.56e-1 & 37.4 & 0.0 & 0.001 \\
+Trust Region-Aggressive & 1.09e4 & 1.85e3 & 5.34e3 & 1.18e4 & 30.3 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

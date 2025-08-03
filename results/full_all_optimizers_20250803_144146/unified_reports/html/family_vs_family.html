@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family vs Family Performance Matrix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        h1, h2 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .best { background-color: #90EE90; }
+        .worst { background-color: #FFB6C1; }
+        .legend { margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }
+        .legend ul { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Family vs Family Performance Matrix</h1>
+<p>This table shows how different optimizer families perform across different problem families. Each cell contains:</p>
+<ul>
+<li><strong>Avg Rank</strong>: Average ranking of all variants in the optimizer family across problems in the problem family (lower is better)</li>
+<li><strong>Best Rank</strong>: Average of the best rank achieved by any variant in the optimizer family for each problem</li>
+<li><strong>Best Var</strong>: The specific optimizer variant that achieved the best average rank</li>
+<li><strong>Worst Var</strong>: The specific optimizer variant that achieved the worst average rank</li>
+</ul>
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold;">Problem Family</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">Adam</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">GD</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">L-BFGS</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">QQN</th>
+<th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; writing-mode: vertical-lr; text-orientation: mixed;">Trust Region</th>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Ackley</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.3</div>
+<div><strong>Best Rank:</strong> 12.0</div>
+<div><strong>Best Var:</strong> Adam-AMSGrad</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.5</div>
+<div><strong>Best Rank:</strong> 9.7</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.5</div>
+<div><strong>Best Rank:</strong> 2.3</div>
+<div><strong>Best Var:</strong> L-BFGS</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 5.1</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Bisection-2</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.7</div>
+<div><strong>Best Rank:</strong> 13.7</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Barrier</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.3</div>
+<div><strong>Best Rank:</strong> 10.7</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.8</div>
+<div><strong>Best Rank:</strong> 8.0</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.5</div>
+<div><strong>Best Rank:</strong> 2.7</div>
+<div><strong>Best Var:</strong> Aggressive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.3</div>
+<div><strong>Best Rank:</strong> 1.3</div>
+<div><strong>Best Var:</strong> Bisection-2</div>
+<div><strong>Worst Var:</strong> CubicQuadIn...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.1</div>
+<div><strong>Best Rank:</strong> 14.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Beale</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.0</div>
+<div><strong>Best Rank:</strong> 8.0</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.8</div>
+<div><strong>Best Rank:</strong> 3.0</div>
+<div><strong>Best Var:</strong> GD-Nesterov</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 10.0</div>
+<div><strong>Best Rank:</strong> 2.0</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.8</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> GoldenSection</div>
+<div><strong>Worst Var:</strong> Bisection-2</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 18.4</div>
+<div><strong>Best Rank:</strong> 15.0</div>
+<div><strong>Best Var:</strong> Precise</div>
+<div><strong>Worst Var:</strong> Standard</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Booth</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.2</div>
+<div><strong>Best Rank:</strong> 11.0</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.6</div>
+<div><strong>Best Rank:</strong> 10.0</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.0</div>
+<div><strong>Best Rank:</strong> 6.0</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.0</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 17.2</div>
+<div><strong>Best Rank:</strong> 12.0</div>
+<div><strong>Best Var:</strong> Adaptive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">GoldsteinPrice</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.2</div>
+<div><strong>Best Rank:</strong> 10.0</div>
+<div><strong>Best Var:</strong> Adam-AMSGrad</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 15.2</div>
+<div><strong>Best Rank:</strong> 9.0</div>
+<div><strong>Best Var:</strong> GD-Momentum</div>
+<div><strong>Worst Var:</strong> GD</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 10.4</div>
+<div><strong>Best Rank:</strong> 5.0</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.2</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> GoldenSection</div>
+<div><strong>Worst Var:</strong> Bisection-2</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 23.0</div>
+<div><strong>Best Rank:</strong> 21.0</div>
+<div><strong>Best Var:</strong> Aggressive</div>
+<div><strong>Worst Var:</strong> Precise</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Griewank</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 17.7</div>
+<div><strong>Best Rank:</strong> 12.0</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.0</div>
+<div><strong>Best Rank:</strong> 7.7</div>
+<div><strong>Best Var:</strong> GD-Momentum</div>
+<div><strong>Worst Var:</strong> GD</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 7.9</div>
+<div><strong>Best Rank:</strong> 3.7</div>
+<div><strong>Best Var:</strong> Aggressive</div>
+<div><strong>Worst Var:</strong> L-BFGS-Limited</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.3</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> CubicQuadIn...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 21.1</div>
+<div><strong>Best Rank:</strong> 13.7</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Himmelblau</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 18.8</div>
+<div><strong>Best Rank:</strong> 11.0</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.6</div>
+<div><strong>Best Rank:</strong> 9.0</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.2</div>
+<div><strong>Best Rank:</strong> 5.0</div>
+<div><strong>Best Var:</strong> L-BFGS-Limited</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.4</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> GoldenSection</div>
+<div><strong>Worst Var:</strong> Bisection-1</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 17.0</div>
+<div><strong>Best Rank:</strong> 8.0</div>
+<div><strong>Best Var:</strong> Adaptive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">IllConditionedRosenbrock</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.2</div>
+<div><strong>Best Rank:</strong> 9.0</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.5</div>
+<div><strong>Best Rank:</strong> 7.0</div>
+<div><strong>Best Var:</strong> GD-Nesterov</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.5</div>
+<div><strong>Best Rank:</strong> 4.7</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.1</div>
+<div><strong>Best Rank:</strong> 1.7</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 21.8</div>
+<div><strong>Best Rank:</strong> 16.7</div>
+<div><strong>Best Var:</strong> Aggressive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Levi</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.4</div>
+<div><strong>Best Rank:</strong> 11.0</div>
+<div><strong>Best Var:</strong> Adam-Robust</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.6</div>
+<div><strong>Best Rank:</strong> 9.0</div>
+<div><strong>Best Var:</strong> GD-Momentum</div>
+<div><strong>Worst Var:</strong> GD-WeightDecay</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.6</div>
+<div><strong>Best Rank:</strong> 3.0</div>
+<div><strong>Best Var:</strong> L-BFGS-Limited</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.8</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> GoldenSection</div>
+<div><strong>Worst Var:</strong> Bisection-1</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.6</div>
+<div><strong>Best Rank:</strong> 13.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Levy</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 15.9</div>
+<div><strong>Best Rank:</strong> 10.0</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-AMSGrad</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.2</div>
+<div><strong>Best Rank:</strong> 7.7</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 9.1</div>
+<div><strong>Best Rank:</strong> 6.7</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.0</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Bisection-2</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.8</div>
+<div><strong>Best Rank:</strong> 16.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Matyas</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.2</div>
+<div><strong>Best Rank:</strong> 10.0</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam-AMSGrad</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.0</div>
+<div><strong>Best Rank:</strong> 12.0</div>
+<div><strong>Best Var:</strong> GD-Momentum</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.8</div>
+<div><strong>Best Rank:</strong> 3.0</div>
+<div><strong>Best Var:</strong> L-BFGS</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.0</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> Bisection-1</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 23.0</div>
+<div><strong>Best Rank:</strong> 21.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Precise</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Michalewicz</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.2</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Adam</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.1</div>
+<div><strong>Best Rank:</strong> 6.7</div>
+<div><strong>Best Var:</strong> AdaptiveMom...</div>
+<div><strong>Worst Var:</strong> GD-WeightDecay</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.3</div>
+<div><strong>Best Rank:</strong> 7.0</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.9</div>
+<div><strong>Best Rank:</strong> 6.7</div>
+<div><strong>Best Var:</strong> Bisection-2</div>
+<div><strong>Worst Var:</strong> CubicQuadIn...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.5</div>
+<div><strong>Best Rank:</strong> 16.3</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Neural Networks</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 9.2</div>
+<div><strong>Best Rank:</strong> 2.5</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.6</div>
+<div><strong>Best Rank:</strong> 16.0</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.0</div>
+<div><strong>Best Rank:</strong> 8.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> MoreThuente</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.8</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> StrongWolfe</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 21.4</div>
+<div><strong>Best Rank:</strong> 18.5</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">NoisySphere</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.9</div>
+<div><strong>Best Rank:</strong> 8.7</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.8</div>
+<div><strong>Best Rank:</strong> 5.3</div>
+<div><strong>Best Var:</strong> GD-Nesterov</div>
+<div><strong>Worst Var:</strong> GD-WeightDecay</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 7.4</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 9.9</div>
+<div><strong>Best Rank:</strong> 2.7</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> CubicQuadIn...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.9</div>
+<div><strong>Best Rank:</strong> 16.3</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Precise</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">PenaltyI</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.1</div>
+<div><strong>Best Rank:</strong> 4.3</div>
+<div><strong>Best Var:</strong> Adam-AMSGrad</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.3</div>
+<div><strong>Best Rank:</strong> 9.7</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> GD-Nesterov</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.3</div>
+<div><strong>Best Rank:</strong> 5.7</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 7.5</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> Bisection-2</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 22.9</div>
+<div><strong>Best Rank:</strong> 20.7</div>
+<div><strong>Best Var:</strong> Adaptive</div>
+<div><strong>Worst Var:</strong> Precise</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Rastrigin</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.4</div>
+<div><strong>Best Rank:</strong> 4.7</div>
+<div><strong>Best Var:</strong> Adam-AMSGrad</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.2</div>
+<div><strong>Best Rank:</strong> 7.7</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.1</div>
+<div><strong>Best Rank:</strong> 3.7</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 9.9</div>
+<div><strong>Best Rank:</strong> 3.0</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> Bisection-2</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 15.4</div>
+<div><strong>Best Rank:</strong> 7.0</div>
+<div><strong>Best Var:</strong> Adaptive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Regression</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 18.5</div>
+<div><strong>Best Rank:</strong> 13.2</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.6</div>
+<div><strong>Best Rank:</strong> 8.2</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.9</div>
+<div><strong>Best Rank:</strong> 4.8</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> L-BFGS</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.4</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Bisection-1</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.6</div>
+<div><strong>Best Rank:</strong> 17.2</div>
+<div><strong>Best Var:</strong> Adaptive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Rosenbrock</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.4</div>
+<div><strong>Best Rank:</strong> 6.0</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.1</div>
+<div><strong>Best Rank:</strong> 5.0</div>
+<div><strong>Best Var:</strong> GD-Nesterov</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.6</div>
+<div><strong>Best Rank:</strong> 4.0</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.9</div>
+<div><strong>Best Rank:</strong> 2.0</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 22.0</div>
+<div><strong>Best Rank:</strong> 17.7</div>
+<div><strong>Best Var:</strong> Aggressive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">SVM</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.5</div>
+<div><strong>Best Rank:</strong> 8.5</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.9</div>
+<div><strong>Best Rank:</strong> 5.0</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 9.6</div>
+<div><strong>Best Rank:</strong> 3.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> L-BFGS-Limited</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.3</div>
+<div><strong>Best Rank:</strong> 2.5</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 21.7</div>
+<div><strong>Best Rank:</strong> 17.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Schwefel</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.1</div>
+<div><strong>Best Rank:</strong> 10.7</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 10.5</div>
+<div><strong>Best Rank:</strong> 6.7</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> GD</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 10.5</div>
+<div><strong>Best Rank:</strong> 4.3</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.3</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.7</div>
+<div><strong>Best Rank:</strong> 16.7</div>
+<div><strong>Best Var:</strong> Standard</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">SparseQuadratic</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 18.9</div>
+<div><strong>Best Rank:</strong> 12.5</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-AMSGrad</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.5</div>
+<div><strong>Best Rank:</strong> 10.5</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.4</div>
+<div><strong>Best Rank:</strong> 1.5</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> L-BFGS</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.9</div>
+<div><strong>Best Rank:</strong> 1.5</div>
+<div><strong>Best Var:</strong> GoldenSection</div>
+<div><strong>Worst Var:</strong> Bisection-1</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.3</div>
+<div><strong>Best Rank:</strong> 14.5</div>
+<div><strong>Best Var:</strong> Precise</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">SparseRosenbrock</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.9</div>
+<div><strong>Best Rank:</strong> 8.0</div>
+<div><strong>Best Var:</strong> Adam-Fast</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.8</div>
+<div><strong>Best Rank:</strong> 6.0</div>
+<div><strong>Best Var:</strong> GD-Nesterov</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 15.2</div>
+<div><strong>Best Rank:</strong> 4.5</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.7</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> Bisection-2</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 21.4</div>
+<div><strong>Best Rank:</strong> 19.0</div>
+<div><strong>Best Var:</strong> Standard</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Sphere</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 20.1</div>
+<div><strong>Best Rank:</strong> 14.5</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-AMSGrad</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.9</div>
+<div><strong>Best Rank:</strong> 10.0</div>
+<div><strong>Best Var:</strong> GD-Momentum</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 6.1</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Aggressive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 5.3</div>
+<div><strong>Best Rank:</strong> 3.0</div>
+<div><strong>Best Var:</strong> StrongWolfe</div>
+<div><strong>Worst Var:</strong> GoldenSection</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 19.6</div>
+<div><strong>Best Rank:</strong> 14.0</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">StyblinskiTang</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 16.6</div>
+<div><strong>Best Rank:</strong> 4.3</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.2</div>
+<div><strong>Best Rank:</strong> 7.3</div>
+<div><strong>Best Var:</strong> GD-WeightDecay</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 10.3</div>
+<div><strong>Best Rank:</strong> 2.3</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 8.7</div>
+<div><strong>Best Rank:</strong> 1.7</div>
+<div><strong>Best Var:</strong> GoldenSection</div>
+<div><strong>Worst Var:</strong> StrongWolfe</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 15.3</div>
+<div><strong>Best Rank:</strong> 4.3</div>
+<div><strong>Best Var:</strong> Standard</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Trigonometric</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.7</div>
+<div><strong>Best Rank:</strong> 7.3</div>
+<div><strong>Best Var:</strong> Adam</div>
+<div><strong>Worst Var:</strong> Adam-Fast</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.3</div>
+<div><strong>Best Rank:</strong> 5.0</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> GD-Momentum</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 12.7</div>
+<div><strong>Best Rank:</strong> 5.3</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 4.0</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> CubicQuadIn...</div>
+<div><strong>Worst Var:</strong> Bisection-2</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 21.3</div>
+<div><strong>Best Rank:</strong> 17.7</div>
+<div><strong>Best Var:</strong> Conservative</div>
+<div><strong>Worst Var:</strong> Aggressive</div>
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold; background-color: #f8f9fa;">Zakharov</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 13.4</div>
+<div><strong>Best Rank:</strong> 9.3</div>
+<div><strong>Best Var:</strong> WeightDecay</div>
+<div><strong>Worst Var:</strong> Adam-Robust</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 14.7</div>
+<div><strong>Best Rank:</strong> 7.3</div>
+<div><strong>Best Var:</strong> GD</div>
+<div><strong>Worst Var:</strong> AdaptiveMom...</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 11.7</div>
+<div><strong>Best Rank:</strong> 6.0</div>
+<div><strong>Best Var:</strong> MoreThuente</div>
+<div><strong>Worst Var:</strong> L-BFGS</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 3.0</div>
+<div><strong>Best Rank:</strong> 1.0</div>
+<div><strong>Best Var:</strong> Bisection-1</div>
+<div><strong>Worst Var:</strong> StrongWolfe</div>
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;">
+<div><strong>Avg Rank:</strong> 22.2</div>
+<div><strong>Best Rank:</strong> 19.0</div>
+<div><strong>Best Var:</strong> Adaptive</div>
+<div><strong>Worst Var:</strong> Conservative</div>
+</td>
+</tr>
+</table>
+<div class="legend">
+<p><strong>Legend:</strong></p>
+<ul>
+<li><strong>Avg Rank</strong>: Average ranking of all variants in the optimizer family across problems in the problem family (lower is better)</li>
+<li>Green cells indicate the best performing optimizer family for that problem family</li>
+<li>Red cells indicate the worst performing optimizer family for that problem family</li>
+</ul>
+</div>
+</body>
+</html>

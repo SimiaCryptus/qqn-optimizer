@@ -1,0 +1,501 @@
+Optimizer,Run,FinalValue,FinalGradientNorm,Iterations,FunctionEvals,GradientEvals,Time,Converged
+QQN-GoldenSection,0,-1.513043e-12,9.336954e-11,1,4,4,0.000,false
+QQN-GoldenSection,1,-4.995915e-8,2.248720e-6,89,4495,541,0.071,false
+QQN-GoldenSection,2,-4.229264e-10,2.219318e-8,1,4,4,0.000,false
+QQN-GoldenSection,3,-3.452063e-9,1.697111e-7,1,4,4,0.000,false
+QQN-GoldenSection,4,-7.668874e-7,3.125039e-5,87,4481,529,0.070,false
+QQN-GoldenSection,5,-8.515617e-13,5.339614e-11,1,4,4,0.000,false
+QQN-GoldenSection,6,-1.054512e-9,5.377639e-8,1,4,4,0.000,false
+QQN-GoldenSection,7,-2.114110e-6,8.275663e-5,86,4515,523,0.077,false
+QQN-GoldenSection,8,-2.198196e-11,7.493666e-10,1,4,4,0.000,false
+QQN-GoldenSection,9,-3.892498e-9,1.906626e-7,1,4,4,0.000,false
+QQN-GoldenSection,10,-3.135968e-12,1.120375e-10,1,4,4,0.000,false
+QQN-GoldenSection,11,-1.034271e-9,5.274931e-8,1,4,4,0.000,false
+QQN-GoldenSection,12,-1.006496e-6,4.058309e-5,87,4481,529,0.070,false
+QQN-GoldenSection,13,-6.485305e-10,3.359278e-8,1,4,4,0.000,false
+QQN-GoldenSection,14,-1.465861e-6,5.823368e-5,87,4481,529,0.080,false
+QQN-GoldenSection,15,-1.110319e-8,5.256107e-7,1,4,4,0.000,false
+QQN-GoldenSection,16,-1.852456e-9,9.289100e-8,1,4,4,0.000,false
+QQN-GoldenSection,17,-9.596693e-6,3.522622e-4,86,4515,523,0.081,false
+QQN-GoldenSection,18,-1.464058e-11,8.478907e-10,1,4,4,0.000,false
+QQN-GoldenSection,19,-2.355054e-8,1.087545e-6,90,4456,547,0.071,false
+QQN-Bisection-1,0,-3.985136e-1,1.057709e-7,28,812,948,0.019,false
+QQN-Bisection-1,1,-5.754752e-8,2.577643e-6,58,2310,2709,0.062,false
+QQN-Bisection-1,2,-4.430023e-6,1.681654e-4,63,2510,2572,0.063,false
+QQN-Bisection-1,3,-2.464306e-12,1.500496e-10,1,4,4,0.000,false
+QQN-Bisection-1,4,-1.586664e-6,6.283302e-5,61,2430,2610,0.058,false
+QQN-Bisection-1,5,-5.465120e-8,2.452296e-6,58,2310,2709,0.062,false
+QQN-Bisection-1,6,-8.265603e-10,4.249746e-8,1,4,4,0.000,false
+QQN-Bisection-1,7,-2.629577e-9,1.304149e-7,1,4,4,0.000,false
+QQN-Bisection-1,8,-3.904474e-8,1.772396e-6,58,2310,2709,0.062,false
+QQN-Bisection-1,9,-6.466724e-8,2.884401e-6,58,2310,2709,0.062,false
+QQN-Bisection-1,10,-4.634607e-10,2.425285e-8,1,4,4,0.000,false
+QQN-Bisection-1,11,-3.820351e-8,1.735502e-6,66,1980,3085,0.060,false
+QQN-Bisection-1,12,-4.519268e-7,1.879111e-5,69,2070,2954,0.056,false
+QQN-Bisection-1,13,-5.085104e-6,1.919022e-4,63,2510,2572,0.060,false
+QQN-Bisection-1,14,-2.230356e-8,1.031845e-6,66,1980,3085,0.060,false
+QQN-Bisection-1,15,-1.473620e-7,6.384891e-6,67,2010,3000,0.058,false
+QQN-Bisection-1,16,-3.786928e-10,1.993861e-8,1,4,4,0.000,false
+QQN-Bisection-1,17,-2.798373e-13,1.808808e-11,1,4,4,0.000,false
+QQN-Bisection-1,18,-7.259921e-9,3.485424e-7,1,4,4,0.000,false
+QQN-Bisection-1,19,-1.165278e-13,7.710894e-12,1,4,4,0.000,false
+QQN-Bisection-2,0,-8.597404e-6,3.171249e-4,161,3390,1618,0.079,false
+QQN-Bisection-2,1,-1.342345e-13,6.519365e-12,1,4,4,0.000,false
+QQN-Bisection-2,2,-2.714990e-6,1.051947e-4,161,3390,1618,0.079,false
+QQN-Bisection-2,3,-5.381110e-12,2.031904e-10,1,4,4,0.000,false
+QQN-Bisection-2,4,-6.629024e-6,2.473224e-4,161,3390,1618,0.079,false
+QQN-Bisection-2,5,-1.751826e-9,8.799856e-8,1,4,4,0.000,false
+QQN-Bisection-2,6,-2.502867e-6,9.730093e-5,161,3390,1618,0.079,false
+QQN-Bisection-2,7,-2.100196e-10,1.125514e-8,1,4,4,0.000,false
+QQN-Bisection-2,8,-1.671979e-9,8.410874e-8,1,4,4,0.000,false
+QQN-Bisection-2,9,-4.561902e-11,2.556976e-9,1,4,4,0.000,false
+QQN-Bisection-2,10,-4.274723e-14,2.904724e-12,1,4,4,0.000,false
+QQN-Bisection-2,11,-8.013058e-1,1.253646e-4,52,989,508,0.023,false
+QQN-Bisection-2,12,-1.891771e-7,8.123363e-6,2,31,19,0.001,false
+QQN-Bisection-2,13,-6.174265e-12,2.578120e-10,1,4,4,0.000,false
+QQN-Bisection-2,14,-5.738497e-6,2.154389e-4,161,3390,1618,0.079,false
+QQN-Bisection-2,15,-2.582223e-7,1.096289e-5,2,31,19,0.001,false
+QQN-Bisection-2,16,-5.347737e-13,3.368700e-11,1,4,4,0.000,false
+QQN-Bisection-2,17,-1.329835e-7,5.783378e-6,2,31,19,0.001,false
+QQN-Bisection-2,18,-3.745867e-6,1.432055e-4,161,3390,1618,0.079,false
+QQN-Bisection-2,19,-7.112075e-8,3.162202e-6,2,31,19,0.001,false
+QQN-StrongWolfe,0,-2.049509e-8,9.508711e-7,1,4,4,0.000,false
+QQN-StrongWolfe,1,-2.869429e-11,1.153144e-9,1,4,4,0.000,false
+QQN-StrongWolfe,2,-3.674631e-6,1.405954e-4,98,2635,2396,0.072,false
+QQN-StrongWolfe,3,-1.313876e-10,7.139878e-9,1,4,4,0.000,false
+QQN-StrongWolfe,4,-4.139769e-6,1.575991e-4,105,2824,2210,0.080,false
+QQN-StrongWolfe,5,-4.653819e-10,2.433520e-8,1,4,4,0.000,false
+QQN-StrongWolfe,6,-6.378251e-9,3.075039e-7,1,4,4,0.000,false
+QQN-StrongWolfe,7,-8.450315e-13,4.847576e-11,1,4,4,0.000,false
+QQN-StrongWolfe,8,-8.012944e-1,2.719512e-2,103,2730,2274,0.081,false
+QQN-StrongWolfe,9,-3.726452e-11,2.101033e-9,1,4,4,0.000,false
+QQN-StrongWolfe,10,-1.469722e-12,9.070869e-11,1,4,4,0.000,false
+QQN-StrongWolfe,11,-1.408833e-9,7.125036e-8,1,4,4,0.000,false
+QQN-StrongWolfe,12,-2.035673e-11,7.975320e-10,1,4,4,0.000,false
+QQN-StrongWolfe,13,-3.430200e-6,1.316221e-4,105,2824,2204,0.074,false
+QQN-StrongWolfe,14,-3.689886e-7,1.545956e-5,117,3148,1872,0.067,false
+QQN-StrongWolfe,15,-1.068452e-7,4.683015e-6,112,3013,2014,0.066,false
+QQN-StrongWolfe,16,-3.227437e-7,1.358972e-5,129,3472,1552,0.069,false
+QQN-StrongWolfe,17,-1.091589e-7,4.780787e-6,117,3148,1872,0.067,false
+QQN-StrongWolfe,18,-2.775610e-11,1.578287e-9,1,4,4,0.000,false
+QQN-StrongWolfe,19,-5.552282e-12,2.312155e-10,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,0,-1.074298e-12,6.693523e-11,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,1,-9.713988e-8,4.271979e-6,8,105,124,0.003,false
+QQN-CubicQuadraticInterpolation,2,-8.896348e-10,4.563685e-8,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,3,-1.598373e-9,8.034391e-8,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,4,-9.655539e-9,4.592698e-7,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,5,-1.551840e-12,5.991606e-11,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,6,-1.326262e-11,7.342613e-10,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,7,-6.134224e-10,3.182807e-8,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,8,-4.049848e-11,2.277510e-9,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,9,-4.197484e-14,2.855175e-12,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,10,-2.269558e-9,1.130837e-7,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,11,-4.085964e-13,2.614078e-11,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,12,-5.956861e-8,2.664929e-6,8,105,124,0.003,false
+QQN-CubicQuadraticInterpolation,13,-3.138572e-12,1.326539e-10,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,14,-1.293443e-8,6.093482e-7,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,15,-1.120711e-10,4.650244e-9,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,16,-8.732805e-9,4.167235e-7,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,17,-2.004283e-8,9.304977e-7,1,4,4,0.000,false
+QQN-CubicQuadraticInterpolation,18,-1.003959e-5,3.677786e-4,8,105,124,0.003,false
+QQN-CubicQuadraticInterpolation,19,-7.564913e-10,3.900081e-8,1,4,4,0.000,false
+L-BFGS-Aggressive,0,-9.493622e-13,5.935247e-11,1,3,4,0.000,false
+L-BFGS-Aggressive,1,-3.100686e-11,1.757443e-9,1,3,4,0.000,false
+L-BFGS-Aggressive,2,-1.316274e-10,7.151805e-9,1,3,4,0.000,false
+L-BFGS-Aggressive,3,-2.299771e-11,1.314450e-9,1,3,4,0.000,false
+L-BFGS-Aggressive,4,-2.521574e-10,1.339460e-8,1,3,4,0.000,false
+L-BFGS-Aggressive,5,-3.632988e-9,1.783430e-7,1,3,4,0.000,false
+L-BFGS-Aggressive,6,-2.818787e-7,1.192865e-5,624,3127,1877,0.042,false
+L-BFGS-Aggressive,7,-1.369599e-10,7.432810e-9,1,3,4,0.000,false
+L-BFGS-Aggressive,8,-1.792122e-9,8.995794e-8,1,3,4,0.000,false
+L-BFGS-Aggressive,9,-2.073818e-13,1.310699e-11,1,3,4,0.000,false
+L-BFGS-Aggressive,10,-1.453595e-7,6.300417e-6,624,3127,1877,0.042,false
+L-BFGS-Aggressive,11,-4.776328e-7,1.981856e-5,624,3127,1877,0.041,false
+L-BFGS-Aggressive,12,-6.004473e-8,2.685492e-6,624,3127,1877,0.040,false
+L-BFGS-Aggressive,13,-6.537382e-8,2.915246e-6,624,3127,1877,0.041,false
+L-BFGS-Aggressive,14,-8.972262e-1,3.646076e0,477,3566,1436,0.044,false
+L-BFGS-Aggressive,15,-5.747671e-12,2.355015e-10,1,3,4,0.000,false
+L-BFGS-Aggressive,16,-6.098303e-11,3.389500e-9,1,3,4,0.000,false
+L-BFGS-Aggressive,17,-2.455693e-12,1.336924e-10,1,3,4,0.000,false
+L-BFGS-Aggressive,18,-8.966662e-1,3.653965e0,444,3671,1337,0.044,false
+L-BFGS-Aggressive,19,-3.764846e-11,2.120453e-9,1,3,4,0.000,false
+L-BFGS,0,-9.460634e-7,3.823879e-5,555,2782,2226,0.041,false
+L-BFGS,1,-8.979588e-8,3.960017e-6,555,2782,2226,0.040,false
+L-BFGS,2,-1.262466e-11,4.475111e-10,1,3,4,0.000,false
+L-BFGS,3,-4.833022e-13,2.011435e-11,1,3,4,0.000,false
+L-BFGS,4,-2.661893e-10,1.416462e-8,1,7,6,0.000,false
+L-BFGS,5,-3.090987e-10,1.637335e-8,1,7,6,0.000,false
+L-BFGS,6,-2.990669e-11,1.073618e-9,1,3,4,0.000,false
+L-BFGS,7,-1.565160e-10,7.524227e-9,1,3,4,0.000,false
+L-BFGS,8,-4.796829e-11,8.215308e-9,33,168,132,0.004,false
+L-BFGS,9,-9.992632e-1,3.462233e-1,118,594,475,0.015,true
+L-BFGS,10,-8.060816e-8,3.568197e-6,555,2782,2226,0.041,false
+L-BFGS,11,-1.350604e-7,5.870440e-6,555,2782,2226,0.042,false
+L-BFGS,12,-3.753100e-7,1.571455e-5,555,2782,2226,0.042,false
+L-BFGS,13,-3.444075e-10,1.818549e-8,1,7,6,0.000,false
+L-BFGS,14,-2.049801e-11,1.156680e-9,1,3,4,0.000,false
+L-BFGS,15,-6.829379e-13,4.307282e-11,1,3,4,0.000,false
+L-BFGS,16,-4.522501e-9,2.204429e-7,1,7,6,0.000,false
+L-BFGS,17,-9.995730e-1,2.634758e-1,260,1312,1048,0.025,true
+L-BFGS,18,-4.564277e-12,1.733882e-10,1,3,4,0.000,false
+L-BFGS,19,-5.591492e-9,2.707211e-7,1,7,6,0.000,false
+L-BFGS-Conservative,0,-2.568030e-11,1.462773e-9,1,7,6,0.000,false
+L-BFGS-Conservative,1,-2.289710e-6,8.933941e-5,555,2782,2226,0.041,false
+L-BFGS-Conservative,2,-5.085792e-9,2.469890e-7,1,7,6,0.000,false
+L-BFGS-Conservative,3,-4.042651e-13,2.581522e-11,1,3,4,0.000,false
+L-BFGS-Conservative,4,-6.727340e-14,4.389074e-12,1,3,4,0.000,false
+L-BFGS-Conservative,5,-1.076142e-11,6.278297e-10,1,7,6,0.000,false
+L-BFGS-Conservative,6,-2.266827e-7,9.669930e-6,555,2782,2226,0.041,false
+L-BFGS-Conservative,7,-2.697762e-9,1.336885e-7,1,7,6,0.000,false
+L-BFGS-Conservative,8,-1.713129e-11,9.671658e-10,1,7,6,0.000,false
+L-BFGS-Conservative,9,-1.069014e-5,3.905113e-4,555,2782,2226,0.062,false
+L-BFGS-Conservative,10,-2.695895e-10,1.434010e-8,1,7,6,0.000,false
+L-BFGS-Conservative,11,-1.237343e-7,5.394973e-6,555,2782,2226,0.042,false
+L-BFGS-Conservative,12,-1.021843e-6,4.117744e-5,555,2782,2226,0.042,false
+L-BFGS-Conservative,13,-7.110922e-9,3.410704e-7,1,7,6,0.000,false
+L-BFGS-Conservative,14,-4.097030e-8,1.856732e-6,555,2782,2226,0.041,false
+L-BFGS-Conservative,15,-8.154765e-10,4.194505e-8,1,7,6,0.000,false
+L-BFGS-Conservative,16,-8.520833e-13,3.352503e-11,1,3,4,0.000,false
+L-BFGS-Conservative,17,-2.954630e-14,2.028640e-12,1,3,4,0.000,false
+L-BFGS-Conservative,18,-4.667068e-11,2.603944e-9,1,7,6,0.000,false
+L-BFGS-Conservative,19,-1.548932e-11,8.951209e-10,1,7,6,0.000,false
+L-BFGS-MoreThuente,0,-9.973827e-1,6.466165e-1,235,1649,1179,0.028,true
+L-BFGS-MoreThuente,1,-9.998985e-1,1.283425e-1,18,133,97,0.002,true
+L-BFGS-MoreThuente,2,-1.511154e-9,7.625981e-8,1,9,7,0.000,false
+L-BFGS-MoreThuente,3,-9.999868e-1,4.624730e-2,193,1357,971,0.024,true
+L-BFGS-MoreThuente,4,-5.733603e-11,3.192528e-9,1,3,4,0.000,false
+L-BFGS-MoreThuente,5,-6.689660e-11,3.697960e-9,1,3,4,0.000,false
+L-BFGS-MoreThuente,6,-4.085898e-13,1.700781e-11,1,3,4,0.000,false
+L-BFGS-MoreThuente,7,-9.964443e-1,7.614499e-1,368,2583,1847,0.039,true
+L-BFGS-MoreThuente,8,-2.051312e-12,1.235318e-10,1,3,4,0.000,false
+L-BFGS-MoreThuente,9,-1.962956e-8,9.120302e-7,1,9,7,0.000,false
+L-BFGS-MoreThuente,10,-1.623155e-11,6.019140e-10,1,3,4,0.000,false
+L-BFGS-MoreThuente,11,-3.544691e-9,1.724059e-7,1,9,7,0.000,false
+L-BFGS-MoreThuente,12,-7.088535e-8,3.152101e-6,416,2921,2087,0.035,false
+L-BFGS-MoreThuente,13,-9.967284e-1,7.221659e-1,71,503,361,0.010,true
+L-BFGS-MoreThuente,14,-8.304708e-11,4.143405e-9,1,3,4,0.000,false
+L-BFGS-MoreThuente,15,-3.172757e-10,1.679328e-8,1,9,7,0.000,false
+L-BFGS-MoreThuente,16,-5.876079e-8,2.630082e-6,416,2921,2087,0.035,false
+L-BFGS-MoreThuente,17,-5.028221e-8,2.262756e-6,416,2921,2087,0.035,false
+L-BFGS-MoreThuente,18,-2.084246e-12,1.227608e-10,1,3,4,0.000,false
+L-BFGS-MoreThuente,19,-3.673518e-11,1.528667e-9,1,3,4,0.000,false
+L-BFGS-Limited,0,-9.998129e-1,1.743171e-1,533,2687,1602,0.035,true
+L-BFGS-Limited,1,-7.943400e-10,4.088994e-8,1,3,4,0.000,false
+L-BFGS-Limited,2,-3.185086e-11,1.780141e-9,1,3,4,0.000,false
+L-BFGS-Limited,3,-2.741077e-9,1.340235e-7,1,3,4,0.000,false
+L-BFGS-Limited,4,-1.324396e-8,6.234062e-7,1,3,4,0.000,false
+L-BFGS-Limited,5,-5.038703e-12,2.996349e-10,1,3,4,0.000,false
+L-BFGS-Limited,6,-9.999213e-1,1.130297e-1,188,953,567,0.013,true
+L-BFGS-Limited,7,-9.999935e-1,3.239773e-2,128,668,387,0.010,true
+L-BFGS-Limited,8,-1.303064e-11,7.511571e-10,1,3,4,0.000,false
+L-BFGS-Limited,9,-3.763887e-8,1.710722e-6,624,3127,1877,0.030,false
+L-BFGS-Limited,10,-9.035346e-12,5.301957e-10,1,3,4,0.000,false
+L-BFGS-Limited,11,-2.115502e-9,1.056407e-7,1,3,4,0.000,false
+L-BFGS-Limited,12,-9.960580e-1,8.017774e-1,121,622,366,0.009,true
+L-BFGS-Limited,13,-2.040354e-10,9.928906e-9,1,3,4,0.000,false
+L-BFGS-Limited,14,-4.093568e-10,2.150243e-8,1,3,4,0.000,false
+L-BFGS-Limited,15,-9.963902e-1,7.581655e-1,238,1221,717,0.018,true
+L-BFGS-Limited,16,-3.466637e-10,1.830102e-8,1,3,4,0.000,false
+L-BFGS-Limited,17,-1.381165e-10,7.494291e-9,1,3,4,0.000,false
+L-BFGS-Limited,18,-3.184134e-14,2.174884e-12,1,3,4,0.000,false
+L-BFGS-Limited,19,-4.045310e-9,1.979006e-7,1,3,4,0.000,false
+GD,0,-4.753694e-6,1.799123e-4,1665,1668,3334,0.043,false
+GD,1,-1.016104e-6,4.095528e-5,1,3,4,0.000,false
+GD,2,-5.098232e-6,1.923764e-4,1665,1668,3334,0.042,false
+GD,3,-9.802505e-9,4.656891e-7,1,3,4,0.000,false
+GD,4,-1.800547e-7,7.744230e-6,1,3,4,0.000,false
+GD,5,-7.953383e-11,4.386396e-9,1,3,4,0.000,false
+GD,6,-7.378897e-6,2.740152e-4,1665,1668,3334,0.042,false
+GD,7,-5.235300e-9,2.528058e-7,1,3,4,0.000,false
+GD,8,-5.403508e-9,2.617950e-7,1,3,4,0.000,false
+GD,9,-1.246109e-6,4.982392e-5,1,3,4,0.000,false
+GD,10,-6.249847e-10,3.240971e-8,1,3,4,0.000,false
+GD,11,-2.692825e-8,1.237915e-6,1,3,4,0.000,false
+GD,12,-3.423285e-9,1.682745e-7,1,3,4,0.000,false
+GD,13,-2.884722e-8,1.323051e-6,1,3,4,0.000,false
+GD,14,-4.009132e-7,1.674484e-5,1,3,4,0.000,false
+GD,15,-3.672168e-14,2.506768e-12,1,3,4,0.000,false
+GD,16,-1.152601e-13,7.630255e-12,1,3,4,0.000,false
+GD,17,-1.377793e-6,5.487027e-5,1,3,4,0.000,false
+GD,18,-1.572331e-6,6.228857e-5,1,3,4,0.000,false
+GD,19,-6.949864e-11,3.848097e-9,1,3,4,0.000,false
+GD-Momentum,0,-5.954443e-8,2.663932e-6,1,3,4,0.000,false
+GD-Momentum,1,-8.761450e-8,3.866246e-6,1,3,4,0.000,false
+GD-Momentum,2,-7.172155e-10,3.703638e-8,1,3,4,0.000,false
+GD-Momentum,3,-7.432184e-9,3.564371e-7,1,3,4,0.000,false
+GD-Momentum,4,-1.229574e-9,6.141239e-8,1,3,4,0.000,false
+GD-Momentum,5,-6.492493e-1,5.121471e0,798,801,1598,0.023,false
+GD-Momentum,6,-3.810830e-13,1.515154e-11,1,3,4,0.000,false
+GD-Momentum,7,-4.337191e-12,1.813767e-10,1,3,4,0.000,false
+GD-Momentum,8,-4.314039e-10,2.262465e-8,1,3,4,0.000,false
+GD-Momentum,9,-2.346515e-9,1.167518e-7,1,3,4,0.000,false
+GD-Momentum,10,-2.867503e-8,1.315288e-6,1,3,4,0.000,false
+GD-Momentum,11,-1.207194e-6,4.832873e-5,1,3,4,0.000,false
+GD-Momentum,12,-4.162341e-11,2.339293e-9,1,3,4,0.000,false
+GD-Momentum,13,-6.077104e-14,4.093016e-12,1,3,4,0.000,false
+GD-Momentum,14,-1.259188e-12,6.569995e-11,1,3,4,0.000,false
+GD-Momentum,15,-9.153885e-11,5.027715e-9,1,3,4,0.000,false
+GD-Momentum,16,-1.147633e-12,6.758468e-11,1,3,4,0.000,false
+GD-Momentum,17,-3.982517e-9,1.949296e-7,1,3,4,0.000,false
+GD-Momentum,18,-5.280883e-11,2.947043e-9,1,3,4,0.000,false
+GD-Momentum,19,-3.098175e-7,1.306520e-5,1,3,4,0.000,false
+GD-Nesterov,0,-1.660589e-6,6.564039e-5,1,3,4,0.000,false
+GD-Nesterov,1,-1.108285e-7,4.851294e-6,1,3,4,0.000,false
+GD-Nesterov,2,-1.023455e-12,6.384547e-11,1,3,4,0.000,false
+GD-Nesterov,3,-7.937326e-13,4.969813e-11,1,3,4,0.000,false
+GD-Nesterov,4,-1.586738e-11,9.168329e-10,1,3,4,0.000,false
+GD-Nesterov,5,-2.257537e-11,1.265791e-9,1,3,4,0.000,false
+GD-Nesterov,6,-1.502333e-9,7.582846e-8,1,3,4,0.000,false
+GD-Nesterov,7,-1.272113e-8,5.996170e-7,1,3,4,0.000,false
+GD-Nesterov,8,-1.583516e-10,8.557811e-9,1,3,4,0.000,false
+GD-Nesterov,9,-1.002070e-6,4.041160e-5,1,3,4,0.000,false
+GD-Nesterov,10,-6.638176e-6,2.476490e-4,1665,1668,3334,0.051,false
+GD-Nesterov,11,-9.993748e-1,3.173082e-1,729,732,1461,0.023,true
+GD-Nesterov,12,-9.968275e-1,7.112540e-1,1321,1324,2645,0.042,true
+GD-Nesterov,13,-4.697631e-11,2.630888e-9,1,3,4,0.000,false
+GD-Nesterov,14,-9.881766e-6,3.622533e-4,1665,1668,3334,0.051,false
+GD-Nesterov,15,-3.874858e-13,2.481672e-11,1,3,4,0.000,false
+GD-Nesterov,16,-3.023596e-7,1.276223e-5,1,3,4,0.000,false
+GD-Nesterov,17,-3.223563e-9,1.588461e-7,1,3,4,0.000,false
+GD-Nesterov,18,-1.656319e-8,7.723589e-7,1,3,4,0.000,false
+GD-Nesterov,19,-3.452990e-11,1.296234e-9,1,3,4,0.000,false
+GD-WeightDecay,0,-2.218825e-5,7.837687e-4,1665,1668,3334,0.052,false
+GD-WeightDecay,1,-3.778570e-13,2.381631e-11,5,8,12,0.000,false
+GD-WeightDecay,2,-4.649121e-12,2.781187e-10,5,8,12,0.000,false
+GD-WeightDecay,3,-6.759301e-10,3.496779e-8,5,8,12,0.000,false
+GD-WeightDecay,4,-1.428079e-6,5.679184e-5,5,8,12,0.000,false
+GD-WeightDecay,5,-1.124667e-10,6.139795e-9,5,8,12,0.000,false
+GD-WeightDecay,6,-2.446650e-5,8.602531e-4,1665,1668,3334,0.051,false
+GD-WeightDecay,7,-1.649405e-10,8.903115e-9,5,8,12,0.000,false
+GD-WeightDecay,8,-2.353834e-9,1.171383e-7,5,8,12,0.000,false
+GD-WeightDecay,9,-1.334255e-12,8.263709e-11,5,8,12,0.000,false
+GD-WeightDecay,10,-6.671461e-7,2.733217e-5,5,8,12,0.000,false
+GD-WeightDecay,11,-1.423895e-10,7.719430e-9,5,8,12,0.000,false
+GD-WeightDecay,12,-2.696571e-12,9.931505e-11,5,8,12,0.000,false
+GD-WeightDecay,13,-1.144746e-10,6.237695e-9,5,8,12,0.000,false
+GD-WeightDecay,14,-3.896952e-11,2.194305e-9,5,8,12,0.000,false
+GD-WeightDecay,15,-7.766394e-12,3.030637e-10,5,8,12,0.000,false
+GD-WeightDecay,16,-8.827300e-6,3.252250e-4,1665,1668,3334,0.053,false
+GD-WeightDecay,17,-4.712784e-6,1.784296e-4,1665,1668,3334,0.052,false
+GD-WeightDecay,18,-2.413956e-6,9.398378e-5,1665,1668,3334,0.050,false
+GD-WeightDecay,19,-4.657251e-9,2.258499e-7,5,8,12,0.000,false
+GD-AdaptiveMomentum,0,-5.543978e-9,2.678754e-7,1,3,4,0.000,false
+GD-AdaptiveMomentum,1,-7.439170e-8,3.302426e-6,1,3,4,0.000,false
+GD-AdaptiveMomentum,2,-1.926672e-10,1.035176e-8,1,3,4,0.000,false
+GD-AdaptiveMomentum,3,-6.895623e-14,4.628701e-12,1,3,4,0.000,false
+GD-AdaptiveMomentum,4,-2.826920e-12,1.714781e-10,1,3,4,0.000,false
+GD-AdaptiveMomentum,5,-1.228768e-9,6.240795e-8,1,3,4,0.000,false
+GD-AdaptiveMomentum,6,-2.475230e-9,1.226864e-7,1,3,4,0.000,false
+GD-AdaptiveMomentum,7,-2.632278e-11,1.499014e-9,1,3,4,0.000,false
+GD-AdaptiveMomentum,8,-1.225170e-6,4.901970e-5,1,3,4,0.000,false
+GD-AdaptiveMomentum,9,-8.170824e-12,3.397724e-10,1,3,4,0.000,false
+GD-AdaptiveMomentum,10,-1.052498e-11,6.152450e-10,1,3,4,0.000,false
+GD-AdaptiveMomentum,11,-9.994229e-1,3.049036e-1,530,533,1063,0.018,true
+GD-AdaptiveMomentum,12,-3.833866e-9,1.878704e-7,1,3,4,0.000,false
+GD-AdaptiveMomentum,13,-1.057307e-10,5.780388e-9,1,3,4,0.000,false
+GD-AdaptiveMomentum,14,-1.612900e-11,9.315157e-10,1,3,4,0.000,false
+GD-AdaptiveMomentum,15,-6.715765e-12,2.398793e-10,1,3,4,0.000,false
+GD-AdaptiveMomentum,16,-1.409665e-10,7.644565e-9,1,3,4,0.000,false
+GD-AdaptiveMomentum,17,-1.885755e-8,8.773338e-7,1,3,4,0.000,false
+GD-AdaptiveMomentum,18,-4.986412e-7,2.065662e-5,1,3,4,0.000,false
+GD-AdaptiveMomentum,19,-3.084138e-12,1.866033e-10,1,3,4,0.000,false
+Adam-Fast,0,-5.094654e-11,1.808137e-9,1249,2502,2502,0.050,false
+Adam-Fast,1,-4.991232e-12,2.903956e-10,1249,2502,2502,0.050,false
+Adam-Fast,2,-2.568473e-11,1.462741e-9,1249,2502,2502,0.050,false
+Adam-Fast,3,-2.922312e-7,3.218222e-5,1058,2119,2118,0.040,false
+Adam-Fast,4,-1.387265e-12,8.525954e-11,1,4,4,0.000,false
+Adam-Fast,5,-9.983949e-1,5.113524e-1,13,29,29,0.001,true
+Adam-Fast,6,-7.757660e-1,4.751206e0,110,223,222,0.004,false
+Adam-Fast,7,-2.133657e-10,1.142826e-8,1249,2502,2502,0.047,false
+Adam-Fast,8,-7.323958e-12,4.320863e-10,1249,2502,2502,0.050,false
+Adam-Fast,9,-9.969094e-1,7.098706e-1,1105,2213,2213,0.044,true
+Adam-Fast,10,-9.981352e-1,5.512265e-1,43,89,89,0.002,true
+Adam-Fast,11,-9.983617e-1,5.166195e-1,387,777,777,0.016,true
+Adam-Fast,12,-3.358641e-11,1.891656e-9,1249,2502,2502,0.049,false
+Adam-Fast,13,-9.996873e-1,2.253973e-1,9,21,21,0.000,true
+Adam-Fast,14,-9.961963e-1,7.780300e-1,23,49,49,0.001,true
+Adam-Fast,15,-9.977636e-1,5.981189e-1,16,35,35,0.001,true
+Adam-Fast,16,-9.996986e-1,2.213051e-1,24,51,51,0.001,true
+Adam-Fast,17,-8.107902e-13,3.217253e-11,1,4,4,0.000,false
+Adam-Fast,18,-4.626384e-13,2.949822e-11,1,4,4,0.000,false
+Adam-Fast,19,-6.618891e-1,5.109383e0,264,531,530,0.010,false
+Adam,0,-2.259764e-10,1.208386e-8,1249,2502,2502,0.048,false
+Adam,1,-4.629621e-9,2.255144e-7,1249,2502,2502,0.048,false
+Adam,2,-4.382965e-9,2.138741e-7,1249,2502,2502,0.050,false
+Adam,3,-2.045990e-12,1.252283e-10,1249,2502,2502,0.049,false
+Adam,4,-9.964081e-1,7.563074e-1,450,903,903,0.017,true
+Adam,5,-9.227886e-9,4.395787e-7,1249,2502,2502,0.048,false
+Adam,6,-9.963188e-1,7.655451e-1,427,857,857,0.016,true
+Adam,7,-9.973248e-1,6.536690e-1,582,1167,1167,0.022,true
+Adam,8,-8.991319e-11,4.941026e-9,1249,2502,2502,0.050,false
+Adam,9,-6.026635e-12,3.578678e-10,1249,2502,2502,0.049,false
+Adam,10,-9.969724e-1,6.949815e-1,411,825,825,0.016,true
+Adam,11,-9.963882e-1,7.583722e-1,340,683,683,0.014,true
+Adam,12,-9.962569e-1,7.718720e-1,331,665,665,0.013,true
+Adam,13,-9.968141e-1,7.127376e-1,345,693,693,0.013,true
+Adam,14,-9.960177e-1,7.958699e-1,329,661,661,0.013,true
+Adam,15,-1.184770e-10,6.445309e-9,1249,2502,2502,0.049,false
+Adam,16,-9.967363e-1,7.213009e-1,343,689,689,0.014,true
+Adam,17,-1.425574e-10,6.836191e-9,1249,2502,2502,0.050,false
+Adam,18,-5.592823e-11,3.116380e-9,1249,2502,2502,0.049,false
+Adam,19,-9.962640e-1,7.711481e-1,337,677,677,0.013,true
+Adam-AMSGrad,0,-2.648064e-10,1.409323e-8,5,13,12,0.000,false
+Adam-AMSGrad,1,-9.962718e-1,7.703538e-1,297,597,597,0.013,true
+Adam-AMSGrad,2,-2.272395e-7,9.692830e-6,5,13,12,0.000,false
+Adam-AMSGrad,3,-9.964392e-1,7.530572e-1,314,631,631,0.014,true
+Adam-AMSGrad,4,-4.658392e-11,2.609547e-9,5,13,12,0.000,false
+Adam-AMSGrad,5,-1.857704e-8,8.640391e-7,5,13,12,0.000,false
+Adam-AMSGrad,6,-5.736654e-9,2.775191e-7,5,13,12,0.000,false
+Adam-AMSGrad,7,-2.034189e-7,8.711898e-6,5,13,12,0.000,false
+Adam-AMSGrad,8,-1.877243e-12,1.151419e-10,5,13,12,0.000,false
+Adam-AMSGrad,9,-1.194874e-6,4.785489e-5,5,13,12,0.000,false
+Adam-AMSGrad,10,-9.963882e-1,7.583686e-1,297,597,597,0.013,true
+Adam-AMSGrad,11,-1.428347e-8,6.706985e-7,5,13,12,0.000,false
+Adam-AMSGrad,12,-1.049830e-8,4.979887e-7,5,13,12,0.000,false
+Adam-AMSGrad,13,-2.769663e-11,1.387044e-9,5,13,12,0.000,false
+Adam-AMSGrad,14,-9.961545e-1,7.822372e-1,302,607,607,0.013,true
+Adam-AMSGrad,15,-1.095842e-12,6.823330e-11,5,13,12,0.000,false
+Adam-AMSGrad,16,-9.854135e-10,5.039158e-8,5,13,12,0.000,false
+Adam-AMSGrad,17,-9.962681e-1,7.707367e-1,305,613,613,0.013,true
+Adam-AMSGrad,18,-9.962016e-1,7.774933e-1,309,621,621,0.014,true
+Adam-AMSGrad,19,-1.068358e-10,5.841288e-9,5,13,12,0.000,false
+Adam-WeightDecay,0,-1.036714e-11,3.597165e-10,5,13,12,0.000,false
+Adam-WeightDecay,1,-1.121549e-9,5.712467e-8,5,13,12,0.000,false
+Adam-WeightDecay,2,-1.066446e-6,4.290265e-5,5,13,12,0.000,false
+Adam-WeightDecay,3,-7.368181e-10,3.801296e-8,5,13,12,0.000,false
+Adam-WeightDecay,4,-3.121035e-7,1.315805e-5,5,13,12,0.000,false
+Adam-WeightDecay,5,-1.361294e-11,4.974609e-10,5,13,12,0.000,false
+Adam-WeightDecay,6,-9.835542e-11,5.390721e-9,5,13,12,0.000,false
+Adam-WeightDecay,7,-2.033781e-10,1.090969e-8,5,13,12,0.000,false
+Adam-WeightDecay,8,-1.558831e-13,6.048644e-12,5,13,12,0.000,false
+Adam-WeightDecay,9,-1.585872e-6,6.280345e-5,5,13,12,0.000,false
+Adam-WeightDecay,10,-2.334730e-6,9.102351e-5,5,13,12,0.000,false
+Adam-WeightDecay,11,-1.313568e-8,6.185121e-7,5,13,12,0.000,false
+Adam-WeightDecay,12,-3.584872e-8,1.632063e-6,5,13,12,0.000,false
+Adam-WeightDecay,13,-2.562297e-12,1.558517e-10,5,13,12,0.000,false
+Adam-WeightDecay,14,-8.960888e-8,3.952005e-6,5,13,12,0.000,false
+Adam-WeightDecay,15,-7.243206e-14,4.855589e-12,5,13,12,0.000,false
+Adam-WeightDecay,16,-4.834180e-7,2.004948e-5,5,13,12,0.000,false
+Adam-WeightDecay,17,-3.900607e-7,1.630864e-5,5,13,12,0.000,false
+Adam-WeightDecay,18,-2.681787e-13,1.735269e-11,5,13,12,0.000,false
+Adam-WeightDecay,19,-6.653776e-7,2.726248e-5,5,13,12,0.000,false
+Adam-Robust,0,-1.789249e-7,7.698666e-6,5,13,12,0.000,false
+Adam-Robust,1,-1.387971e-9,7.020434e-8,5,13,12,0.000,false
+Adam-Robust,2,-3.256307e-6,1.252209e-4,5,13,12,0.000,false
+Adam-Robust,3,-3.093216e-12,1.871612e-10,5,13,12,0.000,false
+Adam-Robust,4,-5.361740e-9,2.599478e-7,5,13,12,0.000,false
+Adam-Robust,5,-3.128224e-6,1.204968e-4,5,13,12,0.000,false
+Adam-Robust,6,-3.317911e-11,1.875424e-9,5,13,12,0.000,false
+Adam-Robust,7,-9.074978e-14,5.627956e-12,5,13,12,0.000,false
+Adam-Robust,8,-4.674690e-9,2.276390e-7,5,13,12,0.000,false
+Adam-Robust,9,-3.496177e-12,2.108220e-10,5,13,12,0.000,false
+Adam-Robust,10,-5.478720e-8,2.458187e-6,5,13,12,0.000,false
+Adam-Robust,11,-2.373005e-10,1.267085e-8,5,13,12,0.000,false
+Adam-Robust,12,-2.432799e-12,1.481893e-10,5,13,12,0.000,false
+Adam-Robust,13,-3.787427e-7,1.585288e-5,5,13,12,0.000,false
+Adam-Robust,14,-6.662367e-10,3.448154e-8,5,13,12,0.000,false
+Adam-Robust,15,-2.162720e-7,9.241699e-6,5,13,12,0.000,false
+Adam-Robust,16,-5.942911e-9,2.871707e-7,5,13,12,0.000,false
+Adam-Robust,17,-2.294329e-12,8.849646e-11,5,13,12,0.000,false
+Adam-Robust,18,-6.919211e-8,3.079414e-6,5,13,12,0.000,false
+Adam-Robust,19,-1.080635e-11,3.734252e-10,5,13,12,0.000,false
+Trust Region-Adaptive,0,-2.526605e-9,1.254666e-7,1,4,4,0.000,false
+Trust Region-Adaptive,1,-5.238293e-12,3.123168e-10,1,4,4,0.000,false
+Trust Region-Adaptive,2,-3.052883e-12,1.159201e-10,1,4,4,0.000,false
+Trust Region-Adaptive,3,-1.443832e-12,8.914530e-11,1,4,4,0.000,false
+Trust Region-Adaptive,4,-8.072538e-12,3.558332e-10,1,4,4,0.000,false
+Trust Region-Adaptive,5,-1.500266e-6,5.954529e-5,1,5,4,0.000,false
+Trust Region-Adaptive,6,-7.088516e-9,3.405802e-7,1,4,4,0.000,false
+Trust Region-Adaptive,7,-2.371524e-12,1.444659e-10,1,4,4,0.000,false
+Trust Region-Adaptive,8,-3.246810e-14,2.223535e-12,1,4,4,0.000,false
+Trust Region-Adaptive,9,-1.046048e-8,4.955302e-7,1,4,4,0.000,false
+Trust Region-Adaptive,10,-2.732884e-11,1.530916e-9,1,4,4,0.000,false
+Trust Region-Adaptive,11,-6.006119e-13,3.802352e-11,1,4,4,0.000,false
+Trust Region-Adaptive,12,-1.629573e-6,6.446377e-5,1,5,4,0.000,false
+Trust Region-Adaptive,13,-1.982117e-6,7.779316e-5,1,5,4,0.000,false
+Trust Region-Adaptive,14,-1.925808e-8,8.953429e-7,1,4,4,0.000,false
+Trust Region-Adaptive,15,-3.773946e-8,1.715138e-6,1,5,4,0.000,false
+Trust Region-Adaptive,16,-1.595266e-9,8.036870e-8,1,4,4,0.000,false
+Trust Region-Adaptive,17,-1.015762e-6,4.094167e-5,1,5,4,0.000,false
+Trust Region-Adaptive,18,-2.591234e-6,1.005927e-4,1,5,4,0.000,false
+Trust Region-Adaptive,19,-4.800332e-12,1.783600e-10,1,4,4,0.000,false
+Trust Region-Standard,0,-1.356983e-13,6.336106e-12,1,4,4,0.000,false
+Trust Region-Standard,1,-1.300180e-9,6.590806e-8,1,4,4,0.000,false
+Trust Region-Standard,2,-9.910858e-6,3.632721e-4,1,5,4,0.000,false
+Trust Region-Standard,3,-3.273297e-10,1.731024e-8,1,4,4,0.000,false
+Trust Region-Standard,4,-3.649901e-9,1.791468e-7,1,4,4,0.000,false
+Trust Region-Standard,5,-5.446705e-9,2.639339e-7,1,4,4,0.000,false
+Trust Region-Standard,6,-2.036307e-11,8.225050e-10,1,4,4,0.000,false
+Trust Region-Standard,7,-6.072780e-13,3.843022e-11,1,4,4,0.000,false
+Trust Region-Standard,8,-4.564833e-7,1.897340e-5,1,5,4,0.000,false
+Trust Region-Standard,9,-2.311004e-10,1.233198e-8,1,4,4,0.000,false
+Trust Region-Standard,10,-1.009034e-11,5.013294e-10,1,4,4,0.000,false
+Trust Region-Standard,11,-1.614190e-11,9.299859e-10,1,4,4,0.000,false
+Trust Region-Standard,12,-1.202962e-6,4.816559e-5,1,5,4,0.000,false
+Trust Region-Standard,13,-7.933882e-11,4.170881e-9,1,4,4,0.000,false
+Trust Region-Standard,14,-5.472917e-13,2.773001e-11,1,4,4,0.000,false
+Trust Region-Standard,15,-5.984344e-7,2.461933e-5,1,5,4,0.000,false
+Trust Region-Standard,16,-6.076078e-12,3.607591e-10,1,4,4,0.000,false
+Trust Region-Standard,17,-1.572250e-12,6.837963e-11,1,4,4,0.000,false
+Trust Region-Standard,18,-2.744239e-10,1.405164e-8,1,4,4,0.000,false
+Trust Region-Standard,19,-2.841891e-11,1.614878e-9,1,4,4,0.000,false
+Trust Region-Conservative,0,-1.326206e-7,5.768145e-6,1,5,4,0.000,false
+Trust Region-Conservative,1,-7.122246e-8,3.166575e-6,1,5,4,0.000,false
+Trust Region-Conservative,2,-5.202363e-11,2.898811e-9,1,4,4,0.000,false
+Trust Region-Conservative,3,-1.899406e-8,8.834756e-7,1,4,4,0.000,false
+Trust Region-Conservative,4,-1.210549e-8,5.715434e-7,1,4,4,0.000,false
+Trust Region-Conservative,5,-6.227155e-7,2.557934e-5,1,5,4,0.000,false
+Trust Region-Conservative,6,-3.146894e-13,2.027350e-11,1,4,4,0.000,false
+Trust Region-Conservative,7,-1.456318e-5,5.245907e-4,1,5,4,0.000,false
+Trust Region-Conservative,8,-1.334132e-10,7.246741e-9,1,4,4,0.000,false
+Trust Region-Conservative,9,-4.665069e-7,1.937414e-5,1,5,4,0.000,false
+Trust Region-Conservative,10,-2.179233e-13,8.369264e-12,1,4,4,0.000,false
+Trust Region-Conservative,11,-1.713593e-6,6.765074e-5,1,5,4,0.000,false
+Trust Region-Conservative,12,-4.702053e-13,1.967998e-11,1,4,4,0.000,false
+Trust Region-Conservative,13,-1.537040e-10,8.312859e-9,1,4,4,0.000,false
+Trust Region-Conservative,14,-2.601342e-10,1.385196e-8,1,4,4,0.000,false
+Trust Region-Conservative,15,-1.544825e-13,1.014733e-11,1,4,4,0.000,false
+Trust Region-Conservative,16,-1.068243e-10,5.840675e-9,1,4,4,0.000,false
+Trust Region-Conservative,17,-1.414475e-8,6.633508e-7,1,4,4,0.000,false
+Trust Region-Conservative,18,-9.870392e-10,5.012624e-8,1,4,4,0.000,false
+Trust Region-Conservative,19,-8.800627e-11,4.839210e-9,1,4,4,0.000,false
+Trust Region-Aggressive,0,-1.536019e-8,7.195184e-7,1,4,4,0.000,false
+Trust Region-Aggressive,1,-8.894194e-6,3.275800e-4,1,5,4,0.000,false
+Trust Region-Aggressive,2,-7.517662e-13,4.730022e-11,1,4,4,0.000,false
+Trust Region-Aggressive,3,-4.084616e-13,2.587135e-11,1,4,4,0.000,false
+Trust Region-Aggressive,4,-2.164223e-12,8.142133e-11,1,4,4,0.000,false
+Trust Region-Aggressive,5,-2.209657e-11,8.904347e-10,1,4,4,0.000,false
+Trust Region-Aggressive,6,-4.036194e-9,1.972408e-7,1,4,4,0.000,false
+Trust Region-Aggressive,7,-1.564861e-10,8.459968e-9,1,4,4,0.000,false
+Trust Region-Aggressive,8,-1.243360e-6,4.971855e-5,1,5,4,0.000,false
+Trust Region-Aggressive,9,-3.968285e-10,2.086406e-8,1,4,4,0.000,false
+Trust Region-Aggressive,10,-1.247044e-9,6.330805e-8,1,4,4,0.000,false
+Trust Region-Aggressive,11,-6.504603e-14,4.372943e-12,1,4,4,0.000,false
+Trust Region-Aggressive,12,-2.995625e-8,1.372160e-6,1,5,4,0.000,false
+Trust Region-Aggressive,13,-3.259928e-7,1.372130e-5,1,5,4,0.000,false
+Trust Region-Aggressive,14,-2.817788e-10,1.494923e-8,1,4,4,0.000,false
+Trust Region-Aggressive,15,-2.192594e-11,9.763328e-10,1,4,4,0.000,false
+Trust Region-Aggressive,16,-1.527493e-9,7.705695e-8,1,4,4,0.000,false
+Trust Region-Aggressive,17,-1.361658e-10,7.391758e-9,1,4,4,0.000,false
+Trust Region-Aggressive,18,-1.342276e-7,5.835539e-6,1,5,4,0.000,false
+Trust Region-Aggressive,19,-1.541655e-11,8.677928e-10,1,4,4,0.000,false
+Trust Region-Precise,0,-1.900483e-10,1.021526e-8,1,4,4,0.000,false
+Trust Region-Precise,1,-2.082514e-6,8.156976e-5,1,5,4,0.000,false
+Trust Region-Precise,2,-2.346460e-6,9.146203e-5,1,5,4,0.000,false
+Trust Region-Precise,3,-1.844429e-12,1.103230e-10,1,4,4,0.000,false
+Trust Region-Precise,4,-9.912644e-8,4.356260e-6,1,5,4,0.000,false
+Trust Region-Precise,5,-2.814138e-6,1.088749e-4,1,5,4,0.000,false
+Trust Region-Precise,6,-2.902285e-7,1.226876e-5,1,5,4,0.000,false
+Trust Region-Precise,7,-1.630107e-8,7.620855e-7,1,4,4,0.000,false
+Trust Region-Precise,8,-1.507159e-10,8.157091e-9,1,4,4,0.000,false
+Trust Region-Precise,9,-4.766954e-13,1.978956e-11,1,4,4,0.000,false
+Trust Region-Precise,10,-1.991573e-6,7.814921e-5,1,5,4,0.000,false
+Trust Region-Precise,11,-4.706862e-6,1.782150e-4,1,5,4,0.000,false
+Trust Region-Precise,12,-1.482701e-10,8.018498e-9,1,4,4,0.000,false
+Trust Region-Precise,13,-7.405990e-13,4.661740e-11,1,4,4,0.000,false
+Trust Region-Precise,14,-5.557606e-11,2.779293e-9,1,4,4,0.000,false
+Trust Region-Precise,15,-7.429776e-8,3.297444e-6,1,5,4,0.000,false
+Trust Region-Precise,16,-4.647068e-14,3.149792e-12,1,4,4,0.000,false
+Trust Region-Precise,17,-1.798945e-10,9.194750e-9,1,4,4,0.000,false
+Trust Region-Precise,18,-1.543819e-7,6.678121e-6,1,5,4,0.000,false
+Trust Region-Precise,19,-1.020083e-6,4.110934e-5,1,5,4,0.000,false

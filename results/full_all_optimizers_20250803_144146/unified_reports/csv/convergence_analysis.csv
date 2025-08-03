@@ -1,0 +1,26 @@
+Optimizer,Mean_FuncEvals_50%,Mean_FuncEvals_90%,Final_Convergence_FuncEvals
+QQN-GoldenSection,1.3,3.7,11.1
+L-BFGS,2.7,4.1,13.6
+QQN-Bisection-1,1.3,4.3,15.7
+QQN-Bisection-2,1.9,5.6,14.3
+L-BFGS-Aggressive,1.3,4.3,17.4
+QQN-StrongWolfe,1.6,4.2,19.1
+QQN-CubicQuadraticInterpolation,2.2,5.7,23.8
+L-BFGS-MoreThuente,3.5,6.2,28.5
+L-BFGS-Limited,4.4,8.4,43.9
+GD-AdaptiveMomentum,11.6,19.1,24.4
+GD-Momentum,10.3,20.8,37.6
+L-BFGS-Conservative,7.7,18.9,55.8
+Adam-Fast,15.6,27.3,47.2
+GD-Nesterov,22.2,31.3,49.9
+Adam-Robust,13.5,32.0,82.1
+Trust Region-Aggressive,45.3,81.8,91.0
+GD-WeightDecay,12.6,29.7,292.4
+GD,26.1,71.6,257.5
+Trust Region-Standard,77.6,139.8,155.5
+Trust Region-Precise,127.3,229.0,255.4
+Trust Region-Adaptive,198.2,356.7,396.8
+Trust Region-Conservative,209.6,377.4,419.8
+Adam-AMSGrad,137.2,319.3,578.4
+Adam-WeightDecay,127.8,284.8,649.6
+Adam,166.0,372.6,707.7

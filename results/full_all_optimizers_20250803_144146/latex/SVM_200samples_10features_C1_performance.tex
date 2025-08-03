@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for SVM\_200samples\_10features\_C1 Problem}
+\label{tab:svm_200samples_10features_c1}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Bisection-1} & 6.86e-1 & 5.90e-6 & 6.86e-1 & 6.86e-1 & 1454.6 & 0.0 & 1.051 \\
+QQN-CubicQuadraticInterpolation & 6.86e-1 & 5.68e-6 & 6.86e-1 & 6.86e-1 & 289.4 & 0.0 & 0.221 \\
+GD-WeightDecay & 6.86e-1 & 6.77e-7 & 6.86e-1 & 6.86e-1 & 177.0 & 0.0 & 0.172 \\
+L-BFGS-Limited & 6.86e-1 & 1.04e-4 & 6.86e-1 & 6.87e-1 & 770.6 & 0.0 & 0.264 \\
+QQN-GoldenSection & 6.86e-1 & 6.68e-6 & 6.86e-1 & 6.86e-1 & 925.2 & 0.0 & 0.322 \\
+QQN-StrongWolfe & 6.86e-1 & 3.82e-6 & 6.86e-1 & 6.86e-1 & 1065.5 & 0.0 & 0.586 \\
+QQN-Bisection-2 & 6.86e-1 & 1.16e-5 & 6.86e-1 & 6.86e-1 & 911.8 & 0.0 & 0.461 \\
+GD & 6.86e-1 & 1.43e-6 & 6.86e-1 & 6.86e-1 & 450.0 & 0.0 & 0.442 \\
+Adam-AMSGrad & 6.86e-1 & 1.05e-5 & 6.86e-1 & 6.86e-1 & 1996.0 & 0.0 & 1.280 \\
+Adam-Robust & 6.86e-1 & 1.01e-5 & 6.86e-1 & 6.86e-1 & 547.7 & 0.0 & 0.357 \\
+L-BFGS-Conservative & 6.86e-1 & 5.85e-6 & 6.86e-1 & 6.86e-1 & 624.9 & 0.0 & 0.274 \\
+Adam-WeightDecay & 6.86e-1 & 7.69e-6 & 6.86e-1 & 6.86e-1 & 668.9 & 0.0 & 0.428 \\
+L-BFGS & 7.68e-1 & 3.55e-1 & 6.86e-1 & 2.32e0 & 321.6 & 0.0 & 0.146 \\
+L-BFGS-MoreThuente & 5.16e3 & 2.25e4 & 6.86e-1 & 1.03e5 & 555.0 & 0.0 & 0.325 \\
+Adam & 6.86e-1 & 9.76e-6 & 6.86e-1 & 6.86e-1 & 1755.8 & 0.0 & 1.112 \\
+L-BFGS-Aggressive & 6.86e-1 & 6.90e-6 & 6.86e-1 & 6.86e-1 & 124.0 & 0.0 & 0.050 \\
+Adam-Fast & 7.22e-1 & 2.34e-2 & 6.87e-1 & 7.51e-1 & 42.1 & 0.0 & 0.026 \\
+Trust Region-Conservative & 2.49e0 & 1.56e0 & 6.88e-1 & 4.05e0 & 130.4 & 0.0 & 0.068 \\
+Trust Region-Standard & 8.76e-1 & 1.40e-1 & 6.90e-1 & 1.09e0 & 20.8 & 0.0 & 0.011 \\
+GD-Nesterov & 7.03e-1 & 4.03e-3 & 6.94e-1 & 7.12e-1 & 25.7 & 0.0 & 0.024 \\
+Trust Region-Adaptive & 6.77e0 & 1.17e1 & 6.97e-1 & 3.46e1 & 24.4 & 0.0 & 0.013 \\
+GD-Momentum & 7.08e-1 & 5.01e-3 & 6.99e-1 & 7.17e-1 & 25.8 & 0.0 & 0.024 \\
+Trust Region-Precise & 9.09e-1 & 1.95e-1 & 7.00e-1 & 1.21e0 & 36.1 & 0.0 & 0.019 \\
+Trust Region-Aggressive & 1.84e0 & 4.05e-1 & 7.56e-1 & 2.23e0 & 11.8 & 0.0 & 0.006 \\
+GD-AdaptiveMomentum & 7.83e-1 & 1.76e-2 & 7.62e-1 & 8.35e-1 & 18.0 & 0.0 & 0.016 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

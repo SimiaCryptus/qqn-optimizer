@@ -1,0 +1,862 @@
+<h1 id="detailed-analysis-qqn-strongwolfe-on-rosenbrock_5d">Detailed
+Analysis: QQN-StrongWolfe on Rosenbrock_5D</h1>
+<p><a href="benchmark_report.html">← Back to Main Report</a> ## Executive
+Summary <strong>Problem:</strong> Rosenbrock_5D
+<strong>Optimizer:</strong> QQN-StrongWolfe <strong>Problem
+Family:</strong> Rosenbrock <strong>Dimension:</strong> 5
+<strong>Success Threshold:</strong> 3.980e-1 <strong>Total
+Runs:</strong> 20 <strong>Successful Runs:</strong> 20 (100.0%)</p>
+<h3 id="quick-statistics">Quick Statistics</h3>
+<ul>
+<li><strong>Best Final Value:</strong> 2.576193e-1</li>
+<li><strong>Worst Final Value:</strong> 3.953188e-1</li>
+<li><strong>Mean Final Value:</strong> 3.453175e-1</li>
+<li><strong>Success Rate:</strong> 100.0%</li>
+</ul>
+<h2 id="run-by-run-analysis">Run-by-Run Analysis</h2>
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 12px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Run
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Final Value
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Gradient Norm
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Iterations
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Evals
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Grad Evals
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Time (s)
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Converged
+</th>
+<th style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Reason
+</th>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.874e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5.491e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+89
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+63
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.281e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8.912e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+17
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+171
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+163
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.005
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.841e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.232e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+20
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+214
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+197
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.007
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+4
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.985e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+4.471e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+26
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+322
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+281
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.010
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.663e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+4.469e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+82
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1808
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1307
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.052
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.576e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5.900e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+16
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+186
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+159
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.005
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+7
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.953e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.108e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+50
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1030
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+725
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.029
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.786e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+7.318e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+88
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2014
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1505
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.063
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+9
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.682e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6.370e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+26
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+396
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+301
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.012
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+10
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.624e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.555e1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+73
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1543
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1143
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.045
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+11
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.114e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6.304e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+58
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1008
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+813
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.031
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+12
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.581e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.241e1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+5
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+89
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+59
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.002
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+13
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.909e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.264e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+55
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1009
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+759
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.030
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+14
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.811e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.971e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+71
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1571
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1121
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.047
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+15
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.934e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.705e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+24
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+342
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+265
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.014
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+16
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.607e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+8.832e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+40
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+714
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+523
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.021
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+17
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.321e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+6.635e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+69
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1517
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1129
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.044
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+18
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.921e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+1.136e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+26
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+382
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+293
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.011
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+19
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.704e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+3.975e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+44
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+728
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+601
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.022
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+<tr style="background-color: #d4edda;">
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+20
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+2.896e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+7.285e0
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+38
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+720
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+527
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+0.021
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Yes
+</td>
+<td style="border: 1px solid #ddd; padding: 6px; text-align: center;">
+Func Tol
+</td>
+</tr>
+</table>
+<h2 id="convergence-analysis">Convergence Analysis</h2>
+<h3 id="successful-runs-20-out-of-20">Successful Runs (20 out of
+20)</h3>
+<ul>
+<li><strong>Average Iterations to Convergence:</strong> 41.6</li>
+<li><strong>Average Function Evaluations:</strong> 792.6</li>
+<li><strong>Average Time to Convergence:</strong> 0.024s</li>
+<li><strong>Fastest Convergence:</strong> 5 iterations (0.002s)</li>
+<li><strong>Slowest Convergence:</strong> 88 iterations (0.063s)</li>
+</ul>
+<h2 id="parameter-evolution-analysis">Parameter Evolution Analysis</h2>
+<h3 id="best-run-analysis-run-6">Best Run Analysis (Run 6)</h3>
+<p><strong>Final Value:</strong> 2.576193e-1 <strong>Final Gradient
+Norm:</strong> 5.900056e0 <strong>Iterations:</strong> 16
+<strong>Convergence Reason:</strong> FunctionTolerance</p>
+<h4 id="parameter-evolution-selected-iterations">Parameter Evolution
+(Selected Iterations)</h4>
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 11px;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 4px;">
+Iteration
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Function Value
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Gradient Norm
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Step Size
+</th>
+<th style="border: 1px solid #ddd; padding: 4px;">
+Parameters (first 5)
+</th>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.092e3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.531e3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[-1.113e0, 9.620e-1, -1.288e0, 1.147e0, -1.048e0]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.092e3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.531e3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.074e-3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[-9.761e-1, 1.068e-1, -5.247e-1, 9.129e-2, -5.400e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.416e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+4.101e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+5.859e-3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[9.822e-1, 9.743e-1, 3.478e-1, 2.003e-1, 1.026e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3.828e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.715e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.953e-3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[9.896e-1, 5.137e-1, 6.063e-1, 1.822e-1, 7.823e-2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+3.812e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.749e2
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[5.196e-1, 4.269e-1, 3.883e-1, 1.845e-1, -4.833e-2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+12
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+9.216e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+6.405e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[8.783e-1, 7.641e-1, 5.854e-1, 3.388e-1, 9.225e-2]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+13
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+7.373e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+5.681e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[9.289e-1, 8.606e-1, 7.116e-1, 4.840e-1, 1.984e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+14
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+6.373e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.182e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[9.086e-1, 8.456e-1, 7.183e-1, 5.169e-1, 2.904e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+15
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+4.399e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.073e1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+1.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[9.366e-1, 8.804e-1, 7.826e-1, 6.007e-1, 3.499e-1]
+</td>
+</tr>
+<tr>
+<td style="border: 1px solid #ddd; padding: 4px;">
+16
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+2.576e-1
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+5.900e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+0.000e0
+</td>
+<td style="border: 1px solid #ddd; padding: 4px;">
+[9.366e-1, 8.804e-1, 7.826e-1, 6.007e-1, 3.499e-1]
+</td>
+</tr>
+</table>
+<h2 id="performance-analysis">Performance Analysis</h2>
+<h3 id="computational-efficiency">Computational Efficiency</h3>
+<ul>
+<li><strong>Average Function Evaluations per Run:</strong> 792.6</li>
+<li><strong>Average Gradient Evaluations per Run:</strong> 596.7</li>
+<li><strong>Average Iterations per Run:</strong> 41.6</li>
+<li><strong>Average Time per Run:</strong> 0.024s</li>
+<li><strong>Function Evaluations per Second:</strong> 33528.7</li>
+<li><strong>Iterations per Second:</strong> 1761.8 ### Resource
+Utilization</li>
+<li><strong>Total Function Evaluations:</strong> 15853</li>
+<li><strong>Total Gradient Evaluations:</strong> 11934</li>
+<li><strong>Total Computation Time:</strong> 0.5s</li>
+<li><strong>Function/Gradient Ratio:</strong> 1.33 ## Failure
+Analysis</li>
+</ul>
+<p><em>No failed runs to analyze.</em></p>
+<h2 id="data-files">Data Files</h2>
+<ul>
+<li><a href="../data/problems/Rosenbrock_5D_results.csv">Raw CSV
+Data</a></li>
+<li><a href="../plots/Rosenbrock_5D.png">Convergence Plot</a></li>
+<li><a href="../plots/Rosenbrock_5D_log.png">Log Scale Convergence
+Plot</a></li>
+</ul>
+<hr />
+<p><em>Detailed report for QQN-StrongWolfe on Rosenbrock_5D</em>
+<em>Generated on: 2025-08-03 15:33:46 UTC</em> <em><a
+href="../benchmark_report.html">← Back to Main Report</a></em></p>

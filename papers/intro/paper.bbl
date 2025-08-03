@@ -1,0 +1,146 @@
+\begin{thebibliography}{19}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Beiranvand et~al.(2017)Beiranvand, Hare, and
+  Lucet]{beiranvand2017best}
+Vahid Beiranvand, Warren Hare, and Yves Lucet.
+\newblock Best practices for comparing optimization algorithms.
+\newblock \emph{Optimization and Engineering}, 18\penalty0 (4):\penalty0
+  815--848, 2017.
+\newblock \doi{10.1007/s11081-017-9366-1}.
+
+\bibitem[Biggs(1973)]{biggs1973minimization}
+Michael~C Biggs.
+\newblock Minimization algorithms making use of non-quadratic properties of the
+  objective function.
+\newblock \emph{IMA Journal of Applied Mathematics}, 12\penalty0 (3):\penalty0
+  337--357, 1973.
+
+\bibitem[Broyden(1970)]{broyden1970convergence}
+Charles~George Broyden.
+\newblock The convergence of a class of double-rank minimization algorithms 1.
+  {G}eneral considerations.
+\newblock \emph{IMA Journal of Applied Mathematics}, 6\penalty0 (1):\penalty0
+  76--90, 1970.
+\newblock \doi{10.1093/imamat/6.1.76}.
+
+\bibitem[Cauchy(1847)]{cauchy1847methode}
+Augustin Cauchy.
+\newblock M{\'e}thode g{\'e}n{\'e}rale pour la r{\'e}solution des syst{\`e}mes
+  d'{\'e}quations simultan{\'e}es.
+\newblock \emph{Comptes Rendus de l'Acad{\'e}mie des Sciences}, 25:\penalty0
+  536--538, 1847.
+
+\bibitem[Conn et~al.(2000)Conn, Gould, and Toint]{conn2000trust}
+Andrew~R Conn, Nicholas~IM Gould, and Philippe~L Toint.
+\newblock \emph{Trust Region Methods}.
+\newblock SIAM, 2000.
+\newblock ISBN 978-0-898714-60-9.
+
+\bibitem[De~Jong(1975)]{dejong1975analysis}
+Kenneth~Alan De~Jong.
+\newblock \emph{An analysis of the behavior of a class of genetic adaptive
+  systems}.
+\newblock PhD thesis, University of Michigan, Ann Arbor, MI, 1975.
+
+\bibitem[Fletcher(1970)]{fletcher1970new}
+Roger Fletcher.
+\newblock A new approach to variable metric algorithms.
+\newblock \emph{The Computer Journal}, 13\penalty0 (3):\penalty0 317--322,
+  1970.
+\newblock \doi{10.1093/comjnl/13.3.317}.
+
+\bibitem[Goldfarb(1970)]{goldfarb1970family}
+Donald Goldfarb.
+\newblock A family of variable-metric methods derived by variational means.
+\newblock \emph{Mathematics of Computation}, 24\penalty0 (109):\penalty0
+  23--26, 1970.
+\newblock \doi{10.1090/S0025-5718-1970-0258249-6}.
+
+\bibitem[Hansen et~al.(2016)Hansen, Auger, Ros, Mersmann, Tu{\v{s}}ar, and
+  Brockhoff]{hansen2016coco}
+Nikolaus Hansen, Anne Auger, Raymond Ros, Olaf Mersmann, Tea Tu{\v{s}}ar, and
+  Dimo Brockhoff.
+\newblock {COCO}: A platform for comparing continuous optimizers in a black-box
+  setting.
+\newblock \emph{arXiv preprint arXiv:1603.08785}, 2016.
+\newblock \doi{10.48550/arXiv.1603.08785}.
+
+\bibitem[Jamil and Yang(2013)]{jamil2013literature}
+Momin Jamil and Xin-She Yang.
+\newblock A literature survey of benchmark functions for global optimisation
+  problems.
+\newblock \emph{International Journal of Mathematical Modelling and Numerical
+  Optimisation}, 4\penalty0 (2):\penalty0 150--194, 2013.
+\newblock \doi{10.1504/IJMMNO.2013.055204}.
+
+\bibitem[Kingma and Ba(2015)]{kingma2015adam}
+Diederik~P Kingma and Jimmy Ba.
+\newblock Adam: A method for stochastic optimization.
+\newblock \emph{arXiv preprint arXiv:1412.6980}, 2015.
+\newblock \doi{10.48550/arXiv.1412.6980}.
+
+\bibitem[Liang et~al.(2013)Liang, Qu, Suganthan, and
+  Hern{\'a}ndez-D{\'\i}az]{liang2013problem}
+Jing~J Liang, Bo~Yang Qu, Ponnuthurai~Nagaratnam Suganthan, and Alfredo~G
+  Hern{\'a}ndez-D{\'\i}az.
+\newblock Problem definitions and evaluation criteria for the {CEC} 2013
+  special session on real-parameter optimization.
+\newblock \emph{Computational Intelligence Laboratory, Zhengzhou University,
+  Zhengzhou, China and Nanyang Technological University, Singapore, Technical
+  Report}, 201212, 2013.
+
+\bibitem[Liu and Nocedal(1989)]{liu1989limited}
+Dong~C Liu and Jorge Nocedal.
+\newblock On the limited memory {BFGS} method for large scale optimization.
+\newblock \emph{Mathematical Programming}, 45\penalty0 (1-3):\penalty0
+  503--528, 1989.
+\newblock \doi{10.1007/BF01589116}.
+
+\bibitem[Morales and Nocedal(2000)]{morales2000automatic}
+Jos{\'e}~Luis Morales and Jorge Nocedal.
+\newblock Automatic preconditioning by limited memory quasi-{N}ewton updating.
+\newblock \emph{SIAM Journal on Optimization}, 10\penalty0 (4):\penalty0
+  1079--1096, 2000.
+\newblock \doi{10.1137/S1052623497327854}.
+
+\bibitem[Mor{\'e} and Sorensen(1983)]{more1983computing}
+Jorge~J Mor{\'e} and Danny~C Sorensen.
+\newblock Computing a trust region step.
+\newblock \emph{SIAM Journal on Scientific and Statistical Computing},
+  4\penalty0 (3):\penalty0 553--572, 1983.
+\newblock \doi{10.1137/0904038}.
+
+\bibitem[Nesterov(1983)]{nesterov1983method}
+Yurii Nesterov.
+\newblock A method for unconstrained convex minimization problem with the rate
+  of convergence {O}(1/k²).
+\newblock \emph{Doklady AN USSR}, 269:\penalty0 543--547, 1983.
+
+\bibitem[Polyak(1964)]{polyak1964some}
+Boris~T Polyak.
+\newblock Some methods of speeding up the convergence of iteration methods.
+\newblock \emph{USSR Computational Mathematics and Mathematical Physics},
+  4\penalty0 (5):\penalty0 1--17, 1964.
+\newblock \doi{10.1016/0041-5553(64)90137-5}.
+
+\bibitem[Schmidt et~al.(2021)Schmidt, Schneider, and
+  Hennig]{schmidt2021descending}
+Robin~M Schmidt, Frank Schneider, and Philipp Hennig.
+\newblock Descending through a crowded valley--benchmarking deep learning
+  optimizers.
+\newblock \emph{International Conference on Machine Learning}, pages
+  9367--9376, 2021.
+
+\bibitem[Shanno(1970)]{shanno1970conditioning}
+David~F Shanno.
+\newblock Conditioning of quasi-{N}ewton methods for function minimization.
+\newblock \emph{Mathematics of Computation}, 24\penalty0 (111):\penalty0
+  647--656, 1970.
+\newblock \doi{10.1090/S0025-5718-1970-0274029-X}.
+
+\end{thebibliography}

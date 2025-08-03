@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for NoisySphere\_2D\_sigma0.01 Problem}
+\label{tab:noisysphere_2d_sigma0.01}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{L-BFGS-Conservative} & 1.57e0 & 7.01e-2 & 1.46e0 & 1.66e0 & 97.0 & 80.0 & 0.002 \\
+QQN-StrongWolfe & 9.23e-1 & 6.21e-1 & 2.83e-2 & 2.06e0 & 30.5 & 60.0 & 0.001 \\
+L-BFGS-Limited & 1.64e0 & 6.02e-1 & 7.63e-1 & 2.63e0 & 31.4 & 45.0 & 0.001 \\
+L-BFGS & 1.02e1 & 1.19e1 & 7.26e-2 & 3.76e1 & 33.2 & 40.0 & 0.001 \\
+GD-Momentum & 2.45e0 & 8.96e-1 & 1.43e0 & 4.08e0 & 6.8 & 35.0 & 0.001 \\
+GD & 2.20e0 & 6.02e-1 & 1.42e0 & 2.96e0 & 8.9 & 35.0 & 0.001 \\
+Adam-Fast & 2.26e0 & 7.44e-1 & 1.40e0 & 4.41e0 & 12.3 & 35.0 & 0.001 \\
+QQN-Bisection-1 & 1.33e0 & 6.30e-1 & 2.16e-1 & 2.48e0 & 41.2 & 35.0 & 0.003 \\
+GD-AdaptiveMomentum & 2.39e0 & 7.39e-1 & 1.45e0 & 3.76e0 & 6.6 & 30.0 & 0.001 \\
+GD-WeightDecay & 2.30e0 & 5.19e-1 & 1.61e0 & 3.10e0 & 6.8 & 25.0 & 0.001 \\
+GD-Nesterov & 2.82e0 & 9.93e-1 & 1.53e0 & 4.52e0 & 7.0 & 25.0 & 0.001 \\
+L-BFGS-MoreThuente & 1.84e0 & 7.24e-1 & 1.12e-1 & 2.67e0 & 18.7 & 15.0 & 0.001 \\
+Adam-AMSGrad & 2.10e0 & 2.73e-1 & 1.65e0 & 2.60e0 & 25.7 & 5.0 & 0.002 \\
+QQN-GoldenSection & 2.04e0 & 2.79e-1 & 1.45e0 & 2.45e0 & 27.1 & 5.0 & 0.001 \\
+Trust Region-Adaptive & 2.03e0 & 2.74e-1 & 1.67e0 & 2.62e0 & 4.2 & 0.0 & 0.000 \\
+Trust Region-Conservative & 2.06e0 & 2.96e-1 & 1.68e0 & 2.87e0 & 5.0 & 0.0 & 0.000 \\
+L-BFGS-Aggressive & 2.05e0 & 2.75e-1 & 1.69e0 & 2.57e0 & 5.5 & 0.0 & 0.000 \\
+Trust Region-Aggressive & 2.09e0 & 2.18e-1 & 1.70e0 & 2.50e0 & 4.2 & 0.0 & 0.000 \\
+QQN-CubicQuadraticInterpolation & 2.04e0 & 2.13e-1 & 1.70e0 & 2.34e0 & 9.2 & 0.0 & 0.001 \\
+Trust Region-Standard & 2.10e0 & 2.61e-1 & 1.70e0 & 2.64e0 & 4.0 & 0.0 & 0.000 \\
+Adam & 2.13e0 & 2.38e-1 & 1.72e0 & 2.60e0 & 21.4 & 0.0 & 0.001 \\
+Trust Region-Precise & 2.19e0 & 2.25e-1 & 1.76e0 & 2.54e0 & 5.3 & 0.0 & 0.000 \\
+Adam-Robust & 2.10e0 & 2.43e-1 & 1.76e0 & 2.74e0 & 16.9 & 0.0 & 0.001 \\
+Adam-WeightDecay & 2.18e0 & 2.38e-1 & 1.76e0 & 2.70e0 & 27.6 & 0.0 & 0.002 \\
+QQN-Bisection-2 & 1.97e0 & 7.03e-3 & 1.96e0 & 1.97e0 & 2.4 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

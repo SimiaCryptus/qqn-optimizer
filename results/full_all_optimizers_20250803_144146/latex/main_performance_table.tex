@@ -1,0 +1,3066 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\footnotesize
+\begin{longtable}{|l|l|c|c|c|c|c|c|c|}
+\caption{Comprehensive Performance Comparison of Optimization Algorithms} \\
+...
+...
+\hline
+\toprule
+\textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\hline
+\midrule
+\endfirsthead
+\multicolumn{9}{c}%
+{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+\hline
+\toprule
+\textbf{Problem} & \textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\hline
+\midrule
+\endhead
+\hline
+\multicolumn{9}{r}{{Continued on next page}} \\
+\hline
+\endfoot
+\hline
+\bottomrule
+\endlastfoot
+Sphere\_2D & \textbf{Adam-Robust} & 5.86e-2 & 2.41e-2 & 2.27e-2 & 1.25e-1 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam-AMSGrad & 7.20e-2 & 3.21e-2 & 2.82e-2 & 1.30e-1 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam & 7.60e-3 & 2.83e-3 & 4.96e-3 & 1.28e-2 & 2432.4 & 40.0 & 0.049 \\
+\hline
+ & Adam-WeightDecay & 4.98e-3 & 2.03e-5 & 4.94e-3 & 5.00e-3 & 1113.1 & 100.0 & 0.024 \\
+\hline
+ & GD & 4.93e-3 & 5.43e-5 & 4.81e-3 & 5.00e-3 & 152.6 & 100.0 & 0.004 \\
+\hline
+ & Trust Region-Conservative & 1.69e-3 & 1.41e-3 & 2.11e-4 & 4.46e-3 & 602.0 & 100.0 & 0.004 \\
+\hline
+ & L-BFGS-Conservative & 4.28e-3 & 6.13e-4 & 2.80e-3 & 4.97e-3 & 156.2 & 100.0 & 0.004 \\
+\hline
+ & GD-WeightDecay & 4.67e-3 & 1.71e-4 & 4.31e-3 & 4.95e-3 & 51.6 & 100.0 & 0.002 \\
+\hline
+ & Trust Region-Precise & 6.58e-1 & 7.91e-1 & 5.18e-6 & 2.79e0 & 115.3 & 55.0 & 0.001 \\
+\hline
+ & Adam-Fast & 8.78e-2 & 5.67e-2 & 2.82e-4 & 1.34e-1 & 33.5 & 30.0 & 0.001 \\
+\hline
+ & GD-Momentum & 4.85e-4 & 1.02e-3 & 1.93e-4 & 4.95e-3 & 16.9 & 100.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 2.51e-3 & 2.02e-3 & 2.83e-4 & 4.93e-3 & 16.4 & 100.0 & 0.000 \\
+\hline
+ & GD-AdaptiveMomentum & 2.05e-1 & 2.50e-1 & 2.68e-5 & 5.53e-1 & 13.8 & 60.0 & 0.000 \\
+\hline
+ & L-BFGS-Limited & 1.24e-3 & 1.70e-3 & 0.00e0 & 4.92e-3 & 23.1 & 100.0 & 0.000 \\
+\hline
+ & QQN-GoldenSection & 3.22e-14 & 4.92e-15 & 2.46e-14 & 3.96e-14 & 46.0 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 6.68e2 & 6.05e2 & 1.21e-5 & 1.22e3 & 41.1 & 35.0 & 0.000 \\
+\hline
+ & QQN-Bisection-2 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 13.0 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 1.25e3 & 2.01e3 & 7.55e-4 & 6.04e3 & 27.1 & 10.0 & 0.000 \\
+\hline
+ & L-BFGS & 8.79e-5 & 3.32e-4 & 0.00e0 & 1.51e-3 & 13.5 & 100.0 & 0.000 \\
+\hline
+ & QQN-Bisection-1 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 15.0 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 7.95e3 & 5.21e3 & 2.26e-5 & 1.15e4 & 18.6 & 30.0 & 0.000 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 12.0 & 100.0 & 0.000 \\
+\hline
+ & QQN-StrongWolfe & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 11.0 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-MoreThuente & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 10.0 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-Aggressive & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 10.0 & 100.0 & 0.000 \\
+Sphere\_10D & \textbf{Adam-Robust} & 1.08e-1 & 3.40e-2 & 4.84e-2 & 1.71e-1 & 2502.0 & 0.0 & 0.060 \\
+\hline
+ & Adam-AMSGrad & 2.64e-1 & 4.59e-2 & 1.95e-1 & 3.63e-1 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & Adam & 4.98e-3 & 5.65e-5 & 4.94e-3 & 5.21e-3 & 2391.8 & 95.0 & 0.053 \\
+\hline
+ & Adam-WeightDecay & 4.92e-3 & 3.21e-5 & 4.88e-3 & 4.98e-3 & 968.0 & 100.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 3.41e-1 & 3.63e-1 & 1.07e-3 & 1.34e0 & 2968.8 & 35.0 & 0.020 \\
+\hline
+ & GD & 4.91e-3 & 5.40e-5 & 4.82e-3 & 5.00e-3 & 192.4 & 100.0 & 0.005 \\
+\hline
+ & L-BFGS-Conservative & 4.51e-3 & 2.33e-4 & 4.20e-3 & 4.95e-3 & 197.5 & 100.0 & 0.005 \\
+\hline
+ & Trust Region-Precise & 5.27e-1 & 7.84e-1 & 1.01e-4 & 2.83e0 & 504.0 & 65.0 & 0.003 \\
+\hline
+ & GD-WeightDecay & 4.61e-3 & 1.67e-4 & 4.33e-3 & 4.92e-3 & 62.5 & 100.0 & 0.002 \\
+\hline
+ & Trust Region-Adaptive & 7.30e2 & 5.96e2 & 2.03e-4 & 1.22e3 & 139.3 & 30.0 & 0.001 \\
+\hline
+ & Adam-Fast & 6.12e-1 & 2.40e-2 & 5.73e-1 & 6.56e-1 & 37.4 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 1.08e-3 & 1.10e-3 & 5.57e-7 & 4.03e-3 & 40.3 & 100.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 5.51e-1 & 6.74e-1 & 2.42e-4 & 1.41e0 & 18.4 & 60.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 1.59e-1 & 2.14e-1 & 1.53e-5 & 4.62e-1 & 19.9 & 65.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.70e-1 & 2.92e-1 & 2.45e-5 & 7.34e-1 & 19.4 & 75.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 6.75e2 & 1.25e3 & 2.86e-5 & 6.06e3 & 51.8 & 15.0 & 0.000 \\
+\hline
+ & QQN-GoldenSection & 1.60e-13 & 1.03e-14 & 1.45e-13 & 1.79e-13 & 46.0 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.09e4 & 1.85e3 & 5.34e3 & 1.18e4 & 30.3 & 0.0 & 0.000 \\
+\hline
+ & L-BFGS & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 15.0 & 100.0 & 0.000 \\
+\hline
+ & QQN-Bisection-2 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 13.0 & 100.0 & 0.000 \\
+\hline
+ & QQN-Bisection-1 & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 15.0 & 100.0 & 0.000 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 12.0 & 100.0 & 0.000 \\
+\hline
+ & QQN-StrongWolfe & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 11.0 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-MoreThuente & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 10.0 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-Aggressive & 0.00e0 & 0.00e0 & 0.00e0 & 0.00e0 & 10.0 & 100.0 & 0.000 \\
+Rosenbrock\_2D & \textbf{QQN-GoldenSection} & 1.26e-1 & 5.76e-2 & 8.08e-5 & 1.93e-1 & 4248.6 & 10.0 & 0.080 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.73e-2 & 3.12e-2 & 5.16e-3 & 9.89e-2 & 1619.8 & 40.0 & 0.065 \\
+\hline
+ & QQN-StrongWolfe & 5.67e-2 & 7.24e-2 & 4.58e-3 & 3.11e-1 & 2004.3 & 35.0 & 0.059 \\
+\hline
+ & QQN-Bisection-1 & 4.65e-1 & 8.86e-1 & 6.39e-3 & 3.18e0 & 2363.3 & 5.0 & 0.053 \\
+\hline
+ & Adam & 1.22e0 & 3.51e-1 & 4.86e-1 & 1.76e0 & 2502.0 & 0.0 & 0.050 \\
+\hline
+ & L-BFGS-Aggressive & 3.18e1 & 2.86e1 & 4.34e0 & 1.12e2 & 3852.0 & 0.0 & 0.027 \\
+\hline
+ & L-BFGS-Limited & 3.93e0 & 5.18e0 & 3.26e-2 & 1.96e1 & 2251.6 & 0.0 & 0.026 \\
+\hline
+ & GD & 1.23e0 & 1.46e0 & 7.46e-1 & 6.37e0 & 854.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 2.84e1 & 2.98e1 & 1.90e-1 & 1.23e2 & 2770.7 & 0.0 & 0.017 \\
+\hline
+ & L-BFGS-Conservative & 6.53e-3 & 2.16e-3 & 1.09e-3 & 8.39e-3 & 985.0 & 100.0 & 0.016 \\
+\hline
+ & Adam-AMSGrad & 3.83e0 & 1.33e0 & 4.66e-1 & 4.75e0 & 678.1 & 0.0 & 0.015 \\
+\hline
+ & L-BFGS-MoreThuente & 1.91e-2 & 6.42e-2 & 1.40e-4 & 2.99e-1 & 651.0 & 95.0 & 0.011 \\
+\hline
+ & Adam-Robust & 4.04e0 & 8.59e-1 & 1.90e0 & 4.73e0 & 419.2 & 0.0 & 0.009 \\
+\hline
+ & QQN-Bisection-2 & 6.07e-2 & 6.89e-2 & 4.36e-3 & 2.52e-1 & 304.7 & 30.0 & 0.007 \\
+\hline
+ & Trust Region-Precise & 7.26e0 & 8.07e0 & 3.76e0 & 3.52e1 & 946.2 & 0.0 & 0.006 \\
+\hline
+ & Adam-WeightDecay & 4.11e0 & 9.66e-1 & 1.55e-2 & 4.69e0 & 231.9 & 0.0 & 0.005 \\
+\hline
+ & Adam-Fast & 2.13e0 & 2.74e0 & 8.12e-3 & 8.39e0 & 171.8 & 60.0 & 0.003 \\
+\hline
+ & Trust Region-Adaptive & 4.12e0 & 2.07e-1 & 3.83e0 & 4.42e0 & 494.4 & 0.0 & 0.003 \\
+\hline
+ & GD-WeightDecay & 3.65e0 & 3.07e0 & 3.75e-2 & 1.07e1 & 58.7 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.36e2 & 1.58e2 & 8.12e-1 & 5.03e2 & 121.5 & 0.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & 6.54e-1 & 1.23e0 & 3.23e-3 & 4.36e0 & 47.7 & 25.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 1.49e0 & 1.88e0 & 5.05e-2 & 5.63e0 & 46.1 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 5.61e0 & 3.44e0 & 4.79e-1 & 1.33e1 & 23.8 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 4.18e0 & 1.83e-1 & 3.95e0 & 4.51e0 & 89.6 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 4.66e0 & 3.99e-1 & 4.01e0 & 5.49e0 & 27.6 & 0.0 & 0.000 \\
+Rosenbrock\_5D & \textbf{QQN-GoldenSection} & 6.13e-1 & 3.74e-1 & 2.60e-1 & 1.61e0 & 3314.1 & 55.0 & 0.061 \\
+\hline
+ & Adam-Robust & 1.46e1 & 6.99e0 & 6.12e0 & 2.99e1 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & Adam-AMSGrad & 4.40e0 & 3.25e-1 & 3.25e0 & 4.82e0 & 2442.0 & 0.0 & 0.057 \\
+\hline
+ & Adam & 3.92e0 & 4.66e-1 & 2.83e0 & 4.65e0 & 2471.6 & 0.0 & 0.050 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.25e-1 & 1.40e-1 & 2.38e-1 & 7.25e-1 & 1199.2 & 70.0 & 0.049 \\
+\hline
+ & L-BFGS-Limited & 4.21e-1 & 3.55e-2 & 3.92e-1 & 5.47e-1 & 3855.4 & 45.0 & 0.044 \\
+\hline
+ & QQN-Bisection-2 & 4.48e-1 & 1.63e-1 & 2.15e-1 & 9.11e-1 & 1588.3 & 55.0 & 0.038 \\
+\hline
+ & L-BFGS-Conservative & 2.02e1 & 6.75e1 & 3.89e-1 & 3.11e2 & 3106.7 & 20.0 & 0.032 \\
+\hline
+ & QQN-Bisection-1 & 6.94e-1 & 1.01e0 & 2.50e-1 & 4.64e0 & 1147.7 & 85.0 & 0.029 \\
+\hline
+ & L-BFGS-Aggressive & 8.07e2 & 4.06e2 & 1.72e1 & 1.19e3 & 3851.6 & 0.0 & 0.028 \\
+\hline
+ & Adam-WeightDecay & 2.07e0 & 2.05e0 & 3.93e-1 & 4.66e0 & 1128.9 & 60.0 & 0.025 \\
+\hline
+ & QQN-StrongWolfe & 3.45e-1 & 4.37e-2 & 2.58e-1 & 3.95e-1 & 792.6 & 100.0 & 0.024 \\
+\hline
+ & Trust Region-Conservative & 1.02e3 & 1.63e2 & 7.14e2 & 1.31e3 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Precise & 1.01e3 & 1.27e2 & 8.08e2 & 1.35e3 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Adaptive & 8.41e2 & 1.37e2 & 5.05e2 & 1.11e3 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & L-BFGS-MoreThuente & 9.01e-1 & 1.03e0 & 2.37e-1 & 3.50e0 & 1090.7 & 70.0 & 0.019 \\
+\hline
+ & Trust Region-Standard & 6.23e1 & 7.73e1 & 4.66e0 & 2.53e2 & 2827.2 & 0.0 & 0.018 \\
+\hline
+ & GD-Nesterov & 4.24e0 & 5.00e0 & 3.90e-1 & 1.31e1 & 335.4 & 10.0 & 0.011 \\
+\hline
+ & Trust Region-Aggressive & 5.00e0 & 4.17e-1 & 4.66e0 & 5.93e0 & 776.1 & 0.0 & 0.005 \\
+\hline
+ & GD-WeightDecay & 7.30e-1 & 1.08e0 & 3.59e-1 & 5.40e0 & 72.1 & 60.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.50e2 & 2.28e2 & 1.98e1 & 7.52e2 & 135.3 & 0.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.44e1 & 3.86e0 & 3.48e-1 & 1.86e1 & 44.4 & 5.0 & 0.001 \\
+\hline
+ & GD & 5.09e0 & 1.48e-1 & 4.75e0 & 5.31e0 & 32.5 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 4.60e1 & 6.15e0 & 3.36e1 & 5.66e1 & 20.6 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.55e1 & 8.91e0 & 1.96e1 & 4.95e1 & 20.8 & 0.0 & 0.001 \\
+Rosenbrock\_10D & \textbf{Adam-Robust} & 3.49e1 & 9.88e0 & 1.61e1 & 5.15e1 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam-AMSGrad & 9.69e0 & 8.57e-3 & 9.66e0 & 9.70e0 & 2353.0 & 100.0 & 0.059 \\
+\hline
+ & L-BFGS-Aggressive & 1.64e2 & 3.20e2 & 5.82e1 & 1.56e3 & 3850.3 & 0.0 & 0.051 \\
+\hline
+ & Adam & 9.71e0 & 6.65e-2 & 9.68e0 & 9.93e0 & 2293.1 & 90.0 & 0.050 \\
+\hline
+ & Trust Region-Conservative & 2.16e3 & 2.33e2 & 1.76e3 & 2.55e3 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Standard & 1.06e3 & 2.06e2 & 6.70e2 & 1.41e3 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Adaptive & 2.02e3 & 2.22e2 & 1.64e3 & 2.59e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Precise & 2.10e3 & 1.92e2 & 1.66e3 & 2.46e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Adam-WeightDecay & 9.67e0 & 2.09e-2 & 9.61e0 & 9.70e0 & 789.4 & 100.0 & 0.019 \\
+\hline
+ & Trust Region-Aggressive & 1.00e1 & 3.85e-1 & 9.59e0 & 1.09e1 & 1615.8 & 30.0 & 0.011 \\
+\hline
+ & L-BFGS-Conservative & 9.68e0 & 1.80e-2 & 9.63e0 & 9.70e0 & 205.3 & 100.0 & 0.005 \\
+\hline
+ & QQN-GoldenSection & 9.45e0 & 1.57e-1 & 9.03e0 & 9.66e0 & 277.2 & 100.0 & 0.005 \\
+\hline
+ & L-BFGS & 1.19e2 & 1.68e2 & 2.51e1 & 7.37e2 & 338.9 & 0.0 & 0.004 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 9.60e0 & 5.83e-2 & 9.48e0 & 9.70e0 & 109.6 & 100.0 & 0.004 \\
+\hline
+ & L-BFGS-MoreThuente & 9.20e0 & 1.98e0 & 7.83e0 & 1.75e1 & 212.8 & 95.0 & 0.004 \\
+\hline
+ & QQN-Bisection-1 & 8.47e0 & 8.02e-1 & 7.17e0 & 9.68e0 & 120.3 & 100.0 & 0.004 \\
+\hline
+ & QQN-StrongWolfe & 8.69e0 & 5.85e-1 & 7.76e0 & 9.57e0 & 90.3 & 100.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & 9.37e0 & 3.57e-1 & 8.02e0 & 9.67e0 & 83.2 & 100.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.94e1 & 1.08e1 & 9.18e0 & 3.68e1 & 61.6 & 45.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 9.58e0 & 5.37e-2 & 9.45e0 & 9.67e0 & 35.7 & 100.0 & 0.001 \\
+\hline
+ & GD & 9.75e0 & 2.14e-1 & 9.59e0 & 1.02e1 & 41.5 & 75.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.53e1 & 2.87e1 & 9.32e0 & 7.27e1 & 35.0 & 55.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 9.59e0 & 4.89e-2 & 9.51e0 & 9.68e0 & 62.3 & 100.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 9.31e0 & 1.92e-1 & 8.97e0 & 9.62e0 & 28.6 & 100.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 1.02e2 & 9.83e0 & 8.45e1 & 1.16e2 & 23.1 & 0.0 & 0.001 \\
+Michalewicz\_2D\_m10 & \textbf{QQN-Bisection-1} & -1.99e-2 & 8.69e-2 & -3.99e-1 & -1.17e-13 & 1278.7 & 0.0 & 0.034 \\
+\hline
+ & Adam & -4.98e-1 & 4.98e-1 & -9.97e-1 & -2.05e-12 & 1642.0 & 50.0 & 0.032 \\
+\hline
+ & QQN-StrongWolfe & -4.01e-2 & 1.75e-1 & -8.01e-1 & -8.45e-13 & 1192.1 & 0.0 & 0.029 \\
+\hline
+ & QQN-GoldenSection & -7.52e-7 & 2.11e-6 & -9.60e-6 & -8.52e-13 & 1573.8 & 0.0 & 0.026 \\
+\hline
+ & QQN-Bisection-2 & -4.01e-2 & 1.75e-1 & -8.01e-1 & -4.27e-14 & 1074.5 & 0.0 & 0.025 \\
+\hline
+ & Adam-Fast & -4.71e-1 & 4.78e-1 & -1.00e0 & -4.63e-13 & 1058.0 & 40.0 & 0.021 \\
+\hline
+ & L-BFGS-Aggressive & -8.97e-2 & 2.69e-1 & -8.97e-1 & -2.07e-13 & 1145.5 & 0.0 & 0.015 \\
+\hline
+ & L-BFGS-Conservative & -7.20e-7 & 2.35e-6 & -1.07e-5 & -2.95e-14 & 838.7 & 0.0 & 0.014 \\
+\hline
+ & GD-WeightDecay & -3.24e-6 & 7.04e-6 & -2.45e-5 & -3.78e-13 & 423.0 & 0.0 & 0.013 \\
+\hline
+ & L-BFGS & -9.99e-2 & 3.00e-1 & -1.00e0 & -4.83e-13 & 802.0 & 10.0 & 0.013 \\
+\hline
+ & L-BFGS-MoreThuente & -2.50e-1 & 4.32e-1 & -1.00e0 & -4.09e-13 & 752.4 & 25.0 & 0.011 \\
+\hline
+ & GD-Nesterov & -9.98e-2 & 2.99e-1 & -9.99e-1 & -3.87e-13 & 272.0 & 10.0 & 0.008 \\
+\hline
+ & GD & -1.16e-6 & 2.04e-6 & -7.38e-6 & -3.67e-14 & 252.8 & 0.0 & 0.006 \\
+\hline
+ & L-BFGS-Limited & -2.50e-1 & 4.32e-1 & -1.00e0 & -3.18e-14 & 466.0 & 25.0 & 0.006 \\
+\hline
+ & Adam-AMSGrad & -2.99e-1 & 4.57e-1 & -9.96e-1 & -1.10e-12 & 192.4 & 30.0 & 0.004 \\
+\hline
+ & GD-Momentum & -3.25e-2 & 1.42e-1 & -6.49e-1 & -6.08e-14 & 42.9 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & -5.00e-2 & 2.18e-1 & -9.99e-1 & -6.90e-14 & 29.5 & 5.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & -5.13e-7 & 2.19e-6 & -1.00e-5 & -4.20e-14 & 19.1 & 0.0 & 0.000 \\
+\hline
+ & Adam-Robust & -3.65e-7 & 9.47e-7 & -3.26e-6 & -9.07e-14 & 13.0 & 0.0 & 0.000 \\
+\hline
+ & Adam-WeightDecay & -3.49e-7 & 6.17e-7 & -2.33e-6 & -7.24e-14 & 13.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & -7.80e-7 & 1.28e-6 & -4.71e-6 & -4.65e-14 & 4.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & -4.40e-7 & 7.97e-7 & -2.59e-6 & -3.25e-14 & 4.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & -5.33e-7 & 1.94e-6 & -8.89e-6 & -6.50e-14 & 4.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Conservative & -8.81e-7 & 3.16e-6 & -1.46e-5 & -1.54e-13 & 4.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & -6.09e-7 & 2.15e-6 & -9.91e-6 & -1.36e-13 & 4.2 & 0.0 & 0.000 \\
+Michalewicz\_5D\_m10 & \textbf{QQN-CubicQuadraticInterpolation} & -8.49e-1 & 4.86e-1 & -1.88e0 & -4.46e-5 & 1726.7 & 0.0 & 0.055 \\
+\hline
+ & QQN-StrongWolfe & -1.76e0 & 7.40e-1 & -2.79e0 & -5.69e-5 & 1288.2 & 25.0 & 0.040 \\
+\hline
+ & QQN-Bisection-1 & -1.78e0 & 6.73e-1 & -2.74e0 & -8.39e-1 & 1432.2 & 20.0 & 0.036 \\
+\hline
+ & QQN-GoldenSection & -1.36e0 & 7.15e-1 & -2.69e0 & -3.60e-6 & 1751.2 & 5.0 & 0.033 \\
+\hline
+ & QQN-Bisection-2 & -1.78e0 & 8.34e-1 & -2.85e0 & -2.09e-4 & 1315.8 & 35.0 & 0.032 \\
+\hline
+ & L-BFGS-Conservative & -1.78e0 & 7.13e-1 & -2.69e0 & -8.39e-1 & 1302.2 & 30.0 & 0.027 \\
+\hline
+ & L-BFGS-Aggressive & -4.98e-1 & 3.88e-1 & -1.25e0 & 1.67e-8 & 3524.2 & 0.0 & 0.027 \\
+\hline
+ & L-BFGS-Limited & -8.44e-1 & 6.65e-1 & -1.86e0 & -3.16e-6 & 2003.6 & 0.0 & 0.025 \\
+\hline
+ & GD & -2.00e0 & 7.11e-1 & -2.69e0 & -8.39e-1 & 738.0 & 45.0 & 0.019 \\
+\hline
+ & Adam-AMSGrad & -2.17e0 & 6.28e-1 & -2.71e0 & -8.39e-1 & 439.6 & 55.0 & 0.011 \\
+\hline
+ & Adam & -2.46e0 & 5.04e-1 & -2.71e0 & -8.39e-1 & 474.6 & 80.0 & 0.010 \\
+\hline
+ & L-BFGS-MoreThuente & -1.39e0 & 5.83e-1 & -2.73e0 & -8.39e-1 & 519.5 & 5.0 & 0.010 \\
+\hline
+ & GD-Nesterov & -1.24e0 & 6.70e-1 & -2.69e0 & -6.95e-1 & 159.9 & 5.0 & 0.005 \\
+\hline
+ & Adam-WeightDecay & -1.75e0 & 5.79e-1 & -2.69e0 & -8.31e-1 & 178.5 & 10.0 & 0.004 \\
+\hline
+ & GD-WeightDecay & -1.24e0 & 5.21e-1 & -2.69e0 & -7.45e-1 & 86.0 & 5.0 & 0.003 \\
+\hline
+ & Adam-Robust & -1.65e0 & 7.13e-1 & -2.69e0 & -8.20e-1 & 83.1 & 10.0 & 0.002 \\
+\hline
+ & Trust Region-Conservative & -9.74e-1 & 4.08e-1 & -1.86e0 & -1.78e-3 & 263.6 & 0.0 & 0.002 \\
+\hline
+ & GD-Momentum & -1.11e0 & 8.01e-1 & -2.69e0 & -4.00e-5 & 51.9 & 5.0 & 0.002 \\
+\hline
+ & Adam-Fast & -2.62e0 & 4.21e-1 & -3.29e0 & -1.68e0 & 70.8 & 65.0 & 0.002 \\
+\hline
+ & L-BFGS & -2.16e-1 & 2.92e-1 & -8.96e-1 & -1.24e-6 & 90.4 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & -1.09e0 & 5.78e-1 & -2.69e0 & -4.06e-1 & 27.8 & 5.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & -9.85e-1 & 6.29e-1 & -1.74e0 & -1.94e-6 & 41.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & -7.58e-1 & 6.00e-1 & -1.73e0 & -4.40e-4 & 10.8 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & -3.29e-1 & 4.87e-1 & -1.53e0 & -4.71e-5 & 5.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & -1.81e-1 & 2.12e-1 & -7.69e-1 & -2.00e-4 & 5.0 & 0.0 & 0.000 \\
+Michalewicz\_10D\_m10 & \textbf{QQN-CubicQuadraticInterpolation} & -3.34e0 & 1.51e0 & -6.26e0 & -9.35e-1 & 1730.8 & 0.0 & 0.071 \\
+\hline
+ & QQN-StrongWolfe & -4.71e0 & 1.16e0 & -6.27e0 & -2.13e0 & 1916.5 & 5.0 & 0.061 \\
+\hline
+ & QQN-Bisection-1 & -4.24e0 & 1.09e0 & -5.36e0 & -2.14e0 & 2030.0 & 0.0 & 0.056 \\
+\hline
+ & QQN-Bisection-2 & -4.37e0 & 1.24e0 & -6.26e0 & -1.67e0 & 1808.5 & 5.0 & 0.047 \\
+\hline
+ & QQN-GoldenSection & -4.14e0 & 1.08e0 & -6.30e0 & -2.32e0 & 2197.4 & 5.0 & 0.045 \\
+\hline
+ & L-BFGS-Limited & -3.52e0 & 1.38e0 & -5.59e0 & -6.44e-1 & 3009.3 & 0.0 & 0.039 \\
+\hline
+ & L-BFGS-Conservative & -4.54e0 & 9.46e-1 & -6.26e0 & -2.94e0 & 2566.8 & 0.0 & 0.038 \\
+\hline
+ & L-BFGS-Aggressive & -1.30e0 & 9.34e-1 & -3.26e0 & 3.39e-1 & 3050.9 & 0.0 & 0.021 \\
+\hline
+ & L-BFGS-MoreThuente & -4.11e0 & 7.64e-1 & -5.98e0 & -2.73e0 & 925.2 & 0.0 & 0.020 \\
+\hline
+ & Adam & -5.84e0 & 5.72e-1 & -6.27e0 & -4.65e0 & 508.9 & 20.0 & 0.012 \\
+\hline
+ & Adam-AMSGrad & -5.74e0 & 6.30e-1 & -6.28e0 & -4.40e0 & 450.1 & 30.0 & 0.012 \\
+\hline
+ & GD-WeightDecay & -4.56e0 & 7.54e-1 & -6.26e0 & -2.97e0 & 174.7 & 0.0 & 0.006 \\
+\hline
+ & Trust Region-Conservative & -3.71e0 & 9.15e-1 & -5.42e0 & -2.14e0 & 644.0 & 0.0 & 0.005 \\
+\hline
+ & Adam-WeightDecay & -5.31e0 & 5.80e-1 & -6.25e0 & -4.38e0 & 179.3 & 0.0 & 0.005 \\
+\hline
+ & Adam-Robust & -5.03e0 & 7.58e-1 & -6.26e0 & -3.55e0 & 111.0 & 0.0 & 0.003 \\
+\hline
+ & Adam-Fast & -6.12e0 & 4.94e-1 & -6.77e0 & -4.58e0 & 106.2 & 35.0 & 0.002 \\
+\hline
+ & GD-Momentum & -3.79e0 & 1.08e0 & -5.24e0 & -1.13e0 & 37.3 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & -4.52e0 & 7.73e-1 & -6.23e0 & -2.85e0 & 27.6 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS & -3.66e-1 & 3.76e-1 & -1.14e0 & 6.67e-2 & 64.8 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & -3.69e0 & 9.58e-1 & -5.30e0 & -2.10e0 & 114.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & -3.74e0 & 1.19e0 & -6.19e0 & -1.81e0 & 26.9 & 0.0 & 0.001 \\
+\hline
+ & GD & -3.59e0 & 7.26e-1 & -5.04e0 & -2.59e0 & 17.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & -3.26e0 & 9.04e-1 & -5.27e0 & -1.43e0 & 28.7 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & -2.49e0 & 1.15e0 & -4.98e0 & -5.97e-1 & 9.8 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & -1.68e0 & 6.53e-1 & -3.16e0 & -5.90e-1 & 5.3 & 0.0 & 0.000 \\
+Rastrigin\_2D & \textbf{L-BFGS-Aggressive} & 2.81e1 & 4.88e0 & 1.91e1 & 3.73e1 & 3851.8 & 0.0 & 0.024 \\
+\hline
+ & Trust Region-Conservative & 1.85e1 & 4.65e0 & 9.36e0 & 2.65e1 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Adam-AMSGrad & 1.02e1 & 2.48e0 & 7.96e0 & 1.29e1 & 770.2 & 55.0 & 0.018 \\
+\hline
+ & Adam & 1.02e1 & 2.48e0 & 7.96e0 & 1.29e1 & 780.5 & 55.0 & 0.016 \\
+\hline
+ & L-BFGS-Conservative & 9.82e0 & 5.01e0 & 7.96e0 & 3.02e1 & 455.9 & 75.0 & 0.006 \\
+\hline
+ & Trust Region-Precise & 9.71e0 & 2.37e0 & 7.96e0 & 1.29e1 & 915.9 & 10.0 & 0.006 \\
+\hline
+ & Adam-WeightDecay & 9.71e0 & 2.38e0 & 7.96e0 & 1.30e1 & 254.7 & 50.0 & 0.006 \\
+\hline
+ & L-BFGS-MoreThuente & 8.56e0 & 5.94e0 & 1.83e0 & 3.12e1 & 170.8 & 55.0 & 0.003 \\
+\hline
+ & Adam-Robust & 9.22e0 & 2.16e0 & 7.96e0 & 1.30e1 & 111.5 & 15.0 & 0.003 \\
+\hline
+ & QQN-Bisection-1 & 8.59e0 & 4.47e0 & 1.03e0 & 1.69e1 & 125.3 & 65.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 8.19e0 & 5.01e0 & 1.29e-1 & 1.79e1 & 156.0 & 55.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 7.75e0 & 3.18e0 & 2.17e0 & 1.59e1 & 64.2 & 80.0 & 0.002 \\
+\hline
+ & Trust Region-Adaptive & 9.68e0 & 3.46e0 & 7.96e0 & 2.21e1 & 241.0 & 15.0 & 0.002 \\
+\hline
+ & QQN-StrongWolfe & 8.32e0 & 4.20e0 & 1.36e0 & 1.69e1 & 71.4 & 65.0 & 0.002 \\
+\hline
+ & L-BFGS-Limited & 9.13e0 & 2.25e0 & 5.86e0 & 1.29e1 & 106.5 & 70.0 & 0.001 \\
+\hline
+ & L-BFGS & 5.70e1 & 3.05e1 & 2.49e0 & 1.31e2 & 88.4 & 5.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 1.01e1 & 2.27e0 & 7.96e0 & 1.34e1 & 24.3 & 5.0 & 0.001 \\
+\hline
+ & Adam-Fast & 9.46e0 & 2.04e0 & 8.02e0 & 1.43e1 & 36.3 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 8.98e0 & 1.78e0 & 7.97e0 & 1.34e1 & 21.5 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.04e1 & 2.44e0 & 7.98e0 & 1.57e1 & 22.7 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 1.00e1 & 2.35e0 & 7.96e0 & 1.37e1 & 20.1 & 5.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 8.57e0 & 4.87e0 & 2.07e0 & 1.69e1 & 23.8 & 30.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 9.02e0 & 1.98e0 & 7.96e0 & 1.30e1 & 63.8 & 0.0 & 0.000 \\
+\hline
+ & GD & 1.04e1 & 2.51e0 & 7.96e0 & 1.40e1 & 13.3 & 5.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.29e1 & 8.89e0 & 7.97e0 & 3.74e1 & 20.1 & 0.0 & 0.000 \\
+Rastrigin\_5D & \textbf{L-BFGS-Aggressive} & 7.97e1 & 9.04e0 & 5.68e1 & 9.50e1 & 3852.0 & 0.0 & 0.032 \\
+\hline
+ & Trust Region-Conservative & 6.91e1 & 7.96e0 & 5.03e1 & 8.29e1 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Adam-AMSGrad & 2.38e1 & 3.35e0 & 2.04e1 & 2.99e1 & 719.2 & 40.0 & 0.018 \\
+\hline
+ & Adam & 2.42e1 & 3.17e0 & 2.03e1 & 2.99e1 & 745.3 & 30.0 & 0.017 \\
+\hline
+ & Trust Region-Precise & 2.39e1 & 3.48e0 & 2.03e1 & 2.99e1 & 2558.8 & 35.0 & 0.017 \\
+\hline
+ & L-BFGS-Conservative & 2.34e1 & 3.92e0 & 1.99e1 & 3.61e1 & 881.9 & 40.0 & 0.011 \\
+\hline
+ & Adam-WeightDecay & 2.27e1 & 3.13e0 & 2.02e1 & 2.99e1 & 246.9 & 55.0 & 0.006 \\
+\hline
+ & Trust Region-Adaptive & 2.34e1 & 5.02e0 & 2.02e1 & 4.05e1 & 646.1 & 60.0 & 0.004 \\
+\hline
+ & QQN-GoldenSection & 2.31e1 & 9.30e0 & 7.97e0 & 4.97e1 & 266.0 & 35.0 & 0.004 \\
+\hline
+ & QQN-Bisection-1 & 2.48e1 & 4.08e0 & 1.80e1 & 3.38e1 & 186.6 & 25.0 & 0.004 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.30e1 & 8.41e0 & 4.91e0 & 4.28e1 & 106.2 & 50.0 & 0.003 \\
+\hline
+ & L-BFGS-MoreThuente & 2.77e1 & 2.23e1 & 7.71e0 & 9.40e1 & 165.1 & 50.0 & 0.003 \\
+\hline
+ & QQN-StrongWolfe & 2.36e1 & 5.65e0 & 1.16e1 & 4.08e1 & 100.2 & 40.0 & 0.003 \\
+\hline
+ & Adam-Robust & 2.24e1 & 3.09e0 & 1.99e1 & 2.99e1 & 103.5 & 55.0 & 0.003 \\
+\hline
+ & GD-AdaptiveMomentum & 2.14e1 & 2.74e0 & 1.83e1 & 2.99e1 & 52.4 & 65.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 2.25e1 & 2.90e0 & 1.89e1 & 2.99e1 & 37.8 & 50.0 & 0.002 \\
+\hline
+ & L-BFGS-Limited & 2.84e1 & 1.49e1 & 1.70e1 & 6.88e1 & 115.2 & 35.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.02e2 & 2.33e1 & 5.89e1 & 1.42e2 & 98.2 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 2.33e1 & 3.56e0 & 1.92e1 & 3.17e1 & 48.9 & 40.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 2.37e1 & 4.00e0 & 1.99e1 & 3.05e1 & 41.2 & 45.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 2.31e1 & 3.22e0 & 1.95e1 & 2.99e1 & 168.5 & 45.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.03e1 & 6.57e0 & 2.04e1 & 4.94e1 & 28.9 & 5.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 3.08e1 & 1.62e1 & 1.10e1 & 6.07e1 & 36.6 & 15.0 & 0.001 \\
+\hline
+ & GD & 2.44e1 & 3.48e0 & 1.99e1 & 3.05e1 & 15.7 & 30.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 2.33e1 & 5.41e0 & 1.82e1 & 4.25e1 & 45.7 & 50.0 & 0.000 \\
+Rastrigin\_10D & \textbf{L-BFGS-Aggressive} & 1.63e2 & 1.31e1 & 1.40e2 & 1.87e2 & 3852.0 & 0.0 & 0.031 \\
+\hline
+ & Trust Region-Precise & 9.70e1 & 1.03e1 & 6.33e1 & 1.13e2 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 1.57e2 & 1.05e1 & 1.28e2 & 1.71e2 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & L-BFGS-Conservative & 4.68e1 & 8.45e0 & 4.06e1 & 7.77e1 & 2037.2 & 20.0 & 0.020 \\
+\hline
+ & Adam-AMSGrad & 4.48e1 & 4.03e0 & 4.17e1 & 5.47e1 & 718.0 & 55.0 & 0.018 \\
+\hline
+ & Adam & 4.65e1 & 4.42e0 & 4.16e1 & 5.97e1 & 731.5 & 30.0 & 0.016 \\
+\hline
+ & Trust Region-Adaptive & 4.39e1 & 2.92e0 & 4.16e1 & 4.98e1 & 1397.8 & 40.0 & 0.010 \\
+\hline
+ & GD-Nesterov & 4.50e1 & 4.13e0 & 4.02e1 & 5.49e1 & 249.0 & 25.0 & 0.009 \\
+\hline
+ & Adam-WeightDecay & 4.52e1 & 3.97e0 & 4.15e1 & 5.48e1 & 253.8 & 35.0 & 0.006 \\
+\hline
+ & L-BFGS-MoreThuente & 4.11e1 & 7.33e0 & 2.56e1 & 6.07e1 & 291.6 & 65.0 & 0.006 \\
+\hline
+ & QQN-Bisection-1 & 5.11e1 & 1.61e1 & 3.88e1 & 8.86e1 & 216.4 & 45.0 & 0.005 \\
+\hline
+ & QQN-GoldenSection & 4.53e1 & 1.18e1 & 2.11e1 & 7.26e1 & 275.4 & 50.0 & 0.005 \\
+\hline
+ & QQN-StrongWolfe & 5.16e1 & 1.59e1 & 3.24e1 & 9.55e1 & 118.5 & 40.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.52e1 & 7.84e0 & 3.21e1 & 5.87e1 & 102.5 & 60.0 & 0.003 \\
+\hline
+ & Adam-Robust & 4.44e1 & 4.07e0 & 4.13e1 & 5.48e1 & 127.9 & 30.0 & 0.003 \\
+\hline
+ & Trust Region-Standard & 4.59e1 & 6.59e0 & 4.10e1 & 7.11e1 & 346.6 & 25.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 4.39e1 & 3.41e0 & 3.60e1 & 4.98e1 & 61.3 & 45.0 & 0.002 \\
+\hline
+ & Adam-Fast & 4.51e1 & 4.26e0 & 3.98e1 & 5.44e1 & 71.9 & 30.0 & 0.002 \\
+\hline
+ & L-BFGS-Limited & 4.36e1 & 4.97e0 & 3.39e1 & 5.47e1 & 122.0 & 50.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.85e2 & 3.27e1 & 1.42e2 & 2.59e2 & 102.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 5.38e1 & 1.81e1 & 2.52e1 & 8.86e1 & 50.6 & 15.0 & 0.001 \\
+\hline
+ & GD-Momentum & 6.15e1 & 1.25e1 & 4.06e1 & 8.46e1 & 30.6 & 10.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 4.85e1 & 8.54e0 & 3.80e1 & 6.99e1 & 23.2 & 40.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 4.36e1 & 3.69e0 & 3.87e1 & 5.26e1 & 93.5 & 45.0 & 0.001 \\
+\hline
+ & GD & 4.47e1 & 4.34e0 & 3.89e1 & 5.49e1 & 19.4 & 35.0 & 0.001 \\
+Ackley\_2D\_a20\_b0.2\_c6.28e0 & \textbf{L-BFGS-Aggressive} & 3.74e0 & 3.90e-1 & 2.80e0 & 4.38e0 & 3083.9 & 20.0 & 0.018 \\
+\hline
+ & Adam-AMSGrad & 3.57e0 & 2.23e-5 & 3.57e0 & 3.57e0 & 753.0 & 0.0 & 0.017 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.44e0 & 4.86e-1 & 1.95e0 & 4.24e0 & 496.8 & 40.0 & 0.014 \\
+\hline
+ & Adam & 3.57e0 & 5.40e-5 & 3.57e0 & 3.57e0 & 301.6 & 0.0 & 0.006 \\
+\hline
+ & L-BFGS-Conservative & 3.57e0 & 1.87e-8 & 3.57e0 & 3.57e0 & 183.6 & 0.0 & 0.004 \\
+\hline
+ & L-BFGS & 3.20e0 & 4.86e-1 & 1.89e0 & 3.57e0 & 202.7 & 50.0 & 0.003 \\
+\hline
+ & Adam-WeightDecay & 3.58e0 & 8.83e-4 & 3.57e0 & 3.58e0 & 119.4 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS-Limited & 3.37e0 & 7.29e-1 & 2.64e-1 & 3.57e0 & 176.7 & 15.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 3.18e0 & 6.29e-1 & 1.58e0 & 3.57e0 & 137.5 & 35.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 3.59e0 & 2.07e-2 & 3.57e0 & 3.66e0 & 49.2 & 0.0 & 0.002 \\
+\hline
+ & QQN-StrongWolfe & 3.49e0 & 1.92e-1 & 3.00e0 & 3.57e0 & 62.8 & 15.0 & 0.001 \\
+\hline
+ & Trust Region-Conservative & 3.58e0 & 1.90e-2 & 3.57e0 & 3.64e0 & 171.2 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 3.62e0 & 6.41e-2 & 3.57e0 & 3.79e0 & 52.9 & 0.0 & 0.001 \\
+\hline
+ & Adam-Robust & 3.58e0 & 3.34e-3 & 3.57e0 & 3.59e0 & 42.9 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 2.85e0 & 1.05e0 & 1.12e-2 & 3.57e0 & 53.6 & 60.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 3.57e0 & 2.11e-3 & 3.57e0 & 3.58e0 & 30.6 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 2.75e0 & 1.16e0 & 3.79e-1 & 3.57e0 & 36.5 & 40.0 & 0.001 \\
+\hline
+ & GD & 3.57e0 & 1.91e-11 & 3.57e0 & 3.57e0 & 20.2 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 3.34e0 & 4.09e-1 & 1.83e0 & 3.57e0 & 42.2 & 45.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 3.57e0 & 6.21e-11 & 3.57e0 & 3.57e0 & 15.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.70e0 & 6.22e-2 & 3.57e0 & 3.79e0 & 14.7 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 3.58e0 & 1.39e-2 & 3.58e0 & 3.64e0 & 39.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 3.66e0 & 2.13e-1 & 3.32e0 & 4.52e0 & 14.8 & 5.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 5.19e0 & 3.91e0 & 3.58e0 & 1.70e1 & 8.6 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 4.78e0 & 2.77e0 & 3.62e0 & 1.67e1 & 5.3 & 0.0 & 0.000 \\
+Ackley\_5D\_a20\_b0.2\_c6.28e0 & \textbf{Adam-AMSGrad} & 3.57e0 & 2.74e-9 & 3.57e0 & 3.57e0 & 1172.5 & 0.0 & 0.028 \\
+\hline
+ & L-BFGS-Aggressive & 3.76e0 & 2.74e-1 & 3.01e0 & 4.09e0 & 3085.2 & 20.0 & 0.020 \\
+\hline
+ & Adam & 3.57e0 & 1.27e-6 & 3.57e0 & 3.57e0 & 548.5 & 0.0 & 0.011 \\
+\hline
+ & L-BFGS-Conservative & 3.57e0 & 5.12e-8 & 3.57e0 & 3.57e0 & 373.8 & 0.0 & 0.006 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.56e0 & 9.71e-2 & 3.14e0 & 3.63e0 & 206.9 & 5.0 & 0.006 \\
+\hline
+ & L-BFGS-Limited & 3.57e0 & 1.20e-8 & 3.57e0 & 3.57e0 & 310.5 & 0.0 & 0.005 \\
+\hline
+ & Adam-WeightDecay & 3.57e0 & 4.57e-4 & 3.57e0 & 3.58e0 & 183.0 & 0.0 & 0.004 \\
+\hline
+ & QQN-GoldenSection & 3.51e0 & 2.78e-1 & 2.30e0 & 3.57e0 & 193.7 & 5.0 & 0.003 \\
+\hline
+ & L-BFGS & 3.46e0 & 4.50e-1 & 1.87e0 & 4.43e0 & 121.3 & 25.0 & 0.002 \\
+\hline
+ & Adam-Fast & 3.60e0 & 4.00e-2 & 3.57e0 & 3.73e0 & 83.3 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Conservative & 3.58e0 & 8.66e-4 & 3.57e0 & 3.58e0 & 212.3 & 0.0 & 0.002 \\
+\hline
+ & Adam-Robust & 3.58e0 & 3.67e-3 & 3.57e0 & 3.59e0 & 59.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 3.38e0 & 3.60e-1 & 2.37e0 & 3.57e0 & 65.2 & 30.0 & 0.001 \\
+\hline
+ & GD & 3.57e0 & 2.52e-11 & 3.57e0 & 3.57e0 & 51.8 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 3.58e0 & 3.63e-3 & 3.57e0 & 3.59e0 & 34.5 & 0.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 3.50e0 & 3.36e-1 & 2.03e0 & 3.57e0 & 53.0 & 5.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 3.34e0 & 3.86e-1 & 2.48e0 & 3.57e0 & 50.8 & 35.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 3.50e0 & 2.48e-1 & 2.54e0 & 3.57e0 & 51.0 & 10.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 3.60e0 & 4.12e-2 & 3.57e0 & 3.76e0 & 17.0 & 0.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 3.61e0 & 2.38e-2 & 3.58e0 & 3.69e0 & 15.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 3.62e0 & 1.68e-1 & 3.57e0 & 4.35e0 & 45.5 & 0.0 & 0.000 \\
+\hline
+ & GD-Momentum & 3.72e0 & 1.33e-1 & 3.59e0 & 4.11e0 & 13.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 3.70e0 & 1.47e-1 & 3.58e0 & 4.11e0 & 17.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 4.49e0 & 1.26e0 & 3.60e0 & 6.86e0 & 9.1 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 4.15e0 & 2.82e-1 & 3.71e0 & 4.90e0 & 5.0 & 0.0 & 0.000 \\
+Ackley\_10D\_a20\_b0.2\_c6.28e0 & \textbf{Adam-AMSGrad} & 3.57e0 & 2.45e-9 & 3.57e0 & 3.57e0 & 1241.4 & 0.0 & 0.031 \\
+\hline
+ & Adam & 3.57e0 & 7.49e-9 & 3.57e0 & 3.57e0 & 745.8 & 0.0 & 0.017 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.59e0 & 9.76e-2 & 3.33e0 & 3.84e0 & 471.4 & 5.0 & 0.016 \\
+\hline
+ & Adam-WeightDecay & 3.57e0 & 1.60e-5 & 3.57e0 & 3.57e0 & 281.3 & 0.0 & 0.007 \\
+\hline
+ & L-BFGS-Conservative & 3.57e0 & 5.16e-9 & 3.57e0 & 3.57e0 & 170.7 & 0.0 & 0.005 \\
+\hline
+ & Adam-Robust & 3.58e0 & 3.01e-3 & 3.57e0 & 3.59e0 & 126.8 & 0.0 & 0.003 \\
+\hline
+ & QQN-GoldenSection & 3.57e0 & 1.01e-8 & 3.57e0 & 3.57e0 & 186.9 & 0.0 & 0.003 \\
+\hline
+ & GD & 3.57e0 & 1.76e-10 & 3.57e0 & 3.57e0 & 99.3 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS-Aggressive & 3.54e0 & 1.35e-1 & 2.95e0 & 3.57e0 & 185.8 & 5.0 & 0.003 \\
+\hline
+ & L-BFGS-Limited & 3.57e0 & 4.05e-10 & 3.57e0 & 3.57e0 & 142.2 & 0.0 & 0.003 \\
+\hline
+ & Adam-Fast & 3.60e0 & 4.10e-2 & 3.57e0 & 3.70e0 & 106.6 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 3.50e0 & 2.17e-1 & 2.72e0 & 3.58e0 & 133.3 & 15.0 & 0.002 \\
+\hline
+ & QQN-StrongWolfe & 3.57e0 & 5.84e-15 & 3.57e0 & 3.57e0 & 79.2 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-1 & 3.54e0 & 1.23e-1 & 3.08e0 & 3.57e0 & 96.2 & 10.0 & 0.002 \\
+\hline
+ & Trust Region-Conservative & 3.58e0 & 2.44e-3 & 3.57e0 & 3.58e0 & 205.8 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & 3.54e0 & 7.29e-2 & 3.30e0 & 3.57e0 & 65.9 & 20.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 3.57e0 & 1.12e-2 & 3.52e0 & 3.57e0 & 55.9 & 5.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 3.59e0 & 6.14e-3 & 3.58e0 & 3.60e0 & 19.4 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 3.60e0 & 1.35e-2 & 3.57e0 & 3.63e0 & 16.1 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 3.66e0 & 2.68e-2 & 3.62e0 & 3.72e0 & 14.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 3.61e0 & 7.74e-2 & 3.58e0 & 3.92e0 & 42.5 & 0.0 & 0.000 \\
+\hline
+ & GD-Momentum & 3.81e0 & 6.88e-2 & 3.64e0 & 3.91e0 & 14.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 4.41e0 & 1.08e0 & 3.59e0 & 6.23e0 & 18.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 4.22e0 & 2.38e-1 & 3.81e0 & 4.95e0 & 5.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 4.36e0 & 8.00e-1 & 3.64e0 & 5.79e0 & 9.1 & 0.0 & 0.000 \\
+StyblinskiTang\_2D & \textbf{Adam-AMSGrad} & -3.03e1 & 1.58e0 & -3.29e1 & -2.78e1 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam-Robust & -2.07e1 & 2.26e0 & -2.44e1 & -1.49e1 & 2502.0 & 0.0 & 0.057 \\
+\hline
+ & Adam & -2.94e1 & 2.68e0 & -3.47e1 & -2.46e1 & 2502.0 & 0.0 & 0.049 \\
+\hline
+ & Adam-WeightDecay & -7.55e1 & 5.64e0 & -7.83e1 & -6.42e1 & 1893.5 & 80.0 & 0.042 \\
+\hline
+ & L-BFGS-Aggressive & -5.13e1 & 1.89e1 & -7.77e1 & -4.63e0 & 3848.1 & 0.0 & 0.025 \\
+\hline
+ & Trust Region-Conservative & -1.02e1 & 4.38e-1 & -1.15e1 & -9.64e0 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Precise & -6.26e1 & 4.27e-1 & -6.35e1 & -6.22e1 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & QQN-StrongWolfe & -7.34e1 & 6.74e0 & -7.83e1 & -6.42e1 & 284.4 & 65.0 & 0.008 \\
+\hline
+ & L-BFGS-Conservative & -7.69e1 & 4.23e0 & -7.83e1 & -6.42e1 & 300.1 & 90.0 & 0.007 \\
+\hline
+ & QQN-Bisection-1 & -7.40e1 & 7.84e0 & -7.83e1 & -5.01e1 & 385.6 & 70.0 & 0.007 \\
+\hline
+ & L-BFGS-Limited & -7.41e1 & 6.48e0 & -7.83e1 & -6.42e1 & 500.0 & 70.0 & 0.006 \\
+\hline
+ & Trust Region-Adaptive & -7.37e1 & 1.73e1 & -7.83e1 & 3.85e-1 & 885.1 & 70.0 & 0.006 \\
+\hline
+ & QQN-GoldenSection & -7.69e1 & 4.24e0 & -7.83e1 & -6.42e1 & 159.8 & 90.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & -7.34e1 & 8.08e0 & -7.83e1 & -5.01e1 & 74.5 & 70.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & -7.48e1 & 6.12e0 & -7.83e1 & -6.42e1 & 99.0 & 75.0 & 0.002 \\
+\hline
+ & L-BFGS & -7.32e1 & 7.01e0 & -7.83e1 & -5.78e1 & 132.3 & 50.0 & 0.002 \\
+\hline
+ & GD & -7.34e1 & 6.73e0 & -7.83e1 & -6.42e1 & 66.5 & 65.0 & 0.002 \\
+\hline
+ & Adam-Fast & -7.48e1 & 4.67e0 & -7.83e1 & -6.16e1 & 67.3 & 35.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 6.01e1 & 5.78e2 & -7.83e1 & 2.58e3 & 212.3 & 40.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & -7.46e1 & 6.18e0 & -7.83e1 & -6.37e1 & 39.9 & 35.0 & 0.001 \\
+\hline
+ & GD-Momentum & -5.68e1 & 1.59e1 & -7.83e1 & -2.48e1 & 35.9 & 15.0 & 0.001 \\
+\hline
+ & GD-Nesterov & -6.56e1 & 1.28e1 & -7.83e1 & -3.59e1 & 29.1 & 10.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & -7.41e1 & 6.47e0 & -7.83e1 & -6.42e1 & 54.1 & 70.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & -3.87e1 & 1.37e1 & -7.83e1 & -1.65e1 & 24.4 & 5.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & -6.43e1 & 2.56e1 & -7.83e1 & 3.64e-1 & 49.3 & 20.0 & 0.000 \\
+StyblinskiTang\_5D & \textbf{Adam-AMSGrad} & -7.50e1 & 4.47e0 & -8.10e1 & -6.56e1 & 2502.0 & 0.0 & 0.060 \\
+\hline
+ & Adam-Robust & -5.32e1 & 3.79e0 & -6.12e1 & -4.49e1 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam & -7.38e1 & 4.48e0 & -8.30e1 & -6.64e1 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam-WeightDecay & -1.90e2 & 6.36e0 & -1.95e2 & -1.82e2 & 1865.5 & 65.0 & 0.041 \\
+\hline
+ & L-BFGS-Aggressive & -1.04e2 & 4.24e1 & -1.83e2 & -1.25e1 & 3847.9 & 0.0 & 0.028 \\
+\hline
+ & Trust Region-Precise & -6.28e1 & 7.02e-1 & -6.40e1 & -6.17e1 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Conservative & -1.05e1 & 7.12e-1 & -1.22e1 & -9.39e0 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Adaptive & -1.88e2 & 1.11e1 & -1.95e2 & -1.67e2 & 2249.5 & 65.0 & 0.014 \\
+\hline
+ & L-BFGS-Conservative & -1.89e2 & 1.03e1 & -1.95e2 & -1.59e2 & 567.8 & 65.0 & 0.012 \\
+\hline
+ & L-BFGS-Limited & -1.89e2 & 6.97e0 & -1.96e2 & -1.82e2 & 839.9 & 50.0 & 0.011 \\
+\hline
+ & QQN-Bisection-1 & -1.89e2 & 8.22e0 & -1.96e2 & -1.68e2 & 413.4 & 60.0 & 0.008 \\
+\hline
+ & QQN-StrongWolfe & -1.85e2 & 1.08e1 & -1.96e2 & -1.53e2 & 261.1 & 40.0 & 0.007 \\
+\hline
+ & QQN-GoldenSection & -1.90e2 & 9.30e0 & -1.96e2 & -1.68e2 & 330.5 & 70.0 & 0.005 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & -1.82e2 & 1.48e1 & -1.96e2 & -1.53e2 & 129.7 & 45.0 & 0.004 \\
+\hline
+ & QQN-Bisection-2 & -1.89e2 & 9.39e0 & -1.96e2 & -1.68e2 & 177.8 & 60.0 & 0.004 \\
+\hline
+ & L-BFGS-MoreThuente & -1.89e2 & 6.99e0 & -1.96e2 & -1.82e2 & 209.2 & 50.0 & 0.004 \\
+\hline
+ & Trust Region-Standard & -1.88e2 & 8.33e0 & -1.96e2 & -1.67e2 & 568.8 & 55.0 & 0.004 \\
+\hline
+ & GD & -1.86e2 & 1.17e1 & -1.95e2 & -1.53e2 & 95.7 & 50.0 & 0.003 \\
+\hline
+ & L-BFGS & -1.86e2 & 7.77e0 & -1.96e2 & -1.74e2 & 153.3 & 30.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & -1.88e2 & 1.04e1 & -1.96e2 & -1.53e2 & 53.1 & 60.0 & 0.002 \\
+\hline
+ & GD-Momentum & -1.64e2 & 3.72e1 & -1.95e2 & -7.54e1 & 57.8 & 15.0 & 0.002 \\
+\hline
+ & GD-Nesterov & -1.82e2 & 1.85e1 & -1.96e2 & -1.16e2 & 44.9 & 30.0 & 0.001 \\
+\hline
+ & Adam-Fast & -1.86e2 & 1.14e1 & -1.96e2 & -1.62e2 & 65.0 & 55.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & -1.35e2 & 3.62e1 & -1.95e2 & -7.45e1 & 34.4 & 10.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & -1.90e2 & 1.11e1 & -1.96e2 & -1.53e2 & 144.5 & 45.0 & 0.001 \\
+StyblinskiTang\_10D & \textbf{Adam-Robust} & -1.05e2 & 5.69e0 & -1.13e2 & -9.23e1 & 2502.0 & 0.0 & 0.062 \\
+\hline
+ & Adam-AMSGrad & -1.51e2 & 6.41e0 & -1.63e2 & -1.38e2 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam & -1.49e2 & 8.21e0 & -1.65e2 & -1.36e2 & 2502.0 & 0.0 & 0.053 \\
+\hline
+ & Adam-WeightDecay & -3.73e2 & 6.63e0 & -3.78e2 & -3.63e2 & 1837.7 & 35.0 & 0.043 \\
+\hline
+ & L-BFGS-Aggressive & -1.97e2 & 5.94e1 & -3.07e2 & -3.33e1 & 3848.4 & 0.0 & 0.029 \\
+\hline
+ & Trust Region-Precise & -6.35e1 & 9.97e-1 & -6.56e1 & -6.19e1 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & -1.09e1 & 7.10e-1 & -1.25e1 & -9.28e0 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Adaptive & -2.51e2 & 1.09e0 & -2.54e2 & -2.49e2 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & QQN-Bisection-1 & -3.74e2 & 9.58e0 & -3.89e2 & -3.49e2 & 412.5 & 30.0 & 0.018 \\
+\hline
+ & L-BFGS-Conservative & -3.74e2 & 8.27e0 & -3.82e2 & -3.49e2 & 543.3 & 30.0 & 0.015 \\
+\hline
+ & QQN-GoldenSection & -3.76e2 & 1.20e1 & -3.91e2 & -3.49e2 & 452.4 & 45.0 & 0.012 \\
+\hline
+ & QQN-StrongWolfe & -3.60e2 & 1.80e1 & -3.86e2 & -3.21e2 & 362.2 & 15.0 & 0.012 \\
+\hline
+ & L-BFGS-Limited & -3.76e2 & 7.70e0 & -3.86e2 & -3.63e2 & 550.6 & 35.0 & 0.009 \\
+\hline
+ & Trust Region-Standard & -3.68e2 & 1.96e1 & -3.79e2 & -3.00e2 & 1120.5 & 40.0 & 0.008 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & -3.66e2 & 1.97e1 & -3.91e2 & -3.21e2 & 172.1 & 15.0 & 0.006 \\
+\hline
+ & QQN-Bisection-2 & -3.72e2 & 1.22e1 & -3.90e2 & -3.49e2 & 234.2 & 35.0 & 0.006 \\
+\hline
+ & GD & -3.71e2 & 9.86e0 & -3.80e2 & -3.49e2 & 137.3 & 25.0 & 0.004 \\
+\hline
+ & GD-Momentum & -3.59e2 & 3.83e1 & -3.82e2 & -1.98e2 & 86.2 & 15.0 & 0.003 \\
+\hline
+ & GD-WeightDecay & -3.75e2 & 9.86e0 & -3.83e2 & -3.49e2 & 74.7 & 45.0 & 0.003 \\
+\hline
+ & L-BFGS-MoreThuente & -3.76e2 & 1.18e1 & -3.91e2 & -3.49e2 & 125.9 & 35.0 & 0.002 \\
+\hline
+ & GD-Nesterov & -3.75e2 & 7.32e0 & -3.83e2 & -3.60e2 & 65.9 & 30.0 & 0.002 \\
+\hline
+ & L-BFGS & -3.76e2 & 1.21e1 & -3.90e2 & -3.46e2 & 132.2 & 45.0 & 0.002 \\
+\hline
+ & Trust Region-Aggressive & -3.71e2 & 1.92e1 & -3.81e2 & -3.13e2 & 284.1 & 50.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & -3.21e2 & 6.46e1 & -3.82e2 & -1.87e2 & 53.4 & 20.0 & 0.002 \\
+\hline
+ & Adam-Fast & -3.65e2 & 1.28e1 & -3.85e2 & -3.50e2 & 67.5 & 30.0 & 0.002 \\
+Beale\_2D & \textbf{Adam-AMSGrad} & 2.17e-1 & 7.60e-2 & 8.70e-2 & 3.95e-1 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam-Robust & 4.58e-1 & 2.48e-1 & 1.68e-1 & 1.07e0 & 2502.0 & 0.0 & 0.054 \\
+\hline
+ & Adam & 7.19e-2 & 3.00e-2 & 3.04e-2 & 1.57e-1 & 2502.0 & 0.0 & 0.048 \\
+\hline
+ & Adam-WeightDecay & 1.50e-2 & 2.32e-5 & 1.49e-2 & 1.50e-2 & 1539.9 & 100.0 & 0.033 \\
+\hline
+ & QQN-StrongWolfe & 4.59e-1 & 1.93e0 & 3.96e-3 & 8.88e0 & 786.0 & 90.0 & 0.023 \\
+\hline
+ & L-BFGS-Aggressive & 1.39e1 & 3.00e0 & 8.86e0 & 2.02e1 & 3851.9 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 4.33e0 & 3.19e0 & 9.92e-3 & 1.29e1 & 2999.7 & 5.0 & 0.017 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.97e-1 & 2.13e0 & 2.46e-3 & 9.79e0 & 218.8 & 95.0 & 0.008 \\
+\hline
+ & QQN-Bisection-1 & 4.13e-1 & 1.77e0 & 4.49e-3 & 8.13e0 & 277.4 & 95.0 & 0.006 \\
+\hline
+ & GD & 1.49e-2 & 4.62e-5 & 1.49e-2 & 1.50e-2 & 229.2 & 100.0 & 0.006 \\
+\hline
+ & QQN-GoldenSection & 6.90e-3 & 2.42e-3 & 2.42e-3 & 9.87e-3 & 347.2 & 100.0 & 0.005 \\
+\hline
+ & L-BFGS-Conservative & 1.17e-2 & 2.95e-3 & 5.27e-3 & 1.49e-2 & 200.7 & 100.0 & 0.005 \\
+\hline
+ & Trust Region-Precise & 2.17e-2 & 1.24e-2 & 3.20e-3 & 4.17e-2 & 743.8 & 45.0 & 0.005 \\
+\hline
+ & GD-WeightDecay & 1.48e-2 & 1.25e-4 & 1.46e-2 & 1.49e-2 & 88.0 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-2 & 2.61e0 & 3.98e0 & 3.70e-3 & 9.20e0 & 83.8 & 70.0 & 0.002 \\
+\hline
+ & L-BFGS & 4.55e-1 & 8.11e-1 & 1.99e-3 & 3.15e0 & 122.0 & 65.0 & 0.002 \\
+\hline
+ & L-BFGS-Limited & 1.00e-2 & 4.71e-3 & 3.68e-4 & 1.49e-2 & 110.5 & 100.0 & 0.002 \\
+\hline
+ & L-BFGS-MoreThuente & 8.71e-3 & 4.80e-3 & 3.68e-4 & 1.50e-2 & 78.1 & 100.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.27e-1 & 1.01e-1 & 3.79e-2 & 5.20e-1 & 179.6 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 3.09e-1 & 7.01e-1 & 6.42e-4 & 2.11e0 & 25.5 & 80.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 9.18e-3 & 2.78e-3 & 4.69e-3 & 1.44e-2 & 27.7 & 100.0 & 0.001 \\
+\hline
+ & Adam-Fast & 1.59e0 & 1.58e-1 & 1.39e0 & 1.86e0 & 37.6 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.32e0 & 9.54e-1 & 1.20e-2 & 2.68e0 & 24.4 & 5.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 2.71e2 & 1.18e3 & 1.24e-1 & 5.41e3 & 50.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.23e0 & 4.13e-1 & 1.33e-3 & 1.91e0 & 17.8 & 5.0 & 0.000 \\
+Levi\_2D & \textbf{L-BFGS-Aggressive} & 2.87e0 & 8.03e-1 & 1.00e0 & 4.17e0 & 3851.3 & 0.0 & 0.022 \\
+\hline
+ & QQN-StrongWolfe & 1.44e0 & 9.74e-1 & 1.40e-1 & 3.07e0 & 450.4 & 25.0 & 0.013 \\
+\hline
+ & L-BFGS-Limited & 9.89e-1 & 6.68e-1 & 1.13e-1 & 2.50e0 & 828.4 & 25.0 & 0.010 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.04e0 & 8.94e-1 & 1.50e-1 & 2.75e0 & 189.6 & 40.0 & 0.007 \\
+\hline
+ & Adam-AMSGrad & 1.91e0 & 1.49e-1 & 1.43e0 & 1.98e0 & 282.9 & 0.0 & 0.006 \\
+\hline
+ & Adam & 1.93e0 & 1.42e-1 & 1.43e0 & 1.98e0 & 242.4 & 0.0 & 0.005 \\
+\hline
+ & QQN-GoldenSection & 9.83e-1 & 8.11e-1 & 1.87e-2 & 1.98e0 & 262.0 & 45.0 & 0.004 \\
+\hline
+ & QQN-Bisection-1 & 1.30e0 & 7.24e-1 & 1.54e-1 & 2.44e0 & 200.7 & 15.0 & 0.004 \\
+\hline
+ & L-BFGS-Conservative & 1.94e0 & 1.32e-1 & 1.43e0 & 1.98e0 & 209.4 & 0.0 & 0.004 \\
+\hline
+ & Trust Region-Conservative & 1.95e0 & 3.47e-1 & 1.07e0 & 2.75e0 & 490.0 & 0.0 & 0.003 \\
+\hline
+ & Adam-WeightDecay & 1.95e0 & 2.71e-1 & 1.44e0 & 2.76e0 & 99.6 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 4.40e0 & 4.35e0 & 1.84e-1 & 1.60e1 & 107.2 & 15.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 1.48e0 & 6.68e-1 & 1.36e-1 & 1.98e0 & 86.2 & 15.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 1.08e0 & 8.03e-1 & 4.47e-2 & 1.98e0 & 77.5 & 20.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 2.00e0 & 4.00e-1 & 1.19e0 & 2.77e0 & 28.1 & 0.0 & 0.001 \\
+\hline
+ & Adam-Robust & 1.88e0 & 2.51e-1 & 1.08e0 & 2.01e0 & 42.6 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 2.09e0 & 2.68e-1 & 1.47e0 & 2.78e0 & 47.2 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 2.06e0 & 3.04e-1 & 1.28e0 & 3.01e0 & 18.7 & 0.0 & 0.001 \\
+\hline
+ & GD & 2.04e0 & 4.26e-1 & 1.43e0 & 3.11e0 & 21.9 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 2.02e0 & 5.27e-1 & 7.01e-1 & 2.71e0 & 19.0 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 2.04e0 & 3.89e-1 & 1.43e0 & 3.38e0 & 76.8 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 1.93e0 & 3.46e-1 & 7.77e-1 & 2.32e0 & 15.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 2.09e0 & 5.10e-1 & 1.46e0 & 4.04e0 & 29.6 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.18e0 & 4.89e-1 & 1.43e0 & 3.40e0 & 10.7 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.33e2 & 5.68e2 & 1.02e0 & 2.61e3 & 6.3 & 0.0 & 0.000 \\
+GoldsteinPrice\_2D & \textbf{L-BFGS-Limited} & 8.41e1 & 3.33e-1 & 8.40e1 & 8.54e1 & 4259.4 & 0.0 & 0.037 \\
+\hline
+ & L-BFGS-Aggressive & 8.60e2 & 1.24e1 & 8.43e2 & 9.02e2 & 3847.0 & 0.0 & 0.032 \\
+\hline
+ & Trust Region-Conservative & 2.12e3 & 1.02e3 & 8.97e2 & 4.67e3 & 3002.0 & 0.0 & 0.018 \\
+\hline
+ & Trust Region-Precise & 2.20e3 & 1.09e3 & 8.40e2 & 4.16e3 & 2943.8 & 0.0 & 0.018 \\
+\hline
+ & Trust Region-Adaptive & 2.09e3 & 1.19e3 & 8.40e2 & 4.29e3 & 2649.8 & 0.0 & 0.016 \\
+\hline
+ & QQN-StrongWolfe & 8.34e1 & 2.81e0 & 7.11e1 & 8.40e1 & 552.0 & 15.0 & 0.014 \\
+\hline
+ & Adam-AMSGrad & 8.40e2 & 3.17e-2 & 8.40e2 & 8.40e2 & 603.6 & 0.0 & 0.013 \\
+\hline
+ & Adam & 8.40e2 & 3.55e-2 & 8.40e2 & 8.40e2 & 597.1 & 0.0 & 0.012 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.71e2 & 3.24e2 & 8.40e1 & 8.40e2 & 291.6 & 15.0 & 0.011 \\
+\hline
+ & Trust Region-Standard & 1.22e3 & 6.11e2 & 8.40e2 & 2.65e3 & 1684.8 & 0.0 & 0.010 \\
+\hline
+ & L-BFGS-MoreThuente & 1.19e2 & 1.66e2 & 2.24e1 & 8.40e2 & 621.9 & 5.0 & 0.010 \\
+\hline
+ & QQN-Bisection-1 & 8.40e1 & 1.50e-11 & 8.40e1 & 8.40e1 & 362.8 & 20.0 & 0.010 \\
+\hline
+ & QQN-GoldenSection & 8.40e1 & 3.02e-11 & 8.40e1 & 8.40e1 & 383.2 & 35.0 & 0.006 \\
+\hline
+ & L-BFGS-Conservative & 8.44e2 & 1.17e1 & 8.40e2 & 8.81e2 & 346.4 & 0.0 & 0.005 \\
+\hline
+ & Trust Region-Aggressive & 9.54e2 & 4.95e2 & 8.40e2 & 3.11e3 & 725.5 & 0.0 & 0.004 \\
+\hline
+ & Adam-WeightDecay & 8.40e2 & 2.73e-1 & 8.40e2 & 8.41e2 & 209.7 & 0.0 & 0.004 \\
+\hline
+ & L-BFGS & 8.00e2 & 8.72e2 & 6.35e1 & 3.89e3 & 176.8 & 5.0 & 0.003 \\
+\hline
+ & Adam-Robust & 8.41e2 & 1.02e0 & 8.40e2 & 8.43e2 & 81.0 & 0.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 8.57e2 & 1.92e1 & 8.40e2 & 9.22e2 & 24.6 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 1.58e2 & 1.99e2 & 8.40e1 & 8.40e2 & 21.2 & 5.0 & 0.001 \\
+\hline
+ & Adam-Fast & 8.55e2 & 1.83e1 & 8.40e2 & 9.15e2 & 35.3 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 8.45e2 & 4.79e0 & 8.41e2 & 8.57e2 & 19.9 & 0.0 & 0.001 \\
+\hline
+ & GD & 8.50e2 & 4.11e0 & 8.41e2 & 8.55e2 & 24.6 & 0.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 8.57e2 & 1.90e1 & 8.40e2 & 9.08e2 & 20.3 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 8.98e2 & 2.94e2 & 9.88e1 & 1.93e3 & 17.9 & 0.0 & 0.000 \\
+Matyas\_2D & \textbf{Adam-AMSGrad} & 2.50e-2 & 1.14e-5 & 2.50e-2 & 2.50e-2 & 680.7 & 100.0 & 0.015 \\
+\hline
+ & GD & 2.50e-2 & 5.93e-6 & 2.50e-2 & 2.50e-2 & 629.6 & 100.0 & 0.015 \\
+\hline
+ & Adam & 2.50e-2 & 1.45e-5 & 2.49e-2 & 2.50e-2 & 624.2 & 100.0 & 0.012 \\
+\hline
+ & GD-WeightDecay & 2.50e-2 & 1.46e-5 & 2.50e-2 & 2.50e-2 & 223.7 & 100.0 & 0.007 \\
+\hline
+ & Adam-WeightDecay & 2.49e-2 & 5.00e-5 & 2.48e-2 & 2.50e-2 & 221.4 & 100.0 & 0.004 \\
+\hline
+ & GD-Nesterov & 2.49e-2 & 5.97e-5 & 2.48e-2 & 2.50e-2 & 71.0 & 100.0 & 0.002 \\
+\hline
+ & GD-Momentum & 2.49e-2 & 6.76e-5 & 2.48e-2 & 2.50e-2 & 67.2 & 100.0 & 0.002 \\
+\hline
+ & L-BFGS-Aggressive & 2.44e-2 & 3.00e-3 & 2.16e-2 & 3.66e-2 & 217.4 & 95.0 & 0.002 \\
+\hline
+ & Adam-Robust & 2.48e-2 & 1.11e-4 & 2.46e-2 & 2.50e-2 & 79.0 & 100.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 1.55e-2 & 6.76e-3 & 1.12e-3 & 2.47e-2 & 138.9 & 100.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & 2.52e-2 & 2.56e-3 & 2.42e-2 & 3.63e-2 & 29.2 & 95.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 1.49e-2 & 6.16e-3 & 8.19e-4 & 2.50e-2 & 40.9 & 100.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.07e-2 & 9.48e-3 & 2.70e-30 & 2.47e-2 & 34.0 & 100.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 1.91e-2 & 5.76e-3 & 2.83e-3 & 2.50e-2 & 34.2 & 100.0 & 0.001 \\
+\hline
+ & L-BFGS-Conservative & 2.30e-2 & 1.27e-3 & 2.07e-2 & 2.49e-2 & 39.0 & 100.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 2.73e-29 & 3.90e-29 & 1.77e-32 & 1.69e-28 & 24.0 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-Limited & 1.73e-2 & 5.34e-3 & 7.16e-3 & 2.46e-2 & 24.6 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS & 1.47e-2 & 9.70e-3 & 5.88e-4 & 2.50e-2 & 20.1 & 100.0 & 0.000 \\
+\hline
+ & Adam-Fast & 2.30e-2 & 1.45e-3 & 1.98e-2 & 2.49e-2 & 12.9 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-MoreThuente & 1.72e-2 & 8.74e-3 & 2.59e-5 & 2.46e-2 & 20.8 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.41e-1 & 1.19e-1 & 3.14e-2 & 3.36e-1 & 7.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 6.88e-2 & 1.85e-2 & 2.83e-2 & 8.71e-2 & 7.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Conservative & 3.93e-2 & 6.90e-3 & 2.66e-2 & 5.75e-2 & 7.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 6.67e-1 & 6.95e-1 & 2.86e-2 & 1.50e0 & 6.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 4.71e-2 & 8.16e-3 & 3.00e-2 & 5.69e-2 & 5.0 & 0.0 & 0.000 \\
+Himmelblau\_2D & \textbf{Adam-Robust} & 1.05e2 & 5.73e0 & 9.10e1 & 1.15e2 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam-AMSGrad & 8.17e1 & 5.99e0 & 7.19e1 & 9.17e1 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam & 8.20e1 & 5.99e0 & 7.20e1 & 9.40e1 & 2502.0 & 0.0 & 0.048 \\
+\hline
+ & Adam-WeightDecay & 2.41e-1 & 4.02e-3 & 2.34e-1 & 2.48e-1 & 1744.1 & 100.0 & 0.037 \\
+\hline
+ & L-BFGS-Aggressive & 3.44e1 & 1.81e1 & 4.95e0 & 7.59e1 & 3850.9 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Precise & 1.07e2 & 3.03e0 & 1.02e2 & 1.12e2 & 3002.0 & 0.0 & 0.018 \\
+\hline
+ & Trust Region-Conservative & 1.60e2 & 3.17e0 & 1.52e2 & 1.65e2 & 3002.0 & 0.0 & 0.018 \\
+\hline
+ & Trust Region-Adaptive & 1.32e-1 & 5.93e-2 & 7.13e-2 & 2.46e-1 & 2048.1 & 100.0 & 0.013 \\
+\hline
+ & L-BFGS-Conservative & 2.03e-1 & 2.91e-2 & 1.42e-1 & 2.47e-1 & 264.2 & 100.0 & 0.006 \\
+\hline
+ & Trust Region-Standard & 1.50e-1 & 8.67e-2 & 3.76e-3 & 3.03e-1 & 516.7 & 80.0 & 0.003 \\
+\hline
+ & QQN-Bisection-1 & 1.09e-1 & 4.94e-2 & 2.06e-2 & 2.13e-1 & 107.9 & 100.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 9.46e-2 & 7.76e-2 & 5.19e-3 & 2.45e-1 & 68.0 & 100.0 & 0.002 \\
+\hline
+ & Adam-Fast & 5.29e0 & 2.08e-1 & 4.98e0 & 5.82e0 & 69.3 & 0.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 9.18e-2 & 6.79e-2 & 9.60e-3 & 2.15e-1 & 61.5 & 100.0 & 0.001 \\
+\hline
+ & L-BFGS & 6.22e0 & 5.64e0 & 1.56e-2 & 1.80e1 & 93.7 & 35.0 & 0.001 \\
+\hline
+ & QQN-GoldenSection & 7.91e-2 & 6.51e-2 & 1.17e-4 & 2.36e-1 & 102.8 & 100.0 & 0.001 \\
+\hline
+ & GD & 1.53e-1 & 6.88e-2 & 2.80e-2 & 2.41e-1 & 42.9 & 100.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 9.58e-2 & 8.02e-2 & 7.81e-3 & 2.40e-1 & 60.9 & 100.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 8.17e-2 & 6.08e-2 & 2.27e-3 & 2.05e-1 & 55.1 & 100.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 3.93e-1 & 4.16e-1 & 8.90e-2 & 1.20e0 & 29.6 & 75.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 6.71e-1 & 4.77e-1 & 1.80e-2 & 1.52e0 & 133.1 & 25.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 9.49e0 & 7.94e0 & 3.27e-2 & 2.11e1 & 26.7 & 40.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 6.94e1 & 3.44e0 & 5.87e1 & 7.33e1 & 22.8 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 4.37e1 & 1.60e1 & 3.43e0 & 7.63e1 & 24.3 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 1.02e-1 & 7.28e-2 & 8.92e-3 & 2.39e-1 & 36.3 & 100.0 & 0.000 \\
+Booth\_2D & \textbf{Adam-AMSGrad} & 1.19e1 & 2.01e0 & 8.69e0 & 1.53e1 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam-Robust & 2.03e1 & 2.55e0 & 1.43e1 & 2.49e1 & 2502.0 & 0.0 & 0.054 \\
+\hline
+ & Adam & 1.20e1 & 2.17e0 & 8.76e0 & 1.67e1 & 2502.0 & 0.0 & 0.048 \\
+\hline
+ & Adam-WeightDecay & 1.19e-1 & 3.80e-4 & 1.19e-1 & 1.20e-1 & 1886.3 & 100.0 & 0.038 \\
+\hline
+ & L-BFGS-Aggressive & 7.43e1 & 5.77e0 & 6.24e1 & 8.60e1 & 3852.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Precise & 1.05e1 & 5.90e0 & 2.82e0 & 2.22e1 & 3002.0 & 0.0 & 0.018 \\
+\hline
+ & Trust Region-Conservative & 6.49e1 & 6.14e0 & 5.04e1 & 7.80e1 & 3002.0 & 0.0 & 0.018 \\
+\hline
+ & Trust Region-Adaptive & 6.12e-2 & 3.24e-2 & 2.38e-2 & 1.24e-1 & 919.9 & 90.0 & 0.005 \\
+\hline
+ & L-BFGS-Conservative & 1.10e-1 & 5.23e-3 & 1.03e-1 & 1.20e-1 & 208.0 & 100.0 & 0.005 \\
+\hline
+ & QQN-Bisection-1 & 1.87e-2 & 1.86e-2 & 1.21e-2 & 9.94e-2 & 162.4 & 100.0 & 0.003 \\
+\hline
+ & GD & 1.17e-1 & 1.31e-3 & 1.15e-1 & 1.20e-1 & 86.0 & 100.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & 1.49e-2 & 2.92e-3 & 1.15e-2 & 2.20e-2 & 100.0 & 100.0 & 0.002 \\
+\hline
+ & Trust Region-Standard & 5.27e-1 & 1.54e-1 & 3.46e-1 & 7.93e-1 & 235.1 & 0.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.56e-6 & 2.13e-6 & 2.81e-7 & 7.40e-6 & 56.0 & 100.0 & 0.001 \\
+\hline
+ & Adam-Fast & 3.09e0 & 2.17e-1 & 2.74e0 & 3.45e0 & 56.3 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 6.14e-2 & 3.83e-2 & 2.04e-3 & 1.13e-1 & 56.1 & 100.0 & 0.001 \\
+\hline
+ & QQN-GoldenSection & 3.39e-2 & 1.16e-2 & 1.60e-2 & 5.86e-2 & 92.0 & 100.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 1.29e0 & 5.10e-1 & 1.15e-1 & 1.73e0 & 27.0 & 15.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 9.51e0 & 8.38e-1 & 8.56e0 & 1.11e1 & 21.0 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 2.56e0 & 2.92e-1 & 2.10e0 & 2.95e0 & 20.6 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS & 4.05e-2 & 1.53e-2 & 1.17e-2 & 6.97e-2 & 42.4 & 100.0 & 0.001 \\
+\hline
+ & GD-Momentum & 7.27e0 & 3.58e-1 & 6.20e0 & 8.01e0 & 21.2 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 1.49e0 & 4.64e-1 & 4.00e-1 & 2.38e0 & 63.5 & 0.0 & 0.000 \\
+\hline
+ & L-BFGS-MoreThuente & 3.86e-2 & 3.42e-2 & 5.15e-4 & 1.13e-1 & 29.7 & 100.0 & 0.000 \\
+\hline
+ & QQN-StrongWolfe & 1.13e-2 & 7.50e-4 & 9.93e-3 & 1.29e-2 & 26.0 & 100.0 & 0.000 \\
+Griewank\_2D & \textbf{L-BFGS-Aggressive} & 4.91e0 & 7.72e-3 & 4.91e0 & 4.95e0 & 2427.6 & 0.0 & 0.056 \\
+\hline
+ & Adam-AMSGrad & 5.24e0 & 4.70e-2 & 5.16e0 & 5.30e0 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam-Robust & 5.36e0 & 6.83e-2 & 5.26e0 & 5.48e0 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam & 5.24e0 & 4.43e-2 & 5.16e0 & 5.30e0 & 2502.0 & 0.0 & 0.049 \\
+\hline
+ & Adam-WeightDecay & 4.92e0 & 2.42e-6 & 4.92e0 & 4.92e0 & 2231.2 & 0.0 & 0.047 \\
+\hline
+ & GD & 4.91e0 & 3.24e-8 & 4.91e0 & 4.91e0 & 1668.0 & 0.0 & 0.042 \\
+\hline
+ & L-BFGS-Limited & 4.91e0 & 4.49e-8 & 4.91e0 & 4.91e0 & 927.3 & 0.0 & 0.021 \\
+\hline
+ & QQN-StrongWolfe & 4.74e0 & 3.50e-1 & 3.76e0 & 4.91e0 & 347.6 & 0.0 & 0.014 \\
+\hline
+ & GD-WeightDecay & 4.91e0 & 1.03e-7 & 4.91e0 & 4.91e0 & 406.6 & 0.0 & 0.013 \\
+\hline
+ & L-BFGS-Conservative & 4.91e0 & 3.09e-9 & 4.91e0 & 4.91e0 & 504.6 & 0.0 & 0.012 \\
+\hline
+ & L-BFGS & 4.91e0 & 3.75e-8 & 4.91e0 & 4.91e0 & 295.6 & 0.0 & 0.006 \\
+\hline
+ & QQN-GoldenSection & 4.91e0 & 1.03e-13 & 4.91e0 & 4.91e0 & 258.3 & 0.0 & 0.004 \\
+\hline
+ & GD-Nesterov & 4.91e0 & 1.90e-4 & 4.91e0 & 4.91e0 & 125.0 & 0.0 & 0.004 \\
+\hline
+ & GD-Momentum & 4.91e0 & 4.49e-4 & 4.91e0 & 4.91e0 & 100.2 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Conservative & 4.92e0 & 2.48e-3 & 4.91e0 & 4.92e0 & 336.5 & 0.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.80e0 & 4.73e-1 & 2.74e0 & 4.91e0 & 77.3 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & 4.66e0 & 2.21e-1 & 4.25e0 & 4.91e0 & 94.6 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-1 & 4.91e0 & 1.27e-13 & 4.91e0 & 4.91e0 & 76.3 & 0.0 & 0.002 \\
+\hline
+ & Adam-Fast & 4.93e0 & 6.09e-3 & 4.92e0 & 4.94e0 & 67.0 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 4.91e0 & 1.88e-7 & 4.91e0 & 4.91e0 & 73.0 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 4.99e0 & 5.58e-3 & 4.97e0 & 5.00e0 & 32.0 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 4.95e0 & 1.38e-2 & 4.93e0 & 4.97e0 & 58.7 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 5.11e0 & 1.18e-1 & 5.00e0 & 5.54e0 & 16.4 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 6.00e0 & 6.58e-2 & 5.90e0 & 6.12e0 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 5.99e0 & 7.24e-2 & 5.90e0 & 6.16e0 & 5.0 & 0.0 & 0.000 \\
+Griewank\_5D & \textbf{QQN-StrongWolfe} & 1.09e1 & 2.09e0 & 5.74e0 & 1.33e1 & 1535.0 & 0.0 & 0.067 \\
+\hline
+ & Adam-Robust & 1.29e1 & 6.91e-2 & 1.28e1 & 1.30e1 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam-AMSGrad & 1.25e1 & 2.91e-2 & 1.25e1 & 1.26e1 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam & 1.25e1 & 2.35e-2 & 1.25e1 & 1.25e1 & 2502.0 & 0.0 & 0.052 \\
+\hline
+ & GD & 1.22e1 & 1.06e-3 & 1.22e1 & 1.22e1 & 1668.0 & 0.0 & 0.044 \\
+\hline
+ & Adam-WeightDecay & 1.23e1 & 6.65e-3 & 1.23e1 & 1.23e1 & 1651.7 & 0.0 & 0.036 \\
+\hline
+ & GD-WeightDecay & 1.22e1 & 1.86e-5 & 1.22e1 & 1.22e1 & 915.3 & 0.0 & 0.029 \\
+\hline
+ & QQN-Bisection-2 & 1.21e1 & 5.61e-1 & 9.76e0 & 1.22e1 & 984.9 & 0.0 & 0.024 \\
+\hline
+ & QQN-GoldenSection & 1.12e1 & 3.02e0 & 1.62e0 & 1.22e1 & 1154.2 & 0.0 & 0.023 \\
+\hline
+ & QQN-Bisection-1 & 1.06e1 & 3.32e0 & 2.18e0 & 1.22e1 & 872.0 & 0.0 & 0.019 \\
+\hline
+ & L-BFGS-Conservative & 1.22e1 & 5.00e-9 & 1.22e1 & 1.22e1 & 705.6 & 0.0 & 0.018 \\
+\hline
+ & L-BFGS-Limited & 1.22e1 & 6.36e-8 & 1.22e1 & 1.22e1 & 632.5 & 0.0 & 0.016 \\
+\hline
+ & L-BFGS-Aggressive & 1.09e1 & 2.56e0 & 5.15e0 & 1.22e1 & 1097.7 & 0.0 & 0.015 \\
+\hline
+ & GD-Nesterov & 1.22e1 & 3.21e-9 & 1.22e1 & 1.22e1 & 394.2 & 0.0 & 0.013 \\
+\hline
+ & GD-Momentum & 1.22e1 & 2.51e-9 & 1.22e1 & 1.22e1 & 387.2 & 0.0 & 0.012 \\
+\hline
+ & L-BFGS & 1.22e1 & 4.05e-3 & 1.22e1 & 1.23e1 & 259.7 & 0.0 & 0.006 \\
+\hline
+ & GD-AdaptiveMomentum & 1.23e1 & 3.47e-2 & 1.22e1 & 1.23e1 & 133.1 & 0.0 & 0.005 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.28e1 & 2.58e-1 & 1.22e1 & 1.32e1 & 115.1 & 0.0 & 0.004 \\
+\hline
+ & Trust Region-Conservative & 1.23e1 & 2.20e-3 & 1.23e1 & 1.23e1 & 380.4 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS-MoreThuente & 1.22e1 & 2.35e-7 & 1.22e1 & 1.22e1 & 118.5 & 0.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.23e1 & 1.71e-2 & 1.22e1 & 1.23e1 & 67.1 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 1.34e1 & 3.58e-1 & 1.23e1 & 1.36e1 & 11.4 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.35e1 & 2.50e-2 & 1.35e1 & 1.35e1 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 1.35e1 & 3.00e-2 & 1.34e1 & 1.35e1 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 1.35e1 & 2.54e-2 & 1.34e1 & 1.36e1 & 5.0 & 0.0 & 0.000 \\
+Griewank\_10D & \textbf{QQN-StrongWolfe} & 6.06e0 & 1.00e1 & 9.86e-3 & 2.60e1 & 2281.2 & 0.0 & 0.089 \\
+\hline
+ & QQN-GoldenSection & 2.35e1 & 6.71e0 & 2.19e0 & 2.58e1 & 4343.6 & 0.0 & 0.085 \\
+\hline
+ & QQN-Bisection-2 & 2.33e1 & 7.17e0 & 1.67e0 & 2.58e1 & 3260.0 & 0.0 & 0.083 \\
+\hline
+ & QQN-Bisection-1 & 2.19e1 & 9.08e0 & 5.93e-10 & 2.58e1 & 2381.1 & 5.0 & 0.064 \\
+\hline
+ & Adam-AMSGrad & 2.54e1 & 2.09e-2 & 2.53e1 & 2.54e1 & 2502.0 & 0.0 & 0.063 \\
+\hline
+ & Adam-Robust & 2.55e1 & 2.00e-2 & 2.55e1 & 2.55e1 & 2502.0 & 0.0 & 0.062 \\
+\hline
+ & GD-WeightDecay & 2.48e1 & 3.83e-2 & 2.48e1 & 2.49e1 & 1668.0 & 0.0 & 0.060 \\
+\hline
+ & GD-Nesterov & 2.21e1 & 2.17e-1 & 2.15e1 & 2.23e1 & 1668.0 & 0.0 & 0.060 \\
+\hline
+ & Adam-WeightDecay & 2.42e1 & 1.44e-2 & 2.41e1 & 2.42e1 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & L-BFGS-Limited & 1.95e1 & 3.46e0 & 8.48e0 & 2.38e1 & 2256.7 & 0.0 & 0.056 \\
+\hline
+ & Adam & 2.54e1 & 2.20e-2 & 2.53e1 & 2.54e1 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & L-BFGS-Aggressive & 6.09e0 & 5.66e0 & 1.01e0 & 2.16e1 & 3817.8 & 0.0 & 0.054 \\
+\hline
+ & GD-Momentum & 2.20e1 & 3.14e-1 & 2.16e1 & 2.24e1 & 1668.0 & 0.0 & 0.053 \\
+\hline
+ & L-BFGS-Conservative & 2.33e1 & 1.54e0 & 2.01e1 & 2.49e1 & 1668.3 & 0.0 & 0.048 \\
+\hline
+ & GD & 2.56e1 & 2.73e-2 & 2.55e1 & 2.57e1 & 1668.0 & 0.0 & 0.047 \\
+\hline
+ & GD-AdaptiveMomentum & 1.90e1 & 3.00e0 & 1.39e1 & 2.12e1 & 920.4 & 0.0 & 0.035 \\
+\hline
+ & Adam-Fast & 1.17e1 & 3.56e0 & 2.89e0 & 1.50e1 & 950.2 & 0.0 & 0.021 \\
+\hline
+ & L-BFGS & 1.93e1 & 3.27e0 & 1.20e1 & 2.43e1 & 483.9 & 0.0 & 0.012 \\
+\hline
+ & Trust Region-Conservative & 2.08e1 & 2.32e0 & 1.60e1 & 2.43e1 & 1557.3 & 0.0 & 0.012 \\
+\hline
+ & L-BFGS-MoreThuente & 1.42e1 & 5.29e0 & 1.93e0 & 2.12e1 & 499.3 & 0.0 & 0.011 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.45e1 & 5.40e0 & 9.67e-1 & 2.58e1 & 108.6 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Aggressive & 2.60e1 & 1.61e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 2.60e1 & 1.74e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 2.60e1 & 1.72e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.60e1 & 2.15e-2 & 2.60e1 & 2.60e1 & 5.0 & 0.0 & 0.000 \\
+Schwefel\_2D & \textbf{Adam-Robust} & 9.37e2 & 6.80e-1 & 9.36e2 & 9.39e2 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam-AMSGrad & 9.35e2 & 7.05e-1 & 9.34e2 & 9.36e2 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & L-BFGS-Conservative & 7.11e2 & 3.94e-8 & 7.11e2 & 7.11e2 & 2095.3 & 0.0 & 0.055 \\
+\hline
+ & Adam-WeightDecay & 9.10e2 & 8.43e-1 & 9.09e2 & 9.12e2 & 2502.0 & 0.0 & 0.053 \\
+\hline
+ & Adam & 9.35e2 & 7.54e-1 & 9.33e2 & 9.36e2 & 2502.0 & 0.0 & 0.050 \\
+\hline
+ & GD & 7.11e2 & 9.48e-4 & 7.11e2 & 7.11e2 & 1668.0 & 0.0 & 0.040 \\
+\hline
+ & Adam-Fast & 7.11e2 & 9.21e-8 & 7.11e2 & 7.11e2 & 1972.4 & 0.0 & 0.037 \\
+\hline
+ & GD-WeightDecay & 7.11e2 & 1.75e-8 & 7.11e2 & 7.11e2 & 1115.0 & 0.0 & 0.033 \\
+\hline
+ & Trust Region-Conservative & 9.37e2 & 8.10e-1 & 9.35e2 & 9.39e2 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Precise & 8.84e2 & 7.64e-1 & 8.83e2 & 8.86e2 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Adaptive & 7.11e2 & 6.05e-2 & 7.11e2 & 7.11e2 & 2834.8 & 0.0 & 0.018 \\
+\hline
+ & QQN-StrongWolfe & -7.26e2 & 2.56e3 & -1.07e4 & 5.92e2 & 379.3 & 50.0 & 0.016 \\
+\hline
+ & L-BFGS-Limited & 7.11e2 & 7.58e-7 & 7.11e2 & 7.11e2 & 513.3 & 0.0 & 0.013 \\
+\hline
+ & GD-Nesterov & 7.11e2 & 1.78e-7 & 7.11e2 & 7.11e2 & 292.6 & 0.0 & 0.009 \\
+\hline
+ & GD-Momentum & 7.11e2 & 1.13e-7 & 7.11e2 & 7.11e2 & 277.4 & 0.0 & 0.008 \\
+\hline
+ & L-BFGS & 7.11e2 & 5.60e-4 & 7.11e2 & 7.11e2 & 292.1 & 0.0 & 0.007 \\
+\hline
+ & Trust Region-Standard & 7.12e2 & 2.41e-1 & 7.12e2 & 7.12e2 & 711.8 & 0.0 & 0.004 \\
+\hline
+ & L-BFGS-MoreThuente & 7.11e2 & 1.08e-4 & 7.11e2 & 7.11e2 & 147.6 & 0.0 & 0.003 \\
+\hline
+ & GD-AdaptiveMomentum & 7.12e2 & 3.92e-2 & 7.12e2 & 7.12e2 & 89.0 & 0.0 & 0.003 \\
+\hline
+ & QQN-GoldenSection & 7.11e2 & 1.80e-4 & 7.11e2 & 7.11e2 & 145.1 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS-Aggressive & 7.11e2 & 2.18e-2 & 7.11e2 & 7.11e2 & 101.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 7.11e2 & 0.00e0 & 7.11e2 & 7.11e2 & 57.9 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 7.17e2 & 6.24e-1 & 7.16e2 & 7.18e2 & 179.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 7.11e2 & 3.40e-13 & 7.11e2 & 7.11e2 & 47.6 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 7.11e2 & 0.00e0 & 7.11e2 & 7.11e2 & 50.9 & 0.0 & 0.001 \\
+Schwefel\_5D & \textbf{L-BFGS-Conservative} & 1.78e3 & 1.53e-7 & 1.78e3 & 1.78e3 & 2163.4 & 0.0 & 0.059 \\
+\hline
+ & Adam-AMSGrad & 2.34e3 & 1.27e0 & 2.34e3 & 2.34e3 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & Adam-Robust & 2.34e3 & 1.19e0 & 2.34e3 & 2.34e3 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & Adam-WeightDecay & 2.28e3 & 1.09e0 & 2.27e3 & 2.28e3 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam & 2.34e3 & 1.25e0 & 2.33e3 & 2.34e3 & 2502.0 & 0.0 & 0.053 \\
+\hline
+ & GD & 1.78e3 & 1.99e-3 & 1.78e3 & 1.78e3 & 1668.0 & 0.0 & 0.043 \\
+\hline
+ & Adam-Fast & 1.78e3 & 1.99e-7 & 1.78e3 & 1.78e3 & 1907.4 & 0.0 & 0.039 \\
+\hline
+ & GD-WeightDecay & 1.78e3 & 4.13e-8 & 1.78e3 & 1.78e3 & 1124.1 & 0.0 & 0.037 \\
+\hline
+ & Trust Region-Adaptive & 2.12e3 & 1.37e0 & 2.11e3 & 2.12e3 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Conservative & 2.36e3 & 1.17e0 & 2.35e3 & 2.36e3 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Precise & 2.30e3 & 1.15e0 & 2.30e3 & 2.31e3 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & L-BFGS-Limited & 1.79e3 & 5.71e1 & 1.78e3 & 2.04e3 & 661.0 & 0.0 & 0.019 \\
+\hline
+ & QQN-StrongWolfe & -1.74e3 & 7.34e3 & -3.30e4 & 1.48e3 & 349.1 & 50.0 & 0.015 \\
+\hline
+ & Trust Region-Standard & 1.78e3 & 2.49e-1 & 1.78e3 & 1.78e3 & 1774.8 & 0.0 & 0.012 \\
+\hline
+ & GD-Nesterov & 1.78e3 & 2.86e-7 & 1.78e3 & 1.78e3 & 339.1 & 0.0 & 0.011 \\
+\hline
+ & GD-Momentum & 1.78e3 & 2.50e-7 & 1.78e3 & 1.78e3 & 323.9 & 0.0 & 0.010 \\
+\hline
+ & L-BFGS & 1.78e3 & 5.48e-4 & 1.78e3 & 1.78e3 & 325.7 & 0.0 & 0.008 \\
+\hline
+ & GD-AdaptiveMomentum & 1.78e3 & 1.03e-1 & 1.78e3 & 1.78e3 & 124.3 & 0.0 & 0.004 \\
+\hline
+ & L-BFGS-MoreThuente & 1.78e3 & 9.47e-6 & 1.78e3 & 1.78e3 & 158.2 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Aggressive & 1.78e3 & 9.61e-1 & 1.78e3 & 1.78e3 & 446.0 & 0.0 & 0.003 \\
+\hline
+ & QQN-GoldenSection & 1.78e3 & 4.96e-13 & 1.78e3 & 1.78e3 & 149.4 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS-Aggressive & 1.78e3 & 4.59e-2 & 1.78e3 & 1.78e3 & 101.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.78e3 & 4.55e-13 & 1.78e3 & 1.78e3 & 57.3 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 1.78e3 & 4.55e-13 & 1.78e3 & 1.78e3 & 52.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 1.78e3 & 4.69e-13 & 1.78e3 & 1.78e3 & 52.0 & 0.0 & 0.001 \\
+Schwefel\_10D & \textbf{L-BFGS-Conservative} & 3.55e3 & 2.96e-7 & 3.55e3 & 3.55e3 & 2188.9 & 0.0 & 0.063 \\
+\hline
+ & Adam-Robust & 4.69e3 & 1.88e0 & 4.68e3 & 4.69e3 & 2502.0 & 0.0 & 0.062 \\
+\hline
+ & Adam-AMSGrad & 4.67e3 & 1.85e0 & 4.67e3 & 4.68e3 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam-WeightDecay & 4.55e3 & 1.50e0 & 4.55e3 & 4.56e3 & 2502.0 & 0.0 & 0.060 \\
+\hline
+ & Adam & 4.67e3 & 2.21e0 & 4.67e3 & 4.68e3 & 2502.0 & 0.0 & 0.054 \\
+\hline
+ & GD & 3.55e3 & 8.86e-3 & 3.55e3 & 3.55e3 & 1668.0 & 0.0 & 0.047 \\
+\hline
+ & GD-WeightDecay & 3.55e3 & 6.30e-8 & 3.55e3 & 3.55e3 & 1194.6 & 0.0 & 0.040 \\
+\hline
+ & Adam-Fast & 3.55e3 & 1.08e-7 & 3.55e3 & 3.55e3 & 1628.7 & 0.0 & 0.035 \\
+\hline
+ & Trust Region-Adaptive & 4.48e3 & 1.82e0 & 4.48e3 & 4.49e3 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 4.72e3 & 1.20e0 & 4.72e3 & 4.73e3 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Precise & 4.67e3 & 1.71e0 & 4.67e3 & 4.67e3 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Standard & 3.73e3 & 2.12e0 & 3.73e3 & 3.74e3 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & L-BFGS-Limited & 3.55e3 & 3.01e1 & 3.42e3 & 3.55e3 & 577.7 & 0.0 & 0.017 \\
+\hline
+ & QQN-StrongWolfe & 8.35e2 & 1.64e3 & -2.28e3 & 2.96e3 & 395.5 & 50.0 & 0.017 \\
+\hline
+ & GD-Nesterov & 3.55e3 & 8.72e-7 & 3.55e3 & 3.55e3 & 392.1 & 0.0 & 0.013 \\
+\hline
+ & GD-Momentum & 3.55e3 & 6.50e-7 & 3.55e3 & 3.55e3 & 380.3 & 0.0 & 0.012 \\
+\hline
+ & L-BFGS & 3.55e3 & 1.15e-2 & 3.55e3 & 3.55e3 & 300.9 & 0.0 & 0.008 \\
+\hline
+ & Trust Region-Aggressive & 3.56e3 & 1.17e0 & 3.56e3 & 3.56e3 & 888.8 & 0.0 & 0.007 \\
+\hline
+ & GD-AdaptiveMomentum & 3.55e3 & 5.29e-2 & 3.55e3 & 3.55e3 & 164.1 & 0.0 & 0.006 \\
+\hline
+ & L-BFGS-MoreThuente & 3.55e3 & 1.12e-3 & 3.55e3 & 3.55e3 & 159.3 & 0.0 & 0.004 \\
+\hline
+ & QQN-GoldenSection & 3.55e3 & 9.37e-13 & 3.55e3 & 3.55e3 & 147.8 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS-Aggressive & 3.55e3 & 4.65e-2 & 3.55e3 & 3.55e3 & 101.0 & 0.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.55e3 & 1.43e-3 & 3.55e3 & 3.55e3 & 56.9 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 3.55e3 & 9.09e-13 & 3.55e3 & 3.55e3 & 52.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 3.55e3 & 9.09e-13 & 3.55e3 & 3.55e3 & 52.0 & 0.0 & 0.001 \\
+Levy\_2D & \textbf{Adam-Robust} & 4.34e-2 & 2.28e-2 & 1.83e-2 & 9.34e-2 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam-AMSGrad & 2.61e-2 & 1.26e-2 & 1.24e-2 & 5.59e-2 & 2502.0 & 0.0 & 0.057 \\
+\hline
+ & Adam & 5.69e-3 & 3.31e-3 & 1.60e-3 & 1.48e-2 & 2502.0 & 0.0 & 0.051 \\
+\hline
+ & Adam-WeightDecay & 9.83e-7 & 7.75e-9 & 9.67e-7 & 9.98e-7 & 2229.0 & 100.0 & 0.048 \\
+\hline
+ & GD-WeightDecay & 9.96e-7 & 1.94e-9 & 9.93e-7 & 1.00e-6 & 1453.5 & 100.0 & 0.046 \\
+\hline
+ & GD & 2.39e-4 & 2.63e-5 & 1.85e-4 & 2.75e-4 & 1668.0 & 0.0 & 0.042 \\
+\hline
+ & L-BFGS-Aggressive & 6.19e-4 & 9.61e-4 & 6.80e-8 & 2.64e-3 & 1303.1 & 70.0 & 0.017 \\
+\hline
+ & L-BFGS-Conservative & 9.25e-7 & 1.12e-6 & 8.80e-8 & 5.33e-6 & 626.6 & 85.0 & 0.016 \\
+\hline
+ & L-BFGS-Limited & 1.05e-6 & 8.37e-7 & 1.49e-7 & 4.54e-6 & 583.7 & 95.0 & 0.013 \\
+\hline
+ & L-BFGS & 7.38e-3 & 2.81e-2 & 1.57e-7 & 1.29e-1 & 285.0 & 80.0 & 0.007 \\
+\hline
+ & L-BFGS-MoreThuente & 5.43e-6 & 2.10e-5 & 7.84e-9 & 9.69e-5 & 286.5 & 95.0 & 0.006 \\
+\hline
+ & QQN-GoldenSection & 1.81e-7 & 2.48e-7 & 1.48e-10 & 8.51e-7 & 300.9 & 100.0 & 0.005 \\
+\hline
+ & Trust Region-Conservative & 1.34e-2 & 2.06e-3 & 9.88e-3 & 1.65e-2 & 385.2 & 0.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 8.29e-8 & 1.84e-7 & 5.12e-10 & 8.65e-7 & 87.6 & 100.0 & 0.003 \\
+\hline
+ & QQN-StrongWolfe & 2.98e-7 & 3.89e-7 & 1.89e-10 & 9.85e-7 & 79.0 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-1 & 1.15e-7 & 1.44e-7 & 2.81e-9 & 5.10e-7 & 102.2 & 100.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & 1.80e-7 & 2.24e-7 & 2.53e-9 & 8.17e-7 & 93.0 & 100.0 & 0.002 \\
+\hline
+ & Adam-Fast & 7.87e-2 & 4.29e-3 & 7.26e-2 & 8.98e-2 & 36.5 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 1.31e-1 & 2.65e-2 & 9.69e-2 & 1.81e-1 & 22.4 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.57e-1 & 2.47e-2 & 1.15e-1 & 2.20e-1 & 22.5 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 6.16e-2 & 3.23e-2 & 3.16e-2 & 1.88e-1 & 70.6 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 3.36e-1 & 5.15e-2 & 2.35e-1 & 4.11e-1 & 16.4 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.01e1 & 2.44e1 & 6.77e-2 & 1.07e2 & 27.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 3.36e0 & 7.59e0 & 1.74e-3 & 2.47e1 & 18.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.31e0 & 2.09e-1 & 9.21e-1 & 1.57e0 & 5.0 & 0.0 & 0.000 \\
+Levy\_5D & \textbf{Adam-Robust} & 6.80e-2 & 2.38e-2 & 3.18e-2 & 1.12e-1 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam-AMSGrad & 7.64e-2 & 1.84e-2 & 5.66e-2 & 1.23e-1 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam & 7.73e-3 & 2.59e-3 & 3.13e-3 & 1.23e-2 & 2502.0 & 0.0 & 0.054 \\
+\hline
+ & Adam-WeightDecay & 1.43e-6 & 8.78e-7 & 9.65e-7 & 3.66e-6 & 2087.2 & 60.0 & 0.050 \\
+\hline
+ & GD-WeightDecay & 9.96e-7 & 2.36e-9 & 9.93e-7 & 1.00e-6 & 1448.8 & 100.0 & 0.048 \\
+\hline
+ & GD & 2.32e-4 & 2.08e-5 & 1.98e-4 & 2.68e-4 & 1668.0 & 0.0 & 0.044 \\
+\hline
+ & L-BFGS-Limited & 2.87e-4 & 1.19e-3 & 2.75e-7 & 5.49e-3 & 1375.8 & 70.0 & 0.024 \\
+\hline
+ & L-BFGS-Aggressive & 2.73e-2 & 8.04e-2 & 6.19e-7 & 2.69e-1 & 825.3 & 75.0 & 0.012 \\
+\hline
+ & L-BFGS-Conservative & 6.68e-7 & 2.83e-7 & 1.69e-8 & 9.92e-7 & 332.8 & 100.0 & 0.008 \\
+\hline
+ & Trust Region-Conservative & 1.23e-2 & 2.42e-3 & 8.28e-3 & 1.73e-2 & 996.6 & 0.0 & 0.007 \\
+\hline
+ & QQN-GoldenSection & 2.57e-7 & 2.61e-7 & 1.77e-10 & 8.61e-7 & 382.3 & 100.0 & 0.007 \\
+\hline
+ & L-BFGS-MoreThuente & 6.91e-7 & 2.89e-7 & 1.12e-9 & 9.44e-7 & 296.9 & 100.0 & 0.006 \\
+\hline
+ & L-BFGS & 4.35e-2 & 1.89e-1 & 2.47e-7 & 8.69e-1 & 173.6 & 80.0 & 0.004 \\
+\hline
+ & GD-Nesterov & 9.57e-2 & 5.82e-2 & 9.78e-7 & 1.77e-1 & 102.2 & 25.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.65e-7 & 2.41e-7 & 2.28e-9 & 8.78e-7 & 96.0 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-1 & 3.74e-7 & 3.37e-7 & 4.32e-9 & 9.98e-7 & 103.4 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-2 & 2.16e-7 & 2.19e-7 & 1.51e-10 & 8.82e-7 & 101.3 & 100.0 & 0.002 \\
+\hline
+ & QQN-StrongWolfe & 3.31e-7 & 3.09e-7 & 1.45e-9 & 9.50e-7 & 69.2 & 100.0 & 0.002 \\
+\hline
+ & GD-Momentum & 1.72e-1 & 6.34e-2 & 9.75e-7 & 2.44e-1 & 56.5 & 10.0 & 0.002 \\
+\hline
+ & Trust Region-Precise & 3.62e-2 & 1.15e-2 & 1.69e-2 & 5.90e-2 & 168.1 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 1.67e-1 & 6.57e-3 & 1.54e-1 & 1.81e-1 & 37.0 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 4.77e-1 & 4.91e-2 & 3.80e-1 & 5.58e-1 & 19.2 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.06e1 & 3.16e1 & 4.60e-2 & 1.07e2 & 46.9 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.49e0 & 5.26e0 & 4.43e-4 & 2.47e1 & 26.4 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 4.37e-1 & 1.99e-1 & 1.82e-1 & 1.11e0 & 8.2 & 0.0 & 0.000 \\
+Levy\_10D & \textbf{Adam-Robust} & 9.82e-2 & 2.53e-2 & 6.13e-2 & 1.55e-1 & 2502.0 & 0.0 & 0.067 \\
+\hline
+ & Adam-AMSGrad & 1.51e-1 & 2.79e-2 & 1.12e-1 & 2.09e-1 & 2502.0 & 0.0 & 0.066 \\
+\hline
+ & Adam & 6.46e-3 & 2.05e-3 & 2.32e-3 & 1.09e-2 & 2502.0 & 0.0 & 0.060 \\
+\hline
+ & GD-WeightDecay & 9.97e-7 & 2.35e-9 & 9.93e-7 & 1.00e-6 & 1451.7 & 100.0 & 0.052 \\
+\hline
+ & GD & 2.28e-4 & 3.05e-5 & 1.85e-4 & 2.81e-4 & 1668.0 & 0.0 & 0.050 \\
+\hline
+ & Adam-WeightDecay & 2.80e-6 & 1.09e-6 & 1.41e-6 & 5.43e-6 & 1897.2 & 0.0 & 0.048 \\
+\hline
+ & L-BFGS-Aggressive & 1.27e0 & 8.13e-1 & 4.01e-7 & 1.95e0 & 2637.9 & 25.0 & 0.034 \\
+\hline
+ & L-BFGS-Limited & 2.41e-5 & 9.83e-5 & 5.25e-7 & 4.52e-4 & 1051.8 & 80.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 1.21e-2 & 2.16e-3 & 9.38e-3 & 1.68e-2 & 1976.9 & 0.0 & 0.016 \\
+\hline
+ & L-BFGS-Conservative & 6.63e-7 & 2.81e-7 & 7.05e-8 & 9.84e-7 & 365.9 & 100.0 & 0.010 \\
+\hline
+ & QQN-GoldenSection & 2.74e-7 & 3.41e-7 & 1.87e-10 & 9.92e-7 & 399.3 & 100.0 & 0.007 \\
+\hline
+ & L-BFGS & 3.96e-3 & 1.37e-2 & 3.36e-7 & 6.19e-2 & 223.2 & 80.0 & 0.005 \\
+\hline
+ & L-BFGS-MoreThuente & 7.24e-7 & 2.59e-7 & 8.40e-8 & 9.97e-7 & 165.1 & 100.0 & 0.004 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.83e-7 & 2.18e-7 & 2.06e-9 & 7.21e-7 & 98.6 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-1 & 2.49e-7 & 2.81e-7 & 1.67e-8 & 9.80e-7 & 109.7 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-2 & 2.70e-7 & 3.13e-7 & 1.96e-10 & 9.48e-7 & 111.1 & 100.0 & 0.003 \\
+\hline
+ & Trust Region-Precise & 3.14e-2 & 1.13e-2 & 1.56e-2 & 5.18e-2 & 325.6 & 0.0 & 0.003 \\
+\hline
+ & QQN-StrongWolfe & 1.46e-7 & 2.27e-7 & 7.28e-10 & 8.42e-7 & 70.1 & 100.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 1.74e-1 & 1.99e-2 & 1.40e-1 & 2.05e-1 & 28.4 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 2.58e-1 & 3.43e-2 & 1.93e-1 & 3.23e-1 & 28.1 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 3.12e-1 & 1.23e-2 & 2.89e-1 & 3.41e-1 & 36.9 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 6.50e-1 & 3.56e-2 & 5.54e-1 & 7.01e-1 & 21.9 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 7.36e-2 & 4.00e-2 & 1.96e-2 & 1.41e-1 & 84.5 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 2.04e0 & 7.08e0 & 8.10e-2 & 3.28e1 & 29.6 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 6.17e-1 & 4.58e-1 & 2.22e-1 & 1.93e0 & 11.8 & 0.0 & 0.000 \\
+Zakharov\_2D & \textbf{Adam-Robust} & 3.83e-2 & 2.87e-2 & 6.91e-3 & 1.35e-1 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam-AMSGrad & 9.29e-2 & 2.94e-2 & 4.85e-2 & 1.34e-1 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam & 1.77e-3 & 1.69e-3 & 5.24e-5 & 6.40e-3 & 2502.0 & 0.0 & 0.050 \\
+\hline
+ & Adam-WeightDecay & 9.88e-9 & 7.13e-11 & 9.74e-9 & 9.97e-9 & 2040.6 & 100.0 & 0.043 \\
+\hline
+ & L-BFGS-Conservative & 6.39e-7 & 1.89e-6 & 5.41e-10 & 6.44e-6 & 863.5 & 75.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 8.84e-1 & 1.50e0 & 1.05e-2 & 6.57e0 & 2569.1 & 0.0 & 0.016 \\
+\hline
+ & L-BFGS-Limited & 6.46e-7 & 2.30e-6 & 1.04e-9 & 1.04e-5 & 658.2 & 90.0 & 0.012 \\
+\hline
+ & GD & 9.76e-9 & 9.66e-11 & 9.61e-9 & 9.97e-9 & 417.4 & 100.0 & 0.011 \\
+\hline
+ & L-BFGS-Aggressive & 3.75e0 & 5.80e0 & 4.91e-10 & 1.50e1 & 1213.0 & 70.0 & 0.007 \\
+\hline
+ & Trust Region-Precise & 6.91e-2 & 9.24e-2 & 8.62e-3 & 4.38e-1 & 503.2 & 0.0 & 0.003 \\
+\hline
+ & QQN-StrongWolfe & 4.83e-9 & 2.70e-9 & 1.51e-9 & 9.93e-9 & 95.0 & 100.0 & 0.003 \\
+\hline
+ & L-BFGS & 2.88e-2 & 5.11e-2 & 5.69e-10 & 1.73e-1 & 158.7 & 60.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.52e-9 & 3.10e-9 & 1.85e-11 & 9.62e-9 & 89.2 & 100.0 & 0.003 \\
+\hline
+ & QQN-GoldenSection & 7.14e-11 & 3.11e-10 & 5.21e-21 & 1.43e-9 & 180.9 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-1 & 7.75e-14 & 8.83e-14 & 9.76e-18 & 3.54e-13 & 114.6 & 100.0 & 0.002 \\
+\hline
+ & QQN-Bisection-2 & 9.02e-14 & 2.34e-13 & 4.37e-17 & 9.97e-13 & 84.0 & 100.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 8.53e-2 & 5.34e-2 & 8.63e-9 & 1.56e-1 & 47.9 & 25.0 & 0.002 \\
+\hline
+ & L-BFGS-MoreThuente & 7.07e-9 & 1.81e-9 & 3.76e-9 & 9.71e-9 & 67.3 & 100.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 4.96e3 & 2.16e4 & 3.14e-2 & 9.91e4 & 121.0 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 2.81e-1 & 1.57e-2 & 2.54e-1 & 3.10e-1 & 37.5 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 7.05e-1 & 1.56e-1 & 4.12e-1 & 1.03e0 & 16.6 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 6.00e-1 & 7.84e-2 & 5.01e-1 & 7.53e-1 & 16.7 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.08e0 & 1.28e-1 & 8.96e-1 & 1.34e0 & 17.1 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.38e0 & 4.10e0 & 1.22e-1 & 1.46e1 & 38.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 5.16e4 & 2.24e5 & 5.33e-1 & 1.03e6 & 18.9 & 0.0 & 0.000 \\
+Zakharov\_5D & \textbf{L-BFGS-Aggressive} & 4.22e1 & 8.64e0 & 2.82e1 & 6.13e1 & 3309.5 & 0.0 & 0.062 \\
+\hline
+ & Adam-AMSGrad & 2.23e-2 & 1.32e-2 & 4.59e-3 & 5.39e-2 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & Adam-Robust & 7.06e-2 & 7.45e-2 & 6.18e-3 & 2.91e-1 & 2502.0 & 0.0 & 0.059 \\
+\hline
+ & Adam & 2.82e-3 & 2.38e-3 & 2.65e-4 & 7.47e-3 & 2502.0 & 0.0 & 0.054 \\
+\hline
+ & Adam-WeightDecay & 8.64e-3 & 1.13e-2 & 9.76e-9 & 2.86e-2 & 1586.3 & 60.0 & 0.036 \\
+\hline
+ & Trust Region-Precise & 3.50e3 & 7.96e2 & 2.04e3 & 4.73e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Adaptive & 3.10e3 & 8.27e2 & 1.77e3 & 4.98e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 3.28e3 & 6.15e2 & 2.05e3 & 4.46e3 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Standard & 2.28e3 & 8.27e2 & 6.92e2 & 3.84e3 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Aggressive & 5.65e1 & 1.12e2 & 6.02e-1 & 4.25e2 & 2415.8 & 0.0 & 0.017 \\
+\hline
+ & L-BFGS-Limited & 1.94e-8 & 4.45e-8 & 7.85e-9 & 2.13e-7 & 1078.6 & 95.0 & 0.016 \\
+\hline
+ & GD & 9.78e-9 & 9.76e-11 & 9.63e-9 & 9.97e-9 & 477.1 & 100.0 & 0.013 \\
+\hline
+ & L-BFGS-MoreThuente & 9.32e-9 & 3.60e-10 & 8.60e-9 & 9.95e-9 & 634.6 & 100.0 & 0.013 \\
+\hline
+ & L-BFGS-Conservative & 7.32e-9 & 2.98e-9 & 2.42e-10 & 9.99e-9 & 492.9 & 100.0 & 0.012 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.52e-9 & 1.59e-9 & 3.50e-12 & 5.23e-9 & 205.0 & 100.0 & 0.007 \\
+\hline
+ & QQN-StrongWolfe & 2.41e-9 & 3.17e-9 & 2.91e-14 & 9.91e-9 & 100.3 & 100.0 & 0.003 \\
+\hline
+ & QQN-Bisection-2 & 1.50e-9 & 1.97e-9 & 2.56e-15 & 6.16e-9 & 114.7 & 100.0 & 0.002 \\
+\hline
+ & QQN-Bisection-1 & 1.12e-12 & 2.99e-12 & 5.59e-14 & 1.40e-11 & 118.0 & 100.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 7.62e-1 & 4.69e-1 & 9.24e-9 & 1.31e0 & 52.5 & 25.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 2.83e-12 & 2.87e-12 & 2.45e-13 & 1.21e-11 & 138.0 & 100.0 & 0.002 \\
+\hline
+ & L-BFGS & 2.69e1 & 2.46e1 & 2.58e-1 & 8.10e1 & 93.0 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 9.66e0 & 1.31e0 & 7.78e0 & 1.15e1 & 34.8 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 6.97e1 & 1.64e1 & 4.83e1 & 1.09e2 & 18.5 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 5.05e0 & 2.73e0 & 1.42e0 & 1.10e1 & 18.1 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 5.45e1 & 1.33e1 & 3.48e1 & 9.04e1 & 18.9 & 0.0 & 0.001 \\
+Zakharov\_10D & \textbf{Adam-Robust} & 3.12e0 & 6.81e0 & 2.92e-2 & 2.78e1 & 2502.0 & 0.0 & 0.062 \\
+\hline
+ & L-BFGS & 2.07e4 & 8.30e3 & 6.23e3 & 3.58e4 & 3286.7 & 0.0 & 0.060 \\
+\hline
+ & L-BFGS-MoreThuente & 1.67e-6 & 9.70e-7 & 4.87e-7 & 4.27e-6 & 2886.3 & 0.0 & 0.059 \\
+\hline
+ & L-BFGS-Aggressive & 9.79e-1 & 8.37e-1 & 1.37e-2 & 3.03e0 & 3811.6 & 0.0 & 0.052 \\
+\hline
+ & Adam & 4.52e-2 & 4.19e-2 & 1.69e-3 & 1.18e-1 & 2253.9 & 0.0 & 0.050 \\
+\hline
+ & Adam-AMSGrad & 1.09e-1 & 3.02e-2 & 3.67e-2 & 1.63e-1 & 2016.2 & 0.0 & 0.050 \\
+\hline
+ & L-BFGS-Limited & 9.29e-2 & 2.40e-1 & 5.26e-9 & 9.86e-1 & 2588.7 & 55.0 & 0.034 \\
+\hline
+ & Trust Region-Standard & 5.72e5 & 1.14e5 & 3.74e5 & 8.01e5 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Adaptive & 5.56e5 & 9.19e4 & 4.08e5 & 7.62e5 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Precise & 5.73e5 & 9.27e4 & 4.07e5 & 7.69e5 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Aggressive & 5.60e5 & 8.22e4 & 4.02e5 & 7.12e5 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 5.85e5 & 6.69e4 & 4.55e5 & 7.39e5 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & GD & 3.37e-1 & 2.28e-1 & 9.65e-9 & 9.78e-1 & 686.0 & 10.0 & 0.020 \\
+\hline
+ & Adam-WeightDecay & 1.79e-1 & 3.62e-2 & 1.29e-1 & 2.61e-1 & 683.1 & 0.0 & 0.016 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.75e-9 & 9.69e-10 & 4.53e-10 & 4.49e-9 & 312.8 & 100.0 & 0.013 \\
+\hline
+ & QQN-StrongWolfe & 9.67e-4 & 4.21e-3 & 2.12e-14 & 1.93e-2 & 281.4 & 95.0 & 0.009 \\
+\hline
+ & QQN-Bisection-2 & 1.58e-9 & 9.47e-10 & 1.13e-10 & 3.31e-9 & 159.2 & 100.0 & 0.004 \\
+\hline
+ & QQN-GoldenSection & 1.50e-9 & 2.57e-9 & 3.14e-19 & 8.28e-9 & 233.1 & 100.0 & 0.004 \\
+\hline
+ & QQN-Bisection-1 & 1.96e-9 & 2.69e-9 & 4.68e-16 & 8.14e-9 & 161.5 & 100.0 & 0.003 \\
+\hline
+ & GD-WeightDecay & 1.51e1 & 1.85e1 & 8.77e-9 & 5.75e1 & 67.5 & 30.0 & 0.002 \\
+\hline
+ & L-BFGS-Conservative & 7.82e23 & 1.19e24 & 1.68e5 & 4.59e24 & 68.5 & 0.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.13e3 & 5.38e2 & 3.62e2 & 2.13e3 & 34.7 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 6.98e3 & 2.36e3 & 4.52e3 & 1.36e4 & 20.9 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 8.62e2 & 6.04e2 & 4.52e1 & 1.76e3 & 20.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 6.41e3 & 3.22e3 & 1.95e3 & 1.10e4 & 21.1 & 0.0 & 0.001 \\
+IllConditionedRosenbrock\_2D\_alpha100 & \textbf{QQN-GoldenSection} & 1.25e-1 & 5.78e-2 & 6.99e-5 & 1.93e-1 & 4459.4 & 0.0 & 0.083 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.48e-2 & 3.38e-2 & 4.34e-10 & 9.89e-2 & 1722.9 & 35.0 & 0.070 \\
+\hline
+ & QQN-StrongWolfe & 5.46e-2 & 7.38e-2 & 9.29e-9 & 3.11e-1 & 2343.8 & 20.0 & 0.068 \\
+\hline
+ & QQN-Bisection-1 & 4.65e-1 & 8.86e-1 & 1.58e-8 & 3.18e0 & 2369.2 & 5.0 & 0.052 \\
+\hline
+ & Adam & 1.22e0 & 3.51e-1 & 4.86e-1 & 1.76e0 & 2502.0 & 0.0 & 0.049 \\
+\hline
+ & L-BFGS-Conservative & 2.69e-4 & 1.04e-3 & 2.05e-9 & 4.76e-3 & 1800.6 & 80.0 & 0.029 \\
+\hline
+ & L-BFGS-Aggressive & 3.18e1 & 2.86e1 & 4.34e0 & 1.12e2 & 3852.0 & 0.0 & 0.028 \\
+\hline
+ & L-BFGS-MoreThuente & 1.52e-2 & 6.51e-2 & 3.79e-9 & 2.99e-1 & 1487.5 & 65.0 & 0.027 \\
+\hline
+ & L-BFGS-Limited & 3.93e0 & 5.18e0 & 3.26e-2 & 1.96e1 & 2251.6 & 0.0 & 0.025 \\
+\hline
+ & GD & 1.23e0 & 1.46e0 & 7.46e-1 & 6.37e0 & 854.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 2.84e1 & 2.98e1 & 1.90e-1 & 1.23e2 & 2770.7 & 0.0 & 0.017 \\
+\hline
+ & Adam-AMSGrad & 3.83e0 & 1.33e0 & 4.66e-1 & 4.75e0 & 678.1 & 0.0 & 0.015 \\
+\hline
+ & QQN-Bisection-2 & 5.88e-2 & 7.05e-2 & 6.64e-9 & 2.52e-1 & 479.6 & 25.0 & 0.011 \\
+\hline
+ & Adam-Robust & 4.04e0 & 8.59e-1 & 1.90e0 & 4.73e0 & 419.2 & 0.0 & 0.009 \\
+\hline
+ & Adam-Fast & 2.13e0 & 2.75e0 & 2.59e-5 & 8.39e0 & 313.6 & 0.0 & 0.006 \\
+\hline
+ & Trust Region-Precise & 7.26e0 & 8.07e0 & 3.76e0 & 3.52e1 & 946.2 & 0.0 & 0.006 \\
+\hline
+ & Adam-WeightDecay & 4.11e0 & 9.66e-1 & 1.55e-2 & 4.69e0 & 231.9 & 0.0 & 0.005 \\
+\hline
+ & Trust Region-Adaptive & 4.12e0 & 2.07e-1 & 3.83e0 & 4.42e0 & 494.4 & 0.0 & 0.003 \\
+\hline
+ & GD-WeightDecay & 3.65e0 & 3.07e0 & 3.75e-2 & 1.07e1 & 58.7 & 0.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & 8.18e-1 & 1.24e0 & 4.17e-2 & 4.36e0 & 49.2 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.36e2 & 1.58e2 & 8.12e-1 & 5.03e2 & 121.5 & 0.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 1.49e0 & 1.88e0 & 5.05e-2 & 5.63e0 & 46.1 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 5.61e0 & 3.44e0 & 4.79e-1 & 1.33e1 & 23.8 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 4.18e0 & 1.83e-1 & 3.95e0 & 4.51e0 & 89.6 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 4.66e0 & 3.99e-1 & 4.01e0 & 5.49e0 & 27.6 & 0.0 & 0.000 \\
+IllConditionedRosenbrock\_5D\_alpha100 & \textbf{QQN-GoldenSection} & 4.32e-1 & 5.14e-1 & 5.69e-8 & 1.61e0 & 3805.3 & 35.0 & 0.072 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.97e-1 & 2.84e-1 & 4.07e-9 & 7.25e-1 & 1403.3 & 65.0 & 0.059 \\
+\hline
+ & Adam-Robust & 1.46e1 & 6.99e0 & 6.12e0 & 2.99e1 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam-AMSGrad & 4.40e0 & 3.25e-1 & 3.25e0 & 4.82e0 & 2442.0 & 0.0 & 0.055 \\
+\hline
+ & Adam & 3.92e0 & 4.66e-1 & 2.83e0 & 4.65e0 & 2471.6 & 0.0 & 0.049 \\
+\hline
+ & L-BFGS-Limited & 4.05e-1 & 5.13e-2 & 3.00e-1 & 5.47e-1 & 4035.2 & 0.0 & 0.045 \\
+\hline
+ & QQN-Bisection-2 & 2.99e-1 & 2.82e-1 & 4.91e-8 & 9.11e-1 & 1647.8 & 15.0 & 0.040 \\
+\hline
+ & L-BFGS-MoreThuente & 1.74e8 & 7.57e8 & 3.07e-7 & 3.47e9 & 2320.8 & 20.0 & 0.040 \\
+\hline
+ & QQN-Bisection-1 & 4.19e-1 & 1.11e0 & 2.00e-9 & 4.64e0 & 1511.2 & 80.0 & 0.039 \\
+\hline
+ & Adam-WeightDecay & 1.84e0 & 2.24e0 & 1.84e-3 & 4.66e0 & 1797.3 & 0.0 & 0.038 \\
+\hline
+ & QQN-StrongWolfe & 1.59e-7 & 1.68e-7 & 2.70e-9 & 5.77e-7 & 1191.3 & 100.0 & 0.036 \\
+\hline
+ & L-BFGS-Conservative & 2.02e1 & 6.75e1 & 2.46e-1 & 3.11e2 & 3386.6 & 0.0 & 0.034 \\
+\hline
+ & L-BFGS-Aggressive & 8.07e2 & 4.06e2 & 1.72e1 & 1.19e3 & 3851.6 & 0.0 & 0.029 \\
+\hline
+ & Trust Region-Conservative & 1.02e3 & 1.63e2 & 7.14e2 & 1.31e3 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Precise & 1.01e3 & 1.27e2 & 8.08e2 & 1.35e3 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Adaptive & 8.41e2 & 1.37e2 & 5.05e2 & 1.11e3 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Standard & 6.23e1 & 7.73e1 & 4.66e0 & 2.53e2 & 2827.2 & 0.0 & 0.018 \\
+\hline
+ & GD-WeightDecay & 7.32e-1 & 1.11e0 & 1.46e-1 & 5.40e0 & 459.3 & 0.0 & 0.015 \\
+\hline
+ & GD-Nesterov & 4.24e0 & 5.00e0 & 3.82e-1 & 1.31e1 & 372.4 & 0.0 & 0.012 \\
+\hline
+ & Trust Region-Aggressive & 5.00e0 & 4.17e-1 & 4.66e0 & 5.93e0 & 776.1 & 0.0 & 0.005 \\
+\hline
+ & L-BFGS & 1.50e2 & 2.28e2 & 1.98e1 & 7.52e2 & 135.3 & 0.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.43e1 & 3.92e0 & 4.36e-2 & 1.86e1 & 49.9 & 0.0 & 0.001 \\
+\hline
+ & GD & 5.09e0 & 1.48e-1 & 4.75e0 & 5.31e0 & 32.5 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 4.60e1 & 6.15e0 & 3.36e1 & 5.66e1 & 20.6 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.55e1 & 8.91e0 & 1.96e1 & 4.95e1 & 20.8 & 0.0 & 0.001 \\
+IllConditionedRosenbrock\_10D\_alpha100 & \textbf{QQN-GoldenSection} & 4.56e0 & 1.82e0 & 4.63e-1 & 6.66e0 & 4477.5 & 0.0 & 0.086 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 6.00e-1 & 1.52e0 & 1.13e-7 & 4.99e0 & 1666.2 & 75.0 & 0.070 \\
+\hline
+ & Adam-AMSGrad & 9.31e0 & 3.61e-1 & 8.08e0 & 9.69e0 & 2490.9 & 0.0 & 0.061 \\
+\hline
+ & Adam-Robust & 3.49e1 & 9.88e0 & 1.61e1 & 5.15e1 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & QQN-StrongWolfe & 5.85e-1 & 1.24e0 & 9.35e-8 & 4.79e0 & 1847.0 & 70.0 & 0.058 \\
+\hline
+ & GD-Nesterov & 1.17e0 & 1.66e-2 & 1.12e0 & 1.19e0 & 1514.9 & 0.0 & 0.056 \\
+\hline
+ & Adam & 9.11e0 & 4.86e-1 & 7.98e0 & 9.93e0 & 2475.8 & 0.0 & 0.053 \\
+\hline
+ & L-BFGS-MoreThuente & 3.41e0 & 3.98e0 & 3.35e-5 & 1.75e1 & 2853.3 & 0.0 & 0.053 \\
+\hline
+ & QQN-Bisection-1 & 1.22e0 & 2.80e0 & 1.19e-7 & 9.52e0 & 1844.9 & 65.0 & 0.051 \\
+\hline
+ & L-BFGS-Aggressive & 1.64e2 & 3.20e2 & 5.82e1 & 1.56e3 & 3850.3 & 0.0 & 0.049 \\
+\hline
+ & L-BFGS-Limited & 3.86e0 & 5.50e-1 & 2.71e0 & 5.45e0 & 4036.8 & 0.0 & 0.048 \\
+\hline
+ & Adam-WeightDecay & 2.38e0 & 4.13e0 & 6.46e-6 & 9.61e0 & 2074.9 & 0.0 & 0.047 \\
+\hline
+ & GD-WeightDecay & 1.34e0 & 1.81e0 & 1.70e-1 & 5.25e0 & 1217.3 & 0.0 & 0.042 \\
+\hline
+ & QQN-Bisection-2 & 4.40e0 & 1.40e0 & 1.07e-7 & 5.50e0 & 1646.8 & 5.0 & 0.042 \\
+\hline
+ & L-BFGS-Conservative & 1.90e4 & 6.07e4 & 1.03e0 & 2.56e5 & 3278.5 & 0.0 & 0.037 \\
+\hline
+ & Trust Region-Adaptive & 2.02e3 & 2.22e2 & 1.64e3 & 2.59e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 2.16e3 & 2.33e2 & 1.76e3 & 2.55e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Standard & 1.06e3 & 2.06e2 & 6.70e2 & 1.41e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Precise & 2.10e3 & 1.92e2 & 1.66e3 & 2.46e3 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & GD-Momentum & 3.04e1 & 3.31e1 & 5.05e-1 & 7.27e1 & 517.6 & 0.0 & 0.016 \\
+\hline
+ & Trust Region-Aggressive & 6.55e1 & 2.02e2 & 9.60e0 & 9.28e2 & 1618.0 & 0.0 & 0.011 \\
+\hline
+ & L-BFGS & 1.19e2 & 1.68e2 & 2.51e1 & 7.37e2 & 338.9 & 0.0 & 0.004 \\
+\hline
+ & Adam-Fast & 1.53e1 & 1.47e1 & 1.91e-1 & 3.68e1 & 149.2 & 0.0 & 0.003 \\
+\hline
+ & GD & 9.96e0 & 2.61e-1 & 9.64e0 & 1.05e1 & 46.6 & 0.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & 1.02e2 & 9.83e0 & 8.45e1 & 1.16e2 & 23.1 & 0.0 & 0.001 \\
+Trigonometric\_2D & \textbf{Adam-AMSGrad} & 1.08e-6 & 3.54e-7 & 9.47e-7 & 2.57e-6 & 1241.2 & 85.0 & 0.028 \\
+\hline
+ & Adam & 9.77e-7 & 1.59e-8 & 9.40e-7 & 9.98e-7 & 1269.5 & 100.0 & 0.026 \\
+\hline
+ & Adam-Robust & 3.10e-3 & 1.20e-2 & 5.08e-7 & 5.56e-2 & 442.4 & 5.0 & 0.010 \\
+\hline
+ & GD & 9.80e-7 & 1.07e-8 & 9.61e-7 & 9.99e-7 & 361.1 & 100.0 & 0.010 \\
+\hline
+ & L-BFGS-Aggressive & 3.62e-4 & 1.35e-3 & 7.20e-8 & 6.20e-3 & 843.0 & 80.0 & 0.009 \\
+\hline
+ & Adam-WeightDecay & 1.76e-5 & 4.01e-5 & 3.77e-7 & 1.63e-4 & 362.9 & 75.0 & 0.008 \\
+\hline
+ & L-BFGS-Limited & 7.02e-6 & 2.23e-5 & 2.15e-8 & 1.00e-4 & 433.9 & 90.0 & 0.008 \\
+\hline
+ & QQN-GoldenSection & 1.28e-3 & 5.56e-3 & 6.12e-10 & 2.55e-2 & 462.6 & 95.0 & 0.008 \\
+\hline
+ & QQN-Bisection-2 & 2.06e-7 & 2.73e-7 & 7.96e-10 & 8.24e-7 & 207.1 & 100.0 & 0.005 \\
+\hline
+ & QQN-Bisection-1 & 2.08e-7 & 2.21e-7 & 1.49e-9 & 7.99e-7 & 220.8 & 100.0 & 0.005 \\
+\hline
+ & QQN-StrongWolfe & 4.90e-7 & 2.12e-7 & 2.93e-9 & 9.96e-7 & 107.8 & 100.0 & 0.004 \\
+\hline
+ & GD-WeightDecay & 2.11e-4 & 6.48e-4 & 8.75e-7 & 2.81e-3 & 102.4 & 85.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.11e-7 & 3.76e-7 & 6.47e-10 & 9.84e-7 & 95.8 & 100.0 & 0.003 \\
+\hline
+ & L-BFGS-Conservative & 5.22e-7 & 2.95e-7 & 3.92e-8 & 9.76e-7 & 129.4 & 100.0 & 0.003 \\
+\hline
+ & L-BFGS & 4.06e-3 & 1.77e-2 & 8.58e-10 & 8.12e-2 & 93.3 & 90.0 & 0.002 \\
+\hline
+ & L-BFGS-MoreThuente & 4.44e-7 & 3.28e-7 & 1.25e-8 & 9.94e-7 & 85.4 & 100.0 & 0.002 \\
+\hline
+ & Adam-Fast & 6.08e-3 & 1.20e-2 & 1.89e-8 & 5.66e-2 & 47.6 & 5.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 7.65e-3 & 4.04e-3 & 5.90e-5 & 1.24e-2 & 23.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 2.31e-2 & 2.66e-2 & 5.79e-4 & 7.14e-2 & 24.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.43e-2 & 2.95e-2 & 2.30e-4 & 8.79e-2 & 22.1 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Conservative & 8.94e-3 & 1.37e-2 & 1.87e-3 & 4.88e-2 & 43.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 2.50e1 & 1.94e1 & 3.36e-2 & 5.71e1 & 18.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 1.11e-1 & 2.96e-1 & 1.34e-2 & 1.39e0 & 16.8 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 1.22e1 & 2.59e1 & 2.19e-1 & 9.57e1 & 13.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 8.77e0 & 2.18e1 & 1.18e-2 & 8.47e1 & 12.8 & 0.0 & 0.000 \\
+Trigonometric\_5D & \textbf{Adam-AMSGrad} & 2.94e-2 & 3.49e-2 & 9.71e-7 & 8.56e-2 & 2192.1 & 35.0 & 0.054 \\
+\hline
+ & QQN-StrongWolfe & 7.54e-7 & 4.98e-7 & 1.51e-8 & 1.93e-6 & 1274.7 & 90.0 & 0.046 \\
+\hline
+ & Adam & 1.12e-2 & 2.74e-2 & 8.42e-7 & 8.54e-2 & 1728.1 & 85.0 & 0.039 \\
+\hline
+ & L-BFGS-Aggressive & 1.22e0 & 5.81e-1 & 1.48e-1 & 2.56e0 & 3851.9 & 0.0 & 0.025 \\
+\hline
+ & Adam-Robust & 1.43e-2 & 2.36e-2 & 2.34e-7 & 6.11e-2 & 978.1 & 20.0 & 0.024 \\
+\hline
+ & L-BFGS-MoreThuente & 5.44e-4 & 2.01e-3 & 1.15e-7 & 9.19e-3 & 1087.8 & 75.0 & 0.023 \\
+\hline
+ & QQN-GoldenSection & 2.34e-7 & 2.85e-7 & 3.03e-9 & 8.60e-7 & 1123.5 & 100.0 & 0.021 \\
+\hline
+ & L-BFGS-Limited & 2.14e-3 & 9.31e-3 & 7.20e-7 & 4.27e-2 & 1331.0 & 95.0 & 0.019 \\
+\hline
+ & Adam-WeightDecay & 1.95e-2 & 3.08e-2 & 3.70e-7 & 8.53e-2 & 784.6 & 70.0 & 0.018 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.16e-7 & 3.74e-7 & 1.09e-9 & 9.80e-7 & 389.1 & 100.0 & 0.017 \\
+\hline
+ & QQN-Bisection-1 & 8.71e-4 & 3.70e-3 & 1.72e-10 & 1.70e-2 & 664.0 & 90.0 & 0.015 \\
+\hline
+ & L-BFGS-Conservative & 2.73e-3 & 1.19e-2 & 1.66e-7 & 5.45e-2 & 887.4 & 90.0 & 0.014 \\
+\hline
+ & GD & 9.83e-7 & 7.74e-9 & 9.62e-7 & 9.94e-7 & 399.2 & 100.0 & 0.011 \\
+\hline
+ & QQN-Bisection-2 & 3.22e-7 & 3.08e-7 & 6.17e-10 & 9.20e-7 & 305.6 & 80.0 & 0.009 \\
+\hline
+ & GD-WeightDecay & 1.36e-2 & 2.77e-2 & 8.18e-7 & 8.54e-2 & 105.4 & 75.0 & 0.004 \\
+\hline
+ & L-BFGS & 4.77e0 & 8.95e0 & 1.26e-2 & 4.30e1 & 233.9 & 0.0 & 0.004 \\
+\hline
+ & Trust Region-Conservative & 1.91e-2 & 1.87e-2 & 8.29e-4 & 5.63e-2 & 425.6 & 0.0 & 0.004 \\
+\hline
+ & Adam-Fast & 6.17e-2 & 5.21e-2 & 7.00e-4 & 1.62e-1 & 54.8 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 1.60e-2 & 2.60e-2 & 4.85e-4 & 7.53e-2 & 33.5 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 1.79e-2 & 3.35e-2 & 1.30e-4 & 1.56e-1 & 30.6 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.57e-1 & 1.93e-1 & 4.87e-3 & 8.47e-1 & 25.0 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 5.59e-2 & 2.09e-2 & 1.47e-2 & 9.38e-2 & 84.8 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.25e-1 & 7.39e-2 & 2.86e-2 & 3.04e-1 & 26.1 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 4.09e-1 & 1.81e-1 & 1.21e-1 & 7.66e-1 & 9.8 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.41e0 & 4.40e-1 & 6.56e-1 & 2.25e0 & 5.2 & 0.0 & 0.000 \\
+Trigonometric\_10D & \textbf{Adam-AMSGrad} & 3.00e-2 & 3.66e-2 & 7.20e-6 & 8.75e-2 & 2502.0 & 0.0 & 0.074 \\
+\hline
+ & L-BFGS-Limited & 7.31e-3 & 1.99e-2 & 9.82e-6 & 8.19e-2 & 3943.6 & 0.0 & 0.058 \\
+\hline
+ & Adam-Robust & 7.13e-2 & 1.09e-1 & 9.71e-7 & 5.20e-1 & 1825.9 & 10.0 & 0.057 \\
+\hline
+ & Adam & 9.70e-2 & 2.10e-1 & 9.68e-7 & 7.20e-1 & 2080.5 & 35.0 & 0.054 \\
+\hline
+ & L-BFGS-MoreThuente & 1.34e-2 & 3.73e-2 & 4.78e-7 & 1.60e-1 & 1949.3 & 60.0 & 0.050 \\
+\hline
+ & L-BFGS-Conservative & 9.45e0 & 4.12e1 & 7.52e-7 & 1.89e2 & 3123.2 & 25.0 & 0.043 \\
+\hline
+ & QQN-GoldenSection & 4.35e-4 & 1.06e-3 & 1.12e-7 & 3.88e-3 & 1834.2 & 80.0 & 0.040 \\
+\hline
+ & GD & 4.39e-3 & 1.89e-2 & 9.77e-7 & 8.69e-2 & 958.0 & 55.0 & 0.034 \\
+\hline
+ & L-BFGS-Aggressive & 1.00e1 & 4.32e0 & 2.42e0 & 1.75e1 & 3852.0 & 0.0 & 0.032 \\
+\hline
+ & Trust Region-Conservative & 1.22e0 & 1.60e0 & 3.82e-3 & 5.77e0 & 2651.3 & 0.0 & 0.029 \\
+\hline
+ & QQN-Bisection-1 & 7.53e-4 & 2.61e-3 & 2.91e-8 & 1.18e-2 & 858.0 & 85.0 & 0.027 \\
+\hline
+ & Adam-WeightDecay & 4.25e-2 & 1.14e-1 & 8.69e-7 & 5.20e-1 & 803.8 & 70.0 & 0.022 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.48e-7 & 2.76e-7 & 9.99e-9 & 9.71e-7 & 329.2 & 100.0 & 0.016 \\
+\hline
+ & QQN-StrongWolfe & 2.92e-7 & 2.02e-7 & 9.27e-9 & 7.23e-7 & 347.3 & 100.0 & 0.015 \\
+\hline
+ & QQN-Bisection-2 & 3.56e-7 & 2.58e-7 & 8.26e-8 & 9.59e-7 & 357.8 & 75.0 & 0.011 \\
+\hline
+ & GD-WeightDecay & 8.48e-3 & 2.56e-2 & 8.63e-7 & 1.07e-1 & 134.4 & 85.0 & 0.006 \\
+\hline
+ & Trust Region-Precise & 1.07e-1 & 6.92e-2 & 2.28e-2 & 2.53e-1 & 455.3 & 0.0 & 0.005 \\
+\hline
+ & Adam-Fast & 6.24e-2 & 9.50e-2 & 2.65e-4 & 3.60e-1 & 102.7 & 0.0 & 0.003 \\
+\hline
+ & GD-AdaptiveMomentum & 1.41e-1 & 7.60e-2 & 4.06e-2 & 3.86e-1 & 48.0 & 0.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 1.85e-1 & 7.94e-2 & 7.60e-2 & 4.35e-1 & 45.1 & 0.0 & 0.002 \\
+\hline
+ & GD-Momentum & 1.17e0 & 1.48e0 & 2.40e-3 & 4.14e0 & 34.0 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.86e-1 & 1.19e-1 & 2.37e-2 & 4.38e-1 & 118.4 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS & 4.76e1 & 6.11e1 & 8.87e0 & 2.11e2 & 77.5 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 6.02e-1 & 2.65e-1 & 1.37e-1 & 1.10e0 & 34.1 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.90e0 & 5.88e-1 & 9.79e-1 & 3.67e0 & 12.2 & 0.0 & 0.000 \\
+PenaltyI\_2D\_alpha1e6 & \textbf{QQN-StrongWolfe} & 1.14e0 & 1.65e-2 & 1.12e0 & 1.19e0 & 3162.1 & 0.0 & 0.083 \\
+\hline
+ & L-BFGS-Aggressive & 4.69e4 & 1.12e5 & 1.17e0 & 3.51e5 & 2664.3 & 0.0 & 0.049 \\
+\hline
+ & QQN-GoldenSection & 1.13e0 & 1.00e-4 & 1.12e0 & 1.13e0 & 2567.9 & 0.0 & 0.048 \\
+\hline
+ & L-BFGS-MoreThuente & 4.78e0 & 2.66e0 & 1.18e0 & 8.48e0 & 2878.8 & 0.0 & 0.042 \\
+\hline
+ & QQN-Bisection-1 & 1.12e0 & 8.85e-7 & 1.12e0 & 1.13e0 & 1032.0 & 0.0 & 0.033 \\
+\hline
+ & L-BFGS-Limited & 1.18e0 & 5.23e-2 & 1.13e0 & 1.31e0 & 4341.4 & 0.0 & 0.029 \\
+\hline
+ & Trust Region-Aggressive & 1.39e5 & 7.17e4 & 1.23e4 & 2.70e5 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Conservative & 1.39e5 & 8.98e4 & 8.35e3 & 4.03e5 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Standard & 1.43e5 & 8.01e4 & 3.60e4 & 3.21e5 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Adaptive & 1.32e5 & 8.14e4 & 1.57e4 & 3.15e5 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Precise & 1.67e5 & 7.86e4 & 2.57e4 & 2.92e5 & 3002.0 & 0.0 & 0.018 \\
+\hline
+ & Adam-AMSGrad & 1.16e0 & 5.02e-2 & 1.13e0 & 1.35e0 & 647.9 & 0.0 & 0.015 \\
+\hline
+ & L-BFGS-Conservative & 1.13e0 & 2.13e-2 & 1.12e0 & 1.22e0 & 1183.8 & 0.0 & 0.015 \\
+\hline
+ & Adam & 1.17e0 & 1.42e-1 & 1.13e0 & 1.79e0 & 625.9 & 0.0 & 0.012 \\
+\hline
+ & QQN-Bisection-2 & 2.42e0 & 1.73e0 & 1.17e0 & 6.97e0 & 299.3 & 0.0 & 0.007 \\
+\hline
+ & Adam-WeightDecay & 1.59e0 & 9.85e-1 & 1.14e0 & 4.57e0 & 226.2 & 0.0 & 0.005 \\
+\hline
+ & Adam-Robust & 2.11e0 & 2.17e0 & 1.13e0 & 1.02e1 & 107.1 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 7.22e4 & 1.26e5 & 1.52e0 & 3.42e5 & 109.5 & 0.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.12e0 & 2.16e-16 & 1.12e0 & 1.12e0 & 38.0 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 7.74e2 & 1.18e3 & 1.15e0 & 3.84e3 & 17.6 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 1.01e2 & 2.80e2 & 1.26e0 & 1.09e3 & 22.0 & 0.0 & 0.000 \\
+\hline
+ & GD-Nesterov & 1.46e2 & 3.37e2 & 1.38e0 & 1.23e3 & 13.9 & 0.0 & 0.000 \\
+\hline
+ & GD-WeightDecay & 5.08e0 & 1.33e1 & 1.34e0 & 6.31e1 & 13.2 & 0.0 & 0.000 \\
+\hline
+ & GD & 1.37e1 & 3.13e1 & 1.28e0 & 1.22e2 & 14.9 & 0.0 & 0.000 \\
+\hline
+ & GD-Momentum & 6.67e1 & 2.53e2 & 1.26e0 & 1.16e3 & 13.0 & 0.0 & 0.000 \\
+PenaltyI\_5D\_alpha1e6 & \textbf{QQN-StrongWolfe} & 4.21e0 & 1.19e0 & 2.86e0 & 7.74e0 & 3121.1 & 0.0 & 0.086 \\
+\hline
+ & QQN-Bisection-1 & 2.81e0 & 6.12e-4 & 2.81e0 & 2.81e0 & 2178.7 & 0.0 & 0.071 \\
+\hline
+ & QQN-GoldenSection & 2.81e0 & 7.61e-5 & 2.81e0 & 2.81e0 & 3026.4 & 0.0 & 0.056 \\
+\hline
+ & L-BFGS-Limited & 2.96e0 & 9.11e-2 & 2.84e0 & 3.13e0 & 4259.2 & 0.0 & 0.036 \\
+\hline
+ & L-BFGS-MoreThuente & 1.29e1 & 4.81e0 & 3.57e0 & 1.92e1 & 2860.6 & 0.0 & 0.036 \\
+\hline
+ & L-BFGS-Conservative & 2.85e0 & 5.01e-2 & 2.81e0 & 3.03e0 & 3087.5 & 0.0 & 0.033 \\
+\hline
+ & L-BFGS-Aggressive & 2.82e5 & 2.24e5 & 3.49e0 & 6.03e5 & 1110.7 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Conservative & 3.90e5 & 1.18e5 & 1.47e5 & 5.82e5 & 3002.0 & 0.0 & 0.022 \\
+\hline
+ & Trust Region-Aggressive & 3.61e5 & 1.19e5 & 1.76e5 & 5.61e5 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Precise & 4.20e5 & 1.11e5 & 2.36e5 & 6.26e5 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Standard & 3.74e5 & 1.32e5 & 1.16e5 & 7.18e5 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Trust Region-Adaptive & 3.71e5 & 1.47e5 & 9.78e4 & 6.40e5 & 3002.0 & 0.0 & 0.019 \\
+\hline
+ & Adam-AMSGrad & 2.85e0 & 9.04e-2 & 2.82e0 & 3.24e0 & 747.3 & 0.0 & 0.017 \\
+\hline
+ & Adam & 2.90e0 & 1.17e-1 & 2.82e0 & 3.24e0 & 733.5 & 0.0 & 0.015 \\
+\hline
+ & QQN-Bisection-2 & 1.03e1 & 5.36e0 & 3.91e0 & 2.42e1 & 469.8 & 0.0 & 0.011 \\
+\hline
+ & Adam-WeightDecay & 7.65e0 & 7.96e0 & 2.86e0 & 3.08e1 & 260.1 & 0.0 & 0.006 \\
+\hline
+ & Adam-Robust & 2.16e1 & 2.85e1 & 2.82e0 & 1.26e2 & 120.4 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS & 7.00e4 & 1.12e5 & 4.88e0 & 5.16e5 & 95.2 & 0.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.81e0 & 7.09e-16 & 2.81e0 & 2.81e0 & 38.0 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 4.69e2 & 8.74e2 & 3.30e0 & 2.81e3 & 29.0 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 5.87e2 & 9.45e2 & 3.36e0 & 2.82e3 & 13.9 & 0.0 & 0.000 \\
+\hline
+ & GD-WeightDecay & 3.50e1 & 9.28e1 & 3.50e0 & 4.19e2 & 14.5 & 0.0 & 0.000 \\
+\hline
+ & GD & 8.04e1 & 1.22e2 & 3.17e0 & 4.27e2 & 17.1 & 0.0 & 0.000 \\
+\hline
+ & GD-Nesterov & 3.89e2 & 8.55e2 & 3.28e0 & 3.56e3 & 14.1 & 0.0 & 0.000 \\
+\hline
+ & GD-Momentum & 9.24e1 & 2.66e2 & 3.99e0 & 1.22e3 & 14.4 & 0.0 & 0.000 \\
+PenaltyI\_10D\_alpha1e6 & \textbf{QQN-StrongWolfe} & 1.10e1 & 3.01e0 & 8.12e0 & 2.06e1 & 3057.8 & 0.0 & 0.088 \\
+\hline
+ & QQN-GoldenSection & 5.63e0 & 1.88e-4 & 5.62e0 & 5.63e0 & 4382.9 & 0.0 & 0.086 \\
+\hline
+ & QQN-Bisection-1 & 5.63e0 & 2.30e-3 & 5.63e0 & 5.63e0 & 2161.3 & 0.0 & 0.074 \\
+\hline
+ & L-BFGS-Limited & 5.89e0 & 1.07e-1 & 5.78e0 & 6.13e0 & 4213.4 & 0.0 & 0.042 \\
+\hline
+ & L-BFGS-Conservative & 5.73e0 & 1.30e-1 & 5.63e0 & 6.12e0 & 2611.7 & 0.0 & 0.034 \\
+\hline
+ & L-BFGS-MoreThuente & 2.89e1 & 6.69e0 & 1.06e1 & 3.74e1 & 2859.4 & 0.0 & 0.033 \\
+\hline
+ & QQN-Bisection-2 & 1.86e1 & 5.50e0 & 9.12e0 & 2.63e1 & 1070.2 & 0.0 & 0.027 \\
+\hline
+ & Trust Region-Adaptive & 7.20e5 & 1.83e5 & 3.49e5 & 1.14e6 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Standard & 7.40e5 & 2.39e5 & 2.96e5 & 1.19e6 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 7.72e5 & 1.26e5 & 5.48e5 & 1.03e6 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Precise & 7.75e5 & 1.73e5 & 4.16e5 & 9.96e5 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Aggressive & 7.20e5 & 1.73e5 & 3.91e5 & 1.04e6 & 3002.0 & 0.0 & 0.021 \\
+\hline
+ & Adam-AMSGrad & 5.66e0 & 1.39e-2 & 5.64e0 & 5.69e0 & 761.0 & 0.0 & 0.019 \\
+\hline
+ & Adam & 5.68e0 & 4.13e-2 & 5.64e0 & 5.80e0 & 764.5 & 0.0 & 0.017 \\
+\hline
+ & Adam-WeightDecay & 9.99e0 & 6.96e0 & 5.72e0 & 3.69e1 & 274.1 & 0.0 & 0.007 \\
+\hline
+ & Adam-Robust & 2.18e1 & 1.43e1 & 5.69e0 & 4.63e1 & 129.1 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS & 1.71e5 & 2.52e5 & 8.62e0 & 6.62e5 & 101.3 & 0.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.17e3 & 2.05e3 & 6.26e0 & 8.05e3 & 42.3 & 0.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 5.62e0 & 1.32e-15 & 5.62e0 & 5.62e0 & 38.0 & 0.0 & 0.001 \\
+\hline
+ & GD & 6.02e0 & 3.78e-2 & 5.96e0 & 6.11e0 & 19.4 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 1.60e2 & 3.35e2 & 7.22e0 & 1.11e3 & 15.0 & 0.0 & 0.000 \\
+\hline
+ & GD-WeightDecay & 6.01e1 & 1.13e2 & 6.73e0 & 4.89e2 & 15.8 & 0.0 & 0.000 \\
+\hline
+ & L-BFGS-Aggressive & 7.30e5 & 1.81e5 & 2.94e5 & 1.04e6 & 11.0 & 0.0 & 0.000 \\
+\hline
+ & GD-Nesterov & 4.81e2 & 6.94e2 & 6.89e0 & 2.37e3 & 14.9 & 0.0 & 0.000 \\
+\hline
+ & GD-Momentum & 2.58e2 & 6.61e2 & 7.18e0 & 3.05e3 & 15.4 & 0.0 & 0.000 \\
+Barrier\_2D\_mu0.1 & \textbf{Adam-Robust} & 4.09e-1 & 7.17e-3 & 4.00e-1 & 4.27e-1 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam-AMSGrad & 4.13e-1 & 1.06e-2 & 4.01e-1 & 4.31e-1 & 2502.0 & 0.0 & 0.055 \\
+\hline
+ & Adam & 4.00e-1 & 1.38e-4 & 4.00e-1 & 4.00e-1 & 2502.0 & 0.0 & 0.049 \\
+\hline
+ & Adam-WeightDecay & 4.00e-1 & 2.27e-9 & 4.00e-1 & 4.00e-1 & 1498.4 & 0.0 & 0.032 \\
+\hline
+ & L-BFGS-Conservative & 4.00e-1 & 5.47e-8 & 4.00e-1 & 4.00e-1 & 880.4 & 0.0 & 0.023 \\
+\hline
+ & GD & 4.00e-1 & 2.64e-11 & 4.00e-1 & 4.00e-1 & 292.1 & 0.0 & 0.008 \\
+\hline
+ & L-BFGS & 4.00e-1 & 4.93e-10 & 4.00e-1 & 4.00e-1 & 163.9 & 0.0 & 0.004 \\
+\hline
+ & L-BFGS-Limited & 4.00e-1 & 1.29e-10 & 4.00e-1 & 4.00e-1 & 150.8 & 0.0 & 0.004 \\
+\hline
+ & QQN-StrongWolfe & 4.00e-1 & 4.20e-14 & 4.00e-1 & 4.00e-1 & 108.3 & 0.0 & 0.003 \\
+\hline
+ & QQN-Bisection-2 & 4.00e-1 & 6.74e-15 & 4.00e-1 & 4.00e-1 & 125.5 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Conservative & 4.71e-1 & 7.74e-2 & 4.01e-1 & 6.13e-1 & 421.4 & 0.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.00e-1 & 1.10e-8 & 4.00e-1 & 4.00e-1 & 83.8 & 0.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 4.00e-1 & 1.10e-9 & 4.00e-1 & 4.00e-1 & 144.2 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-1 & 4.00e-1 & 2.90e-14 & 4.00e-1 & 4.00e-1 & 65.8 & 0.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 4.00e-1 & 6.36e-6 & 4.00e-1 & 4.00e-1 & 49.0 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS-Aggressive & 4.00e-1 & 1.15e-15 & 4.00e-1 & 4.00e-1 & 65.7 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 5.05e-1 & 2.44e-2 & 4.82e-1 & 5.80e-1 & 20.9 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 5.15e-1 & 2.22e-2 & 4.74e-1 & 5.54e-1 & 31.4 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 5.03e-1 & 1.17e-2 & 4.85e-1 & 5.26e-1 & 20.4 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 4.72e-1 & 1.30e-1 & 4.07e-1 & 8.14e-1 & 72.3 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 5.15e-1 & 1.22e-1 & 4.42e-1 & 7.59e-1 & 6.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.50e0 & 5.56e-1 & 5.85e-1 & 2.09e0 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & GD-AdaptiveMomentum & 4.65e-1 & 4.95e-3 & 4.60e-1 & 4.70e-1 & 1.6 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 5.57e-1 & 6.39e-2 & 4.86e-1 & 6.42e-1 & 2.8 & 0.0 & 0.000 \\
+Barrier\_5D\_mu0.1 & \textbf{Adam-AMSGrad} & 1.03e0 & 1.71e-2 & 1.01e0 & 1.07e0 & 2502.0 & 0.0 & 0.057 \\
+\hline
+ & Adam-Robust & 1.01e0 & 4.00e-3 & 1.00e0 & 1.01e0 & 2502.0 & 0.0 & 0.057 \\
+\hline
+ & Adam & 9.99e-1 & 9.02e-6 & 9.99e-1 & 9.99e-1 & 2502.0 & 0.0 & 0.051 \\
+\hline
+ & Adam-WeightDecay & 9.99e-1 & 2.90e-9 & 9.99e-1 & 9.99e-1 & 1316.6 & 0.0 & 0.028 \\
+\hline
+ & L-BFGS-Conservative & 9.99e-1 & 6.66e-9 & 9.99e-1 & 9.99e-1 & 599.6 & 0.0 & 0.015 \\
+\hline
+ & GD & 9.99e-1 & 2.58e-11 & 9.99e-1 & 9.99e-1 & 304.1 & 0.0 & 0.008 \\
+\hline
+ & Trust Region-Conservative & 1.05e0 & 6.79e-2 & 1.00e0 & 1.18e0 & 984.2 & 0.0 & 0.007 \\
+\hline
+ & L-BFGS-Limited & 9.99e-1 & 1.63e-9 & 9.99e-1 & 9.99e-1 & 190.6 & 0.0 & 0.004 \\
+\hline
+ & QQN-StrongWolfe & 9.99e-1 & 4.30e-15 & 9.99e-1 & 9.99e-1 & 112.1 & 0.0 & 0.004 \\
+\hline
+ & QQN-Bisection-2 & 9.99e-1 & 1.38e-16 & 9.99e-1 & 9.99e-1 & 126.0 & 0.0 & 0.003 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 9.99e-1 & 1.54e-8 & 9.99e-1 & 9.99e-1 & 78.7 & 0.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 9.99e-1 & 6.83e-15 & 9.99e-1 & 9.99e-1 & 144.7 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 9.99e-1 & 1.51e-11 & 9.99e-1 & 9.99e-1 & 89.1 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-1 & 9.99e-1 & 3.83e-14 & 9.99e-1 & 9.99e-1 & 77.2 & 0.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 9.99e-1 & 1.40e-5 & 9.99e-1 & 9.99e-1 & 49.2 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Precise & 1.02e0 & 1.63e-2 & 1.01e0 & 1.07e0 & 143.6 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-Aggressive & 9.99e-1 & 3.84e-14 & 9.99e-1 & 9.99e-1 & 63.8 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 1.28e0 & 5.59e-2 & 1.19e0 & 1.40e0 & 31.7 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 1.26e0 & 2.76e-2 & 1.22e0 & 1.30e0 & 20.4 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.37e0 & 9.02e-2 & 1.28e0 & 1.64e0 & 21.0 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.17e0 & 1.56e-1 & 1.03e0 & 1.37e0 & 28.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.99e0 & 2.18e-1 & 1.58e0 & 2.39e0 & 5.7 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 1.23e0 & 5.13e-2 & 1.14e0 & 1.30e0 & 5.5 & 0.0 & 0.000 \\
+Barrier\_10D\_mu0.1 & \textbf{Adam-Robust} & 2.00e0 & 2.51e-3 & 2.00e0 & 2.01e0 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam-AMSGrad & 2.04e0 & 1.32e-2 & 2.02e0 & 2.07e0 & 2502.0 & 0.0 & 0.060 \\
+\hline
+ & Adam & 2.00e0 & 4.64e-7 & 2.00e0 & 2.00e0 & 2502.0 & 0.0 & 0.054 \\
+\hline
+ & Adam-WeightDecay & 2.00e0 & 5.45e-9 & 2.00e0 & 2.00e0 & 1144.5 & 0.0 & 0.026 \\
+\hline
+ & Trust Region-Conservative & 2.06e0 & 5.79e-2 & 2.00e0 & 2.18e0 & 2239.1 & 0.0 & 0.017 \\
+\hline
+ & L-BFGS-Conservative & 2.00e0 & 1.04e-8 & 2.00e0 & 2.00e0 & 555.1 & 0.0 & 0.014 \\
+\hline
+ & GD & 2.00e0 & 4.28e-11 & 2.00e0 & 2.00e0 & 305.0 & 0.0 & 0.008 \\
+\hline
+ & L-BFGS-Limited & 2.00e0 & 5.46e-9 & 2.00e0 & 2.00e0 & 195.4 & 0.0 & 0.004 \\
+\hline
+ & QQN-StrongWolfe & 2.00e0 & 9.48e-15 & 2.00e0 & 2.00e0 & 112.0 & 0.0 & 0.004 \\
+\hline
+ & QQN-Bisection-2 & 2.00e0 & 5.70e-16 & 2.00e0 & 2.00e0 & 126.0 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Precise & 2.05e0 & 8.86e-2 & 2.00e0 & 2.37e0 & 326.6 & 0.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.00e0 & 1.07e-9 & 2.00e0 & 2.00e0 & 83.8 & 0.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 2.00e0 & 2.17e-14 & 2.00e0 & 2.00e0 & 148.2 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 2.00e0 & 5.81e-12 & 2.00e0 & 2.00e0 & 102.2 & 0.0 & 0.002 \\
+\hline
+ & QQN-Bisection-1 & 2.00e0 & 6.18e-15 & 2.00e0 & 2.00e0 & 84.3 & 0.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 2.00e0 & 1.69e-5 & 2.00e0 & 2.00e0 & 49.4 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS-Aggressive & 2.00e0 & 4.97e-14 & 2.00e0 & 2.00e0 & 62.2 & 0.0 & 0.001 \\
+\hline
+ & Adam-Fast & 2.58e0 & 8.67e-2 & 2.45e0 & 2.71e0 & 31.5 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 2.50e0 & 4.65e-2 & 2.43e0 & 2.64e0 & 21.1 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.39e0 & 2.40e-1 & 2.91e0 & 3.84e0 & 21.2 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 2.28e0 & 8.56e-2 & 2.05e0 & 2.37e0 & 54.1 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.23e0 & 7.54e-2 & 2.11e0 & 2.30e0 & 9.4 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 3.00e0 & 3.10e-1 & 2.33e0 & 3.34e0 & 8.0 & 0.0 & 0.000 \\
+NoisySphere\_2D\_sigma0.01 & \textbf{QQN-Bisection-1} & 1.33e0 & 6.30e-1 & 2.16e-1 & 2.48e0 & 41.2 & 35.0 & 0.003 \\
+\hline
+ & L-BFGS-Conservative & 1.57e0 & 7.01e-2 & 1.46e0 & 1.66e0 & 97.0 & 80.0 & 0.002 \\
+\hline
+ & Adam-WeightDecay & 2.18e0 & 2.38e-1 & 1.76e0 & 2.70e0 & 27.6 & 0.0 & 0.002 \\
+\hline
+ & Adam-AMSGrad & 2.10e0 & 2.73e-1 & 1.65e0 & 2.60e0 & 25.7 & 5.0 & 0.002 \\
+\hline
+ & Adam & 2.13e0 & 2.38e-1 & 1.72e0 & 2.60e0 & 21.4 & 0.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 9.23e-1 & 6.21e-1 & 2.83e-2 & 2.06e0 & 30.5 & 60.0 & 0.001 \\
+\hline
+ & Adam-Robust & 2.10e0 & 2.43e-1 & 1.76e0 & 2.74e0 & 16.9 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS & 1.02e1 & 1.19e1 & 7.26e-2 & 3.76e1 & 33.2 & 40.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 1.84e0 & 7.24e-1 & 1.12e-1 & 2.67e0 & 18.7 & 15.0 & 0.001 \\
+\hline
+ & QQN-GoldenSection & 2.04e0 & 2.79e-1 & 1.45e0 & 2.45e0 & 27.1 & 5.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 1.64e0 & 6.02e-1 & 7.63e-1 & 2.63e0 & 31.4 & 45.0 & 0.001 \\
+\hline
+ & GD & 2.20e0 & 6.02e-1 & 1.42e0 & 2.96e0 & 8.9 & 35.0 & 0.001 \\
+\hline
+ & Adam-Fast & 2.26e0 & 7.44e-1 & 1.40e0 & 4.41e0 & 12.3 & 35.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.04e0 & 2.13e-1 & 1.70e0 & 2.34e0 & 9.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 2.82e0 & 9.93e-1 & 1.53e0 & 4.52e0 & 7.0 & 25.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 2.30e0 & 5.19e-1 & 1.61e0 & 3.10e0 & 6.8 & 25.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 2.39e0 & 7.39e-1 & 1.45e0 & 3.76e0 & 6.6 & 30.0 & 0.001 \\
+\hline
+ & GD-Momentum & 2.45e0 & 8.96e-1 & 1.43e0 & 4.08e0 & 6.8 & 35.0 & 0.001 \\
+\hline
+ & L-BFGS-Aggressive & 2.05e0 & 2.75e-1 & 1.69e0 & 2.57e0 & 5.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Precise & 2.19e0 & 2.25e-1 & 1.76e0 & 2.54e0 & 5.3 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Conservative & 2.06e0 & 2.96e-1 & 1.68e0 & 2.87e0 & 5.0 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 2.09e0 & 2.18e-1 & 1.70e0 & 2.50e0 & 4.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 2.03e0 & 2.74e-1 & 1.67e0 & 2.62e0 & 4.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 2.10e0 & 2.61e-1 & 1.70e0 & 2.64e0 & 4.0 & 0.0 & 0.000 \\
+\hline
+ & QQN-Bisection-2 & 1.97e0 & 7.03e-3 & 1.96e0 & 1.97e0 & 2.4 & 0.0 & 0.000 \\
+NoisySphere\_5D\_sigma0.01 & \textbf{QQN-Bisection-1} & 4.46e0 & 9.06e-1 & 2.43e0 & 6.17e0 & 75.7 & 45.0 & 0.011 \\
+\hline
+ & L-BFGS-Conservative & 4.42e0 & 1.19e-1 & 4.14e0 & 4.57e0 & 120.3 & 85.0 & 0.004 \\
+\hline
+ & Adam & 5.42e0 & 2.68e-1 & 4.73e0 & 5.93e0 & 26.1 & 0.0 & 0.003 \\
+\hline
+ & Adam-AMSGrad & 5.42e0 & 3.72e-1 & 4.94e0 & 6.37e0 & 18.6 & 0.0 & 0.002 \\
+\hline
+ & Adam-Robust & 5.11e0 & 3.42e-1 & 4.60e0 & 5.73e0 & 17.1 & 0.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.44e1 & 8.91e0 & 2.91e0 & 3.12e1 & 38.4 & 20.0 & 0.002 \\
+\hline
+ & Adam-WeightDecay & 5.22e0 & 3.07e-1 & 4.62e0 & 5.81e0 & 16.6 & 0.0 & 0.002 \\
+\hline
+ & GD & 5.52e0 & 8.70e-1 & 4.36e0 & 6.84e0 & 9.2 & 20.0 & 0.002 \\
+\hline
+ & Adam-Fast & 5.99e0 & 1.16e0 & 4.17e0 & 8.14e0 & 11.7 & 10.0 & 0.001 \\
+\hline
+ & GD-Momentum & 5.71e0 & 9.79e-1 & 4.41e0 & 7.61e0 & 7.9 & 25.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 3.90e0 & 8.53e-1 & 2.63e0 & 5.48e0 & 35.4 & 55.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 5.68e0 & 8.70e-1 & 4.36e0 & 7.22e0 & 7.0 & 15.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 5.61e0 & 1.00e0 & 4.26e0 & 6.77e0 & 6.8 & 30.0 & 0.001 \\
+\hline
+ & L-BFGS-MoreThuente & 4.61e0 & 8.49e-1 & 3.27e0 & 5.99e0 & 12.3 & 25.0 & 0.001 \\
+\hline
+ & GD-WeightDecay & 5.35e0 & 6.50e-1 & 4.47e0 & 6.45e0 & 6.5 & 25.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 3.67e0 & 1.35e0 & 1.11e0 & 5.33e0 & 18.9 & 45.0 & 0.001 \\
+\hline
+ & QQN-GoldenSection & 4.88e0 & 7.47e-1 & 3.49e0 & 6.27e0 & 21.2 & 10.0 & 0.001 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 5.26e0 & 3.22e-1 & 4.75e0 & 5.60e0 & 7.2 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 5.28e0 & 4.50e-1 & 4.65e0 & 6.08e0 & 6.5 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Conservative & 5.20e0 & 3.98e-1 & 4.59e0 & 5.78e0 & 5.7 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 5.20e0 & 3.94e-1 & 4.73e0 & 6.28e0 & 4.2 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 5.27e0 & 3.43e-1 & 4.65e0 & 5.82e0 & 3.5 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 5.32e0 & 3.69e-1 & 4.65e0 & 6.03e0 & 3.5 & 0.0 & 0.000 \\
+\hline
+ & L-BFGS-Aggressive & 5.18e0 & 4.15e-1 & 4.66e0 & 5.74e0 & 4.2 & 0.0 & 0.000 \\
+NoisySphere\_10D\_sigma0.01 & \textbf{QQN-Bisection-1} & 9.08e0 & 1.54e0 & 4.69e0 & 1.10e1 & 55.0 & 45.0 & 0.016 \\
+\hline
+ & L-BFGS-Conservative & 9.49e0 & 1.72e-1 & 9.16e0 & 9.70e0 & 93.8 & 85.0 & 0.006 \\
+\hline
+ & Adam-WeightDecay & 1.04e1 & 4.40e-1 & 9.79e0 & 1.14e1 & 28.9 & 0.0 & 0.005 \\
+\hline
+ & Adam-AMSGrad & 1.04e1 & 6.28e-1 & 9.75e0 & 1.18e1 & 18.9 & 0.0 & 0.004 \\
+\hline
+ & Adam & 1.07e1 & 5.64e-1 & 9.87e0 & 1.20e1 & 18.2 & 0.0 & 0.003 \\
+\hline
+ & Adam-Robust & 1.05e1 & 6.12e-1 & 9.71e0 & 1.19e1 & 18.1 & 5.0 & 0.003 \\
+\hline
+ & GD & 1.10e1 & 7.03e-1 & 9.54e0 & 1.19e1 & 10.2 & 10.0 & 0.003 \\
+\hline
+ & GD-AdaptiveMomentum & 1.03e1 & 7.39e-1 & 9.45e0 & 1.20e1 & 8.0 & 35.0 & 0.002 \\
+\hline
+ & L-BFGS & 2.28e1 & 1.18e1 & 7.46e0 & 4.18e1 & 31.4 & 20.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 1.09e1 & 8.10e-1 & 9.63e0 & 1.25e1 & 7.5 & 15.0 & 0.002 \\
+\hline
+ & L-BFGS-MoreThuente & 9.77e0 & 1.48e0 & 6.61e0 & 1.14e1 & 12.4 & 10.0 & 0.002 \\
+\hline
+ & GD-Momentum & 1.11e1 & 9.34e-1 & 9.66e0 & 1.26e1 & 6.8 & 10.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 1.03e1 & 5.55e-1 & 9.18e0 & 1.11e1 & 22.1 & 5.0 & 0.002 \\
+\hline
+ & QQN-StrongWolfe & 9.41e0 & 1.31e0 & 7.23e0 & 1.10e1 & 19.9 & 25.0 & 0.002 \\
+\hline
+ & GD-WeightDecay & 1.10e1 & 7.21e-1 & 9.66e0 & 1.25e1 & 6.0 & 5.0 & 0.002 \\
+\hline
+ & Adam-Fast & 1.11e1 & 1.47e0 & 9.46e0 & 1.54e1 & 9.7 & 15.0 & 0.002 \\
+\hline
+ & L-BFGS-Limited & 9.06e0 & 1.17e0 & 6.79e0 & 1.08e1 & 32.2 & 45.0 & 0.002 \\
+\hline
+ & Trust Region-Conservative & 1.04e1 & 3.84e-1 & 9.82e0 & 1.13e1 & 6.4 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Precise & 1.06e1 & 3.31e-1 & 9.93e0 & 1.12e1 & 4.8 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-Aggressive & 1.06e1 & 5.02e-1 & 9.75e0 & 1.11e1 & 5.4 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 1.04e1 & 5.45e-1 & 9.77e0 & 1.14e1 & 3.5 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 1.06e1 & 5.93e-1 & 9.80e0 & 1.16e1 & 3.2 & 0.0 & 0.000 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.04e1 & 1.61e-1 & 1.03e1 & 1.07e1 & 1.9 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Adaptive & 1.04e1 & 6.06e-1 & 9.73e0 & 1.17e1 & 2.8 & 0.0 & 0.000 \\
+SparseRosenbrock\_4D & \textbf{QQN-GoldenSection} & 3.33e-1 & 1.76e-1 & 6.04e-7 & 6.84e-1 & 4306.3 & 5.0 & 0.085 \\
+\hline
+ & QQN-StrongWolfe & 3.39e-1 & 6.28e-1 & 2.24e-8 & 3.00e0 & 2429.1 & 25.0 & 0.076 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 5.85e-2 & 6.41e-2 & 6.10e-9 & 2.15e-1 & 1743.3 & 45.0 & 0.071 \\
+\hline
+ & QQN-Bisection-1 & 4.56e-1 & 4.62e-1 & 9.12e-8 & 1.60e0 & 2290.2 & 15.0 & 0.056 \\
+\hline
+ & Adam-AMSGrad & 3.39e0 & 1.45e0 & 1.65e0 & 8.86e0 & 2394.2 & 0.0 & 0.052 \\
+\hline
+ & Adam & 2.06e0 & 4.83e-1 & 1.19e0 & 3.18e0 & 2502.0 & 0.0 & 0.049 \\
+\hline
+ & L-BFGS-MoreThuente & 1.75e0 & 2.72e0 & 2.55e-7 & 8.30e0 & 2601.9 & 20.0 & 0.045 \\
+\hline
+ & L-BFGS-Limited & 2.33e0 & 4.08e0 & 7.38e-2 & 1.74e1 & 3916.8 & 0.0 & 0.041 \\
+\hline
+ & L-BFGS-Conservative & 1.27e2 & 5.46e2 & 3.78e-5 & 2.51e3 & 3413.7 & 0.0 & 0.039 \\
+\hline
+ & L-BFGS-Aggressive & 6.34e1 & 4.42e1 & 8.59e0 & 1.72e2 & 3852.0 & 0.0 & 0.029 \\
+\hline
+ & Trust Region-Conservative & 4.72e1 & 4.50e1 & 3.37e-1 & 1.58e2 & 2998.1 & 0.0 & 0.018 \\
+\hline
+ & Adam-WeightDecay & 6.07e0 & 3.97e0 & 1.75e-2 & 9.30e0 & 843.5 & 0.0 & 0.018 \\
+\hline
+ & Adam-Robust & 7.53e0 & 1.96e0 & 3.60e0 & 8.99e0 & 672.2 & 0.0 & 0.015 \\
+\hline
+ & GD & 1.88e0 & 2.48e0 & 9.10e-1 & 9.50e0 & 510.1 & 0.0 & 0.013 \\
+\hline
+ & Trust Region-Precise & 2.16e1 & 2.75e1 & 7.75e0 & 1.10e2 & 1739.2 & 0.0 & 0.011 \\
+\hline
+ & Trust Region-Adaptive & 8.31e0 & 2.62e-1 & 7.78e0 & 8.82e0 & 954.8 & 0.0 & 0.006 \\
+\hline
+ & Adam-Fast & 1.92e0 & 3.76e0 & 1.14e-3 & 1.01e1 & 243.3 & 0.0 & 0.005 \\
+\hline
+ & QQN-Bisection-2 & 1.42e0 & 1.80e0 & 5.00e-7 & 3.95e0 & 193.1 & 5.0 & 0.005 \\
+\hline
+ & GD-WeightDecay & 3.04e0 & 4.49e0 & 4.73e-2 & 1.17e1 & 105.6 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS & 9.62e1 & 1.12e2 & 7.18e0 & 4.84e2 & 143.9 & 0.0 & 0.002 \\
+\hline
+ & GD-Nesterov & 3.38e0 & 3.99e0 & 1.58e-1 & 1.22e1 & 61.4 & 0.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & 1.31e0 & 4.23e0 & 2.41e-2 & 1.97e1 & 56.2 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Standard & 8.25e0 & 2.76e-1 & 7.68e0 & 8.68e0 & 168.3 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 1.10e1 & 6.57e0 & 4.39e-2 & 3.10e1 & 21.8 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Aggressive & 8.72e0 & 4.61e-1 & 7.92e0 & 9.65e0 & 57.2 & 0.0 & 0.000 \\
+SparseRosenbrock\_10D & \textbf{QQN-GoldenSection} & 5.84e-1 & 5.22e-1 & 5.69e-7 & 2.38e0 & 4401.4 & 5.0 & 0.086 \\
+\hline
+ & QQN-StrongWolfe & 5.37e-1 & 7.63e-1 & 1.90e-9 & 3.16e0 & 2419.7 & 45.0 & 0.074 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.42e-1 & 1.61e-1 & 1.89e-8 & 3.94e-1 & 1670.9 & 55.0 & 0.071 \\
+\hline
+ & QQN-Bisection-1 & 6.70e-1 & 9.09e-1 & 1.26e-7 & 3.85e0 & 2281.2 & 20.0 & 0.061 \\
+\hline
+ & Adam-AMSGrad & 5.73e0 & 9.36e-1 & 4.14e0 & 7.62e0 & 2502.0 & 0.0 & 0.058 \\
+\hline
+ & Adam-Robust & 1.19e1 & 2.30e0 & 9.15e0 & 2.07e1 & 2380.8 & 0.0 & 0.056 \\
+\hline
+ & Adam & 4.91e0 & 1.16e0 & 3.14e0 & 7.20e0 & 2502.0 & 0.0 & 0.053 \\
+\hline
+ & L-BFGS-MoreThuente & 7.68e0 & 8.03e0 & 2.91e-4 & 2.32e1 & 2749.9 & 0.0 & 0.051 \\
+\hline
+ & L-BFGS-Limited & 1.28e0 & 3.17e0 & 3.17e-1 & 1.51e1 & 3999.6 & 0.0 & 0.050 \\
+\hline
+ & Adam-WeightDecay & 3.27e0 & 7.74e0 & 1.06e-2 & 2.19e1 & 2150.9 & 0.0 & 0.048 \\
+\hline
+ & L-BFGS-Conservative & 1.05e7 & 4.58e7 & 2.96e-2 & 2.10e8 & 3686.9 & 0.0 & 0.038 \\
+\hline
+ & L-BFGS-Aggressive & 1.81e2 & 7.47e1 & 8.09e1 & 4.01e2 & 3852.0 & 0.0 & 0.028 \\
+\hline
+ & QQN-Bisection-2 & 3.21e0 & 5.76e0 & 3.42e-1 & 1.61e1 & 842.9 & 0.0 & 0.021 \\
+\hline
+ & Trust Region-Conservative & 1.56e2 & 4.85e1 & 6.91e1 & 2.68e2 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Precise & 1.04e2 & 6.99e1 & 1.18e0 & 2.43e2 & 3002.0 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Adaptive & 2.92e1 & 2.81e1 & 2.02e1 & 1.48e2 & 2139.5 & 0.0 & 0.014 \\
+\hline
+ & GD & 3.27e0 & 5.80e0 & 1.20e0 & 2.11e1 & 388.9 & 0.0 & 0.011 \\
+\hline
+ & Adam-Fast & 1.90e0 & 5.64e0 & 5.27e-2 & 2.63e1 & 206.0 & 0.0 & 0.004 \\
+\hline
+ & GD-WeightDecay & 4.84e0 & 9.20e0 & 1.18e-1 & 2.47e1 & 127.2 & 0.0 & 0.004 \\
+\hline
+ & Trust Region-Standard & 2.05e1 & 3.97e-1 & 1.95e1 & 2.11e1 & 439.7 & 0.0 & 0.004 \\
+\hline
+ & GD-Nesterov & 7.90e-1 & 5.92e-1 & 5.84e-2 & 2.48e0 & 100.3 & 0.0 & 0.003 \\
+\hline
+ & L-BFGS & 2.80e2 & 3.25e2 & 2.70e1 & 1.32e3 & 136.4 & 0.0 & 0.002 \\
+\hline
+ & GD-AdaptiveMomentum & 1.31e1 & 1.44e1 & 5.08e-2 & 3.27e1 & 43.6 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Aggressive & 2.11e1 & 8.10e-1 & 1.97e1 & 2.26e1 & 122.0 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 3.15e1 & 1.33e1 & 3.12e-1 & 4.42e1 & 21.1 & 0.0 & 0.001 \\
+SparseQuadratic\_5D\_pattern[1, 3] & \textbf{Adam-AMSGrad} & 1.95e-1 & 5.56e-2 & 1.19e-1 & 3.19e-1 & 2502.0 & 0.0 & 0.057 \\
+\hline
+ & Adam-Robust & 6.93e-2 & 2.46e-2 & 2.83e-2 & 1.11e-1 & 2502.0 & 0.0 & 0.057 \\
+\hline
+ & Adam & 3.67e-3 & 1.54e-3 & 5.91e-4 & 5.76e-3 & 2502.0 & 0.0 & 0.051 \\
+\hline
+ & Adam-WeightDecay & 9.85e-7 & 7.96e-9 & 9.73e-7 & 9.99e-7 & 1727.8 & 100.0 & 0.037 \\
+\hline
+ & Trust Region-Conservative & 4.06e0 & 2.02e0 & 8.95e-3 & 5.15e0 & 1737.1 & 0.0 & 0.012 \\
+\hline
+ & GD & 9.77e-7 & 1.24e-8 & 9.59e-7 & 9.96e-7 & 352.9 & 100.0 & 0.009 \\
+\hline
+ & L-BFGS-Conservative & 2.84e-7 & 3.62e-7 & 1.15e-10 & 9.31e-7 & 314.8 & 100.0 & 0.008 \\
+\hline
+ & GD-WeightDecay & 9.21e-7 & 4.76e-8 & 8.42e-7 & 9.96e-7 & 99.8 & 100.0 & 0.003 \\
+\hline
+ & L-BFGS-Limited & 4.57e-7 & 2.77e-7 & 4.26e-9 & 9.93e-7 & 117.5 & 100.0 & 0.003 \\
+\hline
+ & Trust Region-Precise & 4.92e-1 & 5.29e-1 & 3.14e-2 & 1.49e0 & 306.4 & 0.0 & 0.002 \\
+\hline
+ & QQN-GoldenSection & 1.09e-7 & 1.38e-7 & 2.49e-9 & 4.81e-7 & 132.7 & 100.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.31e-7 & 3.85e-8 & 3.60e-7 & 4.92e-7 & 57.0 & 100.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 1.79e-7 & 2.00e-7 & 4.95e-9 & 7.40e-7 & 38.0 & 100.0 & 0.001 \\
+\hline
+ & L-BFGS & 4.77e-7 & 3.20e-7 & 1.77e-8 & 9.73e-7 & 48.4 & 100.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 1.58e-7 & 2.16e-7 & 1.83e-9 & 7.77e-7 & 37.5 & 100.0 & 0.001 \\
+\hline
+ & Adam-Fast & 3.56e-1 & 1.39e-2 & 3.36e-1 & 3.82e-1 & 37.5 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 3.19e-1 & 3.40e-2 & 2.73e-1 & 3.98e-1 & 22.0 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 9.75e-1 & 6.24e-2 & 8.63e-1 & 1.09e0 & 19.4 & 0.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.23e3 & 4.09e2 & 5.86e-2 & 1.37e3 & 90.2 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 5.03e-1 & 4.96e-2 & 4.06e-1 & 6.07e-1 & 22.0 & 0.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 2.22e-7 & 1.26e-7 & 4.00e-8 & 4.52e-7 & 29.1 & 100.0 & 0.001 \\
+\hline
+ & L-BFGS-Aggressive & 2.84e-7 & 3.06e-8 & 2.36e-7 & 3.36e-7 & 31.0 & 100.0 & 0.000 \\
+\hline
+ & L-BFGS-MoreThuente & 8.81e-8 & 1.36e-7 & 1.12e-8 & 6.56e-7 & 23.6 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Standard & 1.81e2 & 7.08e0 & 1.67e2 & 1.90e2 & 40.6 & 0.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 1.82e4 & 7.17e2 & 1.51e4 & 1.86e4 & 27.0 & 0.0 & 0.000 \\
+SparseQuadratic\_10D\_pattern[1, 3] & \textbf{Adam-Robust} & 1.03e-1 & 3.53e-2 & 4.23e-2 & 1.71e-1 & 2502.0 & 0.0 & 0.062 \\
+\hline
+ & Adam-AMSGrad & 2.33e-1 & 4.06e-2 & 1.70e-1 & 3.20e-1 & 2502.0 & 0.0 & 0.061 \\
+\hline
+ & Adam & 2.03e-3 & 8.81e-4 & 3.96e-4 & 3.78e-3 & 2502.0 & 0.0 & 0.056 \\
+\hline
+ & Adam-WeightDecay & 9.83e-7 & 7.84e-9 & 9.70e-7 & 9.98e-7 & 1532.3 & 100.0 & 0.036 \\
+\hline
+ & Trust Region-Conservative & 1.83e0 & 5.92e-1 & 6.04e-1 & 3.15e0 & 3002.0 & 0.0 & 0.023 \\
+\hline
+ & GD & 9.80e-7 & 1.20e-8 & 9.60e-7 & 1.00e-6 & 360.1 & 100.0 & 0.010 \\
+\hline
+ & L-BFGS-Conservative & 2.03e-7 & 2.96e-7 & 2.80e-9 & 9.97e-7 & 339.5 & 100.0 & 0.009 \\
+\hline
+ & Trust Region-Precise & 1.80e-1 & 3.28e-1 & 2.31e-3 & 1.54e0 & 589.1 & 0.0 & 0.005 \\
+\hline
+ & GD-WeightDecay & 9.31e-7 & 3.38e-8 & 8.75e-7 & 9.98e-7 & 103.2 & 100.0 & 0.004 \\
+\hline
+ & QQN-GoldenSection & 3.11e-7 & 3.27e-7 & 7.74e-9 & 9.91e-7 & 156.2 & 100.0 & 0.002 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 2.38e-8 & 1.47e-8 & 2.26e-9 & 4.52e-8 & 60.4 & 100.0 & 0.002 \\
+\hline
+ & L-BFGS & 1.93e-3 & 8.35e-3 & 1.06e-8 & 3.83e-2 & 75.7 & 90.0 & 0.001 \\
+\hline
+ & Trust Region-Adaptive & 1.28e3 & 4.25e2 & 5.42e-2 & 1.43e3 & 162.1 & 0.0 & 0.001 \\
+\hline
+ & QQN-Bisection-1 & 5.68e-7 & 3.82e-7 & 2.29e-8 & 9.90e-7 & 55.8 & 100.0 & 0.001 \\
+\hline
+ & L-BFGS-Limited & 4.74e-7 & 2.74e-7 & 5.73e-8 & 9.57e-7 & 58.5 & 100.0 & 0.001 \\
+\hline
+ & QQN-Bisection-2 & 3.81e-7 & 3.20e-7 & 2.03e-8 & 9.46e-7 & 46.4 & 100.0 & 0.001 \\
+\hline
+ & QQN-StrongWolfe & 2.19e-7 & 1.50e-7 & 8.82e-8 & 8.12e-7 & 43.1 & 100.0 & 0.001 \\
+\hline
+ & Adam-Fast & 7.28e-1 & 2.79e-2 & 6.71e-1 & 7.71e-1 & 37.3 & 0.0 & 0.001 \\
+\hline
+ & GD-AdaptiveMomentum & 1.57e0 & 4.23e-2 & 1.41e0 & 1.64e0 & 21.9 & 0.0 & 0.001 \\
+\hline
+ & GD-Nesterov & 6.03e-1 & 2.70e-2 & 5.68e-1 & 7.02e-1 & 23.1 & 0.0 & 0.001 \\
+\hline
+ & GD-Momentum & 9.15e-1 & 5.54e-2 & 8.60e-1 & 1.06e0 & 23.1 & 0.0 & 0.001 \\
+\hline
+ & L-BFGS-Aggressive & 2.16e-7 & 1.67e-8 & 1.72e-7 & 2.44e-7 & 38.0 & 100.0 & 0.001 \\
+\hline
+ & Trust Region-Standard & 1.02e2 & 3.48e1 & 2.21e-1 & 1.29e2 & 57.5 & 0.0 & 0.000 \\
+\hline
+ & L-BFGS-MoreThuente & 2.20e-7 & 2.42e-7 & 2.06e-8 & 8.82e-7 & 28.2 & 100.0 & 0.000 \\
+\hline
+ & Trust Region-Aggressive & 2.01e4 & 4.68e3 & 8.89e-1 & 2.17e4 & 31.6 & 0.0 & 0.000 \\
+LogisticRegression\_100samples\_5features\_reg0.01 & \textbf{GD-WeightDecay} & 3.27e-1 & 3.54e-4 & 3.26e-1 & 3.27e-1 & 1668.0 & 0.0 & 0.905 \\
+\hline
+ & GD-Nesterov & 3.15e-1 & 3.66e-7 & 3.15e-1 & 3.15e-1 & 1668.0 & 0.0 & 0.902 \\
+\hline
+ & GD-Momentum & 3.15e-1 & 3.78e-7 & 3.15e-1 & 3.15e-1 & 1668.0 & 0.0 & 0.901 \\
+\hline
+ & GD & 3.77e-1 & 2.81e-3 & 3.72e-1 & 3.81e-1 & 1668.0 & 0.0 & 0.897 \\
+\hline
+ & Adam-Robust & 4.32e-1 & 1.22e-2 & 4.13e-1 & 4.60e-1 & 2502.0 & 0.0 & 0.892 \\
+\hline
+ & Adam-AMSGrad & 4.05e-1 & 9.76e-3 & 3.87e-1 & 4.23e-1 & 2502.0 & 0.0 & 0.891 \\
+\hline
+ & Adam-WeightDecay & 3.22e-1 & 1.09e-3 & 3.20e-1 & 3.24e-1 & 2502.0 & 0.0 & 0.890 \\
+\hline
+ & Adam & 4.02e-1 & 9.33e-3 & 3.92e-1 & 4.21e-1 & 2502.0 & 0.0 & 0.889 \\
+\hline
+ & L-BFGS-Limited & 3.15e-1 & 1.97e-5 & 3.15e-1 & 3.15e-1 & 3043.5 & 0.0 & 0.886 \\
+\hline
+ & L-BFGS & 3.16e-1 & 7.17e-4 & 3.15e-1 & 3.19e-1 & 2673.8 & 0.0 & 0.796 \\
+\hline
+ & L-BFGS-Aggressive & 3.15e-1 & 1.24e-4 & 3.15e-1 & 3.16e-1 & 1776.5 & 0.0 & 0.508 \\
+\hline
+ & GD-AdaptiveMomentum & 3.15e-1 & 4.41e-9 & 3.15e-1 & 3.15e-1 & 426.1 & 0.0 & 0.232 \\
+\hline
+ & L-BFGS-Conservative & 3.15e-1 & 5.83e-11 & 3.15e-1 & 3.15e-1 & 559.5 & 0.0 & 0.185 \\
+\hline
+ & QQN-GoldenSection & 3.15e-1 & 2.54e-12 & 3.15e-1 & 3.15e-1 & 307.2 & 0.0 & 0.067 \\
+\hline
+ & QQN-Bisection-1 & 3.15e-1 & 2.67e-12 & 3.15e-1 & 3.15e-1 & 98.5 & 0.0 & 0.036 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.15e-1 & 2.75e-12 & 3.15e-1 & 3.15e-1 & 91.5 & 0.0 & 0.036 \\
+\hline
+ & L-BFGS-MoreThuente & 3.15e-1 & 2.25e-5 & 3.15e-1 & 3.15e-1 & 106.7 & 0.0 & 0.034 \\
+\hline
+ & Adam-Fast & 3.16e-1 & 1.09e-4 & 3.16e-1 & 3.16e-1 & 90.8 & 0.0 & 0.033 \\
+\hline
+ & QQN-Bisection-2 & 3.15e-1 & 2.84e-12 & 3.15e-1 & 3.15e-1 & 98.5 & 0.0 & 0.032 \\
+\hline
+ & QQN-StrongWolfe & 3.15e-1 & 2.43e-12 & 3.15e-1 & 3.15e-1 & 74.3 & 0.0 & 0.031 \\
+\hline
+ & Trust Region-Conservative & 4.24e-1 & 2.86e-3 & 4.20e-1 & 4.28e-1 & 86.6 & 0.0 & 0.025 \\
+\hline
+ & Trust Region-Precise & 6.78e-1 & 2.08e-2 & 6.48e-1 & 7.23e-1 & 5.5 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Aggressive & 6.98e-1 & 2.53e-2 & 6.53e-1 & 7.51e-1 & 5.0 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Standard & 6.98e-1 & 3.18e-2 & 6.55e-1 & 7.75e-1 & 5.0 & 0.0 & 0.002 \\
+\hline
+ & Trust Region-Adaptive & 6.95e-1 & 3.03e-2 & 6.37e-1 & 7.46e-1 & 5.0 & 0.0 & 0.002 \\
+LogisticRegression\_200samples\_10features\_reg0.01 & \textbf{GD-WeightDecay} & 3.39e-1 & 4.45e-4 & 3.38e-1 & 3.40e-1 & 1668.0 & 0.0 & 1.650 \\
+\hline
+ & GD-Nesterov & 3.23e-1 & 6.77e-7 & 3.23e-1 & 3.23e-1 & 1668.0 & 0.0 & 1.649 \\
+\hline
+ & GD-Momentum & 3.23e-1 & 7.07e-7 & 3.23e-1 & 3.23e-1 & 1668.0 & 0.0 & 1.648 \\
+\hline
+ & GD & 3.97e-1 & 3.28e-3 & 3.93e-1 & 4.05e-1 & 1668.0 & 0.0 & 1.635 \\
+\hline
+ & Adam-WeightDecay & 3.27e-1 & 8.69e-4 & 3.25e-1 & 3.29e-1 & 2502.0 & 0.0 & 1.623 \\
+\hline
+ & Adam-Robust & 4.12e-1 & 8.61e-3 & 3.96e-1 & 4.28e-1 & 2502.0 & 0.0 & 1.621 \\
+\hline
+ & Adam-AMSGrad & 3.95e-1 & 5.85e-3 & 3.84e-1 & 4.09e-1 & 2502.0 & 0.0 & 1.619 \\
+\hline
+ & Adam & 3.92e-1 & 9.22e-3 & 3.75e-1 & 4.09e-1 & 2502.0 & 0.0 & 1.611 \\
+\hline
+ & L-BFGS-Limited & 3.23e-1 & 8.38e-5 & 3.23e-1 & 3.24e-1 & 3146.0 & 0.0 & 1.606 \\
+\hline
+ & L-BFGS-Aggressive & 3.25e-1 & 7.06e-4 & 3.23e-1 & 3.26e-1 & 3432.2 & 0.0 & 1.395 \\
+\hline
+ & L-BFGS & 3.23e-1 & 2.14e-5 & 3.23e-1 & 3.23e-1 & 2311.4 & 0.0 & 1.246 \\
+\hline
+ & GD-AdaptiveMomentum & 3.23e-1 & 4.50e-9 & 3.23e-1 & 3.23e-1 & 479.1 & 0.0 & 0.478 \\
+\hline
+ & L-BFGS-Conservative & 3.23e-1 & 9.68e-11 & 3.23e-1 & 3.23e-1 & 545.5 & 0.0 & 0.317 \\
+\hline
+ & QQN-GoldenSection & 3.23e-1 & 1.79e-12 & 3.23e-1 & 3.23e-1 & 360.0 & 0.0 & 0.139 \\
+\hline
+ & QQN-Bisection-1 & 3.23e-1 & 1.05e-12 & 3.23e-1 & 3.23e-1 & 110.7 & 0.0 & 0.071 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.23e-1 & 1.34e-12 & 3.23e-1 & 3.23e-1 & 105.4 & 0.0 & 0.071 \\
+\hline
+ & QQN-Bisection-2 & 3.23e-1 & 1.19e-12 & 3.23e-1 & 3.23e-1 & 110.7 & 0.0 & 0.065 \\
+\hline
+ & QQN-StrongWolfe & 3.23e-1 & 1.79e-12 & 3.23e-1 & 3.23e-1 & 80.3 & 0.0 & 0.058 \\
+\hline
+ & Adam-Fast & 3.24e-1 & 2.14e-4 & 3.24e-1 & 3.25e-1 & 77.0 & 0.0 & 0.050 \\
+\hline
+ & L-BFGS-MoreThuente & 3.23e-1 & 2.80e-4 & 3.23e-1 & 3.24e-1 & 86.2 & 0.0 & 0.049 \\
+\hline
+ & Trust Region-Conservative & 4.44e-1 & 2.76e-3 & 4.39e-1 & 4.49e-1 & 82.4 & 0.0 & 0.044 \\
+\hline
+ & Trust Region-Precise & 7.01e-1 & 2.67e-2 & 6.59e-1 & 7.56e-1 & 5.0 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Adaptive & 7.06e-1 & 2.50e-2 & 6.56e-1 & 7.48e-1 & 5.0 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Standard & 7.01e-1 & 2.90e-2 & 6.45e-1 & 7.53e-1 & 5.0 & 0.0 & 0.003 \\
+\hline
+ & Trust Region-Aggressive & 7.03e-1 & 2.08e-2 & 6.65e-1 & 7.53e-1 & 5.0 & 0.0 & 0.003 \\
+LinearRegression\_100samples\_5features\_reg0.01 & \textbf{Adam-AMSGrad} & 3.06e0 & 3.82e-1 & 2.47e0 & 3.69e0 & 2502.0 & 0.0 & 0.833 \\
+\hline
+ & Adam-Robust & 4.89e0 & 5.55e-1 & 4.01e0 & 6.12e0 & 2502.0 & 0.0 & 0.830 \\
+\hline
+ & Adam & 2.88e0 & 4.16e-1 & 2.36e0 & 3.78e0 & 2502.0 & 0.0 & 0.829 \\
+\hline
+ & Adam-WeightDecay & 7.18e-2 & 1.52e-4 & 7.16e-2 & 7.21e-2 & 2502.0 & 0.0 & 0.828 \\
+\hline
+ & Trust Region-Conservative & 7.87e0 & 9.98e-1 & 6.26e0 & 9.77e0 & 3002.0 & 0.0 & 0.769 \\
+\hline
+ & L-BFGS-Conservative & 7.15e-2 & 3.25e-10 & 7.15e-2 & 7.15e-2 & 1306.5 & 0.0 & 0.407 \\
+\hline
+ & GD & 7.15e-2 & 5.94e-11 & 7.15e-2 & 7.15e-2 & 512.3 & 0.0 & 0.267 \\
+\hline
+ & L-BFGS-MoreThuente & 7.16e-2 & 5.33e-5 & 7.15e-2 & 7.18e-2 & 796.0 & 0.0 & 0.229 \\
+\hline
+ & Trust Region-Precise & 1.38e-1 & 8.18e-2 & 7.38e-2 & 4.03e-1 & 851.2 & 0.0 & 0.220 \\
+\hline
+ & L-BFGS-Limited & 7.15e-2 & 2.22e-10 & 7.15e-2 & 7.15e-2 & 540.6 & 0.0 & 0.147 \\
+\hline
+ & GD-WeightDecay & 7.15e-2 & 2.05e-10 & 7.15e-2 & 7.15e-2 & 165.2 & 0.0 & 0.087 \\
+\hline
+ & QQN-GoldenSection & 7.15e-2 & 1.34e-9 & 7.15e-2 & 7.15e-2 & 325.7 & 0.0 & 0.063 \\
+\hline
+ & Trust Region-Adaptive & 1.55e3 & 6.64e2 & 1.22e-1 & 1.96e3 & 234.8 & 0.0 & 0.062 \\
+\hline
+ & L-BFGS & 1.38e-1 & 2.48e-1 & 7.15e-2 & 1.21e0 & 234.7 & 0.0 & 0.060 \\
+\hline
+ & QQN-Bisection-1 & 7.15e-2 & 9.50e-15 & 7.15e-2 & 7.15e-2 & 123.0 & 0.0 & 0.047 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 7.15e-2 & 1.77e-9 & 7.15e-2 & 7.15e-2 & 118.9 & 0.0 & 0.041 \\
+\hline
+ & QQN-StrongWolfe & 7.15e-2 & 8.70e-14 & 7.15e-2 & 7.15e-2 & 109.2 & 0.0 & 0.040 \\
+\hline
+ & QQN-Bisection-2 & 7.15e-2 & 3.89e-14 & 7.15e-2 & 7.15e-2 & 103.0 & 0.0 & 0.038 \\
+\hline
+ & L-BFGS-Aggressive & 7.15e-2 & 3.23e-14 & 7.15e-2 & 7.15e-2 & 153.1 & 0.0 & 0.036 \\
+\hline
+ & Adam-Fast & 1.90e-1 & 6.82e-2 & 7.25e-2 & 2.46e-1 & 102.4 & 0.0 & 0.035 \\
+\hline
+ & Trust Region-Standard & 1.10e2 & 5.00e1 & 2.92e-1 & 1.65e2 & 76.2 & 0.0 & 0.020 \\
+\hline
+ & GD-Nesterov & 9.19e-1 & 2.74e-2 & 8.36e-1 & 9.57e-1 & 23.9 & 0.0 & 0.012 \\
+\hline
+ & GD-Momentum & 1.36e0 & 6.13e-2 & 1.22e0 & 1.50e0 & 24.1 & 0.0 & 0.012 \\
+\hline
+ & GD-AdaptiveMomentum & 2.00e0 & 4.19e-2 & 1.90e0 & 2.04e0 & 23.0 & 0.0 & 0.012 \\
+\hline
+ & Trust Region-Aggressive & 3.62e4 & 1.65e4 & 9.10e-1 & 5.27e4 & 34.0 & 0.0 & 0.009 \\
+LinearRegression\_200samples\_10features\_reg0.01 & \textbf{Adam-AMSGrad} & 5.39e1 & 1.53e0 & 5.00e1 & 5.75e1 & 2502.0 & 0.0 & 1.502 \\
+\hline
+ & Adam-Robust & 6.34e1 & 2.14e0 & 5.92e1 & 6.79e1 & 2502.0 & 0.0 & 1.501 \\
+\hline
+ & Adam-WeightDecay & 2.42e0 & 4.49e-1 & 1.66e0 & 3.54e0 & 2502.0 & 0.0 & 1.496 \\
+\hline
+ & Adam & 5.34e1 & 2.38e0 & 4.86e1 & 5.85e1 & 2502.0 & 0.0 & 1.495 \\
+\hline
+ & Trust Region-Precise & 5.39e1 & 3.12e0 & 4.85e1 & 5.96e1 & 3002.0 & 0.0 & 1.419 \\
+\hline
+ & Trust Region-Conservative & 1.06e2 & 1.88e0 & 1.03e2 & 1.10e2 & 3002.0 & 0.0 & 1.417 \\
+\hline
+ & Trust Region-Adaptive & 1.08e3 & 8.92e2 & 5.40e-1 & 2.10e3 & 1420.7 & 0.0 & 0.673 \\
+\hline
+ & GD & 4.82e-1 & 3.41e-6 & 4.82e-1 & 4.82e-1 & 343.6 & 100.0 & 0.321 \\
+\hline
+ & L-BFGS-Conservative & 4.82e-1 & 2.33e-5 & 4.82e-1 & 4.82e-1 & 436.2 & 100.0 & 0.242 \\
+\hline
+ & Trust Region-Standard & 2.56e3 & 4.67e3 & 7.13e-1 & 1.23e4 & 372.2 & 0.0 & 0.178 \\
+\hline
+ & Adam-Fast & 5.14e-1 & 4.25e-2 & 4.82e-1 & 5.75e-1 & 189.9 & 20.0 & 0.115 \\
+\hline
+ & GD-WeightDecay & 4.82e-1 & 9.82e-6 & 4.82e-1 & 4.82e-1 & 116.7 & 100.0 & 0.109 \\
+\hline
+ & L-BFGS-Aggressive & 4.82e-1 & 2.65e-5 & 4.82e-1 & 4.82e-1 & 205.7 & 100.0 & 0.088 \\
+\hline
+ & L-BFGS-Limited & 4.82e-1 & 9.14e-5 & 4.82e-1 & 4.82e-1 & 159.2 & 100.0 & 0.068 \\
+\hline
+ & QQN-Bisection-1 & 4.82e-1 & 1.93e-6 & 4.82e-1 & 4.82e-1 & 89.0 & 100.0 & 0.066 \\
+\hline
+ & QQN-GoldenSection & 4.82e-1 & 1.59e-5 & 4.82e-1 & 4.82e-1 & 180.0 & 100.0 & 0.059 \\
+\hline
+ & Trust Region-Aggressive & 3.92e4 & 2.34e4 & 1.28e0 & 6.10e4 & 111.1 & 0.0 & 0.054 \\
+\hline
+ & QQN-Bisection-2 & 4.82e-1 & 1.86e-6 & 4.82e-1 & 4.82e-1 & 69.0 & 100.0 & 0.050 \\
+\hline
+ & L-BFGS & 5.09e-1 & 9.28e-2 & 4.82e-1 & 8.97e-1 & 77.5 & 90.0 & 0.039 \\
+\hline
+ & QQN-StrongWolfe & 4.82e-1 & 1.42e-5 & 4.82e-1 & 4.82e-1 & 62.0 & 100.0 & 0.039 \\
+\hline
+ & L-BFGS-MoreThuente & 4.82e-1 & 8.59e-5 & 4.82e-1 & 4.82e-1 & 72.8 & 100.0 & 0.038 \\
+\hline
+ & GD-Momentum & 2.46e0 & 2.68e-2 & 2.41e0 & 2.51e0 & 38.1 & 0.0 & 0.035 \\
+\hline
+ & GD-Nesterov & 1.80e0 & 1.42e-2 & 1.78e0 & 1.83e0 & 37.9 & 0.0 & 0.035 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 4.82e-1 & 2.65e-5 & 4.82e-1 & 4.82e-1 & 54.1 & 100.0 & 0.035 \\
+\hline
+ & GD-AdaptiveMomentum & 5.05e0 & 5.26e-2 & 4.95e0 & 5.12e0 & 35.0 & 0.0 & 0.032 \\
+NeuralNetwork\_100samples\_layers\_5\_10\_3 & \textbf{GD-WeightDecay} & 1.83e-1 & 4.09e-3 & 1.75e-1 & 1.92e-1 & 1668.0 & 0.0 & 2.353 \\
+\hline
+ & GD & 2.01e-1 & 2.75e-3 & 1.95e-1 & 2.06e-1 & 1668.0 & 0.0 & 2.332 \\
+\hline
+ & Adam-Robust & 1.69e-1 & 6.95e-3 & 1.49e-1 & 1.80e-1 & 2502.0 & 0.0 & 2.074 \\
+\hline
+ & Adam-AMSGrad & 1.55e-1 & 7.51e-3 & 1.40e-1 & 1.67e-1 & 2490.8 & 5.0 & 2.069 \\
+\hline
+ & Adam & 1.58e-1 & 6.21e-3 & 1.45e-1 & 1.68e-1 & 2502.0 & 0.0 & 2.063 \\
+\hline
+ & L-BFGS-MoreThuente & 1.51e-1 & 6.61e-3 & 1.41e-1 & 1.64e-1 & 2855.0 & 0.0 & 1.945 \\
+\hline
+ & L-BFGS-Conservative & 1.49e-1 & 8.52e-3 & 1.39e-1 & 1.71e-1 & 2286.9 & 30.0 & 1.481 \\
+\hline
+ & L-BFGS-Limited & 1.48e-1 & 1.10e-2 & 1.40e-1 & 1.83e-1 & 2753.6 & 40.0 & 1.375 \\
+\hline
+ & L-BFGS-Aggressive & 1.50e-1 & 6.91e-3 & 1.40e-1 & 1.63e-1 & 2900.4 & 15.0 & 1.375 \\
+\hline
+ & Adam-WeightDecay & 1.43e-1 & 7.02e-3 & 1.40e-1 & 1.68e-1 & 1555.7 & 85.0 & 1.287 \\
+\hline
+ & QQN-StrongWolfe & 1.43e-1 & 5.71e-3 & 1.39e-1 & 1.59e-1 & 1340.8 & 60.0 & 1.277 \\
+\hline
+ & QQN-Bisection-1 & 1.40e-1 & 1.77e-3 & 1.39e-1 & 1.47e-1 & 995.0 & 90.0 & 0.864 \\
+\hline
+ & L-BFGS & 2.01e-1 & 5.93e-2 & 1.40e-1 & 3.37e-1 & 1471.2 & 10.0 & 0.854 \\
+\hline
+ & QQN-GoldenSection & 1.41e-1 & 3.80e-3 & 1.39e-1 & 1.55e-1 & 2473.0 & 85.0 & 0.852 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 1.40e-1 & 1.86e-3 & 1.38e-1 & 1.46e-1 & 617.1 & 90.0 & 0.666 \\
+\hline
+ & QQN-Bisection-2 & 1.40e-1 & 3.24e-3 & 1.38e-1 & 1.54e-1 & 750.6 & 85.0 & 0.542 \\
+\hline
+ & Adam-Fast & 1.40e-1 & 2.71e-3 & 1.38e-1 & 1.49e-1 & 145.4 & 85.0 & 0.121 \\
+\hline
+ & Trust Region-Conservative & 2.19e-1 & 2.52e-3 & 2.14e-1 & 2.24e-1 & 157.6 & 0.0 & 0.098 \\
+\hline
+ & Trust Region-Adaptive & 2.63e-1 & 9.37e-2 & 1.83e-1 & 4.96e-1 & 56.9 & 0.0 & 0.036 \\
+\hline
+ & GD-Nesterov & 2.27e-1 & 3.63e-3 & 2.19e-1 & 2.34e-1 & 21.8 & 0.0 & 0.029 \\
+\hline
+ & GD-Momentum & 2.35e-1 & 6.16e-3 & 2.26e-1 & 2.47e-1 & 21.2 & 0.0 & 0.028 \\
+\hline
+ & Trust Region-Standard & 4.50e-1 & 6.70e-1 & 1.89e-1 & 2.92e0 & 39.2 & 0.0 & 0.025 \\
+\hline
+ & Trust Region-Precise & 2.20e-1 & 5.66e-3 & 2.08e-1 & 2.30e-1 & 34.4 & 0.0 & 0.022 \\
+\hline
+ & GD-AdaptiveMomentum & 2.59e-1 & 1.32e-2 & 2.33e-1 & 2.85e-1 & 15.8 & 0.0 & 0.020 \\
+\hline
+ & Trust Region-Aggressive & 1.30e0 & 2.13e0 & 2.02e-1 & 1.04e1 & 25.4 & 0.0 & 0.016 \\
+NeuralNetwork\_100samples\_layers\_10\_20\_5 & \textbf{GD-WeightDecay} & 9.46e-2 & 3.04e-3 & 8.67e-2 & 9.85e-2 & 1668.0 & 0.0 & 4.605 \\
+\hline
+ & GD & 1.28e-1 & 3.28e-3 & 1.19e-1 & 1.33e-1 & 1668.0 & 0.0 & 4.558 \\
+\hline
+ & Adam-Robust & 6.03e-2 & 5.21e-3 & 4.99e-2 & 6.90e-2 & 2502.0 & 0.0 & 4.003 \\
+\hline
+ & Adam-AMSGrad & 4.96e-2 & 5.12e-3 & 3.99e-2 & 5.89e-2 & 2502.0 & 0.0 & 3.917 \\
+\hline
+ & Adam & 4.60e-2 & 4.49e-3 & 3.82e-2 & 5.37e-2 & 2484.8 & 15.0 & 3.902 \\
+\hline
+ & L-BFGS-MoreThuente & 5.96e-2 & 4.36e-3 & 5.34e-2 & 7.10e-2 & 2833.2 & 0.0 & 3.804 \\
+\hline
+ & L-BFGS-Conservative & 4.85e-2 & 9.73e-3 & 3.81e-2 & 7.99e-2 & 2547.8 & 20.0 & 3.325 \\
+\hline
+ & L-BFGS-Limited & 5.79e-2 & 2.39e-2 & 3.92e-2 & 1.29e-1 & 3421.6 & 0.0 & 3.299 \\
+\hline
+ & L-BFGS-Aggressive & 5.55e-2 & 4.41e-3 & 4.81e-2 & 6.45e-2 & 3657.3 & 0.0 & 3.210 \\
+\hline
+ & QQN-StrongWolfe & 4.29e-2 & 6.97e-3 & 3.79e-2 & 6.26e-2 & 1389.3 & 55.0 & 2.526 \\
+\hline
+ & L-BFGS & 1.83e-1 & 2.57e-1 & 3.89e-2 & 9.47e-1 & 2108.6 & 0.0 & 2.360 \\
+\hline
+ & QQN-GoldenSection & 3.85e-2 & 1.08e-3 & 3.78e-2 & 4.14e-2 & 3690.9 & 70.0 & 2.355 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 3.80e-2 & 1.13e-4 & 3.77e-2 & 3.82e-2 & 1028.8 & 100.0 & 2.119 \\
+\hline
+ & Adam-WeightDecay & 3.82e-2 & 1.71e-5 & 3.81e-2 & 3.82e-2 & 1312.7 & 100.0 & 2.082 \\
+\hline
+ & GD-Nesterov & 1.18e-1 & 5.89e-2 & 3.95e-2 & 1.72e-1 & 679.1 & 0.0 & 1.835 \\
+\hline
+ & QQN-Bisection-1 & 3.87e-2 & 2.08e-3 & 3.78e-2 & 4.73e-2 & 1132.3 & 90.0 & 1.786 \\
+\hline
+ & QQN-Bisection-2 & 3.81e-2 & 1.11e-4 & 3.78e-2 & 3.83e-2 & 1033.4 & 95.0 & 1.492 \\
+\hline
+ & Adam-Fast & 4.46e-2 & 7.66e-3 & 3.70e-2 & 6.58e-2 & 184.6 & 40.0 & 0.295 \\
+\hline
+ & GD-Momentum & 1.63e-1 & 2.75e-2 & 4.45e-2 & 1.78e-1 & 102.8 & 0.0 & 0.276 \\
+\hline
+ & Trust Region-Conservative & 1.48e-1 & 5.01e-3 & 1.28e-1 & 1.53e-1 & 113.2 & 0.0 & 0.141 \\
+\hline
+ & GD-AdaptiveMomentum & 1.74e-1 & 5.66e-3 & 1.66e-1 & 1.86e-1 & 15.2 & 0.0 & 0.037 \\
+\hline
+ & Trust Region-Adaptive & 1.94e-1 & 5.68e-2 & 1.56e-1 & 3.30e-1 & 29.0 & 0.0 & 0.036 \\
+\hline
+ & Trust Region-Precise & 1.60e-1 & 3.72e-3 & 1.52e-1 & 1.66e-1 & 25.1 & 0.0 & 0.031 \\
+\hline
+ & Trust Region-Aggressive & 7.84e-1 & 1.55e-1 & 3.46e-1 & 1.04e0 & 7.8 & 0.0 & 0.010 \\
+\hline
+ & Trust Region-Standard & 2.36e-1 & 2.65e-2 & 2.04e-1 & 3.07e-1 & 5.2 & 0.0 & 0.007 \\
+SVM\_100samples\_5features\_C1 & \textbf{Adam-AMSGrad} & 6.43e-1 & 1.44e-5 & 6.43e-1 & 6.43e-1 & 1984.2 & 90.0 & 0.726 \\
+\hline
+ & Adam & 6.43e-1 & 5.18e-7 & 6.43e-1 & 6.43e-1 & 1826.7 & 100.0 & 0.672 \\
+\hline
+ & Adam-Robust & 6.43e-1 & 1.65e-4 & 6.43e-1 & 6.44e-1 & 1414.2 & 50.0 & 0.517 \\
+\hline
+ & Adam-WeightDecay & 6.43e-1 & 1.36e-6 & 6.43e-1 & 6.43e-1 & 628.6 & 100.0 & 0.231 \\
+\hline
+ & GD & 6.43e-1 & 1.32e-6 & 6.43e-1 & 6.43e-1 & 274.4 & 100.0 & 0.156 \\
+\hline
+ & L-BFGS-Limited & 6.43e-1 & 1.94e-5 & 6.43e-1 & 6.43e-1 & 444.7 & 90.0 & 0.098 \\
+\hline
+ & GD-WeightDecay & 6.43e-1 & 2.96e-6 & 6.43e-1 & 6.43e-1 & 97.2 & 100.0 & 0.055 \\
+\hline
+ & QQN-GoldenSection & 6.43e-1 & 1.87e-5 & 6.43e-1 & 6.43e-1 & 228.9 & 90.0 & 0.046 \\
+\hline
+ & L-BFGS-Conservative & 6.43e-1 & 1.59e-5 & 6.43e-1 & 6.43e-1 & 133.7 & 100.0 & 0.046 \\
+\hline
+ & QQN-Bisection-1 & 6.43e-1 & 1.39e-5 & 6.43e-1 & 6.43e-1 & 83.4 & 100.0 & 0.039 \\
+\hline
+ & Trust Region-Conservative & 2.82e0 & 1.25e0 & 6.45e-1 & 3.96e0 & 134.5 & 0.0 & 0.039 \\
+\hline
+ & QQN-Bisection-2 & 6.43e-1 & 1.80e-5 & 6.43e-1 & 6.43e-1 & 68.8 & 100.0 & 0.030 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 6.43e-1 & 7.64e-7 & 6.43e-1 & 6.43e-1 & 61.6 & 100.0 & 0.028 \\
+\hline
+ & QQN-StrongWolfe & 6.43e-1 & 1.43e-5 & 6.43e-1 & 6.43e-1 & 57.5 & 100.0 & 0.023 \\
+\hline
+ & GD-Nesterov & 6.64e-1 & 5.99e-3 & 6.50e-1 & 6.76e-1 & 25.1 & 0.0 & 0.014 \\
+\hline
+ & GD-Momentum & 6.73e-1 & 9.01e-3 & 6.53e-1 & 6.91e-1 & 24.9 & 0.0 & 0.014 \\
+\hline
+ & L-BFGS-MoreThuente & 6.43e-1 & 1.35e-5 & 6.43e-1 & 6.43e-1 & 41.3 & 100.0 & 0.013 \\
+\hline
+ & L-BFGS & 6.43e-1 & 1.38e-12 & 6.43e-1 & 6.43e-1 & 42.0 & 100.0 & 0.012 \\
+\hline
+ & Adam-Fast & 6.84e-1 & 2.44e-2 & 6.44e-1 & 7.29e-1 & 32.8 & 0.0 & 0.012 \\
+\hline
+ & L-BFGS-Aggressive & 6.43e-1 & 1.41e-10 & 6.43e-1 & 6.43e-1 & 46.0 & 100.0 & 0.012 \\
+\hline
+ & Trust Region-Precise & 9.38e-1 & 2.76e-1 & 6.73e-1 & 1.58e0 & 36.2 & 0.0 & 0.011 \\
+\hline
+ & GD-AdaptiveMomentum & 7.53e-1 & 2.76e-2 & 7.12e-1 & 8.06e-1 & 17.6 & 0.0 & 0.010 \\
+\hline
+ & Trust Region-Adaptive & 4.68e0 & 6.93e0 & 7.07e-1 & 3.43e1 & 19.0 & 0.0 & 0.006 \\
+\hline
+ & Trust Region-Aggressive & 1.00e3 & 4.36e3 & 6.57e-1 & 2.00e4 & 16.3 & 0.0 & 0.005 \\
+\hline
+ & Trust Region-Standard & 3.47e2 & 9.80e2 & 7.26e-1 & 3.28e3 & 15.4 & 0.0 & 0.005 \\
+SVM\_200samples\_10features\_C1 & \textbf{Adam-AMSGrad} & 6.86e-1 & 1.05e-5 & 6.86e-1 & 6.86e-1 & 1996.0 & 0.0 & 1.280 \\
+\hline
+ & Adam & 6.86e-1 & 9.76e-6 & 6.86e-1 & 6.86e-1 & 1755.8 & 0.0 & 1.112 \\
+\hline
+ & QQN-Bisection-1 & 6.86e-1 & 5.90e-6 & 6.86e-1 & 6.86e-1 & 1454.6 & 0.0 & 1.051 \\
+\hline
+ & QQN-StrongWolfe & 6.86e-1 & 3.82e-6 & 6.86e-1 & 6.86e-1 & 1065.5 & 0.0 & 0.586 \\
+\hline
+ & QQN-Bisection-2 & 6.86e-1 & 1.16e-5 & 6.86e-1 & 6.86e-1 & 911.8 & 0.0 & 0.461 \\
+\hline
+ & GD & 6.86e-1 & 1.43e-6 & 6.86e-1 & 6.86e-1 & 450.0 & 0.0 & 0.442 \\
+\hline
+ & Adam-WeightDecay & 6.86e-1 & 7.69e-6 & 6.86e-1 & 6.86e-1 & 668.9 & 0.0 & 0.428 \\
+\hline
+ & Adam-Robust & 6.86e-1 & 1.01e-5 & 6.86e-1 & 6.86e-1 & 547.7 & 0.0 & 0.357 \\
+\hline
+ & L-BFGS-MoreThuente & 5.16e3 & 2.25e4 & 6.86e-1 & 1.03e5 & 555.0 & 0.0 & 0.325 \\
+\hline
+ & QQN-GoldenSection & 6.86e-1 & 6.68e-6 & 6.86e-1 & 6.86e-1 & 925.2 & 0.0 & 0.322 \\
+\hline
+ & L-BFGS-Conservative & 6.86e-1 & 5.85e-6 & 6.86e-1 & 6.86e-1 & 624.9 & 0.0 & 0.274 \\
+\hline
+ & L-BFGS-Limited & 6.86e-1 & 1.04e-4 & 6.86e-1 & 6.87e-1 & 770.6 & 0.0 & 0.264 \\
+\hline
+ & QQN-CubicQuadraticInterpolation & 6.86e-1 & 5.68e-6 & 6.86e-1 & 6.86e-1 & 289.4 & 0.0 & 0.221 \\
+\hline
+ & GD-WeightDecay & 6.86e-1 & 6.77e-7 & 6.86e-1 & 6.86e-1 & 177.0 & 0.0 & 0.172 \\
+\hline
+ & L-BFGS & 7.68e-1 & 3.55e-1 & 6.86e-1 & 2.32e0 & 321.6 & 0.0 & 0.146 \\
+\hline
+ & Trust Region-Conservative & 2.49e0 & 1.56e0 & 6.88e-1 & 4.05e0 & 130.4 & 0.0 & 0.068 \\
+\hline
+ & L-BFGS-Aggressive & 6.86e-1 & 6.90e-6 & 6.86e-1 & 6.86e-1 & 124.0 & 0.0 & 0.050 \\
+\hline
+ & Adam-Fast & 7.22e-1 & 2.34e-2 & 6.87e-1 & 7.51e-1 & 42.1 & 0.0 & 0.026 \\
+\hline
+ & GD-Momentum & 7.08e-1 & 5.01e-3 & 6.99e-1 & 7.17e-1 & 25.8 & 0.0 & 0.024 \\
+\hline
+ & GD-Nesterov & 7.03e-1 & 4.03e-3 & 6.94e-1 & 7.12e-1 & 25.7 & 0.0 & 0.024 \\
+\hline
+ & Trust Region-Precise & 9.09e-1 & 1.95e-1 & 7.00e-1 & 1.21e0 & 36.1 & 0.0 & 0.019 \\
+\hline
+ & GD-AdaptiveMomentum & 7.83e-1 & 1.76e-2 & 7.62e-1 & 8.35e-1 & 18.0 & 0.0 & 0.016 \\
+\hline
+ & Trust Region-Adaptive & 6.77e0 & 1.17e1 & 6.97e-1 & 3.46e1 & 24.4 & 0.0 & 0.013 \\
+\hline
+ & Trust Region-Standard & 8.76e-1 & 1.40e-1 & 6.90e-1 & 1.09e0 & 20.8 & 0.0 & 0.011 \\
+\hline
+ & Trust Region-Aggressive & 1.84e0 & 4.05e-1 & 7.56e-1 & 2.23e0 & 11.8 & 0.0 & 0.006 \\
+\end{longtable}
+\end{document}

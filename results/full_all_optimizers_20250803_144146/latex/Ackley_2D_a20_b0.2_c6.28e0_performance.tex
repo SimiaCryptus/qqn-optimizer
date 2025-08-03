@@ -1,0 +1,51 @@
+\documentclass{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\begin{document}
+\small
+\begin{table}[htbp]
+\centering
+\caption{Performance Results for Ackley\_2D\_a20\_b0.2\_c6.28e0 Problem}
+\label{tab:ackley_2d_a20_b0.2_c6.28e0}
+\adjustbox{width=\textwidth,center}{
+\begin{tabular}{p{2.5cm}*{7}{c}}
+\toprule
+\textbf{Optimizer} & \textbf{Mean Final} & \textbf{Std Dev} & \textbf{Best} & \textbf{Worst} & \textbf{Mean Func} & \textbf{Success} & \textbf{Mean Time} \\
+ & \textbf{Value} & & \textbf{Value} & \textbf{Value} & \textbf{Evals} & \textbf{Rate (\%)} & \textbf{(s)} \\
+\midrule
+\textbf{QQN-Bisection-1} & 2.85e0 & 1.05e0 & 1.12e-2 & 3.57e0 & 53.6 & 60.0 & 0.001 \\
+L-BFGS & 3.20e0 & 4.86e-1 & 1.89e0 & 3.57e0 & 202.7 & 50.0 & 0.003 \\
+L-BFGS-MoreThuente & 3.34e0 & 4.09e-1 & 1.83e0 & 3.57e0 & 42.2 & 45.0 & 0.001 \\
+QQN-Bisection-2 & 2.75e0 & 1.16e0 & 3.79e-1 & 3.57e0 & 36.5 & 40.0 & 0.001 \\
+QQN-CubicQuadraticInterpolation & 3.44e0 & 4.86e-1 & 1.95e0 & 4.24e0 & 496.8 & 40.0 & 0.014 \\
+QQN-GoldenSection & 3.18e0 & 6.29e-1 & 1.58e0 & 3.57e0 & 137.5 & 35.0 & 0.002 \\
+L-BFGS-Aggressive & 3.74e0 & 3.90e-1 & 2.80e0 & 4.38e0 & 3083.9 & 20.0 & 0.018 \\
+QQN-StrongWolfe & 3.49e0 & 1.92e-1 & 3.00e0 & 3.57e0 & 62.8 & 15.0 & 0.001 \\
+L-BFGS-Limited & 3.37e0 & 7.29e-1 & 2.64e-1 & 3.57e0 & 176.7 & 15.0 & 0.002 \\
+Trust Region-Adaptive & 3.66e0 & 2.13e-1 & 3.32e0 & 4.52e0 & 14.8 & 5.0 & 0.000 \\
+L-BFGS-Conservative & 3.57e0 & 1.87e-8 & 3.57e0 & 3.57e0 & 183.6 & 0.0 & 0.004 \\
+GD-Nesterov & 3.57e0 & 2.11e-3 & 3.57e0 & 3.58e0 & 30.6 & 0.0 & 0.001 \\
+GD-AdaptiveMomentum & 3.57e0 & 6.21e-11 & 3.57e0 & 3.57e0 & 15.2 & 0.0 & 0.001 \\
+GD & 3.57e0 & 1.91e-11 & 3.57e0 & 3.57e0 & 20.2 & 0.0 & 0.001 \\
+Adam-AMSGrad & 3.57e0 & 2.23e-5 & 3.57e0 & 3.57e0 & 753.0 & 0.0 & 0.017 \\
+GD-WeightDecay & 3.59e0 & 2.07e-2 & 3.57e0 & 3.66e0 & 49.2 & 0.0 & 0.002 \\
+Adam-Robust & 3.58e0 & 3.34e-3 & 3.57e0 & 3.59e0 & 42.9 & 0.0 & 0.001 \\
+Adam & 3.57e0 & 5.40e-5 & 3.57e0 & 3.57e0 & 301.6 & 0.0 & 0.006 \\
+Adam-WeightDecay & 3.58e0 & 8.83e-4 & 3.57e0 & 3.58e0 & 119.4 & 0.0 & 0.003 \\
+Trust Region-Conservative & 3.58e0 & 1.90e-2 & 3.57e0 & 3.64e0 & 171.2 & 0.0 & 0.001 \\
+Adam-Fast & 3.62e0 & 6.41e-2 & 3.57e0 & 3.79e0 & 52.9 & 0.0 & 0.001 \\
+GD-Momentum & 3.70e0 & 6.22e-2 & 3.57e0 & 3.79e0 & 14.7 & 0.0 & 0.000 \\
+Trust Region-Precise & 3.58e0 & 1.39e-2 & 3.58e0 & 3.64e0 & 39.5 & 0.0 & 0.000 \\
+Trust Region-Standard & 5.19e0 & 3.91e0 & 3.58e0 & 1.70e1 & 8.6 & 0.0 & 0.000 \\
+Trust Region-Aggressive & 4.78e0 & 2.77e0 & 3.62e0 & 1.67e1 & 5.3 & 0.0 & 0.000 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+\end{document}

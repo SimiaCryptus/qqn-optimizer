@@ -6,17 +6,28 @@ rm -rf results/
 mkdir -p results/latex results/plots
 
 # Copy referenced files from results directory
-RESULTS_DIR="../../results/full_all_optimizers_20250803_142238"
+RESULTS_DIR="../../results/full_all_optimizers_20250803_144146"
 
-# Copy LaTeX files
+# Function to strip LaTeX document wrapper
+strip_latex_wrapper() {
+  local input_file="$1"
+  local output_file="$2"
+
+  perl -0777 -ne 'print $1 if /.*\\begin\{document\}(.*)\\end\{document\}.*/s' "$input_file" > "$output_file"
+
+}
+
+# Copy LaTeX files and strip document wrappers
 if [ -f "$RESULTS_DIR/latex/comparison_matrix.tex" ]; then
-  cp "$RESULTS_DIR/latex/comparison_matrix.tex" results/latex/
+  strip_latex_wrapper "$RESULTS_DIR/latex/comparison_matrix.tex" "results/latex/comparison_matrix.tex"
 fi
+
 if [ -f "$RESULTS_DIR/latex/family_vs_family_matrix.tex" ]; then
-  cp "$RESULTS_DIR/latex/family_vs_family_matrix.tex" results/latex/
+  strip_latex_wrapper "$RESULTS_DIR/latex/family_vs_family_matrix.tex" "results/latex/family_vs_family_matrix.tex"
 fi
+
 if [ -f "$RESULTS_DIR/latex/Rosenbrock_5D_performance.tex" ]; then
-  cp "$RESULTS_DIR/latex/Rosenbrock_5D_performance.tex" results/latex/
+  strip_latex_wrapper "$RESULTS_DIR/latex/Rosenbrock_5D_performance.tex" "results/latex/Rosenbrock_5D_performance.tex"
 fi
 
 # Copy plot files
@@ -123,4 +134,116 @@ if [ -f paper.pdf ]; then
   unzip -l arxiv_submission.zip
 else
   echo "Warning: paper.pdf not found, skipping arXiv package creation"
+fi
+
+# Preflight checks for arXiv submission
+if [ -f paper.pdf ]; then
+  echo "Running preflight checks..."
+
+  # Check file sizes (arXiv has limits)
+  PDF_SIZE=$(stat -f%z paper.pdf 2>/dev/null || stat -c%s paper.pdf 2>/dev/null)
+  if [ "$PDF_SIZE" -gt 52428800 ]; then  # 50MB limit
+    echo "WARNING: PDF is larger than 50MB ($((PDF_SIZE/1048576))MB). arXiv may reject it."
+  fi
+
+  # Check for common LaTeX issues
+  if grep -q "LaTeX Warning" paper.log; then
+    echo "WARNING: LaTeX warnings found in paper.log:"
+    grep "LaTeX Warning" paper.log
+  fi
+
+  if grep -q "LaTeX Error" paper.log; then
+    echo "ERROR: LaTeX errors found in paper.log:"
+    grep "LaTeX Error" paper.log
+    echo "Fix these errors before submitting to arXiv"
+  fi
+
+  # Check for undefined references
+  if grep -q "undefined" paper.log; then
+    echo "WARNING: Undefined references found:"
+    grep "undefined" paper.log
+  fi
+
+  # Check bibliography compilation
+  if [ -f paper.blg ]; then
+    if grep -q "error" paper.blg; then
+      echo "WARNING: BibTeX errors found in paper.blg:"
+      grep -i "error" paper.blg
+    fi
+  fi
+
+  # Verify all referenced files exist
+  echo "Checking file dependencies..."
+  MISSING_FILES=0
+
+  # Check for missing figures
+  if grep -q "includegraphics" paper.tex content.tex appendix.tex 2>/dev/null; then
+    for file in $(grep -h "includegraphics" paper.tex content.tex appendix.tex 2>/dev/null | sed 's/.*{\([^}]*\)}.*/\1/' | sort -u); do
+      # Try common extensions if no extension provided
+      if [[ ! "$file" =~ \. ]]; then
+        found=false
+        for ext in .png .pdf .jpg .jpeg .eps; do
+          if [ -f "${file}${ext}" ]; then
+            found=true
+            break
+          fi
+        done
+        if [ "$found" = false ]; then
+          echo "WARNING: Figure file not found: $file (tried common extensions)"
+          MISSING_FILES=$((MISSING_FILES + 1))
+        fi
+      elif [ ! -f "$file" ]; then
+        echo "WARNING: Figure file not found: $file"
+        MISSING_FILES=$((MISSING_FILES + 1))
+      fi
+    done
+  fi
+
+  # Check for missing input/include files
+  for file in $(grep -h "\\\\input{\\|\\\\include{" paper.tex 2>/dev/null | sed 's/.*{\([^}]*\)}.*/\1/' | sort -u); do
+    if [ ! -f "$file" ] && [ ! -f "$file.tex" ]; then
+      echo "WARNING: Input file not found: $file"
+      MISSING_FILES=$((MISSING_FILES + 1))
+    fi
+  done
+
+  # Check arXiv package contents
+  if [ -f arxiv_submission.zip ]; then
+    echo "Verifying arXiv package contents..."
+
+    # Check that main files are included
+    if ! unzip -l arxiv_submission.zip | grep -q "paper.tex"; then
+      echo "ERROR: paper.tex not found in arXiv package"
+    fi
+
+    if ! unzip -l arxiv_submission.zip | grep -q "references.bib"; then
+      echo "ERROR: references.bib not found in arXiv package"
+    fi
+
+    # Check package size
+    ZIP_SIZE=$(stat -f%z arxiv_submission.zip 2>/dev/null || stat -c%s arxiv_submission.zip 2>/dev/null)
+    if [ "$ZIP_SIZE" -gt 52428800 ]; then  # 50MB limit
+      echo "WARNING: arXiv package is larger than 50MB ($((ZIP_SIZE/1048576))MB)"
+    fi
+  fi
+
+  # Summary
+  echo "Preflight check complete."
+  if [ "$MISSING_FILES" -gt 0 ]; then
+    echo "WARNING: $MISSING_FILES missing file(s) detected. Review before submission."
+  else
+    echo "✓ All file dependencies appear to be satisfied."
+  fi
+
+  # Final recommendations
+  echo ""
+  echo "Before submitting to arXiv:"
+  echo "1. Review the generated PDF for formatting issues"
+  echo "2. Verify all figures and tables display correctly"
+  echo "3. Check that all citations are properly formatted"
+  echo "4. Ensure the abstract and title are finalized"
+  echo "5. Consider running a spell check on the source files"
+
+else
+  echo "Skipping preflight checks - no PDF generated"
 fi
