@@ -71,7 +71,7 @@ pub fn create_1d_problem(
         .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
     let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
     let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
-    debug!("create_1d_problem: initial_derivative={initial_gradient:?}, initial_direction={initial_direction:?}, initial_directional_derivative={initial_directional_derivative:.3e}");
+    //debug!("create_1d_problem: initial_derivative={initial_gradient:?}, initial_direction={initial_direction:?}, initial_directional_derivative={initial_directional_derivative:.3e}");
     // Check for zero direction
     let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
     if direction_norm < 1e-16 {
@@ -140,7 +140,7 @@ pub fn create_1d_problem(
             // Compute directional derivative: ∇f(x(t)) · dx/dt
             dot_product_f64(&g, &curve_derivative)
         })?;
-        debug!("1-D gradient result at t={t:.3e}; p={result_vec:?} = {result:.3e}");
+        //debug!("1-D gradient result at t={t:.3e}; p={result_vec:?} = {result:.3e}");
         Ok(result)
     });
     Ok(OneDimensionalProblem::new(
@@ -156,14 +156,7 @@ pub fn create_1d_problem_linear(
     objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
     gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
 ) -> Result<OneDimensionalProblem> {
-    let curve = LinearCurve::new(current_point.to_vec(), direction.to_vec());
-
-    // Debug: let's verify the curve works correctly
-    let test_val_0 = curve.position(0.0)?;
-    let test_val_1 = curve.position(1.0)?;
-    debug!("Curve test: f(t=0) -> {test_val_0:?}, f(t=1) -> {test_val_1:?}");
-
-    create_1d_problem(Box::new(curve), objective_fn, gradient_fn)
+    create_1d_problem(Box::new(LinearCurve::new(current_point.to_vec(), direction.to_vec())), objective_fn, gradient_fn)
 }
 
 /// Linear parametric curve: x(t) = x0 + t * direction
