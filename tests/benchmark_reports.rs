@@ -5,15 +5,18 @@ use std::time::Duration;
 use qqn_optimizer::benchmarks::evaluation::{
     disable_no_threshold_mode, enable_no_threshold_mode, ProblemSpec,
 };
+use qqn_optimizer::benchmarks::mnist_onednn::ActivationType;
 use qqn_optimizer::experiment_runner::experiment_runner::run_benchmark;
-use qqn_optimizer::{init_logging, AckleyFunction, BealeFunction, LineSearchConfig, LineSearchMethod, Optimizer, QQNConfig, QQNOptimizer, RastriginFunction, RosenbrockFunction, SphereFunction};
 use qqn_optimizer::optimizer_sets::{
     adam_variants, gd_variants, lbfgs_variants, qqn_variants, trust_region_variants,
 };
 use qqn_optimizer::problem_sets::{analytic_problems, ml_problems, mnist_problems};
+use qqn_optimizer::{
+    init_logging, LineSearchConfig, LineSearchMethod, MnistOneDnnNeuralNetwork, Optimizer,
+    QQNConfig, QQNOptimizer,
+};
+use rand::SeedableRng;
 use tokio::task::LocalSet;
-use qqn_optimizer::benchmarks::analytic_functions::{BarrierFunction, GoldsteinPriceFunction, IllConditionedRosenbrock, LeviFunction, MatyasFunction, NoisySphere, PenaltyFunctionI, SparseQuadratic, SparseRosenbrock, StyblinskiTangFunction, TrigonometricFunction};
-use qqn_optimizer::benchmarks::{BoothFunction, GriewankFunction, HimmelblauFunction, LevyFunction, MichalewiczFunction, SchwefelFunction, ZakharovFunction};
 
 // #[tokio::test]
 #[allow(dead_code)]
@@ -42,7 +45,8 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
                 problems.clone(),
                 all_optimizers(),
                 2e-1,
-            ).await
+            )
+            .await
         })
         .await?;
 
@@ -52,48 +56,57 @@ async fn calibration() -> Result<(), Box<dyn Error + Send + Sync>> {
     Ok(())
 }
 
-#[tokio::test]
+// #[tokio::test]
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     disable_no_threshold_mode();
-    LocalSet::new().run_until(async move {
-        run_benchmark(
-            &"results/full_all_optimizers_",
-            5000,
-            20,
-            Duration::from_secs(600),
-            Some(8),
-            all_problems().clone(),
-            all_optimizers(),
-            2e-1,
-        ).await
-    }).await?;
+    LocalSet::new()
+        .run_until(async move {
+            run_benchmark(
+                &"results/full_all_optimizers_",
+                5000,
+                20,
+                Duration::from_secs(600),
+                Some(8),
+                all_problems().clone(),
+                all_optimizers(),
+                2e-1,
+            )
+            .await
+        })
+        .await?;
     tokio::task::yield_now().await; // Explicitly flush any pending async operations
     Ok(())
 }
 
-// #[tokio::test]
+#[tokio::test]
 async fn one_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(true)?;
     disable_no_threshold_mode();
-    LocalSet::new().run_until(async move {
-        run_benchmark(
-            &"results/one_test_",
-            100,
-            1,
-            Duration::from_secs(600),
-            Some(8),
-            vec![
-                ProblemSpec::new(
-                    Arc::new(BarrierFunction::new(2)),
-                    "Barrier".to_string(),
+    LocalSet::new()
+        .run_until(async move {
+            run_benchmark(
+                &"results/one_test_",
+                100,
+                1,
+                Duration::from_secs(600),
+                Some(8),
+                vec![ProblemSpec::new(
+                    Arc::new(
+                        MnistOneDnnNeuralNetwork::create(
+                            Some(1000), // 1000 samples for a more substantial test
+                            &[32, 16],  // Two hidden layers: 32 and 16 neurons
+                            Some(32),   // Batch size of 32
+                            &mut rand::rngs::StdRng::seed_from_u64(42),
+                            Some(ActivationType::ReLU),
+                        )
+                        .unwrap(),
+                    ),
+                    "MnistOneDnnNeuralNetwork".to_string(),
                     Some(2),
                     42,
-                ),
-            ]
-            ,
-            vec![
-                (
+                )],
+                vec![(
                     "QQN-Bisection-2".to_string(),
                     Arc::new(QQNOptimizer::new(QQNConfig {
                         line_search: LineSearchConfig {
@@ -112,11 +125,12 @@ async fn one_test() -> Result<(), Box<dyn Error + Send + Sync>> {
                         verbose: true,
                         ..Default::default()
                     })),
-                ),
-            ],
-            2e-1,
-        ).await
-    }).await?;
+                )],
+                2e-1,
+            )
+            .await
+        })
+        .await?;
     tokio::task::yield_now().await; // Explicitly flush any pending async operations
     Ok(())
 }
@@ -143,7 +157,9 @@ async fn test_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Enable no threshold mode for this test
     enable_no_threshold_mode();
 
-    LocalSet::new().run_until(async move { test("results/mnist_", mnist_problems(1000)).await }).await?;
+    LocalSet::new()
+        .run_until(async move { test("results/mnist_", mnist_problems(1000)).await })
+        .await?;
 
     // Explicitly flush any pending async operations
     tokio::task::yield_now().await;

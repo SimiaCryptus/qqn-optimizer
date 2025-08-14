@@ -1,4 +1,6 @@
-use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult};
+use crate::benchmarks::evaluation::{
+    is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult,
+};
 use crate::experiment_runner;
 use crate::experiment_runner::{Report, ReportConfig, ReportFormat, ReportMetadata};
 use anyhow::{Context, Result};
@@ -64,10 +66,7 @@ impl PerformanceAnalysisReport {
         content
     }
 
-    fn generate_html(
-        &self,
-        data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> Result<String> {
+    fn generate_html(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<String> {
         let mut html = String::from(
             r#"<!DOCTYPE html>
 <html>
@@ -95,8 +94,7 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
-                HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -124,10 +122,7 @@ impl PerformanceAnalysisReport {
         Ok(html)
     }
 
-    fn generate_latex(
-        &self,
-        data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> Result<String> {
+    fn generate_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<String> {
         let mut latex = String::from(
             r#"\documentclass{article}
 \usepackage[utf8]{inputenc}
@@ -150,8 +145,7 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
-                HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -184,10 +178,7 @@ impl PerformanceAnalysisReport {
         Ok(latex)
     }
 
-    fn generate_markdown(
-        &self,
-        data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> Result<String> {
+    fn generate_markdown(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<String> {
         let mut markdown = String::from("# Performance Analysis Report\n\n");
 
         for (problem_spec, results) in data {
@@ -197,8 +188,7 @@ impl PerformanceAnalysisReport {
             ));
 
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
-                HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -217,16 +207,12 @@ impl PerformanceAnalysisReport {
         Ok(markdown)
     }
 
-    fn generate_csv(
-        &self,
-        data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> Result<String> {
+    fn generate_csv(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<String> {
         let mut csv = String::from("Problem,Optimizer,Avg_Function_Evals,Avg_Gradient_Evals,Avg_Iterations,Avg_Time_Sec,Total_Function_Evals,Total_Gradient_Evals,Total_Time_Sec,Function_Gradient_Ratio\n");
 
         for (problem_spec, results) in data {
             // Group results by optimizer
-            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> =
-                HashMap::new();
+            let mut optimizer_results: HashMap<String, Vec<&SingleResult>> = HashMap::new();
             for result in &results.results {
                 optimizer_results
                     .entry(result.optimizer_name.clone())
@@ -438,17 +424,19 @@ impl PerformanceTableReport {
 
             if is_no_threshold_mode() {
                 // In no-threshold mode, sort by best value
-                perf_data.sort_by(|a, b| {
-                    a.3.total_cmp(&b.3)
-                });
+                perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
             } else {
                 // Sort by success rate first, then by total evaluations
                 perf_data.sort_by(|a, b| {
                     use std::cmp::Ordering;
                     match b.7.total_cmp(&a.7) {
-                        Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
-                            a.3.total_cmp(&b.3)
-                        },
+                        Ordering::Equal => {
+                            if b.7 > 0.0 {
+                                (a.5 + a.6).total_cmp(&(b.5 + b.6))
+                            } else {
+                                a.3.total_cmp(&b.3)
+                            }
+                        }
                         other => other,
                     }
                 });
@@ -551,10 +539,7 @@ impl PerformanceTableReport {
         html.push_str("</tbody></table></body></html>");
         Ok(html)
     }
-    fn generate_latex(
-        &self,
-        data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> Result<String> {
+    fn generate_latex(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<String> {
         let performance_data = self.calculate_performance_data(data);
         let mut latex_content = String::from(
             r#"\documentclass{article}
@@ -917,17 +902,19 @@ pub fn generate_main_performance_latex_table(
 
         if is_no_threshold_mode() {
             // In no-threshold mode, sort by best value
-            perf_data.sort_by(|a, b| {
-                a.3.total_cmp(&b.3)
-            });
+            perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
         } else {
             // Sort by success rate first, then by total evaluations
             perf_data.sort_by(|a, b| {
                 use std::cmp::Ordering;
                 match b.7.total_cmp(&a.7) {
-                    Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
-                        a.3.total_cmp(&b.3)
-                    },
+                    Ordering::Equal => {
+                        if b.7 > 0.0 {
+                            (a.5 + a.6).total_cmp(&(b.5 + b.6))
+                        } else {
+                            a.3.total_cmp(&b.3)
+                        }
+                    }
                     other => other,
                 }
             });
@@ -1084,17 +1071,19 @@ pub fn generate_main_performance_table_content(
 
         if is_no_threshold_mode() {
             // In no-threshold mode, sort by best value
-            perf_data.sort_by(|a, b| {
-                a.3.total_cmp(&b.3)
-            });
+            perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
         } else {
             // Sort by success rate first, then by total evaluations
             perf_data.sort_by(|a, b| {
                 use std::cmp::Ordering;
                 match b.7.total_cmp(&a.7) {
-                    Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
-                        a.3.total_cmp(&b.3)
-                    },
+                    Ordering::Equal => {
+                        if b.7 > 0.0 {
+                            (a.5 + a.6).total_cmp(&(b.5 + b.6))
+                        } else {
+                            a.3.total_cmp(&b.3)
+                        }
+                    }
                     other => other,
                 }
             });

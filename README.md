@@ -8,6 +8,8 @@
 A comprehensive optimization library implementing the Quadratic-Quasi-Newton (QQN) algorithm alongside a rigorous benchmarking framework for optimization algorithm evaluation.
 📄 **[Read the Academic Paper](papers/intro/paper.pdf)** - Complete mathematical foundation and theoretical analysis
 
+http://dx.doi.org/10.13140/RG.2.2.15200.19206
+
 
 ## Table of Contents
 

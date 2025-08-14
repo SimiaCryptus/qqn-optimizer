@@ -1,6 +1,6 @@
 /target
 .idea
-results/
+results
 reproducibility/
 *.zip
 *.log
@@ -10,3 +10,4 @@ data/
 *.out
 *.blg
 endorsement.md
+.*

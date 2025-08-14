@@ -165,9 +165,9 @@ pub async fn generate_family_vs_family_latex_table(
 
             // Determine cell color
             let color_cmd = if cell_data.average_ranking.is_finite() {
-                if optimizer_family == &best_family {
+                if optimizer_family.to_string() == best_family {
                     BEST_COLOR_LATEX
-                } else if optimizer_family == &worst_family {
+                } else if optimizer_family.to_string() == worst_family {
                     WORST_COLOR_LATEX
                 } else {
                     ""
@@ -208,7 +208,7 @@ pub async fn generate_family_vs_family_latex_table(
 \end{document}
 "#,
     );
-    let latex_path = latex_dir.join("family_vs_family_matrix.tex");
+    let latex_path = latex_dir.join("family_vs_family_matrix.tex".to_string());
     fs::write(&latex_path, latex_content)
         .with_context(|| format!("Failed to write LaTeX table to: {}", latex_path.display()))?;
     println!(
@@ -357,9 +357,9 @@ pub fn generate_family_vs_family_table_content(
 
             // Determine cell color
             let color_cmd = if cell_data.average_ranking.is_finite() {
-                if optimizer_family == &best_family {
+                if optimizer_family.to_string() == best_family.to_string() {
                     BEST_COLOR_LATEX_INLINE
-                } else if optimizer_family == &worst_family {
+                } else if optimizer_family.to_string() == worst_family.to_string() {
                     WORST_COLOR_LATEX_INLINE
                 } else {
                     ""
@@ -479,16 +479,16 @@ This table shows how different optimizer families perform across different probl
             let best_family = row_scores
                 .iter()
                 .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-                .map(|(f, _)| f.as_str());
+                .map(|(f, _)| f.to_string());
             let worst_family = row_scores
                 .iter()
                 .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-                .map(|(f, _)| f.as_str());
+                .map(|(f, _)| f.to_string());
 
             let cell_style = if cell_data.average_ranking.is_finite() {
-                if Some(optimizer_family.as_str()) == best_family {
+                if Some(optimizer_family.to_string()) == best_family {
                     "border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;"
-                } else if Some(optimizer_family.as_str()) == worst_family {
+                } else if Some(optimizer_family.to_string()) == worst_family {
                     "border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;"
                 } else {
                     "border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;"
@@ -683,7 +683,7 @@ mod tests {
         generate_family_vs_family_latex_table(&test_data_refs, target_dir).await?;
         // Generate HTML table content
         let html_content = generate_family_vs_family_comparison_table(&test_data_refs)?;
-        let html_file_path = target_dir.join("family_vs_family_comparison.html");
+        let html_file_path = target_dir.join("family_vs_family_comparison.html".to_string());
         // Ensure parent directory exists before writing HTML file
         if let Some(parent) = html_file_path.parent() {
             fs::create_dir_all(parent)?;
@@ -775,15 +775,18 @@ And the following optimizer families:
     }
     #[test]
     fn test_truncate_name() {
-        assert_eq!(truncate_name("short", 10), "short");
-        assert_eq!(truncate_name("exactlyten", 10), "exactlyten");
-        assert_eq!(truncate_name("this_is_longer_than_ten", 10), "this_is...");
-        assert_eq!(truncate_name("test", 4), "test");
-        assert_eq!(truncate_name("test", 3), "...");
-        assert_eq!(truncate_name("test", 2), "...");
-        assert_eq!(truncate_name("test", 1), "...");
-        assert_eq!(truncate_name("test", 0), "");
-        assert_eq!(truncate_name("very_long_name", 5), "ve...");
+        assert_eq!(truncate_name("short", 10), "short".to_string());
+        assert_eq!(truncate_name("exactlyten", 10), "exactlyten".to_string());
+        assert_eq!(
+            truncate_name("this_is_longer_than_ten", 10),
+            "this_is...".to_string()
+        );
+        assert_eq!(truncate_name("test", 4), "test".to_string());
+        assert_eq!(truncate_name("test", 3), "...".to_string());
+        assert_eq!(truncate_name("test", 2), "...".to_string());
+        assert_eq!(truncate_name("test", 1), "...".to_string());
+        assert_eq!(truncate_name("test", 0), "".to_string());
+        assert_eq!(truncate_name("very_long_name", 5), "ve...".to_string());
     }
     #[test]
     fn test_calculate_family_performance_data_empty() {
@@ -791,7 +794,7 @@ And the following optimizer families:
         let result = calculate_family_performance_data(&empty_problems, "test_family").unwrap();
         assert!(result.average_ranking.is_infinite());
         assert!(result.best_rank_average.is_infinite());
-        assert_eq!(result.best_variant, "N/A");
-        assert_eq!(result.worst_variant, "N/A");
+        assert_eq!(result.best_variant, "N/A".to_string());
+        assert_eq!(result.worst_variant, "N/A".to_string());
     }
 }

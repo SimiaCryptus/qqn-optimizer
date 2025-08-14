@@ -141,15 +141,15 @@ impl FamilyVsFamilyReport {
                 let best_family = row_scores
                     .iter()
                     .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-                    .map(|(f, _)| f.as_str());
+                    .map(|(f, _)| f.to_string());
                 let worst_family = row_scores
                     .iter()
                     .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-                    .map(|(f, _)| f.as_str());
+                    .map(|(f, _)| f.to_string());
                 let cell_style = if cell_data.average_ranking.is_finite() {
-                    if Some(optimizer_family.as_str()) == best_family {
+                    if Some(optimizer_family.to_string()) == best_family {
                         "border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #90EE90; font-size: 10px;"
-                    } else if Some(optimizer_family.as_str()) == worst_family {
+                    } else if Some(optimizer_family.to_string()) == worst_family {
                         "border: 1px solid #ddd; padding: 6px; text-align: center; background-color: #FFB6C1; font-size: 10px;"
                     } else {
                         "border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px;"
@@ -579,7 +579,7 @@ mod tests {
         let data_refs: Vec<_> = test_data.iter().map(|(p, r)| (p, r.clone())).collect();
 
         let metadata = report.get_metadata(&data_refs);
-        assert_eq!(metadata.report_type, "family_vs_family");
+        assert_eq!(metadata.report_type, "family_vs_family".to_string());
         assert!(metadata.problem_count > 0);
         assert!(metadata.optimizer_count > 0);
         assert!(metadata.data_points > 0);

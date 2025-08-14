@@ -1175,10 +1175,10 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                 difficulty_score,
             ));
         }
-        
+
         // Sort by difficulty score (descending - most difficult first)
         problem_stats.sort_by(|a, b| b.4.partial_cmp(&a.4).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         // Generate LaTeX table
         let mut latex_content = String::new();
         latex_content.push_str("\\begin{longtable}{lrrllr}\n");

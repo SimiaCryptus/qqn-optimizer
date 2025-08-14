@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use crate::benchmarks::evaluation::{
     is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult,
 };
@@ -9,6 +8,7 @@ use crate::experiment_runner::reports::{failure_analysis, parameter_evolution, r
 use crate::{experiment_runner, OptimizationProblem};
 use anyhow::Context;
 use log::warn;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -89,17 +89,19 @@ pub fn generate_problem_table_content(
 
     if is_no_threshold_mode() {
         // In no-threshold mode, sort by best value
-        perf_data.sort_by(|a, b| {
-            a.3.total_cmp(&b.3)
-        });
+        perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
     } else {
         // Sort by success rate first, then by total evaluations
         perf_data.sort_by(|a, b| {
             use std::cmp::Ordering;
             match b.7.total_cmp(&a.7) {
-                Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
-                    a.3.total_cmp(&b.3)
-                },
+                Ordering::Equal => {
+                    if b.7 > 0.0 {
+                        (a.5 + a.6).total_cmp(&(b.5 + b.6))
+                    } else {
+                        a.3.total_cmp(&b.3)
+                    }
+                }
                 other => other,
             }
         });
@@ -384,17 +386,19 @@ pub fn generate_problem_section(
 
     if is_no_threshold_mode() {
         // In no-threshold mode, sort by best value
-        perf_data.sort_by(|a, b| {
-            a.3.total_cmp(&b.3)
-        });
+        perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
     } else {
         // Sort by success rate first, then by total evaluations
         perf_data.sort_by(|a, b| {
             use std::cmp::Ordering;
             match b.7.total_cmp(&a.7) {
-                Ordering::Equal => if b.7 > 0.0 { (a.5 + a.6).total_cmp(&(b.5 + b.6)) } else {
-                    a.3.total_cmp(&b.3)
-                },
+                Ordering::Equal => {
+                    if b.7 > 0.0 {
+                        (a.5 + a.6).total_cmp(&(b.5 + b.6))
+                    } else {
+                        a.3.total_cmp(&b.3)
+                    }
+                }
                 other => other,
             }
         });
@@ -730,7 +734,6 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
         });
     }
 
-
     for (i, (optimizer, mean_final, success_rate, mean_func_evals, mean_time)) in
         perf_data.iter().enumerate()
     {
@@ -860,17 +863,19 @@ pub fn generate_problem_latex_table(
 
     if is_no_threshold_mode() {
         // In no-threshold mode, sort by best value
-        perf_data.sort_by(|a, b| {
-            a.3.total_cmp(&b.3)
-        });
+        perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
     } else {
         // Sort by success rate first, then by total evaluations
         perf_data.sort_by(|a, b| {
             use std::cmp::Ordering;
             match b.6.total_cmp(&a.6) {
-                Ordering::Equal => if b.6 > 0.0 { a.5.total_cmp(&(b.5)) } else {
-                    a.3.total_cmp(&b.3)
-                },
+                Ordering::Equal => {
+                    if b.6 > 0.0 {
+                        a.5.total_cmp(&(b.5))
+                    } else {
+                        a.3.total_cmp(&b.3)
+                    }
+                }
                 other => other,
             }
         });

@@ -155,11 +155,8 @@ impl PerformanceTableReport {
             //     }
             // });
             if is_no_threshold_mode() {
-                perf_data.sort_by(|a, b| {
-                    b.3
-                        .partial_cmp(&a.3)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
+                perf_data
+                    .sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
             } else {
                 perf_data.sort_by(|a, b| {
                     match b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal) {

@@ -1,5 +1,4 @@
 #![allow(clippy::upper_case_acronyms)]
-
 use crate::OptimizationProblem;
 use candle_core::{Device, Tensor};
 use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};

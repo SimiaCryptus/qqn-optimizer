@@ -4,8 +4,8 @@
 use super::PlottingManager;
 use super::ReportGenerator;
 use crate::benchmarks::evaluation::{
-    new_initial_point, BenchmarkConfig, BenchmarkResults,
-    BenchmarkRunner, DurationWrapper, ProblemSpec, SingleResult,
+    new_initial_point, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper,
+    ProblemSpec, SingleResult,
 };
 use crate::Optimizer;
 use log::{error, info, warn};
@@ -139,7 +139,8 @@ impl ExperimentRunner {
             let config = config.clone();
             let completed_count = completed_count.clone();
             let problem = problem.clone();
-            let max_concurrent_per_problem = std::cmp::max(1, self.max_concurrent_tasks / problems.len());
+            let max_concurrent_per_problem =
+                std::cmp::max(1, self.max_concurrent_tasks / problems.len());
 
             let mut rng = StdRng::seed_from_u64(42);
             let future = async move {
@@ -147,9 +148,14 @@ impl ExperimentRunner {
                 let _permit = semaphore.acquire().await.unwrap();
                 info!("Starting benchmarks for problem: {}", problem.get_name());
                 let runner = BenchmarkRunner::new(config);
-                let result =
-                    Self::run_problem_benchmarks_static(&problem, &optimizers, &runner, &mut rng, max_concurrent_per_problem)
-                        .await;
+                let result = Self::run_problem_benchmarks_static(
+                    &problem,
+                    &optimizers,
+                    &runner,
+                    &mut rng,
+                    max_concurrent_per_problem,
+                )
+                .await;
                 let completed = completed_count.fetch_add(1, Ordering::SeqCst) + 1;
                 info!(
                     "Completed problem {} ({}/{})",
@@ -368,7 +374,6 @@ impl ExperimentRunner {
 
         Ok(result)
     }
-
 }
 
 pub async fn run_benchmark(
@@ -381,7 +386,6 @@ pub async fn run_benchmark(
     optimizers: Vec<(String, Arc<dyn Optimizer>)>,
     initial_point_noise: f64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{report_path_prefix}{timestamp}");
     let output_dir = std::path::PathBuf::from(&output_dir_name);

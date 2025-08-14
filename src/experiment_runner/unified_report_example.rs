@@ -118,8 +118,8 @@ impl UnifiedReportingExample {
 
 #[cfg(test)]
 mod tests {
-    use tempfile::TempDir;
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_comprehensive_report_generation() {

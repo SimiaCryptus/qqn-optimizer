@@ -22,6 +22,21 @@ pub struct OptimizationMetadata {
     /// Memory usage information
     pub memory_info: MemoryInfo,
 }
+/// Result of a complete optimization run
+#[derive(Debug, Clone)]
+pub struct OptimizationResult {
+    /// Final function value
+    pub fx: f64,
+    /// Number of function evaluations
+    pub num_f_evals: usize,
+    /// Number of gradient evaluations  
+    pub num_g_evals: usize,
+    /// Whether optimization converged
+    pub converged: bool,
+    /// Final parameters
+    pub x: Vec<f64>,
+}
+
 /// Core trait that all optimization algorithms must implement.
 ///
 /// This trait provides a unified interface for different optimization methods,
@@ -47,6 +62,110 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
         params: &mut [Tensor],
         function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult>;
+    /// Optimize a function using closures (for compatibility with examples)
+    ///
+    /// # Arguments
+    /// * `f` - Function to minimize
+    /// * `g` - Gradient function
+    /// * `x0` - Initial parameters
+    /// * `max_evals` - Maximum function evaluations
+    /// * `tol` - Gradient tolerance
+    ///
+    /// # Returns
+    /// An `OptimizationResult` with the final state
+    fn optimize(
+        &mut self,
+        f: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
+        g: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>,
+        x0: Vec<f64>,
+        max_evals: usize,
+        tol: f64,
+    ) -> OptimizationResult {
+        use crate::utils::math::DifferentiableFunction;
+        use candle_core::{Device, Tensor};
+        // Create a wrapper function that implements DifferentiableFunction
+        struct ClosureFunction {
+            f: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
+            g: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>,
+            f_evals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+            g_evals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+        }
+        impl DifferentiableFunction for ClosureFunction {
+            fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
+                self.f_evals
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let x: Vec<f64> = params
+                    .iter()
+                    .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+                    .collect();
+                Ok((self.f)(&x))
+            }
+            fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
+                self.g_evals
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let x: Vec<f64> = params
+                    .iter()
+                    .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+                    .collect();
+                let grad = (self.g)(&x);
+                let device = &Device::Cpu;
+                Ok(vec![Tensor::from_slice(&grad, &[grad.len()], device)?])
+            }
+        }
+        let f_evals = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let g_evals = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let function = Arc::new(ClosureFunction {
+            f,
+            g,
+            f_evals: f_evals.clone(),
+            g_evals: g_evals.clone(),
+        });
+        // Convert initial point to tensor
+        let device = &Device::Cpu;
+        let mut params = vec![Tensor::from_slice(&x0, &[x0.len()], device).unwrap()];
+        let mut converged = false;
+        let mut iterations = 0;
+        while iterations < max_evals {
+            // Check gradient norm for convergence
+            let grad = function.gradient(&params).unwrap();
+            let grad_norm: f64 = grad[0]
+                .flatten_all()
+                .unwrap()
+                .to_vec1::<f64>()
+                .unwrap()
+                .iter()
+                .map(|x| x * x)
+                .sum::<f64>()
+                .sqrt();
+            if grad_norm < tol {
+                converged = true;
+                break;
+            }
+            // Take optimization step
+            match self.step(&mut params, function.clone()) {
+                Ok(result) => {
+                    if result.convergence_info.converged {
+                        converged = true;
+                        break;
+                    }
+                }
+                Err(_) => break,
+            }
+            iterations += 1;
+        }
+        let final_x: Vec<f64> = params
+            .iter()
+            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
+            .collect();
+        let final_fx = function.evaluate(&params).unwrap();
+        OptimizationResult {
+            fx: final_fx,
+            num_f_evals: f_evals.load(std::sync::atomic::Ordering::Relaxed),
+            num_g_evals: g_evals.load(std::sync::atomic::Ordering::Relaxed),
+            converged,
+            x: final_x,
+        }
+    }
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);

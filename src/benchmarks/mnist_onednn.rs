@@ -4,11 +4,11 @@
 //!
 //! This module provides an alternate implementation of MNIST neural network training
 //! that leverages Intel's OneDNN (Deep Neural Network Library) for optimized performance.
+use crate::benchmarks::functions::OptimizationProblem;
 
 #[cfg(feature = "onednn")]
 use onednnl::*;
 
-use crate::OptimizationProblem;
 use parking_lot::RwLock;
 use rand::prelude::StdRng;
 use rand::Rng;
@@ -798,6 +798,8 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
 
 #[cfg(test)]
 mod tests {
+    use crate::benchmarks::mnist_onednn::ActivationType;
+    use crate::{MnistOneDnnNeuralNetwork, OptimizationProblem};
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]

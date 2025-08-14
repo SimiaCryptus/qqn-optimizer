@@ -444,8 +444,8 @@ pub fn generate_family_comparison_matrix_latex_table(
             all_families.insert(family);
         }
     }
-    let mut qqn_families = Vec::new();
-    let mut non_qqn_families = Vec::new();
+    let mut qqn_families: Vec<String> = Vec::new();
+    let mut non_qqn_families: Vec<String> = Vec::new();
     for family in all_families {
         if family == "QQN" {
             qqn_families.push(family);
@@ -484,10 +484,12 @@ pub fn generate_family_comparison_matrix_latex_table(
 \midrule
 "#,
         non_qqn_families
+            .to_vec()
             .iter()
-            .map(|fam| format!("& \\textbf{{{}}}", report_generator::escape_latex(fam)))
-            .collect::<Vec<_>>()
+            .map(|fam| format!("& \\textbf{{{}}}", report_generator::escape_latex(fam)).to_string())
+            .collect::<Vec<String>>()
             .join(" ")
+            .to_string()
     ));
     // Group results by problem and family for comparison
     let mut problem_family_results: HashMap<String, HashMap<String, Vec<&SingleResult>>> =

@@ -1,4 +1,6 @@
-use crate::benchmarks::evaluation::{is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult};
+use crate::benchmarks::evaluation::{
+    is_no_threshold_mode, BenchmarkResults, ProblemSpec, SingleResult,
+};
 use crate::experiment_runner::report_generator;
 use anyhow::Context;
 use std::collections::HashMap;
@@ -92,11 +94,13 @@ pub fn generate_summary_statistics_latex_table(
             }
             // Sort by success rate
             if is_no_threshold_mode() {
-                optimizer_data.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+                optimizer_data
+                    .sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
             } else {
-                optimizer_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+                optimizer_data
+                    .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
             }
-            
+
             for (
                 i,
                 (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),
@@ -222,10 +226,10 @@ pub fn generate_summary_statistics_table_content(
                     avg_time,
                 ));
             }
-            
+
             optimizer_data
                 .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-            
+
             for (
                 i,
                 (optimizer, success_rate, avg_final, avg_func_evals, avg_grad_evals, avg_time),

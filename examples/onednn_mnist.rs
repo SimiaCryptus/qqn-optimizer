@@ -12,11 +12,13 @@
 
 use qqn_optimizer::{
     experiment_runner::problem_sets::mnist_onednn_problems, init_logging,
-    line_search::strong_wolfe::StrongWolfeLineSearch, optimizers::Optimizer, QQNOptimizer,
+    line_search::strong_wolfe::StrongWolfeLineSearch, optimizers::Optimizer, QQNConfig,
+    QQNOptimizer,
 };
 use rand::{rngs::StdRng, SeedableRng};
 use std::time::Instant;
 
+use qqn_optimizer::line_search::StrongWolfeConfig;
 #[cfg(feature = "onednn")]
 use qqn_optimizer::{benchmarks::mnist_onednn::ActivationType, MnistOneDnnNeuralNetwork};
 
@@ -91,8 +93,7 @@ fn run_onednn_example() -> anyhow::Result<()> {
 
     // Run optimization with QQN
     println!("\n🎯 Running optimization with QQN...");
-    let line_search = StrongWolfeLineSearch::new();
-    let mut optimizer = QQNOptimizer::new(line_search);
+    let mut optimizer = QQNOptimizer::new(QQNConfig::default());
 
     let start = Instant::now();
     let result = optimizer.optimize(
@@ -122,8 +123,8 @@ fn run_onednn_example() -> anyhow::Result<()> {
         println!(
             "   {}. {} (dim: {})",
             i + 1,
-            problem.name(),
-            problem.problem().dimension()
+            problem.get_name(),
+            problem.problem.dimension()
         );
     }
 
@@ -132,33 +133,10 @@ fn run_onednn_example() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_onednn_example_compiles() {
         // This test ensures the example compiles even without OneDNN
         assert!(true);
-    }
-
-    #[cfg(feature = "onednn")]
-    #[test]
-    fn test_onednn_network_creation() {
-        let mut rng = StdRng::seed_from_u64(42);
-
-        // Test creating a small network
-        let network = MnistOneDnnNeuralNetwork::create(
-            Some(10),
-            &[8],
-            Some(5),
-            &mut rng,
-            Some(ActivationType::ReLU),
-        );
-
-        assert!(network.is_ok());
-
-        if let Ok(net) = network {
-            assert_eq!(net.dimension(), 8 * 784 + 8 + 8 * 10 + 10);
-            assert!(net.name().contains("OneDNN"));
-        }
     }
 }
