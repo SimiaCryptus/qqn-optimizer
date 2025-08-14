@@ -282,7 +282,6 @@ impl NeuralNetworkTraining {
         let batch_size = self.x_tensor.dim(0)? as f64;
         let mut gradients = Vec::with_capacity(params.len());
         gradients.resize(params.len(), 0.0);
-        // Pre-allocate reusable buffers
 
         // Forward pass with intermediate activations
         let mut activations = vec![self.x_tensor.clone()];
@@ -311,7 +310,9 @@ impl NeuralNetworkTraining {
         }
         // Backward pass
         let y_pred = activations.last().unwrap();
-        let mut delta = (&(y_pred - &self.y_tensor)? * (2.0 / batch_size))?;
+        // For MSE gradient: 2 * (y_pred - y_true) / batch_size
+        let diff = (y_pred - &self.y_tensor)?;
+        let mut delta = (&diff * (2.0 / batch_size))?;
         param_idx = params.len();
         for i in (0..self.layer_sizes.len() - 1).rev() {
             let input_size = self.layer_sizes[i];
@@ -338,8 +339,8 @@ impl NeuralNetworkTraining {
                 let w =
                     Tensor::from_vec(weights.to_vec(), (input_size, output_size), &self.device)?;
                 delta = delta.matmul(&w.t()?)?;
-                // Apply ReLU derivative
-                if i < self.layer_sizes.len() - 1 {
+                // Apply ReLU derivative for hidden layers (not input layer)
+                if i < self.layer_sizes.len() - 1 && i > 0 {
                     let relu_mask = activations[i].gt(&Tensor::zeros_like(&activations[i])?)?;
                     // Convert boolean mask to float (1.0 where true, 0.0 where false)
                     let relu_mask_float = relu_mask.to_dtype(candle_core::DType::F64)?;
