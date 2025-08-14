@@ -7,6 +7,12 @@ pub mod experiment_runner;
 pub mod line_search;
 pub mod optimizers;
 pub mod utils;
+// Re-export commonly used items for easier testing
+pub use benchmarks::functions::OptimizationProblem;
+pub use benchmarks::unified_tests::{
+    UnifiedProblemTester, ProblemTestConfig, ProblemTestResults,
+    test_multiple_problems, generate_test_report
+};
 
 // Re-export commonly used types
 pub use optimizers::{
@@ -20,8 +26,6 @@ pub use line_search::{
 };
 
 pub use experiment_runner::{optimizer_sets, problem_sets};
-
-pub use benchmarks::functions::OptimizationProblem;
 
 #[cfg(feature = "plotting")]
 pub use analysis::plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
