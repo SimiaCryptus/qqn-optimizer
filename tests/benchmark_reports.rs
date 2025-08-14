@@ -114,45 +114,46 @@ async fn one_test() -> Result<(), Box<dyn Error + Send + Sync>> {
                         42,
                     ),
                 ],
-                vec![
-                    (
-                        "QQN".to_string(),
-                        Arc::new(QQNOptimizer::new(QQNConfig {
-                            line_search: LineSearchConfig {
-                                method: LineSearchMethod::CubicQuadraticInterpolation,
-                                line_bracket_method: 2,
-                                c1: 1e-4,
-                                c2: 0.9,
-                                max_iterations: 20,
-                                initial_step: 1.0,
-                                min_step: 1e-10,
-                                max_step: 10.0,
-                                verbose: false,
-                            },
-                            lbfgs_history: 10,
-                            epsilon: 1e-6,
-                            verbose: false,
-                            ..Default::default()
-                        })),
-                    ),
-                    // (
-                    //     "Adam-Fast".to_string(),
-                    //     Arc::new(AdamOptimizer::new(AdamConfig {
-                    //         learning_rate: 0.1,
-                    //         lr_schedule: "constant".to_string(),
-                    //         lr_decay: 0.995,
-                    //         min_learning_rate: 1e-6,
-                    //         gradient_clip: Some(10.0),
-                    //         beta1: 0.9,
-                    //         beta2: 0.999,
-                    //         epsilon: 1e-8,
-                    //         weight_decay: 0.0,
-                    //         amsgrad: false,
-                    //         max_line_search_iter: 20,
-                    //         verbose: false,
-                    //     })),
-                    // ),
-                ],
+                all_optimizers(),
+                // vec![
+                //     // (
+                //     //     "QQN".to_string(),
+                //     //     Arc::new(QQNOptimizer::new(QQNConfig {
+                //     //         line_search: LineSearchConfig {
+                //     //             method: LineSearchMethod::CubicQuadraticInterpolation,
+                //     //             line_bracket_method: 2,
+                //     //             c1: 1e-4,
+                //     //             c2: 0.9,
+                //     //             max_iterations: 20,
+                //     //             initial_step: 1.0,
+                //     //             min_step: 1e-10,
+                //     //             max_step: 10.0,
+                //     //             verbose: false,
+                //     //         },
+                //     //         lbfgs_history: 10,
+                //     //         epsilon: 1e-6,
+                //     //         verbose: false,
+                //     //         ..Default::default()
+                //     //     })),
+                //     // ),
+                //     // (
+                //     //     "Adam-Fast".to_string(),
+                //     //     Arc::new(AdamOptimizer::new(AdamConfig {
+                //     //         learning_rate: 0.1,
+                //     //         lr_schedule: "constant".to_string(),
+                //     //         lr_decay: 0.995,
+                //     //         min_learning_rate: 1e-6,
+                //     //         gradient_clip: Some(10.0),
+                //     //         beta1: 0.9,
+                //     //         beta2: 0.999,
+                //     //         epsilon: 1e-8,
+                //     //         weight_decay: 0.0,
+                //     //         amsgrad: false,
+                //     //         max_line_search_iter: 20,
+                //     //         verbose: false,
+                //     //     })),
+                //     // ),
+                // ],
                 2e-1,
             )
             .await
