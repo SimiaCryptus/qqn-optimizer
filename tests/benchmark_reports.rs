@@ -116,10 +116,10 @@ async fn one_test() -> Result<(), Box<dyn Error + Send + Sync>> {
                 ],
                 vec![
                     (
-                        "QQN-Bisection-2".to_string(),
+                        "QQN".to_string(),
                         Arc::new(QQNOptimizer::new(QQNConfig {
                             line_search: LineSearchConfig {
-                                method: LineSearchMethod::Bisection,
+                                method: LineSearchMethod::CubicQuadraticInterpolation,
                                 line_bracket_method: 2,
                                 c1: 1e-4,
                                 c2: 0.9,
