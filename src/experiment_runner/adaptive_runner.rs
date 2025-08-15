@@ -10,9 +10,13 @@ use rand::prelude::*;
 use rand::rng;
 use serde_json::json;
 use std::collections::HashMap;
+use std::f64::INFINITY;
 use std::fs;
+use std::iter::Take;
+use std::slice::Iter;
 use std::sync::Arc;
 use std::time::Duration;
+use serde::de::Unexpected::Float;
 use tokio::sync::Semaphore;
 
 /// Detailed tracking of evolutionary events
@@ -242,8 +246,19 @@ impl AdaptiveExperimentRunner {
                   problem.get_name(), all_best_genomes.len());
 
             // Convert best genomes to optimizers
-            let mut optimizers = Vec::new();
-            for (i, genome) in all_best_genomes.iter().enumerate() {
+            let mut optimizers: Vec<(String, Arc<dyn Optimizer>)> = Vec::new();
+            let best: Vec<OptimizerGenome> = all_best_genomes.iter().into_group_map_by(|x| x.optimizer_type.to_string()).values().flat_map(
+                |genomes| {
+                    let mut x1: Vec<OptimizerGenome> = genomes.iter().map(|x| (*x).clone()).collect_vec();
+                    x1.sort_by(|a, b| {
+                        let fitness_a = a.fitness.unwrap_or(INFINITY);
+                        let fitness_b = b.fitness.unwrap_or(INFINITY);
+                        fitness_a.partial_cmp(&fitness_b).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    x1.into_iter().take(1) // Take the best (1) genome from each family
+                }
+            ).collect_vec();
+            for (i, genome) in best.iter().enumerate() {
                 let family_name = format!("{:?}", genome.optimizer_type);
                 let name = format!(
                     "{}-Evolved-{}-{}",
@@ -258,7 +273,10 @@ impl AdaptiveExperimentRunner {
                 optimizers.push((name, genome.to_optimizer()));
             }
 
-            problem_best_optimizers.insert(problem.get_name(), optimizers);
+            problem_best_optimizers.insert(
+                problem.get_name(),
+                optimizers
+            );
         }
 
         Ok(problem_best_optimizers)
@@ -1193,42 +1211,50 @@ impl AdaptiveExperimentRunner {
         info!("Championship includes {} problems", problems.len());
 
         // For each problem, run benchmarks with its evolved optimizers
-        for (problem_idx, problem) in problems.iter().enumerate() {
-            let problem_name = problem.get_name();
-            info!(
-                "Running championship for problem {}/{}: {}",
-                problem_idx + 1,
-                problems.len(),
-                problem_name
-            );
+        // for (problem_idx, problem) in problems.iter().enumerate() {
+        //     let problem_name = problem.get_name();
+        //     info!(
+        //         "Running championship for problem {}/{}: {}",
+        //         problem_idx + 1,
+        //         problems.len(),
+        //         problem_name
+        //     );
+        //
+        //     if let Some(optimizers) = evolved_optimizers.get(&problem_name) {
+        //         info!(
+        //             "Running championship for {} with {} evolved optimizers",
+        //             problem_name,
+        //             optimizers.len()
+        //         );
+        //         for (opt_idx, (opt_name, _)) in optimizers.iter().enumerate() {
+        //             debug!(
+        //                 "Championship optimizer {}/{}: {}",
+        //                 opt_idx + 1,
+        //                 optimizers.len(),
+        //                 opt_name
+        //             );
+        //         }
+        //
+        //         // Run comparative benchmarks for this problem
+        //         debug!("Starting comparative benchmarks for {}", problem_name);
+        //         let mut runner: ExperimentRunner = self.base_runner.clone();
+        //         runner.output_dir = format!("{}/championship/{}", self.base_runner.output_dir, problem_name.replace(" ", "_"));
+        //         runner.report_generator.output_dir = runner.output_dir.clone();
+        //         runner.plotting_manager.output_dir = runner.output_dir.clone();
+        //         runner.run_comparative_benchmarks(vec![problem.clone()], optimizers.clone()).await?;
+        //         info!("Championship completed for problem: {}", problem_name);
+        //     } else {
+        //         warn!("No evolved optimizers found for problem: {}", problem_name);
+        //     }
+        // }
 
-            if let Some(optimizers) = evolved_optimizers.get(&problem_name) {
-                info!(
-                    "Running championship for {} with {} evolved optimizers",
-                    problem_name,
-                    optimizers.len()
-                );
-                for (opt_idx, (opt_name, _)) in optimizers.iter().enumerate() {
-                    debug!(
-                        "Championship optimizer {}/{}: {}",
-                        opt_idx + 1,
-                        optimizers.len(),
-                        opt_name
-                    );
-                }
+        // Run comparative benchmarks for this problem
+        let mut runner: ExperimentRunner = self.base_runner.clone();
+        runner.run_comparative_benchmarks(
+            problems,
+            evolved_optimizers.values().flatten().map(|x| (x.0.to_string(), x.1.clone())).collect_vec()
+        ).await?;
 
-                // Run comparative benchmarks for this problem
-                debug!("Starting comparative benchmarks for {}", problem_name);
-                let mut runner: ExperimentRunner = self.base_runner.clone();
-                runner.output_dir = format!("{}/championship/{}", self.base_runner.output_dir, problem_name.replace(" ", "_"));
-                runner.report_generator.output_dir = runner.output_dir.clone();
-                runner.plotting_manager.output_dir = runner.output_dir.clone();
-                runner.run_comparative_benchmarks(vec![problem.clone()], optimizers.clone()).await?;
-                info!("Championship completed for problem: {}", problem_name);
-            } else {
-                warn!("No evolved optimizers found for problem: {}", problem_name);
-            }
-        }
         info!("All championship benchmarks completed successfully");
 
         Ok(())
