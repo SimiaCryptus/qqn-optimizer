@@ -2,7 +2,11 @@
 
 pub mod experiment_runner;
 pub mod optimizer_sets;
-#[cfg(feature = "plotting")]
+pub use experiment_runner::{run_benchmark};
+pub use adaptive_runner::AdaptiveExperimentRunner;
+pub use parameter_evolution::{ParameterEvolution, OptimizerGenome};
+pub mod adaptive_runner;
+pub mod parameter_evolution;
 pub mod plotting_manager;
 pub mod problem_sets;
 pub mod report_generator;
@@ -20,7 +24,6 @@ pub use reports::heatmap::SuccessRateHeatmapReport;
 pub use reports::unified_performance_table::PerformanceTableReport;
 pub use reports::unified_summary_statistics::SummaryStatisticsReport;
 pub mod unified_report_example;
-
 pub use experiment_runner::ExperimentRunner;
 #[cfg(feature = "plotting")]
 pub use plotting_manager::PlottingManager;
