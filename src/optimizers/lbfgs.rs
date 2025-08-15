@@ -150,6 +150,10 @@ pub struct LBFGSConfig {
     /// step sizes, and internal L-BFGS state. Useful for debugging but
     /// significantly increases log volume.
     pub verbose: bool,
+    /// Name identifier for this optimizer instance.
+    ///
+    /// **Default**: "L-BFGS"
+    pub name: String,
 }
 
 impl Default for LBFGSConfig {
@@ -173,6 +177,7 @@ impl Default for LBFGSConfig {
             enable_recovery: true,
             recovery_patience: 5, // Standard recovery patience
             verbose: false,
+            name: "L-BFGS".to_string(),
         }
     }
 }
@@ -209,6 +214,7 @@ impl LBFGSConfig {
             enable_recovery: true,
             recovery_patience: 10, // Patient recovery
             verbose: false,
+            name: "L-BFGS-Strict".to_string(),
         }
     }
     /// Create a lax L-BFGS configuration with aggressive settings.
@@ -244,6 +250,7 @@ impl LBFGSConfig {
             enable_recovery: true,
             recovery_patience: 2, // Quick recovery trigger
             verbose: false,
+            name: "L-BFGS-Lax".to_string(),
         }
     }
     /// Create a configuration optimized for use within the QQN algorithm.
@@ -279,6 +286,7 @@ impl LBFGSConfig {
             enable_recovery: false, // Let QQN handle recovery
             recovery_patience: 0,   // Not used when recovery disabled
             verbose: false,
+            name: "L-BFGS-QQN".to_string(),
         }
     }
 }
@@ -926,10 +934,35 @@ impl Clone for LBFGSOptimizer {
 impl LBFGSOptimizer {
     /// Create a new L-BFGS optimizer with the given configuration.
     pub fn new(config: LBFGSConfig) -> Self {
+        info!(
+            "Creating L-BFGS optimizer '{}' with configuration:",
+            config.name
+        );
+        info!("  Core parameters:");
+        info!("    history_size: {}", config.history_size);
+        info!("    epsilon: {:.6e}", config.epsilon);
+        info!("    max_correction_pairs: {}", config.max_correction_pairs);
+        info!("  Step size control:");
+        info!("    max_step_size: {:.6e}", config.max_step_size);
+        info!("    min_step_size: {:.6e}", config.min_step_size);
+        info!("    max_param_change: {:.6e}", config.max_param_change);
+        info!("  Numerical stability:");
+        info!("    gradient_clip: {:.6e}", config.gradient_clip);
+        info!("  Recovery mechanism:");
+        info!("    enable_recovery: {}", config.enable_recovery);
+        info!("    recovery_patience: {}", config.recovery_patience);
+        info!("  Line search configuration:");
+        info!("    method: {:?}", config.line_search.method);
+        info!("    c1 (Armijo): {:.6e}", config.line_search.c1);
+        info!("    c2 (curvature): {:.6e}", config.line_search.c2);
+        info!("    initial_step: {:.6e}", config.line_search.initial_step);
+        info!("    max_step: {:.6e}", config.line_search.max_step);
+        info!("    max_iterations: {}", config.line_search.max_iterations);
+        info!("  Other settings:");
+        info!("    verbose: {}", config.verbose);
+
         if config.verbose {
-            info!("Creating L-BFGS optimizer with verbose logging enabled");
-            debug!("L-BFGS Config: history_size={}, epsilon={:.6e}, max_step_size={:.6e}, min_step_size={:.6e}, max_param_change={:.6e}, gradient_clip={:.6e}",
-                  config.history_size, config.epsilon, config.max_step_size, config.min_step_size, config.max_param_change, config.gradient_clip);
+            debug!("Creating L-BFGS optimizer with verbose logging enabled");
         }
         let state = LBFGSState::new(config.history_size, config.epsilon);
         let line_search = create_line_search(config.line_search.clone());
@@ -1377,7 +1410,7 @@ impl Optimizer for LBFGSOptimizer {
     }
 
     fn name(&self) -> &str {
-        "L-BFGS"
+        &self.config.name
     }
     fn iteration(&self) -> usize {
         self.state.iteration()
@@ -1605,6 +1638,7 @@ mod tests {
         assert_eq!(default_config.max_step_size, 2.0);
         assert_eq!(default_config.max_param_change, 1.0);
         assert_eq!(default_config.recovery_patience, 5);
+        assert_eq!(default_config.name, "L-BFGS".to_string());
         // Test strict configuration
         let strict_config = LBFGSConfig::strict();
         assert_eq!(strict_config.history_size, 5);
@@ -1613,6 +1647,7 @@ mod tests {
         assert_eq!(strict_config.max_param_change, 0.1);
         assert_eq!(strict_config.recovery_patience, 10);
         assert_eq!(strict_config.epsilon, 1e-10);
+        assert_eq!(strict_config.name, "L-BFGS-Strict".to_string());
         // Test lax configuration
         let lax_config = LBFGSConfig::lax();
         assert_eq!(lax_config.history_size, 20);
@@ -1621,12 +1656,14 @@ mod tests {
         assert_eq!(lax_config.max_param_change, 100.0);
         assert_eq!(lax_config.recovery_patience, 2);
         assert_eq!(lax_config.epsilon, 1e-6);
+        assert_eq!(lax_config.name, "L-BFGS-Lax".to_string());
         // Test QQN configuration
         let qqn_config = LBFGSConfig::for_qqn();
         assert_eq!(qqn_config.history_size, 10);
         assert_eq!(qqn_config.line_search.c2, 0.5);
         assert_eq!(qqn_config.gradient_clip, 0.0);
         assert!(!qqn_config.enable_recovery);
+        assert_eq!(qqn_config.name, "L-BFGS-QQN".to_string());
     }
     #[test]
     fn test_lbfgs_strict_config_behavior() -> CandleResult<()> {

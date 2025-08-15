@@ -26,6 +26,8 @@ use std::sync::{Arc, Mutex};
 /// Configuration for the QQN optimizer
 #[derive(Debug, Clone)]
 pub struct QQNConfig {
+    /// Name of the optimizer instance
+    pub name: String,
     /// L-BFGS history length
     pub lbfgs_history: usize,
     /// Minimum number of iterations before enabling L-BFGS
@@ -58,6 +60,7 @@ impl Default for QQNConfig {
             min_step_persist: 1e-1,
             min_step_size: 1e-10,
             gradient_scale_factor: 1.0,
+            name: "QQN".to_string(),
         }
     }
 }
@@ -83,6 +86,7 @@ impl QQNConfig {
             min_step_persist: 1e-2,
             min_step_size: 1e-10,
             gradient_scale_factor: 1.0, // More conservative scaling
+            name: "QQN-Strict".to_string(),
         }
     }
     /// Create a lax configuration with aggressive settings for faster convergence
@@ -104,12 +108,14 @@ impl QQNConfig {
             min_step_persist: 1e-2,
             min_step_size: 1e-10,
             gradient_scale_factor: 1.0, // More aggressive scaling
+            name: "QQN-Lax".to_string(),
         }
     }
     /// Create a configuration with verbose logging enabled
     pub fn verbose() -> Self {
         Self {
             verbose: true,
+            name: "QQN-Verbose".to_string(),
             ..Self::default()
         }
     }
@@ -155,9 +161,31 @@ impl Clone for QQNOptimizer {
 impl QQNOptimizer {
     /// Create a new QQN optimizer with the given configuration
     pub fn new(config: QQNConfig) -> Self {
+        info!("Creating QQN optimizer with configuration:");
+        info!("  QQN Parameters:");
+        info!("    name: {}", config.name);
+        info!("    lbfgs_history: {}", config.lbfgs_history);
+        info!("    min_lbfgs_iterations: {}", config.min_lbfgs_iterations);
+        info!("    epsilon: {:.3e}", config.epsilon);
+        info!("    verbose: {}", config.verbose);
+        info!("    min_step_persist: {:.3e}", config.min_step_persist);
+        info!("    min_step_size: {:.3e}", config.min_step_size);
         info!(
-            "Creating QQN optimizer with config: lbfgs_history={}, min_lbfgs_iterations={}, epsilon={}, verbose={}",
-            config.lbfgs_history, config.min_lbfgs_iterations, config.epsilon, config.verbose
+            "    gradient_scale_factor: {:.3e}",
+            config.gradient_scale_factor
+        );
+        info!("  Line Search Configuration:");
+        info!("    method: {:?}", config.line_search.method);
+        info!("    c1 (Armijo): {:.3e}", config.line_search.c1);
+        info!("    c2 (Curvature): {:.3e}", config.line_search.c2);
+        info!("    max_iterations: {}", config.line_search.max_iterations);
+        info!("    initial_step: {:.3e}", config.line_search.initial_step);
+        info!("    min_step: {:.3e}", config.line_search.min_step);
+        info!("    max_step: {:.3e}", config.line_search.max_step);
+        info!("    verbose: {}", config.line_search.verbose);
+        info!(
+            "    line_bracket_method: {}",
+            config.line_search.line_bracket_method
         );
         let line_search = create_line_search(config.line_search.clone());
         Self {
@@ -648,7 +676,7 @@ impl Optimizer for QQNOptimizer {
         params: &mut [Tensor],
         function: Arc<dyn DifferentiableFunction + Send + Sync>,
     ) -> CandleResult<StepResult> {
-        info!(
+        debug!(
             "QQN step {}: starting optimization step",
             self.state.iteration
         );
@@ -800,7 +828,7 @@ impl Optimizer for QQNOptimizer {
             }
         }
 
-        info!("Found optimal t = {:.3e}", line_search_result.step_size);
+        debug!("Found optimal t = {:.3e}", line_search_result.step_size);
         // Persist the ideal t value for future use as initial_step
         if line_search_result.success {
             if line_search_result.step_size > self.config.min_step_persist {
@@ -876,7 +904,7 @@ impl Optimizer for QQNOptimizer {
 
         // Increment iteration counter AFTER all operations complete successfully
         self.state.iteration += 1;
-        info!(
+        debug!(
             "QQN step {} completed successfully",
             self.state.iteration - 1
         );
@@ -917,7 +945,7 @@ impl Optimizer for QQNOptimizer {
     }
 
     fn name(&self) -> &str {
-        "QQN"
+        &self.config.name
     }
     fn iteration(&self) -> usize {
         self.state.iteration
@@ -1345,12 +1373,14 @@ mod tests {
             min_step_persist: 1e-2,
             min_step_size: 1e-10,
             gradient_scale_factor: 1.0,
+            name: "TestQQN".to_string(),
         };
         let optimizer = QQNOptimizer::new(config.clone());
         assert_eq!(optimizer.config.lbfgs_history, 5);
         assert_eq!(optimizer.config.min_lbfgs_iterations, 3);
         assert_eq!(optimizer.config.epsilon, 1e-10);
         assert_eq!(optimizer.state.iteration, 0);
+        assert_eq!(optimizer.name(), "TestQQN");
     }
     #[test]
     fn test_qqn_step_with_quadratic_function() -> CandleResult<()> {

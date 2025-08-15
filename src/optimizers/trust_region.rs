@@ -90,6 +90,10 @@ pub struct TrustRegionConfig {
     ///
     /// **Default**: false
     pub verbose: bool,
+    /// Name of the optimizer
+    ///
+    /// **Default**: "TrustRegion"
+    pub name: String,
 }
 
 impl Default for TrustRegionConfig {
@@ -106,6 +110,7 @@ impl Default for TrustRegionConfig {
             subproblem_tolerance: 1e-6,
             use_cauchy_fallback: true,
             verbose: false,
+            name: "TrustRegion".to_string(),
         }
     }
 }
@@ -121,6 +126,7 @@ impl TrustRegionConfig {
             eta_2: 0.8,
             gamma_1: 0.2,
             gamma_2: 1.5,
+            name: "TrustRegion-Conservative".to_string(),
             ..Default::default()
         }
     }
@@ -135,6 +141,7 @@ impl TrustRegionConfig {
             eta_2: 0.5,
             gamma_1: 0.5,
             gamma_2: 3.0,
+            name: "TrustRegion-Aggressive".to_string(),
             ..Default::default()
         }
     }
@@ -210,13 +217,25 @@ impl Clone for TrustRegionOptimizer {
 impl TrustRegionOptimizer {
     /// Create a new Trust Region optimizer
     pub fn new(config: TrustRegionConfig) -> Self {
-        if config.verbose {
-            info!(
-                "Creating Trust Region optimizer with initial radius: {}",
-                config.initial_radius
-            );
-        }
-
+        info!(
+            "Creating Trust Region optimizer '{}' with parameters: \
+             initial_radius={}, max_radius={}, min_radius={}, \
+             eta_1={}, eta_2={}, gamma_1={}, gamma_2={}, \
+             max_subproblem_iterations={}, subproblem_tolerance={}, \
+             use_cauchy_fallback={}, verbose={}",
+            config.name,
+            config.initial_radius,
+            config.max_radius,
+            config.min_radius,
+            config.eta_1,
+            config.eta_2,
+            config.gamma_1,
+            config.gamma_2,
+            config.max_subproblem_iterations,
+            config.subproblem_tolerance,
+            config.use_cauchy_fallback,
+            config.verbose
+        );
         Self {
             state: TrustRegionState::new(config.initial_radius),
             config,
@@ -479,7 +498,7 @@ impl Optimizer for TrustRegionOptimizer {
     }
 
     fn name(&self) -> &str {
-        "TrustRegion"
+        &self.config.name
     }
 
     fn iteration(&self) -> usize {
@@ -531,10 +550,12 @@ mod tests {
         let conservative = TrustRegionConfig::conservative();
         assert_eq!(conservative.initial_radius, 0.5);
         assert_eq!(conservative.gamma_1, 0.2);
+        assert_eq!(conservative.name, "TrustRegion-Conservative");
 
         let aggressive = TrustRegionConfig::aggressive();
         assert_eq!(aggressive.initial_radius, 2.0);
         assert_eq!(aggressive.gamma_2, 3.0);
+        assert_eq!(aggressive.name, "TrustRegion-Aggressive");
     }
 
     #[test]

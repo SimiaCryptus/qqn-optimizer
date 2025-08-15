@@ -9,11 +9,11 @@
 pub mod analytic_functions;
 pub mod evaluation;
 pub mod functions;
+pub mod ml_problems;
+pub mod mnist;
 #[cfg(feature = "onednn")]
 pub mod mnist_onednn;
-pub mod ml_problems;
 pub mod unified_tests;
-pub mod mnist;
 
 pub use analytic_functions::AckleyFunction;
 pub use analytic_functions::BealeFunction;

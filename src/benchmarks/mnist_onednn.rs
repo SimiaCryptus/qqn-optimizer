@@ -9,13 +9,13 @@ use super::functions::OptimizationProblem;
 #[cfg(feature = "onednn")]
 use onednnl::*;
 
+use log::{debug, error, info, trace, warn};
 use parking_lot::RwLock;
 use rand::prelude::StdRng;
 use rand::Rng;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
-use log::{debug, error, info, trace, warn};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ActivationType {
@@ -57,8 +57,10 @@ impl OneDnnLayer {
         output_size: usize,
         activation: ActivationType,
     ) -> anyhow::Result<Self> {
-        debug!("Creating OneDNN layer: {}x{} with {:?} activation", 
-               input_size, output_size, activation);
+        debug!(
+            "Creating OneDNN layer: {}x{} with {:?} activation",
+            input_size, output_size, activation
+        );
         Ok(Self {
             weights: vec![0.0; input_size * output_size],
             bias: vec![0.0; output_size],
@@ -70,53 +72,81 @@ impl OneDnnLayer {
 
     fn set_weights(&mut self, weights: &[f32]) -> anyhow::Result<()> {
         if weights.len() != self.weights.len() {
-            error!("Weight size mismatch: expected {}, got {}", 
-                   self.weights.len(), weights.len());
+            error!(
+                "Weight size mismatch: expected {}, got {}",
+                self.weights.len(),
+                weights.len()
+            );
             return Err(anyhow::anyhow!("Weight size mismatch"));
         }
-       if log::log_enabled!(log::Level::Trace) {
-           let min_val = weights.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-           let max_val = weights.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-           let mean_val = weights.iter().sum::<f32>() / weights.len() as f32;
-           trace!("Setting {} weights for layer {}x{} (min: {:.3}, max: {:.3}, mean: {:.3})", 
-                  weights.len(), self.input_size, self.output_size, min_val, max_val, mean_val);
-       }
+        if log::log_enabled!(log::Level::Trace) {
+            let min_val = weights.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+            let max_val = weights.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+            let mean_val = weights.iter().sum::<f32>() / weights.len() as f32;
+            trace!(
+                "Setting {} weights for layer {}x{} (min: {:.3}, max: {:.3}, mean: {:.3})",
+                weights.len(),
+                self.input_size,
+                self.output_size,
+                min_val,
+                max_val,
+                mean_val
+            );
+        }
         self.weights.copy_from_slice(weights);
         Ok(())
     }
 
     fn set_bias(&mut self, bias: &[f32]) -> anyhow::Result<()> {
         if bias.len() != self.bias.len() {
-            error!("Bias size mismatch: expected {}, got {}", 
-                   self.bias.len(), bias.len());
+            error!(
+                "Bias size mismatch: expected {}, got {}",
+                self.bias.len(),
+                bias.len()
+            );
             return Err(anyhow::anyhow!("Bias size mismatch"));
         }
-       if log::log_enabled!(log::Level::Trace) {
-           let min_val = bias.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-           let max_val = bias.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-           let mean_val = bias.iter().sum::<f32>() / bias.len() as f32;
-           trace!("Setting {} biases for layer output size {} (min: {:.3}, max: {:.3}, mean: {:.3})", 
-                  bias.len(), self.output_size, min_val, max_val, mean_val);
-       }
+        if log::log_enabled!(log::Level::Trace) {
+            let min_val = bias.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+            let max_val = bias.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+            let mean_val = bias.iter().sum::<f32>() / bias.len() as f32;
+            trace!(
+                "Setting {} biases for layer output size {} (min: {:.3}, max: {:.3}, mean: {:.3})",
+                bias.len(),
+                self.output_size,
+                min_val,
+                max_val,
+                mean_val
+            );
+        }
         self.bias.copy_from_slice(bias);
         Ok(())
     }
 
     fn forward(&self, input: &[f32], output: &mut [f32]) -> anyhow::Result<()> {
         if input.len() != self.input_size {
-            error!("Input size mismatch: expected {}, got {}", 
-                   self.input_size, input.len());
+            error!(
+                "Input size mismatch: expected {}, got {}",
+                self.input_size,
+                input.len()
+            );
             return Err(anyhow::anyhow!("Input size mismatch"));
         }
         if output.len() != self.output_size {
-            error!("Output size mismatch: expected {}, got {}", 
-                   self.output_size, output.len());
+            error!(
+                "Output size mismatch: expected {}, got {}",
+                self.output_size,
+                output.len()
+            );
             return Err(anyhow::anyhow!("Output size mismatch"));
         }
-        trace!("Forward pass: {}x{} -> {}", 
-               self.input_size, self.output_size, self.activation.as_str());
+        trace!(
+            "Forward pass: {}x{} -> {}",
+            self.input_size,
+            self.output_size,
+            self.activation.as_str()
+        );
 
-        
         // Matrix multiplication: output = weights * input + bias
         for i in 0..self.output_size {
             output[i] = self.bias[i];
@@ -132,24 +162,39 @@ impl OneDnnLayer {
             let min_val = output.iter().fold(f32::INFINITY, |a, &b| a.min(b));
             let max_val = output.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
             let mean_val = output.iter().sum::<f32>() / output.len() as f32;
-            trace!("Layer output stats - min: {:.3}, max: {:.3}, mean: {:.3}, size: {}", 
-                   min_val, max_val, mean_val, output.len());
+            trace!(
+                "Layer output stats - min: {:.3}, max: {:.3}, mean: {:.3}, size: {}",
+                min_val,
+                max_val,
+                mean_val,
+                output.len()
+            );
         }
-        
+
         Ok(())
     }
 
     fn apply_activation(&self, values: &mut [f32]) -> anyhow::Result<()> {
-        trace!("Applying {:?} activation to {} values", self.activation, values.len());
-        
+        trace!(
+            "Applying {:?} activation to {} values",
+            self.activation,
+            values.len()
+        );
+
         match self.activation {
             ActivationType::ReLU => {
                 let mut activated_count = 0;
                 for v in values.iter_mut() {
-                    if *v > 0.0 { activated_count += 1; }
+                    if *v > 0.0 {
+                        activated_count += 1;
+                    }
                     *v = v.max(0.0);
                 }
-                trace!("ReLU: {}/{} neurons activated", activated_count, values.len());
+                trace!(
+                    "ReLU: {}/{} neurons activated",
+                    activated_count,
+                    values.len()
+                );
             }
             ActivationType::Tanh => {
                 for v in values.iter_mut() {
@@ -203,10 +248,15 @@ impl MnistOneDnnNeuralNetwork {
         rng: &mut StdRng,
         activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
-        info!("Creating OneDNN MNIST network with {} samples", x_data.len());
-        debug!("Hidden layers: {:?}, batch_size: {:?}, activation: {:?}", 
-               hidden_sizes, batch_size, activation);
-        
+        info!(
+            "Creating OneDNN MNIST network with {} samples",
+            x_data.len()
+        );
+        debug!(
+            "Hidden layers: {:?}, batch_size: {:?}, activation: {:?}",
+            hidden_sizes, batch_size, activation
+        );
+
         if hidden_sizes.is_empty() {
             error!("No hidden layers specified");
             return Err(anyhow::anyhow!(
@@ -217,8 +267,10 @@ impl MnistOneDnnNeuralNetwork {
         let n_samples = x_data.len();
         let batch_size = batch_size.unwrap_or(32).min(n_samples);
         let activation = activation.unwrap_or(ActivationType::ReLU);
-        info!("Network configuration: {} samples, batch_size: {}, activation: {:?}", 
-              n_samples, batch_size, activation);
+        info!(
+            "Network configuration: {} samples, batch_size: {}, activation: {:?}",
+            n_samples, batch_size, activation
+        );
 
         let activation_name = match activation {
             ActivationType::ReLU => "relu",
@@ -235,7 +287,10 @@ impl MnistOneDnnNeuralNetwork {
 
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(784);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(10);
-        info!("Network dimensions: input={}, output={}", input_dim, output_dim);
+        info!(
+            "Network dimensions: input={}, output={}",
+            input_dim, output_dim
+        );
 
         // Convert data to f32 for OneDNN
         let x_data_f32: Vec<Vec<f32>> = x_data
@@ -257,8 +312,13 @@ impl MnistOneDnnNeuralNetwork {
         for i in 0..layer_sizes.len() - 1 {
             let layer_params = (layer_sizes[i] + 1) * layer_sizes[i + 1]; // weights + biases
             param_count += layer_params;
-            debug!("Layer {}: {}x{} = {} parameters", 
-                   i, layer_sizes[i], layer_sizes[i + 1], layer_params);
+            debug!(
+                "Layer {}: {}x{} = {} parameters",
+                i,
+                layer_sizes[i],
+                layer_sizes[i + 1],
+                layer_params
+            );
         }
         info!("Total network parameters: {}", param_count);
 
@@ -303,7 +363,10 @@ impl MnistOneDnnNeuralNetwork {
         };
 
         instance.initialize_weights(rng)?;
-        info!("OneDNN MNIST network created successfully: {}", instance.name);
+        info!(
+            "OneDNN MNIST network created successfully: {}",
+            instance.name
+        );
         Ok(instance)
     }
 
@@ -319,16 +382,22 @@ impl MnistOneDnnNeuralNetwork {
         rng: &mut StdRng,
         activation: Option<ActivationType>,
     ) -> anyhow::Result<Self> {
-        info!("Loading MNIST dataset with {} samples", n_samples.unwrap_or(1000));
-        
+        info!(
+            "Loading MNIST dataset with {} samples",
+            n_samples.unwrap_or(1000)
+        );
+
         if !Path::new("data/train-images-idx3-ubyte").exists() {
             warn!("MNIST files not found, downloading...");
             Self::download_mnist_data()?;
         }
         let mnist_data = Self::try_load_mnist_files()?;
         let actual_samples = n_samples.unwrap_or(1000).min(mnist_data.images.len());
-        info!("Loaded MNIST data: {} images available, using {} samples", 
-              mnist_data.images.len(), actual_samples);
+        info!(
+            "Loaded MNIST data: {} images available, using {} samples",
+            mnist_data.images.len(),
+            actual_samples
+        );
 
         // Shuffle indices for better training
         let mut indices: Vec<usize> = (0..actual_samples).collect();
@@ -353,8 +422,11 @@ impl MnistOneDnnNeuralNetwork {
             x_data.push(image);
             y_data.push(label);
         }
-        info!("Prepared {} training samples with {} features each", 
-              x_data.len(), x_data.first().map(|x| x.len()).unwrap_or(0));
+        info!(
+            "Prepared {} training samples with {} features each",
+            x_data.len(),
+            x_data.first().map(|x| x.len()).unwrap_or(0)
+        );
 
         Self::new(x_data, y_data, hidden_sizes, batch_size, rng, activation)
     }
@@ -364,7 +436,11 @@ impl MnistOneDnnNeuralNetwork {
         info!("Loading MNIST files from disk");
         let train_images = Self::load_mnist_images("data/train-images-idx3-ubyte")?;
         let train_labels = Self::load_mnist_labels("data/train-labels-idx1-ubyte")?;
-        info!("Loaded {} images and {} labels", train_images.len(), train_labels.len());
+        info!(
+            "Loaded {} images and {} labels",
+            train_images.len(),
+            train_labels.len()
+        );
 
         // Convert to f32
         let images_f32: Vec<Vec<f32>> = train_images
@@ -444,7 +520,11 @@ impl MnistOneDnnNeuralNetwork {
                 info!("Successfully downloaded {} using curl", url);
                 return Ok(());
             } else {
-                warn!("Curl failed for {}: {}", url, String::from_utf8_lossy(&output.stderr));
+                warn!(
+                    "Curl failed for {}: {}",
+                    url,
+                    String::from_utf8_lossy(&output.stderr)
+                );
             }
         }
         debug!("Attempting to download {} using wget", url);
@@ -458,10 +538,17 @@ impl MnistOneDnnNeuralNetwork {
                 info!("Successfully downloaded {} using wget", url);
                 return Ok(());
             } else {
-                warn!("Wget failed for {}: {}", url, String::from_utf8_lossy(&output.stderr));
+                warn!(
+                    "Wget failed for {}: {}",
+                    url,
+                    String::from_utf8_lossy(&output.stderr)
+                );
             }
         }
-        error!("Failed to download {} - neither curl nor wget succeeded", url);
+        error!(
+            "Failed to download {} - neither curl nor wget succeeded",
+            url
+        );
 
         Err(anyhow::anyhow!(
             "Failed to download {} - neither curl nor wget available",
@@ -494,7 +581,9 @@ impl MnistOneDnnNeuralNetwork {
         ];
 
         for (gz_path, out_path) in &files {
-            if Path::new(&gz_path.to_string()).exists() && !Path::new(&out_path.to_string()).exists() {
+            if Path::new(&gz_path.to_string()).exists()
+                && !Path::new(&out_path.to_string()).exists()
+            {
                 info!("Decompressing {} to {}", gz_path, out_path);
                 let gz_file = File::open(gz_path.to_string())?;
                 let mut decoder = GzDecoder::new(BufReader::new(gz_file));
@@ -533,7 +622,10 @@ impl MnistOneDnnNeuralNetwork {
         reader.read_exact(&mut cols_bytes)?;
         let rows = u32::from_be_bytes(rows_bytes) as usize;
         let cols = u32::from_be_bytes(cols_bytes) as usize;
-        info!("MNIST images: {} images of {}x{} pixels", num_images, rows, cols);
+        info!(
+            "MNIST images: {} images of {}x{} pixels",
+            num_images, rows, cols
+        );
 
         // Read image data
         let mut images = Vec::with_capacity(num_images);
@@ -582,7 +674,10 @@ impl MnistOneDnnNeuralNetwork {
         // Validate hidden sizes to prevent overflow
         for (i, &hidden_size) in hidden_sizes.iter().enumerate() {
             if hidden_size > 2048 {
-                error!("Hidden layer {} size too large: {} (max 2048)", i, hidden_size);
+                error!(
+                    "Hidden layer {} size too large: {} (max 2048)",
+                    i, hidden_size
+                );
                 return Err(anyhow::anyhow!(
                     "Hidden size at layer {} too large: {} (max 2048)",
                     i,
@@ -599,8 +694,10 @@ impl MnistOneDnnNeuralNetwork {
             error!("Too many samples requested: {} (max 60000)", samples);
             return Err(anyhow::anyhow!("Too many samples: {} (max 60000)", samples));
         }
-        info!("Creating MNIST network: {} samples, hidden layers: {:?}", 
-              samples, hidden_sizes);
+        info!(
+            "Creating MNIST network: {} samples, hidden layers: {:?}",
+            samples, hidden_sizes
+        );
 
         // Try to load real MNIST data first
         Self::load_mnist(Some(samples), hidden_sizes, batch_size, rng, activation)
@@ -624,7 +721,7 @@ impl MnistOneDnnNeuralNetwork {
     fn set_parameters(&self, params: &[f64]) -> anyhow::Result<()> {
         // Check all parameters for non-finite values before setting
         trace!("Setting {} parameters", params.len());
-        
+
         if params.iter().any(|&p| !p.is_finite()) {
             error!("Non-finite parameters detected in parameter vector");
             return Err(anyhow::anyhow!("Non-finite parameters detected"));
@@ -639,7 +736,11 @@ impl MnistOneDnnNeuralNetwork {
                 max_abs
             ));
         }
-        debug!("Parameter statistics: max_abs={:.2e}, count={}", max_abs, params.len());
+        debug!(
+            "Parameter statistics: max_abs={:.2e}, count={}",
+            max_abs,
+            params.len()
+        );
 
         // Invalidate caches when parameters change
         *self.param_cache.write() = None;
@@ -650,7 +751,10 @@ impl MnistOneDnnNeuralNetwork {
         #[cfg(feature = "onednn")]
         {
             // Set parameters in OneDNN layers
-            debug!("Setting parameters in {} OneDNN layers", self.layer_sizes.len() - 1);
+            debug!(
+                "Setting parameters in {} OneDNN layers",
+                self.layer_sizes.len() - 1
+            );
             let mut param_idx = 0;
             let mut layers = self.layers.write();
             for (i, layer) in layers.iter_mut().enumerate() {
@@ -660,8 +764,12 @@ impl MnistOneDnnNeuralNetwork {
                 // Set weights
                 let weights_count = input_size * output_size;
                 if param_idx + weights_count > params.len() {
-                    error!("Insufficient parameters for layer {} weights: need {}, have {}", 
-                           i, weights_count, params.len() - param_idx);
+                    error!(
+                        "Insufficient parameters for layer {} weights: need {}, have {}",
+                        i,
+                        weights_count,
+                        params.len() - param_idx
+                    );
                     return Err(anyhow::anyhow!(
                         "Not enough parameters provided for weights"
                     ));
@@ -678,8 +786,12 @@ impl MnistOneDnnNeuralNetwork {
                 // Set bias
                 let bias_count = output_size;
                 if param_idx + bias_count > params.len() {
-                    error!("Insufficient parameters for layer {} bias: need {}, have {}", 
-                           i, bias_count, params.len() - param_idx);
+                    error!(
+                        "Insufficient parameters for layer {} bias: need {}, have {}",
+                        i,
+                        bias_count,
+                        params.len() - param_idx
+                    );
                     return Err(anyhow::anyhow!("Not enough parameters provided for bias"));
                 }
 
@@ -716,38 +828,43 @@ impl MnistOneDnnNeuralNetwork {
         {
             let mut params = Vec::with_capacity(self.param_count);
             let layers = self.layers.read();
-            
+
             for (i, layer) in layers.iter().enumerate() {
-                debug!("Extracting parameters from layer {}: {}x{}", 
-                       i, layer.input_size, layer.output_size);
-                
+                debug!(
+                    "Extracting parameters from layer {}: {}x{}",
+                    i, layer.input_size, layer.output_size
+                );
+
                 // Extract weights (convert f32 to f64)
                 for &weight in &layer.weights {
                     params.push(weight as f64);
                 }
-                
+
                 // Extract biases (convert f32 to f64)
                 for &bias in &layer.bias {
                     params.push(bias as f64);
                 }
             }
-            
+
             if params.len() != self.param_count {
-                error!("Parameter count mismatch: extracted {}, expected {}", 
-                       params.len(), self.param_count);
+                error!(
+                    "Parameter count mismatch: extracted {}, expected {}",
+                    params.len(),
+                    self.param_count
+                );
                 return Err(anyhow::anyhow!(
                     "Parameter extraction failed: count mismatch"
                 ));
             }
-            
+
             debug!("Successfully extracted {} parameters", params.len());
-            
+
             // Cache the parameters
             *self.param_cache.write() = Some(params.clone());
-            
+
             Ok(params)
         }
-        
+
         #[cfg(not(feature = "onednn"))]
         {
             // Fallback: return random initialized parameters
@@ -767,13 +884,18 @@ impl MnistOneDnnNeuralNetwork {
 
     /// Initialize weights using appropriate initialization for the activation function
     fn initialize_weights(&self, rng: &mut StdRng) -> anyhow::Result<()> {
-        info!("Initializing network weights for {:?} activation", self.activation);
-        
+        info!(
+            "Initializing network weights for {:?} activation",
+            self.activation
+        );
+
         #[cfg(feature = "onednn")]
         {
             // Initialize OneDNN layers with proper weight initialization
-            debug!("Initializing {} OneDNN layers with proper weight initialization", 
-                   self.layer_sizes.len() - 1);
+            debug!(
+                "Initializing {} OneDNN layers with proper weight initialization",
+                self.layer_sizes.len() - 1
+            );
             let mut layers = self.layers.write();
             for i in 0..layers.len() {
                 let input_size = self.layer_sizes[i];
@@ -795,10 +917,11 @@ impl MnistOneDnnNeuralNetwork {
                     }
                 };
                 let std_dev = std_dev / 5.0; // Scale down for better stability
-                debug!("Layer {}: {}x{} using std_dev={:.3} for {:?}", 
-                       i, input_size, output_size, std_dev, self.activation);
+                debug!(
+                    "Layer {}: {}x{} using std_dev={:.3} for {:?}",
+                    i, input_size, output_size, std_dev, self.activation
+                );
 
-                
                 // Generate initialized weights
                 let mut weights = Vec::with_capacity(input_size * output_size);
                 for _ in 0..(input_size * output_size) {
@@ -812,15 +935,14 @@ impl MnistOneDnnNeuralNetwork {
                     let normal: f64 = rng.sample(rand_distr::StandardNormal);
                     biases.push((normal * 0.01) as f32);
                 }
-               if log::log_enabled!(log::Level::Trace) {
-                   let min_weight = weights.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-                   let max_weight = weights.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-                   let mean_weight = weights.iter().sum::<f32>() / weights.len() as f32;
-                   trace!("Generated {} weights and {} biases for layer {} (weight min: {:.3}, max: {:.3}, mean: {:.3})", 
+                if log::log_enabled!(log::Level::Trace) {
+                    let min_weight = weights.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+                    let max_weight = weights.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+                    let mean_weight = weights.iter().sum::<f32>() / weights.len() as f32;
+                    trace!("Generated {} weights and {} biases for layer {} (weight min: {:.3}, max: {:.3}, mean: {:.3})", 
                           weights.len(), biases.len(), i, min_weight, max_weight, mean_weight);
-               }
+                }
 
-                
                 // Set the initialized weights and biases in the layer
                 layers[i].set_weights(&weights)?;
                 layers[i].set_bias(&biases)?;
@@ -849,32 +971,51 @@ impl MnistOneDnnNeuralNetwork {
         {
             let layers = self.layers.read();
             for (i, layer) in layers.iter().enumerate() {
-                info!("Layer {}: {}x{} with {:?} activation", 
-                      i, layer.input_size, layer.output_size, layer.activation);
+                info!(
+                    "Layer {}: {}x{} with {:?} activation",
+                    i, layer.input_size, layer.output_size, layer.activation
+                );
                 // Check weight statistics
                 let weight_mean = layer.weights.iter().sum::<f32>() / layer.weights.len() as f32;
-                let weight_std = (layer.weights.iter()
+                let weight_std = (layer
+                    .weights
+                    .iter()
                     .map(|w| (w - weight_mean).powi(2))
-                    .sum::<f32>() / layer.weights.len() as f32).sqrt();
-                info!("  Weights - mean: {:.4}, std: {:.4}", weight_mean, weight_std);
+                    .sum::<f32>()
+                    / layer.weights.len() as f32)
+                    .sqrt();
+                info!(
+                    "  Weights - mean: {:.4}, std: {:.4}",
+                    weight_mean, weight_std
+                );
                 // Check bias statistics
                 let bias_mean = layer.bias.iter().sum::<f32>() / layer.bias.len() as f32;
                 info!("  Bias - mean: {:.4}", bias_mean);
                 // Verify initialization quality
                 let expected_std = match self.activation {
                     ActivationType::ReLU => (2.0 / layer.input_size as f32).sqrt(),
-                    ActivationType::Logistic => (2.0 / (layer.input_size + layer.output_size) as f32).sqrt(),
-                    ActivationType::Tanh => (1.0 / (layer.input_size + layer.output_size) as f32).sqrt(),
+                    ActivationType::Logistic => {
+                        (2.0 / (layer.input_size + layer.output_size) as f32).sqrt()
+                    }
+                    ActivationType::Tanh => {
+                        (1.0 / (layer.input_size + layer.output_size) as f32).sqrt()
+                    }
                 };
                 let std_ratio = weight_std / expected_std;
                 if (0.8..=1.2).contains(&std_ratio) {
-                    info!("  ✓ Weight initialization is correct (ratio: {:.3})", std_ratio);
+                    info!(
+                        "  ✓ Weight initialization is correct (ratio: {:.3})",
+                        std_ratio
+                    );
                 } else {
-                    warn!("  ⚠ Weight initialization may be suboptimal (ratio: {:.3})", std_ratio);
+                    warn!(
+                        "  ⚠ Weight initialization may be suboptimal (ratio: {:.3})",
+                        std_ratio
+                    );
                 }
             }
         }
-        
+
         info!("=== End of OneDNN Initialization Check ===");
         Ok(())
     }
@@ -883,7 +1024,7 @@ impl MnistOneDnnNeuralNetwork {
     fn forward_pass(&self, batch_x: &[Vec<f32>]) -> anyhow::Result<Vec<Vec<f32>>> {
         let batch_size = batch_x.len();
         trace!("Forward pass for batch of size {}", batch_size);
-        
+
         let mut results = Vec::with_capacity(batch_size);
         let layers = self.layers.read();
         debug!("Processing batch through {} layers", layers.len());
@@ -898,8 +1039,12 @@ impl MnistOneDnnNeuralNetwork {
 
             // Forward pass through all layers
             for (layer_idx, layer) in layers.iter().enumerate() {
-                trace!("Layer {} forward pass: {} -> {}", 
-                       layer_idx, current_input.len(), layer.output_size);
+                trace!(
+                    "Layer {} forward pass: {} -> {}",
+                    layer_idx,
+                    current_input.len(),
+                    layer.output_size
+                );
                 let mut output = vec![0.0f32; layer.output_size];
                 layer.forward(&current_input, &mut output)?;
                 current_input = output;
@@ -922,7 +1067,7 @@ impl MnistOneDnnNeuralNetwork {
         // Simple forward pass implementation without OneDNN
         let output_size = self.layer_sizes.last().unwrap();
         let mut results = Vec::with_capacity(batch_x.len());
-        
+
         for sample in batch_x {
             // Apply softmax to create valid probability distribution
             let mut output = vec![0.1f32; *output_size];
@@ -932,7 +1077,7 @@ impl MnistOneDnnNeuralNetwork {
             }
             results.push(output);
         }
-        
+
         Ok(results)
     }
     #[cfg(feature = "onednn")]
@@ -947,7 +1092,11 @@ impl MnistOneDnnNeuralNetwork {
             let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
             let batch_size = end - start;
             total_samples_processed += batch_size;
-            trace!("Processing batch {}/{} for gradient", batch_idx + 1, n_batches);
+            trace!(
+                "Processing batch {}/{} for gradient",
+                batch_idx + 1,
+                n_batches
+            );
             let batch_x: Vec<Vec<f32>> = self.x_data[start..end].to_vec();
             let batch_y: Vec<Vec<f32>> = self.y_data[start..end].to_vec();
             // Forward pass to populate activations
@@ -957,25 +1106,24 @@ impl MnistOneDnnNeuralNetwork {
             let layers = self.layers.read();
             for (sample_idx, (pred, target)) in y_pred.iter().zip(batch_y.iter()).enumerate() {
                 // Compute output layer error (cross-entropy gradient)
-                let mut delta: Vec<f32> = pred.iter()
-                    .zip(target.iter())
-                    .map(|(p, t)| p - t)
-                    .collect();
+                let mut delta: Vec<f32> =
+                    pred.iter().zip(target.iter()).map(|(p, t)| p - t).collect();
                 let sample_activations = &activations[sample_idx];
                 // Backpropagate through layers
                 for layer_idx in (0..layers.len()).rev() {
                     let layer = &layers[layer_idx];
                     let input_activation = &sample_activations[layer_idx];
-                    
+
                     // Calculate the parameter index for this layer
                     let mut param_idx = 0;
                     for i in 0..layer_idx {
-                        param_idx += self.layer_sizes[i + 1] * self.layer_sizes[i] + self.layer_sizes[i + 1];
+                        param_idx +=
+                            self.layer_sizes[i + 1] * self.layer_sizes[i] + self.layer_sizes[i + 1];
                     }
-                    
+
                     let weights_per_layer = layer.output_size * layer.input_size;
                     let bias_per_layer = layer.output_size;
-                    
+
                     // Gradient for biases
                     for (i, &d) in delta.iter().enumerate() {
                         total_gradient[param_idx + weights_per_layer + i] += d as f64;
@@ -1025,7 +1173,7 @@ impl MnistOneDnnNeuralNetwork {
         for g in &mut total_gradient {
             *g /= total_samples_processed as f64;
         }
-        
+
         // Add L2 regularization gradient
         if self.l2_regularization > 0.0 {
             let layers = self.layers.read();
@@ -1033,7 +1181,8 @@ impl MnistOneDnnNeuralNetwork {
             for layer in layers.iter() {
                 let weights_count = layer.input_size * layer.output_size;
                 for i in 0..weights_count {
-                    total_gradient[param_idx + i] += self.l2_regularization * layer.weights[i] as f64;
+                    total_gradient[param_idx + i] +=
+                        self.l2_regularization * layer.weights[i] as f64;
                 }
                 param_idx += weights_count + layer.output_size; // weights + biases
             }
@@ -1043,7 +1192,10 @@ impl MnistOneDnnNeuralNetwork {
         debug!("Gradient norm: {:.3}", grad_norm);
         if grad_norm > 10.0 {
             let scale = 10.0 / grad_norm;
-            warn!("Clipping gradient: norm {:.3} -> 10.0 (scale={:.3})", grad_norm, scale);
+            warn!(
+                "Clipping gradient: norm {:.3} -> 10.0 (scale={:.3})",
+                grad_norm, scale
+            );
             for g in &mut total_gradient {
                 *g *= scale;
             }
@@ -1086,8 +1238,10 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
 
         let n_samples = self.x_data.len();
         let n_batches = n_samples.div_ceil(self.batch_size);
-        debug!("Processing {} samples in {} batches (batch_size={})", 
-               n_samples, n_batches, self.batch_size);
+        debug!(
+            "Processing {} samples in {} batches (batch_size={})",
+            n_samples, n_batches, self.batch_size
+        );
         let mut total_loss = 0.0;
 
         // Process batches
@@ -1095,8 +1249,13 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
             let start = batch_idx * self.batch_size;
             let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
             let batch_size = end - start;
-            trace!("Processing batch {}/{}: samples {}..{}", 
-                   batch_idx + 1, n_batches, start, end - 1);
+            trace!(
+                "Processing batch {}/{}: samples {}..{}",
+                batch_idx + 1,
+                n_batches,
+                start,
+                end - 1
+            );
 
             let batch_x: Vec<Vec<f32>> = self.x_data[start..end].to_vec();
             let batch_y: Vec<Vec<f32>> = self.y_data[start..end].to_vec();
@@ -1126,8 +1285,10 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
             let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
             let reg_term = 0.5 * self.l2_regularization * params_squared_sum;
             loss_value += reg_term;
-            debug!("L2 regularization term: {:.4} (lambda={:.2e})", 
-                   reg_term, self.l2_regularization);
+            debug!(
+                "L2 regularization term: {:.4} (lambda={:.2e})",
+                reg_term, self.l2_regularization
+            );
         }
         debug!("Final loss value: {:.4}", loss_value);
 
@@ -1150,20 +1311,23 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
                 }
             }
         }
-        debug!("Computing gradient using backpropagation for {} parameters", params.len());
+        debug!(
+            "Computing gradient using backpropagation for {} parameters",
+            params.len()
+        );
 
         // Set parameters and perform forward pass
         self.set_parameters(params)?;
-        
+
         #[cfg(feature = "onednn")]
         {
             let gradient = self.compute_gradient_backprop()?;
-            
+
             // Cache the gradient
             *self.gradient_cache.write() = Some(gradient.clone());
             *self.gradient_params_cache.write() = Some(params.to_vec());
             //debug!("Cached gradient for future use");
-            
+
             return Ok(gradient);
         }
 
@@ -1174,7 +1338,7 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
             let mut gradient = vec![0.0; params.len()];
             let eps = 1e-7;
             let f0 = self.evaluate_f64(params)?;
-            
+
             for i in 0..params.len() {
                 if i % 1000 == 0 {
                     debug!("Computing gradient component {}/{}", i, params.len());
@@ -1194,7 +1358,6 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
                 }
             }
 
-
             Ok(gradient)
         }
     }
@@ -1207,8 +1370,8 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{rngs::StdRng, SeedableRng};
     use approx::assert_relative_eq;
+    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     fn test_onednn_mnist_creation() {
@@ -1320,11 +1483,10 @@ mod tests {
         assert!(network.is_ok());
         if let Ok(net) = network {
             // Calculate expected parameter count
-            let expected_params = 
-                784 * 128 + 128 +  // First layer
+            let expected_params = 784 * 128 + 128 +  // First layer
                 128 * 64 + 64 +    // Second layer
                 64 * 32 + 32 +     // Third layer
-                32 * 10 + 10;      // Output layer
+                32 * 10 + 10; // Output layer
             assert_eq!(net.dimension(), expected_params);
         }
     }
@@ -1493,42 +1655,47 @@ mod tests {
         for p in params.iter_mut() {
             *p = rng.gen_range(-0.001..0.001);
         }
-        
+
         // Evaluate with current regularization
         let loss_with_reg = network.evaluate_f64(&params).unwrap();
-        
+
         // Calculate the expected regularization term
         let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
         let expected_reg_term = 0.5 * network.l2_regularization * params_squared_sum;
-        
+
         // Loss should be positive and finite
         assert!(loss_with_reg > 0.0);
         assert!(loss_with_reg.is_finite());
-        
+
         // To verify regularization is working, use a small perturbation
         // that primarily affects the regularization term
         let scaled_params: Vec<f64> = params.iter().map(|p| p * 1.1).collect();
         let loss_with_scaled = network.evaluate_f64(&scaled_params).unwrap();
-        
+
         // The scaled parameters have (1.1)^2 = 1.21x the L2 norm
         let scaled_params_squared_sum: f64 = scaled_params.iter().map(|p| p * p).sum();
         let scaled_reg_term = 0.5 * network.l2_regularization * scaled_params_squared_sum;
-        
+
         // The difference in regularization terms
         let reg_diff = scaled_reg_term - expected_reg_term;
-        
+
         // The difference in total loss
         let loss_diff = loss_with_scaled - loss_with_reg;
-        
+
         // Check that the regularization term is having an effect
         // The loss difference should be positive (scaled params have higher loss due to regularization)
-        assert!(loss_diff > 0.0, 
-                "Scaling parameters should increase loss due to regularization: loss_diff = {}", 
-                loss_diff);
-        
+        assert!(
+            loss_diff > 0.0,
+            "Scaling parameters should increase loss due to regularization: loss_diff = {}",
+            loss_diff
+        );
+
         // The regularization difference should be positive and contribute to the loss
-        assert!(reg_diff > 0.0, "Regularization difference should be positive");
-        
+        assert!(
+            reg_diff > 0.0,
+            "Regularization difference should be positive"
+        );
+
         // For very small parameters, the regularization term should be a measurable
         // part of the total loss. We just verify it exists and has the right sign.
         // We can't expect the loss difference to be close to the regularization difference
@@ -1588,15 +1755,8 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(42);
         let x_data = vec![vec![0.5; 10]; 3];
         let y_data = vec![vec![0.1; 3]; 3];
-        let mut network = MnistOneDnnNeuralNetwork::new(
-            x_data,
-            y_data,
-            &[5],
-            Some(3),
-            &mut rng,
-            None,
-        )
-        .unwrap();
+        let mut network =
+            MnistOneDnnNeuralNetwork::new(x_data, y_data, &[5], Some(3), &mut rng, None).unwrap();
         // Initially no optimal value
         assert_eq!(network.optimal_value(), None);
         // Set optimal value
@@ -1649,7 +1809,9 @@ mod tests {
         // Test Logistic (Sigmoid)
         let logistic_layer = OneDnnLayer::new(2, 2, ActivationType::Logistic).unwrap();
         let mut logistic_values = vec![0.0, 100.0, -100.0];
-        logistic_layer.apply_activation(&mut logistic_values).unwrap();
+        logistic_layer
+            .apply_activation(&mut logistic_values)
+            .unwrap();
         assert_relative_eq!(logistic_values[0], 0.5, epsilon = 1e-6);
         assert!(logistic_values[1] > 0.99); // Should be close to 1
         assert!(logistic_values[2] < 0.01); // Should be close to 0
@@ -1660,7 +1822,11 @@ mod tests {
         let x_data = vec![vec![0.5; 784]; 5];
         let y_data = vec![vec![0.1; 10]; 5];
         // Test different activation functions have appropriate initialization
-        for activation in [ActivationType::ReLU, ActivationType::Tanh, ActivationType::Logistic] {
+        for activation in [
+            ActivationType::ReLU,
+            ActivationType::Tanh,
+            ActivationType::Logistic,
+        ] {
             let network = MnistOneDnnNeuralNetwork::new(
                 x_data.clone(),
                 y_data.clone(),
@@ -1676,14 +1842,22 @@ mod tests {
             // Get initial parameters and check they're reasonable
             let params = network.initial_point();
             let mean: f64 = params.iter().sum::<f64>() / params.len() as f64;
-            let variance: f64 = params.iter()
-                .map(|p| (p - mean).powi(2))
-                .sum::<f64>() / params.len() as f64;
+            let variance: f64 =
+                params.iter().map(|p| (p - mean).powi(2)).sum::<f64>() / params.len() as f64;
             // Mean should be close to 0
-            assert!(mean.abs() < 0.1, "Mean {} too far from 0 for {:?}", mean, activation);
+            assert!(
+                mean.abs() < 0.1,
+                "Mean {} too far from 0 for {:?}",
+                mean,
+                activation
+            );
             // Variance should be reasonable (not too small or large)
-            assert!(variance > 1e-6 && variance < 1.0, 
-                    "Variance {} out of range for {:?}", variance, activation);
+            assert!(
+                variance > 1e-6 && variance < 1.0,
+                "Variance {} out of range for {:?}",
+                variance,
+                activation
+            );
         }
     }
 }

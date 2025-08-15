@@ -10,8 +10,8 @@ pub mod utils;
 // Re-export commonly used items for easier testing
 pub use benchmarks::functions::OptimizationProblem;
 pub use benchmarks::unified_tests::{
-    UnifiedProblemTester, ProblemTestConfig, ProblemTestResults,
-    test_multiple_problems, generate_test_report
+    generate_test_report, test_multiple_problems, ProblemTestConfig, ProblemTestResults,
+    UnifiedProblemTester,
 };
 
 // Re-export commonly used types

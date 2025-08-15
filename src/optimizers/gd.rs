@@ -101,6 +101,12 @@ use std::time::Instant;
 pub struct GDConfig {
     /// Learning rate (step size)
     ///
+    /// Optimizer name for identification and logging
+    ///
+    /// This name is used to identify the optimizer variant and configuration.
+    /// It's automatically set by the configuration presets but can be customized.
+    pub name: String,
+    ///
     /// Controls the size of parameter updates. Higher values lead to faster
     /// convergence but risk overshooting or divergence. Lower values are
     /// more stable but converge slowly.
@@ -158,6 +164,7 @@ pub struct GDConfig {
 impl Default for GDConfig {
     fn default() -> Self {
         Self {
+            name: "GD-Strict".to_string(),
             learning_rate: 0.01,
             momentum: 0.0,
             weight_decay: 0.0,
@@ -173,6 +180,12 @@ impl Default for GDConfig {
 impl GDConfig {
     /// Create a strict configuration with conservative settings for stable convergence.
     ///
+    /// **Name**: "GD-Strict"
+    ///
+    /// **Best for**:
+    /// - Ill-conditioned problems with high condition numbers
+    /// - Functions with large or unstable gradients
+    /// - Production environments where stability is critical
     /// **Best for**:
     /// - Ill-conditioned problems with high condition numbers
     /// - Functions with large or unstable gradients
@@ -187,6 +200,7 @@ impl GDConfig {
     pub fn strict() -> Self {
         Self {
             learning_rate: 0.001,
+            name: "GD-Debug".to_string(),
             momentum: 0.0,
             weight_decay: 0.0,
             nesterov: false,
@@ -198,6 +212,8 @@ impl GDConfig {
     }
 
     /// Create a lax configuration with aggressive settings for fast convergence.
+    ///
+    /// **Name**: "GD-Lax"
     ///
     /// **Best for**:
     /// - Well-conditioned problems with reasonable condition numbers
@@ -213,6 +229,7 @@ impl GDConfig {
     pub fn lax() -> Self {
         Self {
             learning_rate: 0.1,
+            name: "GD-Lax".to_string(),
             momentum: 0.9,
             weight_decay: 0.0,
             nesterov: true,
@@ -224,6 +241,8 @@ impl GDConfig {
     }
 
     /// Create a configuration optimized for the Rosenbrock function and similar challenging landscapes.
+    ///
+    /// **Name**: "GD-Rosenbrock"
     ///
     /// **Best for**:
     /// - Non-convex optimization problems
@@ -242,6 +261,7 @@ impl GDConfig {
     pub fn rosenbrock() -> Self {
         Self {
             learning_rate: 0.001,
+            name: "GD-Rosenbrock".to_string(),
             momentum: 0.9,
             weight_decay: 0.0,
             nesterov: true,
@@ -253,6 +273,8 @@ impl GDConfig {
     }
 
     /// Create a configuration with verbose logging enabled for debugging.
+    ///
+    /// **Name**: "GD-Debug"
     ///
     /// **Best for**:
     /// - Debugging optimization problems
@@ -269,6 +291,7 @@ impl GDConfig {
     /// and should not be used in production or performance-critical code.
     pub fn debug() -> Self {
         Self {
+            name: "GD-Debug".to_string(),
             learning_rate: 0.01,
             momentum: 0.0,
             weight_decay: 0.0,
@@ -405,12 +428,21 @@ impl Clone for GDOptimizer {
 impl GDOptimizer {
     /// Create a new GD optimizer with the given configuration.
     pub fn new(config: GDConfig) -> Self {
+        info!(
+            "Creating GD optimizer '{}' with full configuration:",
+            config.name
+        );
+        info!(
+            "  Learning Rate: {}, Momentum: {}, Weight Decay: {}, Nesterov: {}",
+            config.learning_rate, config.momentum, config.weight_decay, config.nesterov
+        );
+        info!(
+            "  Max Grad Norm: {}, Adaptive LR: {}, Min LR: {}",
+            config.max_grad_norm, config.adaptive_lr, config.min_learning_rate
+        );
+        info!("  Verbose: {}", config.verbose);
         if config.verbose {
-            info!("Creating GD optimizer with verbose logging enabled");
-            debug!(
-                "GD Config: lr={}, momentum={}, weight_decay={}, nesterov={}",
-                config.learning_rate, config.momentum, config.weight_decay, config.nesterov
-            );
+            debug!("Creating GD optimizer with verbose logging enabled");
         }
         Self {
             config,
@@ -755,15 +787,7 @@ impl Optimizer for GDOptimizer {
     }
 
     fn name(&self) -> &str {
-        if self.config.momentum > 0.0 {
-            if self.config.nesterov {
-                "GD-Nesterov"
-            } else {
-                "GD-Momentum"
-            }
-        } else {
-            "GD"
-        }
+        &self.config.name
     }
     fn iteration(&self) -> usize {
         self.state.iteration()
@@ -827,7 +851,7 @@ mod tests {
         assert!(config.adaptive_lr);
         assert!(!config.verbose);
         let optimizer = GDOptimizer::new(config);
-        assert_eq!(optimizer.name(), "GD");
+        assert_eq!(optimizer.name(), "GD-Strict");
     }
     #[test]
     fn test_gd_config_lax() {
@@ -839,7 +863,7 @@ mod tests {
         assert!(!config.adaptive_lr);
         assert!(!config.verbose);
         let optimizer = GDOptimizer::new(config);
-        assert_eq!(optimizer.name(), "GD-Nesterov");
+        assert_eq!(optimizer.name(), "GD-Lax");
     }
     #[test]
     fn test_gd_config_rosenbrock() {
@@ -851,7 +875,7 @@ mod tests {
         assert!(config.adaptive_lr);
         assert!(!config.verbose);
         let optimizer = GDOptimizer::new(config);
-        assert_eq!(optimizer.name(), "GD-Nesterov");
+        assert_eq!(optimizer.name(), "GD-Rosenbrock");
     }
     #[test]
     fn test_gd_config_debug() {
@@ -863,7 +887,7 @@ mod tests {
         assert!(config.adaptive_lr);
         assert!(config.verbose);
         let optimizer = GDOptimizer::new(config);
-        assert_eq!(optimizer.name(), "GD");
+        assert_eq!(optimizer.name(), "GD-Debug");
     }
     #[test]
     fn test_gd_strict_vs_lax_convergence() -> CandleResult<()> {
@@ -902,22 +926,24 @@ mod tests {
 
     #[test]
     fn test_gd_with_momentum() {
-        let config = GDConfig {
+        let mut config = GDConfig {
             momentum: 0.9,
             ..Default::default()
         };
+        config.name = "GD-Momentum".to_string();
         let optimizer = GDOptimizer::new(config);
         assert_eq!(optimizer.name(), "GD-Momentum");
     }
 
     #[test]
     fn test_gd_with_nesterov() {
-        let config = GDConfig {
+        let mut config = GDConfig {
             momentum: 0.9,
             nesterov: true,
             adaptive_lr: false, // Disable for predictable testing
             ..Default::default()
         };
+        config.name = "GD-Nesterov".to_string();
         let optimizer = GDOptimizer::new(config);
         assert_eq!(optimizer.name(), "GD-Nesterov");
     }

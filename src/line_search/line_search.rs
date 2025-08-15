@@ -84,7 +84,7 @@ pub fn create_1d_problem(
     // For descent: ∇f · d < 0
     if initial_directional_derivative > 0.0 {
         // Warn and flip the direction of the gradient fn
-        warn!(
+        debug!( // TODO: Fix me
             "Initial directional derivative is positive ({initial_directional_derivative:.3e}), flipping direction"
         );
         let negative_gradient_fn = {
@@ -156,7 +156,11 @@ pub fn create_1d_problem_linear(
     objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
     gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
 ) -> Result<OneDimensionalProblem> {
-    create_1d_problem(Box::new(LinearCurve::new(current_point.to_vec(), direction.to_vec())), objective_fn, gradient_fn)
+    create_1d_problem(
+        Box::new(LinearCurve::new(current_point.to_vec(), direction.to_vec())),
+        objective_fn,
+        gradient_fn,
+    )
 }
 
 /// Linear parametric curve: x(t) = x0 + t * direction

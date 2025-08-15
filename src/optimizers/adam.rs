@@ -388,6 +388,10 @@ pub struct AdamOptimizer {
     stagnation_multiplier: f64,
     /// Stagnation count threshold (future use)
     stagnation_count: usize,
+    /// Name of the optimizer variant
+    ///
+    /// **Default:** "Adam" for standard Adam, "Adam-AMSGrad" for AMSGrad variant
+    name: String,
 }
 
 impl Clone for AdamOptimizer {
@@ -400,16 +404,16 @@ impl Clone for AdamOptimizer {
             bad_step_count: self.bad_step_count,
             stagnation_multiplier: self.stagnation_multiplier,
             stagnation_count: self.stagnation_count,
+            name: self.name.clone(),
         }
     }
 }
 
 impl AdamOptimizer {
     /// Create a new Adam optimizer with the given configuration.
-    pub fn new(config: AdamConfig) -> Self {
-        if config.verbose {
-            info!("Creating Adam optimizer with verbose logging enabled");
-            debug!(
+    pub fn autoname(config: AdamConfig) -> Self {
+        Self::new(
+            format!(
                 "Adam Config: lr={}, beta1={}, beta2={}, epsilon={}, weight_decay={}, amsgrad={}",
                 config.learning_rate,
                 config.beta1,
@@ -417,7 +421,22 @@ impl AdamOptimizer {
                 config.epsilon,
                 config.weight_decay,
                 config.amsgrad
-            );
+            ),
+            config,
+        )
+    }
+    pub fn new(name: String, config: AdamConfig) -> Self {
+        info!(
+            "Adam Config: lr={}, beta1={}, beta2={}, epsilon={}, weight_decay={}, amsgrad={}",
+            config.learning_rate,
+            config.beta1,
+            config.beta2,
+            config.epsilon,
+            config.weight_decay,
+            config.amsgrad
+        );
+        if config.verbose {
+            debug!("Creating Adam optimizer with verbose logging enabled");
         }
         let current_lr = config.learning_rate;
         Self {
@@ -428,6 +447,7 @@ impl AdamOptimizer {
             bad_step_count: 0,
             stagnation_multiplier: 10.0,
             stagnation_count: 5,
+            name: name,
         }
     }
 
@@ -830,14 +850,11 @@ impl Optimizer for AdamOptimizer {
         self.current_lr = self.config.learning_rate;
         self.prev_function_value = None;
         self.bad_step_count = 0;
+        // Note: name is not reset as it's determined by configuration
     }
 
     fn name(&self) -> &str {
-        if self.config.amsgrad {
-            "Adam-AMSGrad"
-        } else {
-            "Adam"
-        }
+        &self.name
     }
     fn iteration(&self) -> usize {
         self.state.iteration()
@@ -920,7 +937,7 @@ mod tests {
     #[test]
     fn test_adam_optimizer_creation() {
         let config = AdamConfig::default();
-        let optimizer = AdamOptimizer::new(config);
+        let optimizer = AdamOptimizer::autoname(config);
 
         assert_eq!(optimizer.name(), "Adam");
         assert_eq!(optimizer.state.iteration(), 0);
@@ -933,14 +950,14 @@ mod tests {
             amsgrad: true,
             ..Default::default()
         };
-        let optimizer = AdamOptimizer::new(config);
+        let optimizer = AdamOptimizer::autoname(config);
         assert_eq!(optimizer.name(), "Adam-AMSGrad");
     }
 
     #[test]
     fn test_adam_reset() {
         let config = AdamConfig::default();
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
 
         // Manually set some state
         optimizer.state.iteration = 5;
@@ -965,7 +982,7 @@ mod tests {
             verbose: false,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Start at [2.0, 2.0]
         let mut params = vec![Tensor::from_vec(vec![2.0, 2.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
@@ -1014,7 +1031,7 @@ mod tests {
             lr_schedule: "constant".to_string(),
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
         // With weight decay, the effective gradient is g + weight_decay * x
@@ -1031,7 +1048,7 @@ mod tests {
             lr_schedule: "constant".to_string(),
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Start far from optimum to get large gradients
         let mut params = vec![Tensor::from_vec(vec![10.0, 10.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
@@ -1052,7 +1069,7 @@ mod tests {
             lr_decay: 0.9,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
         let initial_lr = optimizer.current_lr;
@@ -1071,7 +1088,7 @@ mod tests {
             min_learning_rate: 0.01,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
         let initial_lr = optimizer.current_lr;
@@ -1099,7 +1116,7 @@ mod tests {
             min_learning_rate: 0.001,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Use a function where we can control convergence behavior
         let mut params = vec![Tensor::from_vec(vec![0.1, 0.1], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
@@ -1124,7 +1141,7 @@ mod tests {
         assert_eq!(config.epsilon, 1e-12);
         assert!(config.amsgrad);
         assert_eq!(config.max_line_search_iter, 50);
-        let optimizer = AdamOptimizer::new(config);
+        let optimizer = AdamOptimizer::autoname(config);
         assert_eq!(optimizer.name(), "Adam-AMSGrad");
         Ok(())
     }
@@ -1139,7 +1156,7 @@ mod tests {
         assert_eq!(config.epsilon, 1e-6);
         assert!(!config.amsgrad);
         assert_eq!(config.max_line_search_iter, 5);
-        let optimizer = AdamOptimizer::new(config);
+        let optimizer = AdamOptimizer::autoname(config);
         assert_eq!(optimizer.name(), "Adam");
         Ok(())
     }
@@ -1162,7 +1179,7 @@ mod tests {
         let device = Device::Cpu;
         // Test strict configuration
         let strict_config = AdamConfig::strict();
-        let mut strict_optimizer = AdamOptimizer::new(strict_config);
+        let mut strict_optimizer = AdamOptimizer::autoname(strict_config);
         let mut strict_params = vec![Tensor::from_vec(vec![2.0, 2.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
         // Run a few steps with strict config
@@ -1173,7 +1190,7 @@ mod tests {
         let strict_value = function.evaluate(&strict_params)?;
         // Test lax configuration
         let lax_config = AdamConfig::lax();
-        let mut lax_optimizer = AdamOptimizer::new(lax_config);
+        let mut lax_optimizer = AdamOptimizer::autoname(lax_config);
         let mut lax_params = vec![Tensor::from_vec(vec![2.0, 2.0], &[2], &device)?];
         // Run same number of steps with lax config
         for _ in 0..10 {
@@ -1206,7 +1223,7 @@ mod tests {
             epsilon: 1e-8, // Standard epsilon
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Start closer to optimum but not too close to avoid numerical issues
         let mut params = vec![Tensor::from_vec(vec![1e-4, 1e-4], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
@@ -1252,7 +1269,7 @@ mod tests {
             verbose: false,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Start at a challenging point
         let mut params = vec![Tensor::from_vec(vec![0.0, 0.0], &[2], &device)?];
         let function = Arc::new(RosenbrockFunction);
@@ -1291,7 +1308,7 @@ mod tests {
     #[test]
     fn test_adam_empty_params_error() {
         let config = AdamConfig::default();
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         let mut params: Vec<Tensor> = vec![];
         let function = Arc::new(QuadraticFunction);
         let result = optimizer.step(&mut params, function);
@@ -1301,7 +1318,7 @@ mod tests {
     fn test_adam_dimension_mismatch_error() -> CandleResult<()> {
         let device = Device::Cpu;
         let config = AdamConfig::default();
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Create a function that returns wrong number of gradients
         struct BadGradientFunction;
         impl DifferentiableFunction for BadGradientFunction {
@@ -1326,7 +1343,7 @@ mod tests {
             beta2: 0.998,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         // Set some state
         optimizer.state.iteration = 5;
         optimizer.current_lr = 0.05;
@@ -1352,7 +1369,7 @@ mod tests {
             verbose: false,
             ..Default::default()
         };
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
         // This should produce verbose output (captured by logger)
@@ -1364,7 +1381,7 @@ mod tests {
     fn test_adam_metadata() -> CandleResult<()> {
         let device = Device::Cpu;
         let config = AdamConfig::default();
-        let mut optimizer = AdamOptimizer::new(config);
+        let mut optimizer = AdamOptimizer::autoname(config);
         let mut params = vec![Tensor::from_vec(vec![1.0, 1.0], &[2], &device)?];
         let function = Arc::new(QuadraticFunction);
         let result = optimizer.step(&mut params, function)?;

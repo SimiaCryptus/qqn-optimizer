@@ -10,7 +10,11 @@
 //! cargo run --example onednn_mnist --features onednn
 //! ```
 
-use qqn_optimizer::{experiment_runner::problem_sets::mnist_onednn_problems, init_logging, line_search::strong_wolfe::StrongWolfeLineSearch, optimizers::Optimizer, OptimizationProblem, QQNConfig, QQNOptimizer};
+use qqn_optimizer::{
+    experiment_runner::problem_sets::mnist_onednn_problems, init_logging,
+    line_search::strong_wolfe::StrongWolfeLineSearch, optimizers::Optimizer, OptimizationProblem,
+    QQNConfig, QQNOptimizer,
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::time::Instant;
 
@@ -95,12 +99,8 @@ fn run_onednn_example() -> anyhow::Result<()> {
     let network1 = network.clone();
     let network2 = network.clone();
     let result = optimizer.optimize(
-        Box::new(move |x: &[f64]| {
-            network1.evaluate_f64(x).unwrap()
-        }),
-        Box::new(move |x: &[f64]| {
-            network2.gradient_f64(x).unwrap()
-        }),
+        Box::new(move |x: &[f64]| network1.evaluate_f64(x).unwrap()),
+        Box::new(move |x: &[f64]| network2.gradient_f64(x).unwrap()),
         initial_params,
         50,   // Max 50 function evaluations for demo
         1e-4, // Gradient tolerance

@@ -2,9 +2,9 @@
 
 pub mod experiment_runner;
 pub mod optimizer_sets;
-pub use experiment_runner::{run_benchmark};
 pub use adaptive_runner::AdaptiveExperimentRunner;
-pub use parameter_evolution::{ParameterEvolution, OptimizerGenome};
+pub use experiment_runner::run_benchmark;
+pub use parameter_evolution::{OptimizerGenome, ParameterEvolution};
 pub mod adaptive_runner;
 pub mod parameter_evolution;
 pub mod plotting_manager;

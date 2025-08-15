@@ -11,6 +11,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "QQN-GoldenSection".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
+                name: "QQN-GoldenSection".to_string(),
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::GoldenSection,
                     c1: 1e-4,
@@ -30,6 +31,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "QQN-Bisection-1".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
+                name: "QQN-Bisection-1".to_string(),
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::Bisection,
                     line_bracket_method: 1,
@@ -49,6 +51,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "QQN-Bisection-2".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
+                name: "QQN-Bisection-2".to_string(),
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::Bisection,
                     line_bracket_method: 2,
@@ -68,6 +71,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "QQN-StrongWolfe".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
+                name: "QQN-StrongWolfe".to_string(),
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::StrongWolfe,
                     c1: 1e-4,
@@ -87,6 +91,7 @@ pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "QQN-CubicQuadraticInterpolation".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {
+                name: "QQN-CubicQuadraticInterpolation".to_string(),
                 line_search: LineSearchConfig {
                     method: LineSearchMethod::CubicQuadraticInterpolation,
                     max_iterations: 5,
@@ -110,6 +115,7 @@ pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "L-BFGS-Aggressive".to_string(),
             Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+                name: "L-BFGS-Aggressive".to_string(),
                 history_size: 5,
                 max_step_size: 10.0,
                 max_param_change: 10.0,
@@ -133,6 +139,7 @@ pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "L-BFGS".to_string(),
             Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+                name: "L-BFGS".to_string(),
                 history_size: 10,
                 line_search: LineSearchConfig {
                     c1: 1e-4,
@@ -156,6 +163,7 @@ pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "L-BFGS-Conservative".to_string(),
             Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+                name: "L-BFGS-Conservative".to_string(),
                 history_size: 20,
                 line_search: LineSearchConfig {
                     c1: 1e-6, // Very strict Armijo condition
@@ -180,6 +188,7 @@ pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "L-BFGS-MoreThuente".to_string(),
             Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+                name: "L-BFGS-MoreThuente".to_string(),
                 history_size: 15,
                 line_search: LineSearchConfig {
                     c1: 1e-4,
@@ -204,6 +213,7 @@ pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "L-BFGS-Limited".to_string(),
             Arc::new(LBFGSOptimizer::new(LBFGSConfig {
+                name: "L-BFGS-Limited".to_string(),
                 history_size: 3,
                 line_search: LineSearchConfig {
                     c1: 1e-3,
@@ -233,6 +243,7 @@ pub fn gd_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "GD".to_string(),
             Arc::new(GDOptimizer::new(GDConfig {
+                name: "GD".to_string(),
                 learning_rate: 0.01,
                 momentum: 0.0,
                 weight_decay: 0.0,
@@ -246,6 +257,7 @@ pub fn gd_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "GD-Momentum".to_string(),
             Arc::new(GDOptimizer::new(GDConfig {
+                name: "GD-Momentum".to_string(),
                 learning_rate: 0.01,
                 momentum: 0.9,
                 weight_decay: 0.0,
@@ -259,6 +271,7 @@ pub fn gd_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "GD-Nesterov".to_string(),
             Arc::new(GDOptimizer::new(GDConfig {
+                name: "GD-Nesterov".to_string(),
                 learning_rate: 0.01,
                 momentum: 0.9,
                 weight_decay: 0.0,
@@ -272,6 +285,7 @@ pub fn gd_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "GD-WeightDecay".to_string(),
             Arc::new(GDOptimizer::new(GDConfig {
+                name: "GD-WeightDecay".to_string(),
                 learning_rate: 0.005,
                 momentum: 0.8,
                 weight_decay: 1e-4,
@@ -285,6 +299,7 @@ pub fn gd_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "GD-AdaptiveMomentum".to_string(),
             Arc::new(GDOptimizer::new(GDConfig {
+                name: "GD-AdaptiveMomentum".to_string(),
                 learning_rate: 0.02,
                 momentum: 0.95,
                 weight_decay: 1e-5,
@@ -302,41 +317,47 @@ pub fn adam_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         (
             "Adam-Fast".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
-                learning_rate: 0.1,
-                lr_schedule: "constant".to_string(),
-                lr_decay: 0.995,
-                min_learning_rate: 1e-6,
-                gradient_clip: Some(10.0),
-                beta1: 0.9,
-                beta2: 0.999,
-                epsilon: 1e-8,
-                weight_decay: 0.0,
-                amsgrad: false,
-                max_line_search_iter: 20,
-                verbose: false,
-            })),
+            Arc::new(AdamOptimizer::new(
+                "Adam-Fast".to_string(),
+                AdamConfig {
+                    learning_rate: 0.1,
+                    lr_schedule: "constant".to_string(),
+                    lr_decay: 0.995,
+                    min_learning_rate: 1e-6,
+                    gradient_clip: Some(10.0),
+                    beta1: 0.9,
+                    beta2: 0.999,
+                    epsilon: 1e-8,
+                    weight_decay: 0.0,
+                    amsgrad: false,
+                    max_line_search_iter: 20,
+                    verbose: false,
+                },
+            )),
         ),
         (
             "Adam".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
-                learning_rate: 0.001,
-                lr_schedule: "adaptive".to_string(),
-                gradient_clip: Some(1.0),
-                lr_decay: 0.999,
-                min_learning_rate: 1e-8,
-                beta1: 0.9,
-                beta2: 0.999,
-                epsilon: 1e-8,
-                weight_decay: 0.0,
-                amsgrad: false,
-                max_line_search_iter: 20,
-                verbose: false,
-            })),
+            Arc::new(AdamOptimizer::new(
+                "Adam".to_string(),
+                AdamConfig {
+                    learning_rate: 0.001,
+                    lr_schedule: "adaptive".to_string(),
+                    gradient_clip: Some(1.0),
+                    lr_decay: 0.999,
+                    min_learning_rate: 1e-8,
+                    beta1: 0.9,
+                    beta2: 0.999,
+                    epsilon: 1e-8,
+                    weight_decay: 0.0,
+                    amsgrad: false,
+                    max_line_search_iter: 20,
+                    verbose: false,
+                },
+            )),
         ),
         (
             "Adam-AMSGrad".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
+            Arc::new(AdamOptimizer::autoname(AdamConfig {
                 learning_rate: 0.001,
                 lr_schedule: "constant".to_string(),
                 lr_decay: 0.999,
@@ -353,37 +374,43 @@ pub fn adam_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         ),
         (
             "Adam-WeightDecay".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
-                learning_rate: 0.003,
-                lr_schedule: "adaptive".to_string(),
-                lr_decay: 0.998,
-                min_learning_rate: 1e-9,
-                gradient_clip: Some(2.0),
-                beta1: 0.9,
-                beta2: 0.999,
-                epsilon: 1e-8,
-                weight_decay: 1e-3,
-                amsgrad: false,
-                max_line_search_iter: 25,
-                verbose: false,
-            })),
+            Arc::new(AdamOptimizer::new(
+                "Adam-WeightDecay".to_string(),
+                AdamConfig {
+                    learning_rate: 0.003,
+                    lr_schedule: "adaptive".to_string(),
+                    lr_decay: 0.998,
+                    min_learning_rate: 1e-9,
+                    gradient_clip: Some(2.0),
+                    beta1: 0.9,
+                    beta2: 0.999,
+                    epsilon: 1e-8,
+                    weight_decay: 1e-3,
+                    amsgrad: false,
+                    max_line_search_iter: 25,
+                    verbose: false,
+                },
+            )),
         ),
         (
             "Adam-Robust".to_string(),
-            Arc::new(AdamOptimizer::new(AdamConfig {
-                learning_rate: 0.01,
-                lr_schedule: "exponential".to_string(),
-                lr_decay: 0.99,
-                min_learning_rate: 1e-7,
-                gradient_clip: Some(1.5),
-                beta1: 0.85,
-                beta2: 0.99,
-                epsilon: 1e-6,
-                weight_decay: 5e-4,
-                amsgrad: true,
-                max_line_search_iter: 30,
-                verbose: false,
-            })),
+            Arc::new(AdamOptimizer::new(
+                "Adam-Robust".to_string(),
+                AdamConfig {
+                    learning_rate: 0.01,
+                    lr_schedule: "exponential".to_string(),
+                    lr_decay: 0.99,
+                    min_learning_rate: 1e-7,
+                    gradient_clip: Some(1.5),
+                    beta1: 0.85,
+                    beta2: 0.99,
+                    epsilon: 1e-6,
+                    weight_decay: 5e-4,
+                    amsgrad: true,
+                    max_line_search_iter: 30,
+                    verbose: false,
+                },
+            )),
         ),
     ]
 }
@@ -393,6 +420,7 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "Trust Region-Adaptive".to_string(),
             Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                name: "Trust Region-Adaptive".to_string(),
                 initial_radius: 0.5,
                 max_radius: 50.0,
                 min_radius: 1e-8,
@@ -409,6 +437,7 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "Trust Region-Standard".to_string(),
             Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                name: "Trust Region-Standard".to_string(),
                 initial_radius: 1.0,
                 max_radius: 100.0,
                 min_radius: 1e-10,
@@ -425,6 +454,7 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "Trust Region-Conservative".to_string(),
             Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                name: "Trust Region-Conservative".to_string(),
                 initial_radius: 0.1,
                 max_radius: 10.0,
                 min_radius: 1e-12,
@@ -441,6 +471,7 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "Trust Region-Aggressive".to_string(),
             Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                name: "Trust Region-Aggressive".to_string(),
                 initial_radius: 2.0,
                 max_radius: 200.0,
                 min_radius: 1e-6,
@@ -457,6 +488,7 @@ pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
         (
             "Trust Region-Precise".to_string(),
             Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
+                name: "Trust Region-Precise".to_string(),
                 initial_radius: 0.25,
                 max_radius: 25.0,
                 min_radius: 1e-15,
@@ -542,7 +574,7 @@ pub fn benchmark_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
     // Add best Adam variant
     optimizers.push((
         "Adam-Fast".to_string(),
-        Arc::new(AdamOptimizer::new(AdamConfig {
+        Arc::new(AdamOptimizer::autoname(AdamConfig {
             learning_rate: 0.1,
             lr_schedule: "constant".to_string(),
             gradient_clip: Some(10.0),

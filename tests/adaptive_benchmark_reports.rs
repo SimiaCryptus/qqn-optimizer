@@ -39,17 +39,18 @@ async fn test_adaptive_simple_problems() -> Result<(), Box<dyn Error + Send + Sy
             // Test with a small population and few generations
             run_adaptive_benchmark(
                 "results/adaptive_simple_",
-                500,  // max_evals
-                5,    // num_runs for final championship
+                500, // max_evals
+                10,  // num_runs for final championship
                 Duration::from_secs(60),
-                10,   // population_size
-                5,    // num_generations
-                3,    // evaluation_runs per genome
+                50, // population_size
+                50, // num_generations
+                3,  // evaluation_runs per genome
                 problems,
                 vec![
                     OptimizerType::QQN,
                     OptimizerType::LBFGS,
                     OptimizerType::Adam,
+                    OptimizerType::GD,
                 ],
             )
             .await
@@ -77,14 +78,14 @@ async fn test_adaptive_analytic_full() -> Result<(), Box<dyn Error + Send + Sync
                 1000, // max_evals
                 10,   // num_runs for final championship
                 Duration::from_secs(300),
-                20,   // population_size
-                10,   // num_generations
-                5,    // evaluation_runs per genome
+                20, // population_size
+                10, // num_generations
+                5,  // evaluation_runs per genome
                 problems,
                 vec![
                     OptimizerType::QQN,
                     OptimizerType::LBFGS,
-                    OptimizerType::GradientDescent,
+                    OptimizerType::GD,
                     OptimizerType::Adam,
                     OptimizerType::TrustRegion,
                 ],
@@ -114,9 +115,9 @@ async fn test_adaptive_ml_problems() -> Result<(), Box<dyn Error + Send + Sync>>
                 2000, // max_evals
                 10,   // num_runs for final championship
                 Duration::from_secs(600),
-                15,   // population_size
-                8,    // num_generations
-                3,    // evaluation_runs per genome
+                15, // population_size
+                8,  // num_generations
+                3,  // evaluation_runs per genome
                 problems,
                 vec![
                     OptimizerType::QQN,
@@ -149,14 +150,11 @@ async fn test_adaptive_mnist() -> Result<(), Box<dyn Error + Send + Sync>> {
                 1000, // max_evals
                 5,    // num_runs for final championship
                 Duration::from_secs(900),
-                12,   // population_size
-                6,    // num_generations
-                2,    // evaluation_runs per genome (fewer due to cost)
+                12, // population_size
+                6,  // num_generations
+                2,  // evaluation_runs per genome (fewer due to cost)
                 problems,
-                vec![
-                    OptimizerType::Adam,
-                    OptimizerType::QQN,
-                ],
+                vec![OptimizerType::Adam, OptimizerType::QQN],
             )
             .await
         })
@@ -185,12 +183,12 @@ async fn test_adaptive_smoke() -> Result<(), Box<dyn Error + Send + Sync>> {
 
             run_adaptive_benchmark(
                 "results/adaptive_smoke_",
-                100,  // max_evals (very small)
-                2,    // num_runs for final championship
+                100, // max_evals (very small)
+                2,   // num_runs for final championship
                 Duration::from_secs(30),
-                5,    // population_size (tiny)
-                3,    // num_generations (few)
-                2,    // evaluation_runs per genome
+                5, // population_size (tiny)
+                3, // num_generations (few)
+                2, // evaluation_runs per genome
                 problems,
                 vec![OptimizerType::QQN, OptimizerType::Adam],
             )
@@ -227,7 +225,7 @@ async fn test_adaptive_mixed_problems() -> Result<(), Box<dyn Error + Send + Syn
                     42,
                 ),
             ];
-            
+
             // Add one ML problem
             if let Some(ml_problem) = ml_problems().into_iter().next() {
                 problems.push(ml_problem);
@@ -238,15 +236,15 @@ async fn test_adaptive_mixed_problems() -> Result<(), Box<dyn Error + Send + Syn
                 1500, // max_evals
                 10,   // num_runs for final championship
                 Duration::from_secs(600),
-                15,   // population_size
-                8,    // num_generations
-                4,    // evaluation_runs per genome
+                15, // population_size
+                8,  // num_generations
+                4,  // evaluation_runs per genome
                 problems,
                 vec![
                     OptimizerType::QQN,
                     OptimizerType::LBFGS,
                     OptimizerType::Adam,
-                    OptimizerType::GradientDescent,
+                    OptimizerType::GD,
                     OptimizerType::TrustRegion,
                 ],
             )
@@ -267,14 +265,12 @@ async fn test_adaptive_qqn_only() -> Result<(), Box<dyn Error + Send + Sync>> {
     let local = LocalSet::new();
     local
         .run_until(async move {
-            let problems = vec![
-                ProblemSpec::new(
-                    Arc::new(RosenbrockFunction::new(10)),
-                    "Rosenbrock-10".to_string(),
-                    Some(10),
-                    42,
-                ),
-            ];
+            let problems = vec![ProblemSpec::new(
+                Arc::new(RosenbrockFunction::new(10)),
+                "Rosenbrock-10".to_string(),
+                Some(10),
+                42,
+            )];
 
             // Focus on evolving QQN parameters only
             run_adaptive_benchmark(
@@ -282,9 +278,9 @@ async fn test_adaptive_qqn_only() -> Result<(), Box<dyn Error + Send + Sync>> {
                 1000, // max_evals
                 10,   // num_runs for final championship
                 Duration::from_secs(120),
-                20,   // larger population_size for QQN
-                10,   // more generations
-                5,    // evaluation_runs per genome
+                20, // larger population_size for QQN
+                10, // more generations
+                5,  // evaluation_runs per genome
                 problems,
                 vec![OptimizerType::QQN], // Only QQN
             )
@@ -312,17 +308,14 @@ async fn test_adaptive_low_budget() -> Result<(), Box<dyn Error + Send + Sync>> 
 
             run_adaptive_benchmark(
                 "results/adaptive_low_budget_",
-                50,   // very low max_evals
-                3,    // few runs for final championship
+                50, // very low max_evals
+                3,  // few runs for final championship
                 Duration::from_secs(60),
-                8,    // small population_size
-                4,    // few generations
-                2,    // minimal evaluation_runs
+                8, // small population_size
+                4, // few generations
+                2, // minimal evaluation_runs
                 problems,
-                vec![
-                    OptimizerType::Adam,
-                    OptimizerType::GradientDescent,
-                ],
+                vec![OptimizerType::Adam, OptimizerType::GD],
             )
             .await
         })

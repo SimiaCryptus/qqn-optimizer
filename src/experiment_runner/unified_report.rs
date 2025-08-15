@@ -5,6 +5,7 @@
 
 use crate::benchmarks::evaluation::{BenchmarkResults, ProblemSpec};
 use anyhow::Result;
+use log::{debug, error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -79,32 +80,67 @@ pub trait Report {
         config: &ReportConfig,
         output_path: &Path,
     ) -> Result<()> {
+        info!(
+            "Exporting {} report to file: {}",
+            self.name(),
+            output_path.display()
+        );
+        debug!(
+            "Report config: format={:?}, detailed_stats={}, plots={}",
+            config.format, config.include_detailed_stats, config.include_plots
+        );
+
         let content = self.generate_content(data, config)?;
+        trace!("Generated content length: {} bytes", content.len());
+
         std::fs::write(output_path, content)?;
+        info!(
+            "Successfully exported {} report to {}",
+            self.name(),
+            output_path.display()
+        );
         Ok(())
     }
 
     /// Validate that the input data is suitable for this report
     fn validate_data(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> Result<()> {
+        debug!("Validating data for {} report", self.name());
+
         if data.is_empty() {
+            error!("Validation failed for {}: no data provided", self.name());
             anyhow::bail!("Cannot generate {} report: no data provided", self.name());
         }
+        let mut total_results = 0;
 
         for (problem, results) in data {
             if results.results.is_empty() {
+                error!(
+                    "Validation failed for {}: no results for problem '{}'",
+                    self.name(),
+                    problem.get_name()
+                );
                 anyhow::bail!(
                     "Cannot generate {} report: no results for problem '{}'",
                     self.name(),
                     problem.get_name()
                 );
             }
+            total_results += results.results.len();
         }
+        info!(
+            "Data validation passed for {}: {} problems, {} total results",
+            self.name(),
+            data.len(),
+            total_results
+        );
 
         Ok(())
     }
 
     /// Get metadata about the generated report
     fn get_metadata(&self, data: &[(&ProblemSpec, BenchmarkResults)]) -> ReportMetadata {
+        debug!("Generating metadata for {} report", self.name());
+
         let problem_count = data.len();
         let optimizer_count = data
             .iter()
@@ -113,14 +149,23 @@ pub trait Report {
             .collect::<std::collections::HashSet<_>>()
             .len();
         let data_points = data.iter().map(|(_, results)| results.results.len()).sum();
-
-        ReportMetadata {
+        let metadata = ReportMetadata {
             report_type: self.name().to_string(),
             generated_at: chrono::Utc::now(),
             problem_count,
             optimizer_count,
             data_points,
-        }
+        };
+
+        debug!(
+            "Generated metadata for {}: {} problems, {} optimizers, {} data points",
+            self.name(),
+            metadata.problem_count,
+            metadata.optimizer_count,
+            metadata.data_points
+        );
+
+        metadata
     }
 
     /// Get supported output formats for this report type
@@ -142,12 +187,19 @@ pub struct ReportCollection {
 impl ReportCollection {
     /// Create a new empty report collection
     pub fn new() -> Self {
+        debug!("Created new empty report collection");
         Self::default()
     }
 
     /// Add a report to the collection
     pub fn add_report<R: Report + 'static>(mut self, report: R) -> Self {
+        let report_name = report.name();
+        debug!("Adding report to collection: {}", report_name);
         self.reports.push(Box::new(report));
+        trace!(
+            "Report collection now contains {} reports",
+            self.reports.len()
+        );
         self
     }
 
@@ -158,29 +210,66 @@ impl ReportCollection {
         config: &ReportConfig,
         output_dir: &Path,
     ) -> Result<Vec<ReportMetadata>> {
+        info!(
+            "Generating {} reports to directory: {}",
+            self.reports.len(),
+            output_dir.display()
+        );
+        debug!("Report collection contains: {:?}", self.report_names());
+
         let mut metadata = Vec::new();
 
         std::fs::create_dir_all(output_dir)?;
+        debug!("Created output directory: {}", output_dir.display());
 
         for report in &self.reports {
-            report.validate_data(data)?;
+            let report_name = report.name();
+            debug!("Processing report: {}", report_name);
 
-            let filename = format!(
-                "{}.{}",
-                report.name(),
-                match config.format {
-                    ReportFormat::Html => "html",
-                    ReportFormat::Latex => "tex",
-                    ReportFormat::Csv => "csv",
-                    ReportFormat::Markdown => "md",
+            match report.validate_data(data) {
+                Ok(()) => {
+                    info!("Validation passed for report: {}", report_name);
                 }
-            );
+                Err(e) => {
+                    warn!(
+                        "Skipping report {} due to validation error: {}",
+                        report_name, e
+                    );
+                    continue;
+                }
+            }
 
-            let output_path = output_dir.join(filename);
-            report.export_to_file(data, config, &output_path)?;
+            {
+                let filename = format!(
+                    "{}.{}",
+                    report_name,
+                    match config.format {
+                        ReportFormat::Html => "html",
+                        ReportFormat::Latex => "tex",
+                        ReportFormat::Csv => "csv",
+                        ReportFormat::Markdown => "md",
+                    }
+                );
 
-            metadata.push(report.get_metadata(data));
+                let output_path = output_dir.join(filename);
+
+                match report.export_to_file(data, config, &output_path) {
+                    Ok(()) => {
+                        info!("Successfully generated report: {}", report_name);
+                        metadata.push(report.get_metadata(data));
+                    }
+                    Err(e) => {
+                        error!("Failed to generate report {}: {}", report_name, e);
+                        return Err(e);
+                    }
+                }
+            }
         }
+        info!(
+            "Successfully generated {} reports in {}",
+            metadata.len(),
+            output_dir.display()
+        );
 
         Ok(metadata)
     }
@@ -222,6 +311,7 @@ mod tests {
             data: &[(&ProblemSpec, BenchmarkResults)],
             config: &ReportConfig,
         ) -> Result<String> {
+            debug!("Generating content for mock report: {}", self.name());
             self.validate_data(data)?;
 
             match config.format {
