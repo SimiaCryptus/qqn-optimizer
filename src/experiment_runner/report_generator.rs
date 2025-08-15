@@ -50,6 +50,7 @@ pub struct FamilyPerformanceData {
 }
 
 /// Handles HTML report generation and CSV exports
+#[derive(Clone)]
 pub struct ReportGenerator {
     pub(crate) output_dir: String,
     config: BenchmarkConfig,

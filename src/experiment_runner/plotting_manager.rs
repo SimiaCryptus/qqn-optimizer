@@ -4,8 +4,9 @@ use log::{info, warn};
 use std::fs;
 
 /// Manages plot generation with error handling
+#[derive(Clone)]
 pub struct PlottingManager {
-    output_dir: String,
+    pub(crate) output_dir: String,
     plotting_engine: PlottingEngine,
     enable_enhanced_plots: bool,
 }

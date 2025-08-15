@@ -144,6 +144,7 @@ impl From<&OptimizationTrace> for ExtendedOptimizationTrace {
     }
 }
 
+#[derive(Clone)]
 pub struct PlottingEngine {
     output_dir: String,
     width: u32,

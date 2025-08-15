@@ -18,13 +18,15 @@ use std::time::Duration;
 use tokio::sync::Semaphore;
 
 /// Core experiment runner focused on benchmark execution
+/// derives clone, Debug, Default, Serialize, Deserialize
+#[derive(Clone)]
 pub struct ExperimentRunner {
-    output_dir: String,
+    pub(crate) output_dir: String,
     config: BenchmarkConfig,
     max_concurrent_tasks: usize,
-    report_generator: ReportGenerator,
+    pub(crate) report_generator: ReportGenerator,
     #[cfg(feature = "plotting")]
-    plotting_manager: PlottingManager,
+    pub(crate) plotting_manager: PlottingManager,
 }
 
 impl ExperimentRunner {
@@ -60,7 +62,7 @@ impl ExperimentRunner {
     ) -> anyhow::Result<()> {
         info!("Starting championship benchmarks with problem-specific optimizers");
         // Ensure output directory exists
-        fs::create_dir_all(&self.output_dir)?;
+        fs::create_dir_all(self.output_dir.to_string())?;
         // Run benchmarks for each problem with its specific optimizers
         for problem_name in problem_optimizer_map.keys() {
             // Find the problem by name (we'll need to pass problems separately or store them)
@@ -79,7 +81,7 @@ impl ExperimentRunner {
         info!("Starting comprehensive comparative benchmarks");
 
         // Ensure output directory exists
-        fs::create_dir_all(&self.output_dir)?;
+        fs::create_dir_all(self.output_dir.to_string())?;
 
         // Validate problems
         self.validate_problems(&problems).await?;
@@ -388,8 +390,8 @@ pub async fn run_benchmark(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{report_path_prefix}{timestamp}");
-    let output_dir = std::path::PathBuf::from(&output_dir_name);
-    fs::create_dir_all(&output_dir)?;
+    let output_dir = std::path::PathBuf::from(&output_dir_name.to_string());
+    fs::create_dir_all(output_dir_name.to_string())?;
     println!("Creating benchmark results in: {}", output_dir.display());
     let result = tokio::time::timeout(
         Duration::from_secs(30000),
@@ -423,12 +425,12 @@ pub async fn run_benchmark(
     }
 
     // Verify outputs were generated
-    assert!(output_dir.join("benchmark_report.md").exists());
+    assert!(output_dir.join("benchmark_report.md".to_string()).exists());
     // assert!(output_dir.join("detailed_results.csv").exists());
     // assert!(output_dir.join("summary_statistics.csv").exists());
 
     // Read and verify HTML content
-    let html_content = fs::read_to_string(output_dir.join("benchmark_report.md"))?;
+    let html_content = fs::read_to_string(output_dir.join("benchmark_report.md".to_string()))?;
     assert!(html_content.contains("QQN Optimizer"));
 
     println!(
@@ -443,6 +445,8 @@ pub async fn run_benchmark(
 pub fn get_optimizer_family(optimizer_name: &str) -> String {
     if optimizer_name.starts_with("QQN") {
         "QQN".to_string()
+    } else if optimizer_name.starts_with("LBFGS") {
+        "L-BFGS".to_string()
     } else if optimizer_name.starts_with("L-BFGS") {
         "L-BFGS".to_string()
     } else if optimizer_name.starts_with("Trust Region") {

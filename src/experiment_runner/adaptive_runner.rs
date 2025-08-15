@@ -1219,9 +1219,11 @@ impl AdaptiveExperimentRunner {
 
                 // Run comparative benchmarks for this problem
                 debug!("Starting comparative benchmarks for {}", problem_name);
-                self.base_runner
-                    .run_comparative_benchmarks(vec![problem.clone()], optimizers.clone())
-                    .await?;
+                let mut runner: ExperimentRunner = self.base_runner.clone();
+                runner.output_dir = format!("{}/championship/{}", self.base_runner.output_dir, problem_name.replace(" ", "_"));
+                runner.report_generator.output_dir = runner.output_dir.clone();
+                runner.plotting_manager.output_dir = runner.output_dir.clone();
+                runner.run_comparative_benchmarks(vec![problem.clone()], optimizers.clone()).await?;
                 info!("Championship completed for problem: {}", problem_name);
             } else {
                 warn!("No evolved optimizers found for problem: {}", problem_name);
