@@ -41,7 +41,7 @@ async fn test_adaptive_simple_problems() -> Result<(), Box<dyn Error + Send + Sy
             run_adaptive_benchmark(
                 "results/adaptive_simple_",
                 1000, // max_evals
-                3,  // num_runs for final championship
+                3,    // num_runs for final championship
                 Duration::from_secs(60),
                 10, // population_size
                 50, // num_generations

@@ -36,10 +36,10 @@ use crate::experiment_runner::unified_report::{
 };
 use crate::OptimizationProblem;
 use anyhow::Context;
+use serde_json;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use serde_json;
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -166,7 +166,6 @@ impl ReportGenerator {
         // Generate optimizer specifications section
         html_content.push_str(&generate_optimizer_specifications_section(all_results)?);
 
-
         let md_path = Path::new(&output_dir).join("benchmark_report.md");
         println!("Saving Markdown report to: {}", md_path.display());
         // Ensure parent directory exists
@@ -182,7 +181,7 @@ impl ReportGenerator {
         generate_latex_tables(&latex_dir.to_string_lossy(), all_results, self).await?;
         // Generate optimizer specifications JSON
         generate_optimizer_specifications_json(&data_dir.to_string_lossy(), all_results)?;
-        
+
         // Generate comprehensive LaTeX document
         generate_comprehensive_latex_document(&self.config, all_results, &latex_dir, self)?;
         println!("Report generation complete!");
@@ -567,9 +566,13 @@ This section provides detailed JSON specifications for all optimizers used in th
 "#,
     );
     // Group by family and create summary table
-    let mut family_groups: std::collections::HashMap<String, Vec<&OptimizerSpecification>> = std::collections::HashMap::new();
+    let mut family_groups: std::collections::HashMap<String, Vec<&OptimizerSpecification>> =
+        std::collections::HashMap::new();
     for spec in optimizer_specs.values() {
-        family_groups.entry(spec.family.clone()).or_insert_with(Vec::new).push(spec);
+        family_groups
+            .entry(spec.family.clone())
+            .or_insert_with(Vec::new)
+            .push(spec);
     }
     for (family, specs) in family_groups {
         let variant_names: Vec<String> = specs.iter().map(|s| s.name.clone()).collect();
@@ -617,7 +620,8 @@ fn generate_optimizer_specifications_json(
         metadata: SpecificationMetadata {
             generated_at: chrono::Utc::now(),
             total_optimizers: optimizer_specs.len(),
-            families: optimizer_specs.values()
+            families: optimizer_specs
+                .values()
                 .map(|s| s.family.clone())
                 .collect::<std::collections::HashSet<_>>()
                 .into_iter()
@@ -631,9 +635,16 @@ fn generate_optimizer_specifications_json(
     if let Some(parent) = json_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(&json_path, json_content)
-        .with_context(|| format!("Failed to write optimizer specifications to: {}", json_path.display()))?;
-    println!("Generated optimizer specifications: {}", json_path.display());
+    fs::write(&json_path, json_content).with_context(|| {
+        format!(
+            "Failed to write optimizer specifications to: {}",
+            json_path.display()
+        )
+    })?;
+    println!(
+        "Generated optimizer specifications: {}",
+        json_path.display()
+    );
     Ok(())
 }
 /// Specification for a single optimizer
@@ -742,7 +753,8 @@ fn extract_numeric_param(optimizer_name: &str, param_name: &str) -> Option<f64> 
         if let Some(equals_pos) = after_param.find('=') {
             let after_equals = &after_param[equals_pos + 1..];
             // Find the end of the number (next non-numeric character)
-            let end = after_equals.find(|c: char| !c.is_ascii_digit() && c != '.' && c != 'e' && c != '-' && c != '+')
+            let end = after_equals
+                .find(|c: char| !c.is_ascii_digit() && c != '.' && c != 'e' && c != '-' && c != '+')
                 .unwrap_or(after_equals.len());
             if let Ok(value) = after_equals[..end].parse::<f64>() {
                 return Some(value);
@@ -768,46 +780,74 @@ fn generate_optimizer_description(optimizer_name: &str) -> String {
     }
 }
 /// Extract parameter specifications for an optimizer
-fn extract_optimizer_parameters(optimizer_name: &str) -> std::collections::HashMap<String, ParameterSpec> {
+fn extract_optimizer_parameters(
+    optimizer_name: &str,
+) -> std::collections::HashMap<String, ParameterSpec> {
     let mut params = std::collections::HashMap::new();
     if optimizer_name.starts_with("QQN") {
-        params.insert("c1".to_string(), ParameterSpec {
-            value: serde_json::json!(extract_numeric_param(optimizer_name, "c1").unwrap_or(1e-4)),
-            description: "Armijo condition parameter for line search".to_string(),
-            parameter_type: "float".to_string(),
-            valid_range: Some("(0, 1)".to_string()),
-        });
+        params.insert(
+            "c1".to_string(),
+            ParameterSpec {
+                value: serde_json::json!(
+                    extract_numeric_param(optimizer_name, "c1").unwrap_or(1e-4)
+                ),
+                description: "Armijo condition parameter for line search".to_string(),
+                parameter_type: "float".to_string(),
+                valid_range: Some("(0, 1)".to_string()),
+            },
+        );
         params.insert("c2".to_string(), ParameterSpec {
             value: serde_json::json!(extract_numeric_param(optimizer_name, "c2").unwrap_or(0.9)),
             description: "Wolfe condition parameter for line search".to_string(),
             parameter_type: "float".to_string(),
             valid_range: Some("(c1, 1)".to_string()),
         });
-        params.insert("lbfgs_history".to_string(), ParameterSpec {
-            value: serde_json::json!(extract_numeric_param(optimizer_name, "history").unwrap_or(10.0) as i32),
-            description: "Number of previous iterations to store for L-BFGS approximation".to_string(),
-            parameter_type: "integer".to_string(),
-            valid_range: Some("[1, 50]".to_string()),
-        });
+        params.insert(
+            "lbfgs_history".to_string(),
+            ParameterSpec {
+                value: serde_json::json!(
+                    extract_numeric_param(optimizer_name, "history").unwrap_or(10.0) as i32
+                ),
+                description: "Number of previous iterations to store for L-BFGS approximation"
+                    .to_string(),
+                parameter_type: "integer".to_string(),
+                valid_range: Some("[1, 50]".to_string()),
+            },
+        );
     } else if optimizer_name.starts_with("Adam") {
-        params.insert("learning_rate".to_string(), ParameterSpec {
-            value: serde_json::json!(extract_numeric_param(optimizer_name, "lr").unwrap_or(0.001)),
-            description: "Learning rate for parameter updates".to_string(),
-            parameter_type: "float".to_string(),
-            valid_range: Some("(0, 1]".to_string()),
-        });
-        params.insert("beta1".to_string(), ParameterSpec {
-            value: serde_json::json!(extract_numeric_param(optimizer_name, "beta1").unwrap_or(0.9)),
-            description: "Exponential decay rate for first moment estimates".to_string(),
-            parameter_type: "float".to_string(),
-            valid_range: Some("[0, 1)".to_string()),
-        });
-        params.insert("beta2".to_string(), ParameterSpec {
-            value: serde_json::json!(extract_numeric_param(optimizer_name, "beta2").unwrap_or(0.999)),
-            description: "Exponential decay rate for second moment estimates".to_string(),
-            parameter_type: "float".to_string(),
-            valid_range: Some("[0, 1)".to_string()),
-        });
+        params.insert(
+            "learning_rate".to_string(),
+            ParameterSpec {
+                value: serde_json::json!(
+                    extract_numeric_param(optimizer_name, "lr").unwrap_or(0.001)
+                ),
+                description: "Learning rate for parameter updates".to_string(),
+                parameter_type: "float".to_string(),
+                valid_range: Some("(0, 1]".to_string()),
+            },
+        );
+        params.insert(
+            "beta1".to_string(),
+            ParameterSpec {
+                value: serde_json::json!(
+                    extract_numeric_param(optimizer_name, "beta1").unwrap_or(0.9)
+                ),
+                description: "Exponential decay rate for first moment estimates".to_string(),
+                parameter_type: "float".to_string(),
+                valid_range: Some("[0, 1)".to_string()),
+            },
+        );
+        params.insert(
+            "beta2".to_string(),
+            ParameterSpec {
+                value: serde_json::json!(
+                    extract_numeric_param(optimizer_name, "beta2").unwrap_or(0.999)
+                ),
+                description: "Exponential decay rate for second moment estimates".to_string(),
+                parameter_type: "float".to_string(),
+                valid_range: Some("[0, 1)".to_string()),
+            },
+        );
     }
     // Add more parameter specifications for other optimizer types as needed
     params
@@ -823,7 +863,6 @@ fn get_family_description(family: &str) -> String {
         _ => format!("{} optimization methods", family),
     }
 }
-
 
 /// Escape special LaTeX characters
 pub(crate) fn escape_latex(text: &str) -> String {

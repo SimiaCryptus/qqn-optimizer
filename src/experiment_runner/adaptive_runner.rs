@@ -8,6 +8,7 @@ use itertools::Itertools;
 use log::{debug, info, trace, warn};
 use rand::prelude::*;
 use rand::rng;
+use serde::de::Unexpected::Float;
 use serde_json::json;
 use std::collections::HashMap;
 use std::f64::INFINITY;
@@ -16,7 +17,6 @@ use std::iter::Take;
 use std::slice::Iter;
 use std::sync::Arc;
 use std::time::Duration;
-use serde::de::Unexpected::Float;
 use tokio::sync::Semaphore;
 
 /// Detailed tracking of evolutionary events
@@ -247,17 +247,23 @@ impl AdaptiveExperimentRunner {
 
             // Convert best genomes to optimizers
             let mut optimizers: Vec<(String, Arc<dyn Optimizer>)> = Vec::new();
-            let best: Vec<OptimizerGenome> = all_best_genomes.iter().into_group_map_by(|x| x.optimizer_type.to_string()).values().flat_map(
-                |genomes| {
-                    let mut x1: Vec<OptimizerGenome> = genomes.iter().map(|x| (*x).clone()).collect_vec();
+            let best: Vec<OptimizerGenome> = all_best_genomes
+                .iter()
+                .into_group_map_by(|x| x.optimizer_type.to_string())
+                .values()
+                .flat_map(|genomes| {
+                    let mut x1: Vec<OptimizerGenome> =
+                        genomes.iter().map(|x| (*x).clone()).collect_vec();
                     x1.sort_by(|a, b| {
                         let fitness_a = a.fitness.unwrap_or(INFINITY);
                         let fitness_b = b.fitness.unwrap_or(INFINITY);
-                        fitness_a.partial_cmp(&fitness_b).unwrap_or(std::cmp::Ordering::Equal)
+                        fitness_a
+                            .partial_cmp(&fitness_b)
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     });
                     x1.into_iter().take(1) // Take the best (1) genome from each family
-                }
-            ).collect_vec();
+                })
+                .collect_vec();
             for (i, genome) in best.iter().enumerate() {
                 let family_name = format!("{:?}", genome.optimizer_type);
                 let name = format!(
@@ -273,10 +279,7 @@ impl AdaptiveExperimentRunner {
                 optimizers.push((name, genome.to_optimizer()));
             }
 
-            problem_best_optimizers.insert(
-                problem.get_name(),
-                optimizers
-            );
+            problem_best_optimizers.insert(problem.get_name(), optimizers);
         }
 
         Ok(problem_best_optimizers)
@@ -1250,10 +1253,16 @@ impl AdaptiveExperimentRunner {
 
         // Run comparative benchmarks for this problem
         let mut runner: ExperimentRunner = self.base_runner.clone();
-        runner.run_comparative_benchmarks(
-            problems,
-            evolved_optimizers.values().flatten().map(|x| (x.0.to_string(), x.1.clone())).collect_vec()
-        ).await?;
+        runner
+            .run_comparative_benchmarks(
+                problems,
+                evolved_optimizers
+                    .values()
+                    .flatten()
+                    .map(|x| (x.0.to_string(), x.1.clone()))
+                    .collect_vec(),
+            )
+            .await?;
 
         info!("All championship benchmarks completed successfully");
 

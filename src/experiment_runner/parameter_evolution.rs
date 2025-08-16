@@ -3,6 +3,7 @@ use crate::{
     AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod,
     Optimizer, QQNConfig, QQNOptimizer,
 };
+use anyhow::Error;
 use log::{debug, info, trace, warn};
 use plotters::prelude::LogScalable;
 use rand::prelude::*;
@@ -10,7 +11,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-use anyhow::Error;
 
 /// Represents a genome for an optimizer configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -469,7 +469,7 @@ impl ParameterEvolution {
                 // If both parents are the same, skip to avoid self-crossover
                 continue;
             }
-            
+
             let mut offspring = if self.rng.gen::<f64>() < self.crossover_rate {
                 crossover_count += 1;
                 self.crossover(&parent1, &parent2)
@@ -501,7 +501,10 @@ impl ParameterEvolution {
         new_population
     }
 
-    fn tournament_selection(&mut self, population: &[OptimizerGenome]) -> Result<OptimizerGenome, Error> {
+    fn tournament_selection(
+        &mut self,
+        population: &[OptimizerGenome],
+    ) -> Result<OptimizerGenome, Error> {
         if population.is_empty() {
             panic!("Cannot perform tournament selection on empty population");
         }
@@ -524,7 +527,9 @@ impl ParameterEvolution {
 
         if best.is_none() {
             warn!("No suitable genome found in tournament selection");
-            return Err(anyhow::anyhow!("Tournament selection failed to find a suitable genome"));
+            return Err(anyhow::anyhow!(
+                "Tournament selection failed to find a suitable genome"
+            ));
         }
         let selected = best.expect("Tournament selection failed to select a genome");
         trace!(
