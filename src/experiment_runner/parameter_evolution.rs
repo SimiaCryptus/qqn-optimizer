@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use anyhow::Error;
 
 /// Represents a genome for an optimizer configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -453,8 +454,22 @@ impl ParameterEvolution {
 
         while new_population.len() < self.population_size {
             let parent1 = self.tournament_selection(population);
+            if parent1.is_err() {
+                warn!("Tournament selection failed, skipping offspring creation");
+                continue;
+            }
+            let parent1 = parent1.unwrap();
             let parent2 = self.tournament_selection(population);
-
+            if parent2.is_err() {
+                warn!("Tournament selection failed, skipping offspring creation");
+                continue;
+            }
+            let parent2 = parent2.unwrap();
+            if parent1.id == parent2.id {
+                // If both parents are the same, skip to avoid self-crossover
+                continue;
+            }
+            
             let mut offspring = if self.rng.gen::<f64>() < self.crossover_rate {
                 crossover_count += 1;
                 self.crossover(&parent1, &parent2)
@@ -486,7 +501,7 @@ impl ParameterEvolution {
         new_population
     }
 
-    fn tournament_selection(&mut self, population: &[OptimizerGenome]) -> OptimizerGenome {
+    fn tournament_selection(&mut self, population: &[OptimizerGenome]) -> Result<OptimizerGenome, Error> {
         if population.is_empty() {
             panic!("Cannot perform tournament selection on empty population");
         }
@@ -507,13 +522,17 @@ impl ParameterEvolution {
             }
         }
 
+        if best.is_none() {
+            warn!("No suitable genome found in tournament selection");
+            return Err(anyhow::anyhow!("Tournament selection failed to find a suitable genome"));
+        }
         let selected = best.expect("Tournament selection failed to select a genome");
         trace!(
             "Tournament selection chose genome ID: {:?} with fitness: {:.6}",
             selected.id,
             best_fitness
         );
-        selected.clone()
+        Ok(selected.clone())
     }
 
     fn crossover(

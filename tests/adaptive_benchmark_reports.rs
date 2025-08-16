@@ -21,35 +21,37 @@ async fn test_adaptive_simple_problems() -> Result<(), Box<dyn Error + Send + Sy
     local
         .run_until(async move {
             // Use simple problems for quick testing
-            let problems = vec![
-                ProblemSpec::new(
-                    Arc::new(SphereFunction::new(10)),
-                    "Sphere-10".to_string(),
-                    Some(10),
-                    42,
-                ),
-                ProblemSpec::new(
-                    Arc::new(RosenbrockFunction::new(5)),
-                    "Rosenbrock-5".to_string(),
-                    Some(5),
-                    42,
-                ),
-            ];
+            // let problems = vec![
+            //     ProblemSpec::new(
+            //         Arc::new(SphereFunction::new(10)),
+            //         "Sphere-10".to_string(),
+            //         Some(10),
+            //         42,
+            //     ),
+            //     ProblemSpec::new(
+            //         Arc::new(RosenbrockFunction::new(5)),
+            //         "Rosenbrock-5".to_string(),
+            //         Some(5),
+            //         42,
+            //     ),
+            // ];
+            let problems = analytic_problems();
 
             // Test with a small population and few generations
             run_adaptive_benchmark(
                 "results/adaptive_simple_",
-                500, // max_evals
-                10,  // num_runs for final championship
+                1000, // max_evals
+                3,  // num_runs for final championship
                 Duration::from_secs(60),
-                50, // population_size
+                10, // population_size
                 50, // num_generations
-                3,  // evaluation_runs per genome
+                1,  // evaluation_runs per genome
                 problems,
                 vec![
                     OptimizerType::QQN,
                     OptimizerType::LBFGS,
                     OptimizerType::Adam,
+                    OptimizerType::TrustRegion,
                     OptimizerType::GD,
                 ],
             )

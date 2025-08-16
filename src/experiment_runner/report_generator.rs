@@ -39,6 +39,7 @@ use anyhow::Context;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use serde_json;
 
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
@@ -150,19 +151,21 @@ impl ReportGenerator {
             )?);
         }
         // Add optimizer family vs problem family comparison
-        html_content.push_str(&generate_family_vs_family_comparison_table(all_results)?);
-
-        if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
-            html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(
-                all_results,
-                &self.config,
-                &data_dir.to_string_lossy(),
-                use_optimizer_families,
-            )?);
-        }
+        //html_content.push_str(&generate_family_vs_family_comparison_table(all_results)?);
+        // if !all_results.is_empty() && all_results.iter().any(|(_, r)| !r.results.is_empty()) {
+        //     html_content.push_str(&self.statistical_analysis.generate_statistical_analysis(
+        //         all_results,
+        //         &self.config,
+        //         &data_dir.to_string_lossy(),
+        //         use_optimizer_families,
+        //     )?);
+        // }
 
         html_content.push_str(&generate_conclusions(all_results));
         html_content.push_str(&generate_html_footer(&self.config));
+        // Generate optimizer specifications section
+        html_content.push_str(&generate_optimizer_specifications_section(all_results)?);
+
 
         let md_path = Path::new(&output_dir).join("benchmark_report.md");
         println!("Saving Markdown report to: {}", md_path.display());
@@ -177,6 +180,9 @@ impl ReportGenerator {
         generate_csv_exports(&data_dir.to_string_lossy(), all_results)?;
         // Generate LaTeX tables
         generate_latex_tables(&latex_dir.to_string_lossy(), all_results, self).await?;
+        // Generate optimizer specifications JSON
+        generate_optimizer_specifications_json(&data_dir.to_string_lossy(), all_results)?;
+        
         // Generate comprehensive LaTeX document
         generate_comprehensive_latex_document(&self.config, all_results, &latex_dir, self)?;
         println!("Report generation complete!");
@@ -512,6 +518,312 @@ pub async fn generate_unified_reports(
     }
     Ok(())
 }
+/// Generate optimizer specifications section for the main report
+fn generate_optimizer_specifications_section(
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+) -> anyhow::Result<String> {
+    let mut content = String::from(
+        r#"
+## Optimizer Specifications
+This section provides detailed JSON specifications for all optimizers used in the benchmarks. These specifications can be used to reproduce the exact optimizer configurations.
+### Optimizer Configuration Details
+<details>
+<summary>Click to expand optimizer specifications (JSON format)</summary>
+```json
+"#,
+    );
+    // Collect unique optimizers and their configurations
+    let mut optimizer_specs = std::collections::HashMap::new();
+    for (_, results) in all_results {
+        for result in &results.results {
+            if !optimizer_specs.contains_key(&result.optimizer_name) {
+                // Create a specification for this optimizer
+                let spec = OptimizerSpecification {
+                    name: result.optimizer_name.clone(),
+                    family: get_optimizer_family(&result.optimizer_name),
+                    configuration: extract_optimizer_config(&result.optimizer_name),
+                    description: generate_optimizer_description(&result.optimizer_name),
+                    parameters: extract_optimizer_parameters(&result.optimizer_name),
+                };
+                optimizer_specs.insert(result.optimizer_name.clone(), spec);
+            }
+        }
+    }
+    // Convert to JSON and add to content
+    let json_specs = serde_json::to_string_pretty(&optimizer_specs)?;
+    content.push_str(&json_specs);
+    content.push_str(
+        r#"
+```
+</details>
+### Optimizer Family Summary
+<table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+<tr style="background-color: #f2f2f2;">
+<th style="border: 1px solid #ddd; padding: 8px;">Family</th>
+<th style="border: 1px solid #ddd; padding: 8px;">Count</th>
+<th style="border: 1px solid #ddd; padding: 8px;">Variants</th>
+<th style="border: 1px solid #ddd; padding: 8px;">Description</th>
+</tr>
+"#,
+    );
+    // Group by family and create summary table
+    let mut family_groups: std::collections::HashMap<String, Vec<&OptimizerSpecification>> = std::collections::HashMap::new();
+    for spec in optimizer_specs.values() {
+        family_groups.entry(spec.family.clone()).or_insert_with(Vec::new).push(spec);
+    }
+    for (family, specs) in family_groups {
+        let variant_names: Vec<String> = specs.iter().map(|s| s.name.clone()).collect();
+        let description = get_family_description(&family);
+        content.push_str(&format!(
+            r#"<tr>
+<td style="border: 1px solid #ddd; padding: 8px;">{}</td>
+<td style="border: 1px solid #ddd; padding: 8px;">{}</td>
+<td style="border: 1px solid #ddd; padding: 8px; font-size: 0.9em;">{}</td>
+<td style="border: 1px solid #ddd; padding: 8px; font-size: 0.9em;">{}</td>
+</tr>
+"#,
+            family,
+            specs.len(),
+            variant_names.join(", "),
+            description
+        ));
+    }
+    content.push_str("</table>");
+    content.push_str("\n**Note:** Complete optimizer specifications are available in `data/optimizer_specifications.json`\n");
+    Ok(content)
+}
+/// Generate standalone JSON file with optimizer specifications
+fn generate_optimizer_specifications_json(
+    output_dir: &str,
+    all_results: &[(&ProblemSpec, BenchmarkResults)],
+) -> anyhow::Result<()> {
+    let mut optimizer_specs = std::collections::HashMap::new();
+    for (_, results) in all_results {
+        for result in &results.results {
+            if !optimizer_specs.contains_key(&result.optimizer_name) {
+                let spec = OptimizerSpecification {
+                    name: result.optimizer_name.clone(),
+                    family: get_optimizer_family(&result.optimizer_name),
+                    configuration: extract_optimizer_config(&result.optimizer_name),
+                    description: generate_optimizer_description(&result.optimizer_name),
+                    parameters: extract_optimizer_parameters(&result.optimizer_name),
+                };
+                optimizer_specs.insert(result.optimizer_name.clone(), spec);
+            }
+        }
+    }
+    // Create comprehensive specification document
+    let comprehensive_spec = OptimizerSpecificationDocument {
+        metadata: SpecificationMetadata {
+            generated_at: chrono::Utc::now(),
+            total_optimizers: optimizer_specs.len(),
+            families: optimizer_specs.values()
+                .map(|s| s.family.clone())
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect(),
+        },
+        optimizers: optimizer_specs,
+    };
+    let json_content = serde_json::to_string_pretty(&comprehensive_spec)?;
+    let json_path = Path::new(output_dir).join("optimizer_specifications.json");
+    // Ensure parent directory exists
+    if let Some(parent) = json_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&json_path, json_content)
+        .with_context(|| format!("Failed to write optimizer specifications to: {}", json_path.display()))?;
+    println!("Generated optimizer specifications: {}", json_path.display());
+    Ok(())
+}
+/// Specification for a single optimizer
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct OptimizerSpecification {
+    name: String,
+    family: String,
+    configuration: serde_json::Value,
+    description: String,
+    parameters: std::collections::HashMap<String, ParameterSpec>,
+}
+/// Complete specification document
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct OptimizerSpecificationDocument {
+    metadata: SpecificationMetadata,
+    optimizers: std::collections::HashMap<String, OptimizerSpecification>,
+}
+/// Metadata for the specification document
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct SpecificationMetadata {
+    generated_at: chrono::DateTime<chrono::Utc>,
+    total_optimizers: usize,
+    families: Vec<String>,
+}
+/// Parameter specification
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct ParameterSpec {
+    value: serde_json::Value,
+    description: String,
+    parameter_type: String,
+    valid_range: Option<String>,
+}
+/// Extract optimizer configuration from name (parse configuration details)
+fn extract_optimizer_config(optimizer_name: &str) -> serde_json::Value {
+    // Parse optimizer name to extract configuration
+    // This is a simplified version - in practice, you'd want more sophisticated parsing
+    if optimizer_name.starts_with("QQN") {
+        // Extract QQN-specific configuration
+        serde_json::json!({
+            "type": "QQN",
+            "line_search": extract_line_search_config(optimizer_name),
+            "lbfgs_history": extract_numeric_param(optimizer_name, "history"),
+            "epsilon": extract_numeric_param(optimizer_name, "epsilon"),
+            "initial_step": extract_numeric_param(optimizer_name, "step")
+        })
+    } else if optimizer_name.starts_with("LBFGS") || optimizer_name.starts_with("L-BFGS") {
+        serde_json::json!({
+            "type": "L-BFGS",
+            "history_size": extract_numeric_param(optimizer_name, "history"),
+            "line_search": extract_line_search_config(optimizer_name),
+            "epsilon": extract_numeric_param(optimizer_name, "epsilon")
+        })
+    } else if optimizer_name.starts_with("Adam") {
+        serde_json::json!({
+            "type": "Adam",
+            "learning_rate": extract_numeric_param(optimizer_name, "lr"),
+            "beta1": extract_numeric_param(optimizer_name, "beta1"),
+            "beta2": extract_numeric_param(optimizer_name, "beta2"),
+            "epsilon": extract_numeric_param(optimizer_name, "epsilon")
+        })
+    } else if optimizer_name.starts_with("GD") {
+        serde_json::json!({
+            "type": "GD",
+            "learning_rate": extract_numeric_param(optimizer_name, "lr"),
+            "momentum": extract_numeric_param(optimizer_name, "momentum"),
+            "nesterov": optimizer_name.contains("nesterov")
+        })
+    } else if optimizer_name.starts_with("Trust") || optimizer_name.contains("TrustRegion") {
+        serde_json::json!({
+            "type": "TrustRegion",
+            "initial_radius": extract_numeric_param(optimizer_name, "radius"),
+            "max_radius": extract_numeric_param(optimizer_name, "max_radius"),
+            "eta_1": extract_numeric_param(optimizer_name, "eta1"),
+            "eta_2": extract_numeric_param(optimizer_name, "eta2")
+        })
+    } else {
+        serde_json::json!({
+            "type": "Unknown",
+            "raw_name": optimizer_name
+        })
+    }
+}
+/// Extract line search configuration from optimizer name
+fn extract_line_search_config(optimizer_name: &str) -> serde_json::Value {
+    if optimizer_name.contains("Backtracking") {
+        serde_json::json!({"method": "Backtracking"})
+    } else if optimizer_name.contains("StrongWolfe") {
+        serde_json::json!({"method": "StrongWolfe"})
+    } else if optimizer_name.contains("MoreThuente") {
+        serde_json::json!({"method": "MoreThuente"})
+    } else if optimizer_name.contains("GoldenSection") {
+        serde_json::json!({"method": "GoldenSection"})
+    } else if optimizer_name.contains("Bisection") {
+        serde_json::json!({"method": "Bisection"})
+    } else if optimizer_name.contains("CubicQuadratic") {
+        serde_json::json!({"method": "CubicQuadraticInterpolation"})
+    } else {
+        serde_json::json!({"method": "Default"})
+    }
+}
+/// Extract numeric parameter from optimizer name
+fn extract_numeric_param(optimizer_name: &str, param_name: &str) -> Option<f64> {
+    // Simple regex-like extraction - in practice you'd want more robust parsing
+    if let Some(start) = optimizer_name.find(param_name) {
+        let after_param = &optimizer_name[start + param_name.len()..];
+        if let Some(equals_pos) = after_param.find('=') {
+            let after_equals = &after_param[equals_pos + 1..];
+            // Find the end of the number (next non-numeric character)
+            let end = after_equals.find(|c: char| !c.is_ascii_digit() && c != '.' && c != 'e' && c != '-' && c != '+')
+                .unwrap_or(after_equals.len());
+            if let Ok(value) = after_equals[..end].parse::<f64>() {
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+/// Generate description for an optimizer
+fn generate_optimizer_description(optimizer_name: &str) -> String {
+    if optimizer_name.starts_with("QQN") {
+        "Quadratic Quasi-Newton optimizer with adaptive line search and L-BFGS-style history management".to_string()
+    } else if optimizer_name.starts_with("LBFGS") || optimizer_name.starts_with("L-BFGS") {
+        "Limited-memory Broyden-Fletcher-Goldfarb-Shanno quasi-Newton optimizer".to_string()
+    } else if optimizer_name.starts_with("Adam") {
+        "Adaptive Moment Estimation optimizer with bias correction".to_string()
+    } else if optimizer_name.starts_with("GD") {
+        "Gradient Descent optimizer with optional momentum".to_string()
+    } else if optimizer_name.starts_with("Trust") || optimizer_name.contains("TrustRegion") {
+        "Trust Region optimizer with quadratic model approximation".to_string()
+    } else {
+        format!("Optimizer: {}", optimizer_name)
+    }
+}
+/// Extract parameter specifications for an optimizer
+fn extract_optimizer_parameters(optimizer_name: &str) -> std::collections::HashMap<String, ParameterSpec> {
+    let mut params = std::collections::HashMap::new();
+    if optimizer_name.starts_with("QQN") {
+        params.insert("c1".to_string(), ParameterSpec {
+            value: serde_json::json!(extract_numeric_param(optimizer_name, "c1").unwrap_or(1e-4)),
+            description: "Armijo condition parameter for line search".to_string(),
+            parameter_type: "float".to_string(),
+            valid_range: Some("(0, 1)".to_string()),
+        });
+        params.insert("c2".to_string(), ParameterSpec {
+            value: serde_json::json!(extract_numeric_param(optimizer_name, "c2").unwrap_or(0.9)),
+            description: "Wolfe condition parameter for line search".to_string(),
+            parameter_type: "float".to_string(),
+            valid_range: Some("(c1, 1)".to_string()),
+        });
+        params.insert("lbfgs_history".to_string(), ParameterSpec {
+            value: serde_json::json!(extract_numeric_param(optimizer_name, "history").unwrap_or(10.0) as i32),
+            description: "Number of previous iterations to store for L-BFGS approximation".to_string(),
+            parameter_type: "integer".to_string(),
+            valid_range: Some("[1, 50]".to_string()),
+        });
+    } else if optimizer_name.starts_with("Adam") {
+        params.insert("learning_rate".to_string(), ParameterSpec {
+            value: serde_json::json!(extract_numeric_param(optimizer_name, "lr").unwrap_or(0.001)),
+            description: "Learning rate for parameter updates".to_string(),
+            parameter_type: "float".to_string(),
+            valid_range: Some("(0, 1]".to_string()),
+        });
+        params.insert("beta1".to_string(), ParameterSpec {
+            value: serde_json::json!(extract_numeric_param(optimizer_name, "beta1").unwrap_or(0.9)),
+            description: "Exponential decay rate for first moment estimates".to_string(),
+            parameter_type: "float".to_string(),
+            valid_range: Some("[0, 1)".to_string()),
+        });
+        params.insert("beta2".to_string(), ParameterSpec {
+            value: serde_json::json!(extract_numeric_param(optimizer_name, "beta2").unwrap_or(0.999)),
+            description: "Exponential decay rate for second moment estimates".to_string(),
+            parameter_type: "float".to_string(),
+            valid_range: Some("[0, 1)".to_string()),
+        });
+    }
+    // Add more parameter specifications for other optimizer types as needed
+    params
+}
+/// Get description for an optimizer family
+fn get_family_description(family: &str) -> String {
+    match family {
+        "QQN" => "Quadratic Quasi-Newton methods with adaptive line search".to_string(),
+        "L-BFGS" => "Limited-memory quasi-Newton methods".to_string(),
+        "Adam" => "Adaptive moment estimation methods".to_string(),
+        "GD" => "Gradient descent methods with optional momentum".to_string(),
+        "Trust Region" => "Trust region methods with quadratic models".to_string(),
+        _ => format!("{} optimization methods", family),
+    }
+}
+
 
 /// Escape special LaTeX characters
 pub(crate) fn escape_latex(text: &str) -> String {
