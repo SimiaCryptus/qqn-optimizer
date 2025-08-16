@@ -1080,6 +1080,9 @@ impl ProblemSpec {
             .clone()
             .unwrap_or_else(|| self.problem.name().to_string())
     }
+    pub fn get_family(&self) -> String {
+        self.family.clone()
+    }
 }
 
 pub fn new_initial_point(

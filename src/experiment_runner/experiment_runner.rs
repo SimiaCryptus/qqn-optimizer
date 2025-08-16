@@ -451,6 +451,8 @@ pub fn get_optimizer_family(optimizer_name: &str) -> String {
         "L-BFGS".to_string()
     } else if optimizer_name.starts_with("Trust Region") {
         "Trust Region".to_string()
+    } else if optimizer_name.starts_with("TrustRegion") {
+        "Trust Region".to_string()
     } else if optimizer_name.starts_with("GD") {
         "GD".to_string()
     } else if optimizer_name.starts_with("Adam") {

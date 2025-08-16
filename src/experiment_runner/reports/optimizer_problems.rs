@@ -87,6 +87,7 @@ pub fn generate_problem_table_content(
         ));
     }
 
+    // Canonical ranking sort
     if is_no_threshold_mode() {
         // In no-threshold mode, sort by best value
         perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
@@ -346,7 +347,6 @@ pub fn generate_problem_section(
             } else {
                 (f64::NAN, f64::NAN, f64::NAN)
             };
-
         let std_final = {
             let variance = final_values
                 .iter()
@@ -384,6 +384,7 @@ pub fn generate_problem_section(
         ));
     }
 
+    // Canonical ranking sort
     if is_no_threshold_mode() {
         // In no-threshold mode, sort by best value
         perf_data.sort_by(|a, b| a.3.total_cmp(&b.3));
@@ -729,7 +730,13 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
     } else {
         // Sort by success rate first, then by mean final value
         perf_data.sort_by(|a, b| match b.2.total_cmp(&a.2) {
-            std::cmp::Ordering::Equal => a.1.total_cmp(&b.1),
+            std::cmp::Ordering::Equal => {
+                if (b.2 > 0.0) {
+                    a.3.total_cmp(&b.3)
+                } else {
+                    a.1.total_cmp(&b.1)
+                }
+            }
             other => other,
         });
     }

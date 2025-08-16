@@ -587,17 +587,19 @@ pub(crate) fn calculate_family_performance_data(
         // Sort by success rate first, then by mean final value, then by total evaluations
         perf_data.sort_by(|a, b| {
             if is_no_threshold_mode() {
-                // In no-threshold mode, sort by best value, then by total evaluations
-                match a.2.total_cmp(&b.2) {
-                    std::cmp::Ordering::Equal => a.3.total_cmp(&b.3),
-                    ord => ord,
-                }
+                // In no-threshold mode, sort by best value (mean_final)
+                a.2.total_cmp(&b.2)
             } else {
+                // Sort by success rate first, then by total evaluations
+                use std::cmp::Ordering;
                 match b.1.total_cmp(&a.1) {
-                    std::cmp::Ordering::Equal => match a.2.total_cmp(&b.2) {
-                        std::cmp::Ordering::Equal => a.3.total_cmp(&b.3),
-                        ord => ord,
-                    },
+                    Ordering::Equal => {
+                        if b.1 > 0.0 {
+                            a.3.total_cmp(&b.3)
+                        } else {
+                            a.2.total_cmp(&b.2)
+                        }
+                    }
                     ord => ord,
                 }
             }

@@ -1157,9 +1157,13 @@ pub(crate) fn shorten_optimizer_name(name: &str, max_length: usize) -> String {
             .replace("Quadratic", "Quad")
             .replace("Trust Region ", "")
             .replace("Trust Region-", "")
+            .replace("TrustRegion-", "")
             .replace("Adam-", "")
             .replace("GD-", "")
             .replace("L-BFGS-", "")
+            .replace("LBFGS-", "")
+            .replace("Evolved-", "")
+            .replace("Family-", "")
             .replace("QQN-", "");
 
         if shortened.len() <= max_length {

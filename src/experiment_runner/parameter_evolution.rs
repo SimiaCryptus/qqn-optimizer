@@ -15,6 +15,9 @@ use std::sync::Arc;
 /// Represents a genome for an optimizer configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OptimizerGenome {
+    pub success_rate: Option<f64>,
+    pub mean_final_value: Option<f64>,
+    pub total_evaluations: Option<usize>,
     pub optimizer_type: OptimizerType,
     pub parameters: HashMap<String, f64>,
     pub fitness: Option<f64>,
@@ -67,6 +70,9 @@ impl OptimizerGenome {
             parameters
         );
         Self {
+            success_rate: None,
+            mean_final_value: None,
+            total_evaluations: None,
             optimizer_type,
             parameters,
             fitness: None,
@@ -565,6 +571,9 @@ impl ParameterEvolution {
 
         // Create offspring with selected type
         let mut offspring = OptimizerGenome {
+            success_rate: None,
+            mean_final_value: None,
+            total_evaluations: None,
             optimizer_type: offspring_type.clone(),
             parameters: HashMap::new(),
             fitness: None,
@@ -849,6 +858,9 @@ mod tests {
 
         for i in 0..5 {
             let mut genome = OptimizerGenome {
+                success_rate: None,
+                mean_final_value: None,
+                total_evaluations: None,
                 optimizer_type: OptimizerType::QQN,
                 parameters: HashMap::new(),
                 fitness: Some(i as f64),

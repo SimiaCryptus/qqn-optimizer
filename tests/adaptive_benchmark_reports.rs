@@ -15,7 +15,8 @@ use tokio::task::LocalSet;
 #[tokio::test]
 async fn test_adaptive_simple_problems() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
-    enable_no_threshold_mode();
+    disable_no_threshold_mode();
+    // enable_no_threshold_mode();
 
     let local = LocalSet::new();
     local

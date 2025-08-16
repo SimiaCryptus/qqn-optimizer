@@ -1,7 +1,7 @@
 use super::{ExperimentRunner, OptimizerGenome, ParameterEvolution};
 use crate::benchmarks::evaluation::{
-    new_initial_point, BenchmarkConfig, BenchmarkResults, BenchmarkRunner, DurationWrapper,
-    ProblemSpec,
+    is_no_threshold_mode, new_initial_point, BenchmarkConfig, BenchmarkResults, BenchmarkRunner,
+    DurationWrapper, ProblemSpec,
 };
 use crate::Optimizer;
 use itertools::Itertools;
@@ -184,15 +184,30 @@ impl AdaptiveExperimentRunner {
         self.base_runner.validate_problems(&problems).await?;
         info!("Problem validation completed successfully");
 
-        let mut problem_best_optimizers = HashMap::new();
+        // Group problems by family
+        let mut problem_families: HashMap<String, Vec<ProblemSpec>> = HashMap::new();
+        for problem in problems {
+            problem_families
+                .entry(problem.family.clone())
+                .or_insert_with(Vec::new)
+                .push(problem);
+        }
 
-        // Evolve parameters for each problem independently
-        for (problem_idx, problem) in problems.iter().enumerate() {
+        info!("Grouped problems into {} families", problem_families.len());
+        for (family, probs) in &problem_families {
+            info!("Family '{}': {} problems", family, probs.len());
+        }
+
+        let mut family_best_optimizers = HashMap::new();
+
+        // Evolve parameters for each problem family
+        for (family_idx, (family_name, family_problems)) in problem_families.iter().enumerate() {
             info!(
-                "Problem {}/{}: {}",
-                problem_idx + 1,
-                problems.len(),
-                problem.get_name()
+                "Family {}/{}: {} ({} problems)",
+                family_idx + 1,
+                problem_families.len(),
+                family_name,
+                family_problems.len()
             );
 
             // Evolve each optimizer family separately for this problem
@@ -200,34 +215,32 @@ impl AdaptiveExperimentRunner {
 
             for optimizer_type in &optimizer_types {
                 info!(
-                    "Evolving {:?} family for problem '{}'",
-                    optimizer_type,
-                    problem.get_name()
+                    "Evolving {:?} optimizer for problem family '{}'",
+                    optimizer_type, family_name
                 );
 
                 let family_best = self
-                    .evolve_family_for_problem(
-                        problem.clone(),
+                    .evolve_optimizer_for_problem_family(
+                        family_problems.clone(),
                         optimizer_type.clone(),
                         &evolution_dir,
+                        family_name,
                     )
                     .await?;
 
                 info!(
-                    "Found {} best {:?} configurations for problem '{}'",
+                    "Found {} best {:?} configurations for problem family '{}'",
                     family_best.len(),
                     optimizer_type,
-                    problem.get_name()
+                    family_name
                 );
                 // Add selected optimizer details
                 all_best_genomes.extend(family_best.clone());
 
                 // Save detailed selected optimizers JSON
                 let outdir = format!(
-                    "{}/{}/{}",
-                    evolution_dir,
-                    problem.get_name(),
-                    optimizer_type
+                    "{}/family_{}/{}",
+                    evolution_dir, family_name, optimizer_type
                 );
                 fs::create_dir_all(outdir.to_string());
                 let selected_json_path =
@@ -241,9 +254,8 @@ impl AdaptiveExperimentRunner {
                 );
             }
 
-            let problem_name = problem.get_name();
-            info!("Evolution completed for problem '{}', found {} total best genomes across all families",
-                  problem.get_name(), all_best_genomes.len());
+            info!("Evolution completed for problem family '{}', found {} total best genomes across all optimizer types",
+                  family_name, all_best_genomes.len());
 
             // Convert best genomes to optimizers
             let mut optimizers: Vec<(String, Arc<dyn Optimizer>)> = Vec::new();
@@ -265,11 +277,11 @@ impl AdaptiveExperimentRunner {
                 })
                 .collect_vec();
             for (i, genome) in best.iter().enumerate() {
-                let family_name = format!("{:?}", genome.optimizer_type);
+                let optimizer_family_name = format!("{:?}", genome.optimizer_type);
                 let name = format!(
-                    "{}-Evolved-{}-{}",
+                    "{}-Evolved-Family-{}-{}",
+                    optimizer_family_name,
                     family_name,
-                    problem_name,
                     genome.id.unwrap_or(0)
                 );
                 info!(
@@ -279,7 +291,17 @@ impl AdaptiveExperimentRunner {
                 optimizers.push((name, genome.to_optimizer()));
             }
 
-            problem_best_optimizers.insert(problem.get_name(), optimizers);
+            family_best_optimizers.insert(family_name.clone(), optimizers);
+        }
+
+        // Now map the family optimizers to each individual problem for compatibility
+        let mut problem_best_optimizers = HashMap::new();
+        for (family_name, family_problems) in problem_families {
+            if let Some(family_optimizers) = family_best_optimizers.get(&family_name) {
+                for problem in family_problems {
+                    problem_best_optimizers.insert(problem.get_name(), family_optimizers.clone());
+                }
+            }
         }
 
         Ok(problem_best_optimizers)
@@ -313,16 +335,16 @@ impl AdaptiveExperimentRunner {
         }
     }
 
-    async fn evolve_family_for_problem(
+    async fn evolve_optimizer_for_problem_family(
         &self,
-        problem: ProblemSpec,
+        family_problems: Vec<ProblemSpec>,
         optimizer_type: super::parameter_evolution::OptimizerType,
         evolution_dir: &str,
+        family_name: &str,
     ) -> anyhow::Result<Vec<OptimizerGenome>> {
         info!(
-            "Starting evolution for problem: {} with optimizer family: {:?}",
-            problem.get_name(),
-            optimizer_type
+            "Starting evolution for problem family: {} with optimizer type: {:?}",
+            family_name, optimizer_type
         );
 
         let mut evolution = ParameterEvolution::new(self.population_size, 42);
@@ -330,13 +352,13 @@ impl AdaptiveExperimentRunner {
         info!("Initialized population of {} individuals", population.len());
 
         // Initialize evolution tracker
-        let family_name = format!("{:?}", optimizer_type);
+        let optimizer_family_name = format!("{:?}", optimizer_type);
         let mut tracker = EvolutionTracker::new(
-            problem.get_name(),
+            family_name.to_string(),
             self.population_size,
             self.num_generations,
             &[optimizer_type.clone()],
-            &HashMap::from([(family_name.clone(), 1.0)]), // Single family gets 100%
+            &HashMap::from([(optimizer_family_name.clone(), 1.0)]), // Single optimizer type gets 100%
         );
         debug!("Evolution tracker initialized");
 
@@ -349,8 +371,10 @@ impl AdaptiveExperimentRunner {
         self.track_initial_population(&mut tracker, &population);
         debug!("Initial population tracking completed");
 
-        let problem_evolution_dir =
-            format!("{}/{}/{}", evolution_dir, problem.get_name(), family_name);
+        let problem_evolution_dir = format!(
+            "{}/family_{}/{}",
+            evolution_dir, family_name, optimizer_family_name
+        );
         fs::create_dir_all(problem_evolution_dir.to_string())?;
         info!(
             "Created family-specific evolution directory: {}",
@@ -359,18 +383,23 @@ impl AdaptiveExperimentRunner {
 
         for generation in 0..self.num_generations {
             info!(
-                "Generation {}/{} for problem {} - {:?} family",
+                "Generation {}/{} for problem family {} - {:?} optimizer",
                 generation + 1,
                 self.num_generations,
-                problem.get_name(),
+                family_name,
                 optimizer_type
             );
             let start_time = std::time::Instant::now();
 
             // Evaluate fitness of population
             debug!("Starting fitness evaluation for generation {}", generation);
-            self.evaluate_population(&mut population, &problem, &mut tracker, generation)
-                .await?;
+            self.evaluate_population_on_family(
+                &mut population,
+                &family_problems,
+                &mut tracker,
+                generation,
+            )
+            .await?;
             debug!("Fitness evaluation completed in {:?}", start_time.elapsed());
 
             // Log best fitness
@@ -383,7 +412,7 @@ impl AdaptiveExperimentRunner {
                 population.iter().filter_map(|g| g.fitness).sum::<f64>() / population.len() as f64;
 
             info!(
-                "{:?} family - Generation {} results - Best: {:.6e}, Avg: {:.6e}",
+                "{:?} optimizer - Generation {} results - Best: {:.6e}, Avg: {:.6e}",
                 optimizer_type, generation, best_fitness, avg_fitness
             );
 
@@ -417,10 +446,6 @@ impl AdaptiveExperimentRunner {
                 start_time.elapsed()
             );
         }
-        info!(
-            "All generations completed for problem: {}",
-            problem.get_name()
-        );
 
         // Save comprehensive evolution report
         info!("Generating comprehensive evolution report");
@@ -447,6 +472,9 @@ impl AdaptiveExperimentRunner {
                     genome.id
                 );
                 genome.fitness = Some(f64::INFINITY);
+                genome.success_rate = Some(0.0);
+                genome.mean_final_value = Some(f64::INFINITY);
+                genome.total_evaluations = Some(usize::MAX);
             } else if genome.fitness.unwrap() < f64::INFINITY {
                 has_valid_fitness = true;
             }
@@ -462,38 +490,68 @@ impl AdaptiveExperimentRunner {
             for i in 0..top_n.min(3) {
                 if i < sorted_population.len() {
                     let genome = &mut sorted_population[i];
-                    match Self::evaluate_genome(
+                    match Self::evaluate_genome_with_metrics(
                         genome.to_optimizer(),
-                        problem.clone(),
+                        (&family_problems[0]).clone().clone(),
                         self.config.clone(),
                         1, // Just one run for emergency evaluation
                     )
                     .await
                     {
-                        Ok(fitness) => {
+                        Ok((fitness, success_rate, mean_value, eval_count)) => {
                             info!(
                                 "Emergency evaluation {} succeeded: fitness = {:.6e}",
                                 i, fitness
                             );
                             genome.fitness = Some(fitness);
+                            genome.success_rate = Some(success_rate);
+                            genome.mean_final_value = Some(mean_value);
+                            genome.total_evaluations = Some(eval_count);
                             has_valid_fitness = true;
                         }
                         Err(e) => {
                             warn!("Emergency evaluation {} failed: {}", i, e);
                             genome.fitness = Some(f64::INFINITY);
+                            genome.success_rate = Some(0.0);
+                            genome.mean_final_value = Some(f64::INFINITY);
+                            genome.total_evaluations = Some(usize::MAX);
                         }
                     }
                 }
             }
         }
 
-        // Sort by fitness (lower is better)
+        // Sort using the sophisticated logic: success rate first, then mean final value, then total evaluations
         sorted_population.sort_by(|a, b| {
-            let fitness_a = a.fitness.unwrap_or(f64::INFINITY);
-            let fitness_b = b.fitness.unwrap_or(f64::INFINITY);
-            fitness_a
-                .partial_cmp(&fitness_b)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            if is_no_threshold_mode() {
+                // In no-threshold mode, sort by mean final value, then by total evaluations
+                let mean_a = a.mean_final_value.unwrap_or(f64::INFINITY);
+                let mean_b = b.mean_final_value.unwrap_or(f64::INFINITY);
+                let evals_a = a.total_evaluations.unwrap_or(usize::MAX) as f64;
+                let evals_b = b.total_evaluations.unwrap_or(usize::MAX) as f64;
+
+                match mean_a.total_cmp(&mean_b) {
+                    std::cmp::Ordering::Equal => evals_a.total_cmp(&evals_b),
+                    ord => ord,
+                }
+            } else {
+                // Sort by success rate first (higher is better), then by mean final value (lower is better), then by total evaluations (lower is better)
+                let success_a = a.success_rate.unwrap_or(0.0);
+                let success_b = b.success_rate.unwrap_or(0.0);
+                let mean_a = a.mean_final_value.unwrap_or(f64::INFINITY);
+                let mean_b = b.mean_final_value.unwrap_or(f64::INFINITY);
+                let evals_a = a.total_evaluations.unwrap_or(usize::MAX) as f64;
+                let evals_b = b.total_evaluations.unwrap_or(usize::MAX) as f64;
+
+                match success_b.total_cmp(&success_a) {
+                    // Note: reversed for success rate (higher is better)
+                    std::cmp::Ordering::Equal => match mean_a.total_cmp(&mean_b) {
+                        std::cmp::Ordering::Equal => evals_a.total_cmp(&evals_b),
+                        ord => ord,
+                    },
+                    ord => ord,
+                }
+            }
         });
 
         // Take top N - but ensure we have at least top_n results
@@ -515,7 +573,7 @@ impl AdaptiveExperimentRunner {
                 // Try to evaluate the fallback genome
                 match Self::evaluate_genome(
                     fallback_genome.to_optimizer(),
-                    problem.clone(),
+                    (&family_problems[0]).clone(),
                     self.config.clone(),
                     1,
                 )
@@ -563,12 +621,13 @@ impl AdaptiveExperimentRunner {
             let parent_ids = genome.parent_ids.clone();
             let total_evaluations = genome.generation;
             if let Some(individual_id) = genome.id {
+                // Representative problem for naming
                 let optimizer = SelectedOptimizer {
-                    problem_name: problem.get_name(),
+                    problem_name: (&family_problems[0]).get_family(),
                     optimizer_name: format!(
                         "{:?}-Evolved-{}-{}",
                         genome.optimizer_type,
-                        problem.get_name(),
+                        (&family_problems[0]).get_family(),
                         individual_id
                     ),
                     family: format!("{:?}", genome.optimizer_type),
@@ -597,6 +656,201 @@ impl AdaptiveExperimentRunner {
         fs::write(selected_filename, selected_json)?;
 
         Ok(best_genomes)
+    }
+
+    async fn evaluate_population_on_family(
+        &self,
+        population: &mut [OptimizerGenome],
+        family_problems: &[ProblemSpec],
+        tracker: &mut EvolutionTracker,
+        generation: usize,
+    ) -> anyhow::Result<()> {
+        // Always evaluate all individuals to ensure fair comparison
+        let total_to_evaluate = population.len();
+        info!(
+            "Evaluating {} individuals in generation {} on {} problems",
+            total_to_evaluate,
+            generation,
+            family_problems.len()
+        );
+
+        let semaphore = Arc::new(Semaphore::new(8)); // Limit concurrent evaluations
+        let mut tasks = Vec::new();
+        let mut evaluated_count = 0;
+
+        for (idx, genome) in population.iter().enumerate() {
+            evaluated_count += 1;
+            debug!(
+                "Queuing evaluation for individual {} ({}/{})",
+                idx, evaluated_count, total_to_evaluate
+            );
+
+            // Track evaluation event
+            tracker.add_event(EvolutionaryEvent {
+                generation,
+                event_type: EventType::Evaluation,
+                timestamp: chrono::Utc::now(),
+                individual_id: genome.id.unwrap_or(idx),
+                parent_ids: vec![],
+                fitness_before: genome.fitness,
+                fitness_after: None,
+                parameters: genome.get_parameters(),
+                family: format!("{:?}", genome.optimizer_type),
+                details: format!(
+                    "Starting fitness evaluation for individual {} on {} problems",
+                    idx,
+                    family_problems.len()
+                ),
+            });
+
+            let semaphore = semaphore.clone();
+            let optimizer = genome.to_optimizer();
+            let problems = family_problems.to_vec();
+            let config = self.config.clone();
+            let evaluation_runs = self.evaluation_runs;
+
+            let task = tokio::spawn(async move {
+                let _permit = semaphore.acquire().await.unwrap();
+                trace!(
+                    "Starting evaluation for individual {} on problem family",
+                    idx
+                );
+
+                // Evaluate on all problems in the family and average the fitness
+                let mut total_fitness = 0.0;
+                let mut valid_evaluations = 0;
+                let mut total_success_rate = 0.0;
+                let mut total_mean_value = 0.0;
+                let mut total_eval_count = 0;
+
+                for problem in problems.iter() {
+                    match Self::evaluate_genome_with_metrics(
+                        optimizer.clone(),
+                        problem.clone(),
+                        config.clone(),
+                        evaluation_runs,
+                    )
+                    .await
+                    {
+                        Ok((fitness, success_rate, mean_value, eval_count)) => {
+                            total_fitness += fitness;
+                            total_success_rate += success_rate;
+                            total_mean_value += mean_value;
+                            total_eval_count += eval_count;
+                            valid_evaluations += 1;
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to evaluate on problem {}: {}",
+                                problem.get_name(),
+                                e
+                            );
+                        }
+                    }
+                }
+
+                if valid_evaluations > 0 {
+                    let avg_fitness = total_fitness / valid_evaluations as f64;
+                    let avg_success_rate = total_success_rate / valid_evaluations as f64;
+                    let avg_mean_value = total_mean_value / valid_evaluations as f64;
+                    let avg_eval_count = total_eval_count / valid_evaluations;
+                    Ok((
+                        idx,
+                        avg_fitness,
+                        avg_success_rate,
+                        avg_mean_value,
+                        avg_eval_count,
+                    ))
+                } else {
+                    Err(anyhow::anyhow!(
+                        "No valid evaluations for individual {}",
+                        idx
+                    ))
+                }
+            });
+
+            tasks.push(task);
+        }
+
+        info!("Waiting for {} evaluation tasks to complete", tasks.len());
+        let mut completed_count = 0;
+        let mut successful_evaluations = 0;
+
+        // Collect results
+        for task in tasks {
+            match task.await {
+                Ok(Ok((idx, fitness, success_rate, mean_value, eval_count))) => {
+                    completed_count += 1;
+                    successful_evaluations += 1;
+                    let genome = &population[idx];
+                    let old_fitness = genome.fitness;
+                    debug!(
+                        "Individual {} evaluation completed ({}/{}): fitness = {:.6e}",
+                        idx, completed_count, total_to_evaluate, fitness
+                    );
+
+                    // Track evaluation completion
+                    tracker.add_event(EvolutionaryEvent {
+                        generation,
+                        event_type: EventType::Evaluation,
+                        timestamp: chrono::Utc::now(),
+                        individual_id: genome.id.unwrap_or(idx),
+                        parent_ids: vec![],
+                        fitness_before: old_fitness,
+                        fitness_after: Some(fitness),
+                        parameters: genome.get_parameters(),
+                        family: format!("{:?}", genome.optimizer_type),
+                        details: format!("Completed fitness evaluation: {:.6e}", fitness),
+                    });
+
+                    // Update individual record
+                    tracker.update_individual_fitness(
+                        genome.id.unwrap_or(idx),
+                        generation,
+                        fitness,
+                    );
+                    population[idx].fitness = Some(fitness);
+                    population[idx].success_rate = Some(success_rate);
+                    population[idx].mean_final_value = Some(mean_value);
+                    population[idx].total_evaluations = Some(eval_count);
+                }
+                Ok(Err(e)) => {
+                    completed_count += 1;
+                    warn!(
+                        "Failed to evaluate individual ({}/{}): {}",
+                        completed_count, total_to_evaluate, e
+                    );
+                }
+                Err(e) => {
+                    completed_count += 1;
+                    warn!(
+                        "Evaluation task {} panicked ({}/{}): {}",
+                        completed_count - 1,
+                        completed_count,
+                        total_to_evaluate,
+                        e
+                    );
+                }
+            }
+        }
+
+        // Ensure all genomes have fitness values
+        for (idx, genome) in population.iter_mut().enumerate() {
+            if genome.fitness.is_none() {
+                warn!(
+                    "Genome {} still without fitness after evaluation, assigning penalty",
+                    idx
+                );
+                genome.fitness = Some(f64::INFINITY);
+            }
+        }
+
+        info!(
+            "Population evaluation completed: {}/{} successful evaluations",
+            successful_evaluations, total_to_evaluate
+        );
+
+        Ok(())
     }
 
     async fn evaluate_population(
@@ -1042,16 +1296,21 @@ impl AdaptiveExperimentRunner {
         new_population
     }
 
-    async fn evaluate_genome(
+    async fn evaluate_genome_with_metrics(
         optimizer: Arc<dyn Optimizer>,
         problem: ProblemSpec,
         config: BenchmarkConfig,
         num_runs: usize,
-    ) -> anyhow::Result<f64> {
-        trace!("Starting genome evaluation with {} runs", num_runs);
+    ) -> anyhow::Result<(f64, f64, f64, usize)> {
+        trace!(
+            "Starting genome evaluation with metrics for {} runs",
+            num_runs
+        );
         let runner = BenchmarkRunner::new(config.clone());
         let mut total_fitness = 0.0;
         let mut successful_runs = 0;
+        let mut total_final_value = 0.0;
+        let mut total_iterations = 0;
         let mut rng = StdRng::seed_from_u64(42);
 
         for run_id in 0..num_runs {
@@ -1066,8 +1325,86 @@ impl AdaptiveExperimentRunner {
                 )
                 .await?;
 
+            total_iterations += result.iterations;
+
             // Fitness is combination of final value and convergence speed
             let fitness = if result.best_value.is_finite() {
+                total_final_value += result.best_value;
+                let value_component = result.best_value.abs().ln().max(-20.0);
+                let speed_component = (result.iterations as f64) / (config.max_iterations as f64);
+                value_component + 0.1 * speed_component
+            } else {
+                trace!("Run {} failed to converge", run_id);
+                1e10 // Penalty for non-convergence
+            };
+
+            if fitness < 1e9 {
+                total_fitness += fitness;
+                successful_runs += 1;
+                trace!("Run {} successful: fitness = {:.6e}", run_id, fitness);
+            } else {
+                trace!("Run {} failed: fitness = {:.6e}", run_id, fitness);
+            }
+        }
+
+        // Calculate metrics
+        let final_fitness = if successful_runs > 0 {
+            total_fitness / (successful_runs as f64) + (num_runs - successful_runs) as f64 * 100.0
+        } else {
+            f64::INFINITY
+        };
+
+        let success_rate = successful_runs as f64 / num_runs as f64;
+        let mean_final_value = if successful_runs > 0 {
+            total_final_value / successful_runs as f64
+        } else {
+            f64::INFINITY
+        };
+        let avg_evaluations = total_iterations / num_runs.max(1);
+
+        debug!(
+            "Genome evaluation completed: {}/{} successful runs, fitness: {:.6e}, success_rate: {:.2}%, mean_value: {:.6e}",
+            successful_runs, num_runs, final_fitness, success_rate * 100.0, mean_final_value
+        );
+
+        Ok((
+            final_fitness,
+            success_rate,
+            mean_final_value,
+            avg_evaluations,
+        ))
+    }
+
+    async fn evaluate_genome(
+        optimizer: Arc<dyn Optimizer>,
+        problem: ProblemSpec,
+        config: BenchmarkConfig,
+        num_runs: usize,
+    ) -> anyhow::Result<f64> {
+        trace!("Starting genome evaluation with {} runs", num_runs);
+        let runner = BenchmarkRunner::new(config.clone());
+        let mut total_fitness = 0.0;
+        let mut successful_runs = 0;
+        let mut total_final_value = 0.0;
+        let mut total_iterations = 0;
+        let mut rng = StdRng::seed_from_u64(42);
+
+        for run_id in 0..num_runs {
+            trace!("Starting evaluation run {}/{}", run_id + 1, num_runs);
+            let result = runner
+                .run_single_benchmark(
+                    &problem,
+                    &mut optimizer.clone_box(),
+                    run_id,
+                    "eval",
+                    new_initial_point(&problem, config.initial_point_noise, &mut rng),
+                )
+                .await?;
+            total_iterations += result.iterations;
+
+            // Fitness is combination of final value and convergence speed
+            let fitness = if result.best_value.is_finite() {
+                total_final_value += result.best_value;
                 let value_component = result.best_value.abs().ln().max(-20.0);
                 let speed_component = (result.iterations as f64) / (config.max_iterations as f64);
                 value_component + 0.1 * speed_component
