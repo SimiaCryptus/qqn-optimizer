@@ -14,7 +14,7 @@ const WORST_COLOR_LATEX_INLINE: &str = "\\cellcolor{red!15}";
 const MAX_NAME_SIZE: usize = 14;
 
 /// Generate family vs family comparison LaTeX table
-pub async fn generate_family_vs_family_latex_table(
+pub fn generate_family_vs_family_latex_table(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     latex_dir: &Path,
 ) -> anyhow::Result<()> {
@@ -682,7 +682,7 @@ mod tests {
             .map(|(spec, results)| (spec, results.clone()))
             .collect();
         // Generate LaTeX table
-        generate_family_vs_family_latex_table(&test_data_refs, target_dir).await?;
+        generate_family_vs_family_latex_table(&test_data_refs, target_dir)?;
         // Generate HTML table content
         let html_content = generate_family_vs_family_comparison_table(&test_data_refs)?;
         let html_file_path = target_dir.join("family_vs_family_comparison.html".to_string());

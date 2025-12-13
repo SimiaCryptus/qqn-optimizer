@@ -100,7 +100,7 @@ impl ReportGenerator {
         }
     }
 
-    pub async fn generate_main_report(
+    pub fn generate_main_report(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         use_optimizer_families: bool,
@@ -115,8 +115,8 @@ impl ReportGenerator {
             ReportFormat::Markdown,
             ReportFormat::Csv,
         ];
-        generate_unified_reports(all_results, &unified_formats, output_dir.as_str()).await?;
-        generate_report_index(all_results, &unified_formats, output_dir.clone()).await?;
+        generate_unified_reports(all_results, &unified_formats, output_dir.as_str())?;
+        generate_report_index(all_results, &unified_formats, output_dir.clone())?;
 
         // Create hierarchical directory structure
         let reports_dir = Path::new(&output_dir).join("reports");
@@ -137,8 +137,7 @@ impl ReportGenerator {
             &reports_dir.to_string_lossy(),
             all_results,
             use_optimizer_families,
-        )
-        .await?;
+        )?;
 
         let mut html_content = generate_header();
         html_content.push_str(&generate_winner_summary_table(all_results));
@@ -178,7 +177,7 @@ impl ReportGenerator {
 
         generate_csv_exports(&data_dir.to_string_lossy(), all_results)?;
         // Generate LaTeX tables
-        generate_latex_tables(&latex_dir.to_string_lossy(), all_results, self).await?;
+        generate_latex_tables(&latex_dir.to_string_lossy(), all_results, self)?;
         // Generate optimizer specifications JSON
         generate_optimizer_specifications_json(&data_dir.to_string_lossy(), all_results)?;
 
@@ -194,7 +193,7 @@ impl ReportGenerator {
         Ok(())
     }
     /// Generate only unified reports (for testing or when legacy reports are not needed)
-    pub async fn generate_unified_only(
+    pub fn generate_unified_only(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         formats: Option<Vec<ReportFormat>>,
@@ -208,8 +207,8 @@ impl ReportGenerator {
                 ReportFormat::Csv,
             ]
         });
-        generate_unified_reports(all_results, &formats, self.output_dir.clone().as_str()).await?;
-        generate_report_index(all_results, &formats, self.output_dir.clone()).await?;
+        generate_unified_reports(all_results, &formats, self.output_dir.clone().as_str())?;
+        generate_report_index(all_results, &formats, self.output_dir.clone())?;
         println!("Unified report generation complete!");
         println!("  - Reports: {}/unified_reports/", self.output_dir);
         println!("  - Index: {}/report_index.html", self.output_dir);
@@ -227,7 +226,7 @@ impl ReportGenerator {
         ]
     }
     /// Generate a specific unified report
-    pub async fn generate_specific_unified_report<R: Report + 'static>(
+    pub fn generate_specific_unified_report<R: Report + 'static>(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
         report: R,
@@ -245,7 +244,7 @@ impl ReportGenerator {
     }
 }
 /// Generate a comprehensive report index that links to all unified reports
-pub async fn generate_report_index(
+pub fn generate_report_index(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     formats: &[ReportFormat],
     path: String,
@@ -472,7 +471,7 @@ fn generate_efficiency_matrix_table_content(
 }
 
 /// Generate reports using the unified reporting system
-pub async fn generate_unified_reports(
+pub fn generate_unified_reports(
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     formats: &[ReportFormat],
     output_dir: &str,
@@ -890,7 +889,7 @@ pub(crate) fn escape_latex(text: &str) -> String {
 }
 
 /// Generate detailed reports for each optimizer-problem combination
-async fn generate_detailed_reports(
+fn generate_detailed_reports(
     output_dir: &str,
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     use_optimizer_families: bool,
@@ -915,8 +914,7 @@ async fn generate_detailed_reports(
                 problem.problem.as_ref(),
                 &optimizer_name,
                 &optimizer_runs,
-            )
-            .await?;
+            );
         }
     }
     Ok(())
@@ -1509,7 +1507,7 @@ fn generate_csv_exports(
 }
 
 /// Generate LaTeX tables for all results
-async fn generate_latex_tables(
+fn generate_latex_tables(
     output_dir: &str,
     all_results: &[(&ProblemSpec, BenchmarkResults)],
     slf: &ReportGenerator,
@@ -1531,7 +1529,7 @@ async fn generate_latex_tables(
     // Generate family comparison matrix table
     comparison_matrix::generate_family_comparison_matrix_latex_table(all_results, latex_dir, slf)?;
     // Generate family vs family comparison matrix table
-    generate_family_vs_family_latex_table(all_results, latex_dir).await?;
+    generate_family_vs_family_latex_table(all_results, latex_dir)?;
     // Generate efficiency matrix table
     generate_efficiency_matrix_latex_table(all_results, latex_dir)?;
     // Generate success rate heatmap table

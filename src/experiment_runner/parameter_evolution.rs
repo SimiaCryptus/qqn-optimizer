@@ -1,9 +1,11 @@
-use crate::optimizers::{GDConfig, GDOptimizer, TrustRegionConfig, TrustRegionOptimizer};
+use crate::optimizers::{GDConfig, GDOptimizer};
+use crate::region::trust_region::{TrustRegionConfig, TrustRegionOptimizer};
 use crate::{
     AdamConfig, AdamOptimizer, LBFGSConfig, LBFGSOptimizer, LineSearchConfig, LineSearchMethod,
     Optimizer, QQNConfig, QQNOptimizer,
 };
 use anyhow::Error;
+use dfdx::prelude::Shape;
 use log::{debug, info, trace, warn};
 use plotters::prelude::LogScalable;
 use rand::prelude::*;
@@ -85,33 +87,33 @@ impl OptimizerGenome {
 
     fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
-        params.insert("c1".to_string(), rng.gen_range(1e-6..1e-2));
-        params.insert("c2".to_string(), rng.gen_range(0.1..0.99));
-        params.insert("lbfgs_history".to_string(), rng.gen_range(3.0..20.0));
+        params.insert("c1".to_string(), rng.random_range(1e-6..1e-2_f64));
+        params.insert("c2".to_string(), rng.random_range(0.1..0.99));
+        params.insert("lbfgs_history".to_string(), rng.random_range(3.0..20.0));
         params.insert(
             "epsilon".to_string(),
-            10f64.powf(rng.gen_range(-10.0..-4.0)),
+            10_f64.powf(rng.random_range(-10.0..-4.0_f64)),
         );
-        params.insert("initial_step".to_string(), rng.gen_range(0.1..2.0));
-        params.insert("max_iterations".to_string(), rng.gen_range(10.0..50.0));
+        params.insert("initial_step".to_string(), rng.random_range(0.1..2.0));
+        params.insert("max_iterations".to_string(), rng.random_range(10.0..50.0));
         params.insert(
             "line_search_method".to_string(),
-            rng.gen_range(0.0..6.0).as_f64().floor(),
+            rng.random_range(0.0..6.0_f64).floor(),
         );
         params
     }
 
     fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
-        params.insert("history_size".to_string(), rng.gen_range(3.0..30.0));
-        params.insert("c1".to_string(), rng.gen_range(1e-6..1e-2));
-        params.insert("c2".to_string(), rng.gen_range(0.1..0.99));
+        params.insert("history_size".to_string(), rng.random_range(3.0..30.0));
+        params.insert("c1".to_string(), rng.random_range(1e-6..1e-2));
+        params.insert("c2".to_string(), rng.random_range(0.1..0.99));
         params.insert(
             "epsilon".to_string(),
-            10f64.powf(rng.gen_range(-12.0..-6.0)),
+            10_f64.powf(rng.random_range(-12.0..-6.0_f64)),
         );
-        params.insert("max_step_size".to_string(), rng.gen_range(0.5..10.0));
-        params.insert("initial_step".to_string(), rng.gen_range(0.01..2.0));
+        params.insert("max_step_size".to_string(), rng.random_range(0.5..10.0_f64));
+        params.insert("initial_step".to_string(), rng.random_range(0.01..2.0_f64));
         params
     }
 
@@ -119,15 +121,15 @@ impl OptimizerGenome {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
-            10f64.powf(rng.gen_range(-4.0..0.0)),
+            10_f64.powf(rng.random_range(-4.0..0.0)),
         );
-        params.insert("beta1".to_string(), rng.gen_range(0.8..0.99));
-        params.insert("beta2".to_string(), rng.gen_range(0.9..0.9999));
+        params.insert("beta1".to_string(), rng.random_range(0.8..0.99));
+        params.insert("beta2".to_string(), rng.random_range(0.9..0.9999));
         params.insert(
             "epsilon".to_string(),
-            10f64.powf(rng.gen_range(-10.0..-6.0)),
+            10_f64.powf(rng.random_range(-10.0..-6.0)),
         );
-        params.insert("weight_decay".to_string(), rng.gen_range(0.0..1e-3));
+        params.insert("weight_decay".to_string(), rng.random_range(0.0..1e-3));
         params
     }
 
@@ -135,10 +137,10 @@ impl OptimizerGenome {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
-            10f64.powf(rng.gen_range(-3.0..0.0)),
+            10_f64.powf(rng.random_range(-3.0..0.0)),
         );
-        params.insert("momentum".to_string(), rng.gen_range(0.0..0.99));
-        params.insert("weight_decay".to_string(), rng.gen_range(0.0..1e-3));
+        params.insert("momentum".to_string(), rng.random_range(0.0..0.99));
+        params.insert("weight_decay".to_string(), rng.random_range(0.0..1e-3));
         params.insert(
             "nesterov".to_string(),
             if rng.gen_bool(0.5) { 1.0 } else { 0.0 },
@@ -148,12 +150,12 @@ impl OptimizerGenome {
 
     fn random_trust_region_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
-        params.insert("initial_radius".to_string(), rng.gen_range(0.01..2.0));
-        params.insert("max_radius".to_string(), rng.gen_range(10.0..200.0));
-        params.insert("eta_1".to_string(), rng.gen_range(0.05..0.25));
-        params.insert("eta_2".to_string(), rng.gen_range(0.5..0.95));
-        params.insert("gamma_1".to_string(), rng.gen_range(0.1..0.5));
-        params.insert("gamma_2".to_string(), rng.gen_range(1.5..4.0));
+        params.insert("initial_radius".to_string(), rng.random_range(0.01..2.0));
+        params.insert("max_radius".to_string(), rng.random_range(10.0..200.0));
+        params.insert("eta_1".to_string(), rng.random_range(0.05..0.25));
+        params.insert("eta_2".to_string(), rng.random_range(0.5..0.95));
+        params.insert("gamma_1".to_string(), rng.random_range(0.1..0.5));
+        params.insert("gamma_2".to_string(), rng.random_range(1.5..4.0));
         params
     }
 
@@ -523,7 +525,7 @@ impl ParameterEvolution {
         let mut best_fitness = f64::INFINITY;
 
         for _ in 0..self.tournament_size {
-            let idx = self.rng.gen_range(0..population.len());
+            let idx = self.rng.random_range(0..population.len());
             let fitness = population[idx].fitness.unwrap_or(f64::INFINITY);
             if fitness < best_fitness {
                 best_fitness = fitness;
@@ -656,11 +658,11 @@ impl ParameterEvolution {
             return;
         }
 
-        let num_mutations = self.rng.gen_range(1..=3.min(keys.len()));
+        let num_mutations = self.rng.random_range(1..=3.min(keys.len()));
         debug!("Applying {} mutations to genome", num_mutations);
 
         for _ in 0..num_mutations {
-            let key = &keys[self.rng.gen_range(0..keys.len())];
+            let key = &keys[self.rng.random_range(0..keys.len())];
             if let Some(value) = genome.parameters.get_mut(key) {
                 let old_value = *value;
 
@@ -672,7 +674,7 @@ impl ParameterEvolution {
                     0.2
                 };
 
-                let delta = self.rng.gen_range(-mutation_strength..mutation_strength);
+                let delta = self.rng.random_range(-mutation_strength..mutation_strength);
 
                 // Handle different parameter ranges
                 *value = match key.as_str() {
@@ -683,7 +685,7 @@ impl ParameterEvolution {
                             let new_log_val = log_val + delta * 2.0; // Larger changes in log space
                             new_log_val.exp().max(1e-12).min(1.0)
                         } else {
-                            10f64.powf(self.rng.gen_range(-12.0..-4.0))
+                            10_f64.powf(self.rng.random_range(-12.0..-4.0))
                         }
                     }
                     // Probability parameters [0, 1]
@@ -699,7 +701,7 @@ impl ParameterEvolution {
                     "line_search_method" => {
                         if self.rng.gen_bool(0.3) {
                             // 30% chance to change method
-                            self.rng.gen_range(0.0..6.0).as_f64().floor()
+                            self.rng.random_range(0.0_f64..6.0_f64).floor()
                         } else {
                             *value
                         }

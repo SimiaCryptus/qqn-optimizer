@@ -4,9 +4,6 @@ pub type OptResult<T> = Result<T, OptError>;
 /// Comprehensive error type for optimization operations
 #[derive(Debug, thiserror::Error)]
 pub enum OptError {
-    #[error("Tensor operation failed: {0}")]
-    TensorError(#[from] candle_core::Error),
-
     #[error("Numerical error: {0}")]
     NumericalError(String),
 
@@ -28,7 +25,7 @@ pub mod optimizer;
 pub mod qqn;
 pub use lbfgs::{LBFGSConfig, LBFGSOptimizer, LBFGSState};
 pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
-pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
+pub use qqn::{QQNConfig, QQNOptimizer, QQNState};
 
 /// Tolerance for numerical comparisons
 pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
@@ -41,24 +38,5 @@ pub const DEFAULT_LBFGS_HISTORY: usize = 10;
 
 pub mod adam;
 pub mod gd;
-pub mod trust_region;
 
 pub use gd::{GDConfig, GDOptimizer, GDState};
-pub use trust_region::{TrustRegionConfig, TrustRegionOptimizer, TrustRegionState};
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_constants() {
-        // Verify our constants have sensible values at compile time
-        const _: () = assert!(NUMERICAL_TOLERANCE > 0.0);
-        const _: () = assert!(NUMERICAL_TOLERANCE < 1e-6);
-        const _: () = assert!(MAX_LINE_SEARCH_ITERATIONS > 0);
-        const _: () = assert!(DEFAULT_LBFGS_HISTORY > 0);
-
-        // These are runtime assertions to verify our constants are reasonable
-        // (clippy complains about constant assertions, so we do runtime checks)
-    }
-}
