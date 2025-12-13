@@ -4,9 +4,7 @@ pub type OptResult<T> = Result<T, OptError>;
 /// Comprehensive error type for optimization operations
 #[derive(Debug, thiserror::Error)]
 pub enum OptError {
-    #[error("Tensor operation failed: {0}")]
-    TensorError(#[from] candle_core::Error),
-
+    
     #[error("Numerical error: {0}")]
     NumericalError(String),
 
@@ -31,7 +29,7 @@ pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult
 pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
 
 /// Tolerance for numerical comparisons
-pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
+pub const NUMERICAL_TOLERANCE: f32 = 1e-12;
 
 /// Maximum number of line search iterations
 pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;

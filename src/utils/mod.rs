@@ -1,25 +1,21 @@
 pub mod math;
 
-pub use math::{
-    compute_magnitude, dot_product, dot_product_f64, vector_add, vector_scale, vector_subtract,
-};
-
 /// Common mathematical constants
 pub mod constants {
-    /// Machine epsilon for f64
-    pub const EPSILON: f64 = f64::EPSILON;
+    /// Machine epsilon for f32
+    pub const EPSILON: f32 = f32::EPSILON;
 
     /// Square root of machine epsilon
-    pub const SQRT_EPSILON: f64 = 1.4901161193847656e-8;
+    pub const SQRT_EPSILON: f32 = 1.4901161193847656e-8;
 
     /// Default tolerance for convergence checks
-    pub const DEFAULT_TOLERANCE: f64 = 1e-6;
+    pub const DEFAULT_TOLERANCE: f32 = 1e-6;
 
     /// Maximum safe value for numerical computations
-    pub const MAX_SAFE_VALUE: f64 = 1e100;
+    pub const MAX_SAFE_VALUE: f32 = 1e100;
 
     /// Minimum safe value for numerical computations
-    pub const MIN_SAFE_VALUE: f64 = 1e-100;
+    pub const MIN_SAFE_VALUE: f32 = 1e-100;
 }
 
 /// Utility functions for working with file paths
@@ -56,7 +52,7 @@ pub mod validation {
     use crate::optimizers::OptResult;
 
     /// Validate that a vector contains only finite values
-    pub fn validate_finite(values: &[f64]) -> OptResult<()> {
+    pub fn validate_finite(values: &[f32]) -> OptResult<()> {
         for (i, &val) in values.iter().enumerate() {
             if !val.is_finite() {
                 return Err(crate::optimizers::OptError::InvalidInput(format!(
@@ -68,7 +64,7 @@ pub mod validation {
     }
 
     /// Validate that a value is within reasonable bounds
-    pub fn validate_bounds(value: f64, min: f64, max: f64) -> OptResult<()> {
+    pub fn validate_bounds(value: f32, min: f32, max: f32) -> OptResult<()> {
         if value < min || value > max {
             return Err(crate::optimizers::OptError::InvalidInput(format!(
                 "Value {value} outside bounds [{min}, {max}]"
@@ -103,8 +99,8 @@ mod tests {
     fn test_validation() {
         // Test finite validation
         assert!(validation::validate_finite(&[1.0, 2.0, 3.0]).is_ok());
-        assert!(validation::validate_finite(&[1.0, f64::NAN, 3.0]).is_err());
-        assert!(validation::validate_finite(&[1.0, f64::INFINITY, 3.0]).is_err());
+        assert!(validation::validate_finite(&[1.0, f32::NAN, 3.0]).is_err());
+        assert!(validation::validate_finite(&[1.0, f32::INFINITY, 3.0]).is_err());
 
         // Test bounds validation
         assert!(validation::validate_bounds(5.0, 0.0, 10.0).is_ok());

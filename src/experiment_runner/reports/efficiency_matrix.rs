@@ -45,7 +45,7 @@ impl EfficiencyMatrixReport {
     fn calculate_efficiency_data(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> HashMap<(String, String), (f64, f64, usize)> {
+    ) -> HashMap<(String, String), (f32, f32, usize)> {
         let mut efficiency_data = HashMap::new();
         let (optimizer_families, problem_families) = self.collect_families(all_results);
 
@@ -61,20 +61,20 @@ impl EfficiencyMatrixReport {
                             if result_optimizer_family == *optimizer_family
                                 && result.convergence_achieved
                             {
-                                successful_evaluations.push(result.function_evaluations as f64);
+                                successful_evaluations.push(result.function_evaluations as f32);
                             }
                         }
                     }
                 }
 
                 if !successful_evaluations.is_empty() {
-                    let mean = successful_evaluations.iter().sum::<f64>()
-                        / successful_evaluations.len() as f64;
+                    let mean = successful_evaluations.iter().sum::<f32>()
+                        / successful_evaluations.len() as f32;
                     let variance = successful_evaluations
                         .iter()
                         .map(|x| (x - mean).powi(2))
-                        .sum::<f64>()
-                        / successful_evaluations.len() as f64;
+                        .sum::<f32>()
+                        / successful_evaluations.len() as f32;
                     let std_dev = variance.sqrt();
                     efficiency_data.insert(
                         (optimizer_family.clone(), problem_family.clone()),

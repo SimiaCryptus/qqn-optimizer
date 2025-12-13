@@ -15,12 +15,12 @@ use std::sync::Arc;
 /// Represents a genome for an optimizer configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OptimizerGenome {
-    pub success_rate: Option<f64>,
-    pub mean_final_value: Option<f64>,
+    pub success_rate: Option<f32>,
+    pub mean_final_value: Option<f32>,
     pub total_evaluations: Option<usize>,
     pub optimizer_type: OptimizerType,
-    pub parameters: HashMap<String, f64>,
-    pub fitness: Option<f64>,
+    pub parameters: HashMap<String, f32>,
+    pub fitness: Option<f32>,
     pub id: Option<usize>,
     pub generation_created: usize,
     pub parent_ids: Vec<usize>,
@@ -48,7 +48,7 @@ impl fmt::Display for OptimizerType {
 }
 
 impl OptimizerGenome {
-    pub fn get_parameters(&self) -> std::collections::HashMap<String, f64> {
+    pub fn get_parameters(&self) -> std::collections::HashMap<String, f32> {
         self.parameters.clone()
     }
 
@@ -83,7 +83,7 @@ impl OptimizerGenome {
         }
     }
 
-    fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert("c1".to_string(), rng.gen_range(1e-6..1e-2));
         params.insert("c2".to_string(), rng.gen_range(0.1..0.99));
@@ -101,7 +101,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert("history_size".to_string(), rng.gen_range(3.0..30.0));
         params.insert("c1".to_string(), rng.gen_range(1e-6..1e-2));
@@ -115,7 +115,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_adam_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_adam_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
@@ -131,7 +131,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_gd_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_gd_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
@@ -146,7 +146,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_trust_region_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_trust_region_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert("initial_radius".to_string(), rng.gen_range(0.01..2.0));
         params.insert("max_radius".to_string(), rng.gen_range(10.0..200.0));
@@ -281,8 +281,8 @@ impl OptimizerGenome {
 /// Manages the evolution of optimizer parameters
 pub struct ParameterEvolution {
     population_size: usize,
-    mutation_rate: f64,
-    crossover_rate: f64,
+    mutation_rate: f32,
+    crossover_rate: f32,
     elite_size: usize,
     tournament_size: usize,
     rng: StdRng,
@@ -392,8 +392,8 @@ impl ParameterEvolution {
             let best_idx = tournament_indices
                 .into_iter()
                 .min_by(|&a, &b| {
-                    let fitness_a = population[a].fitness.unwrap_or(f64::INFINITY);
-                    let fitness_b = population[b].fitness.unwrap_or(f64::INFINITY);
+                    let fitness_a = population[a].fitness.unwrap_or(f32::INFINITY);
+                    let fitness_b = population[b].fitness.unwrap_or(f32::INFINITY);
                     fitness_a.partial_cmp(&fitness_b).unwrap()
                 })
                 .unwrap();
@@ -410,12 +410,12 @@ impl ParameterEvolution {
         info!("Evolving generation {}", generation);
 
         // Log fitness statistics before evolution
-        let fitnesses: Vec<f64> = population.iter().filter_map(|g| g.fitness).collect();
+        let fitnesses: Vec<f32> = population.iter().filter_map(|g| g.fitness).collect();
 
         if !fitnesses.is_empty() {
-            let best_fitness = fitnesses.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-            let avg_fitness = fitnesses.iter().sum::<f64>() / fitnesses.len() as f64;
-            let worst_fitness = fitnesses.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+            let best_fitness = fitnesses.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+            let avg_fitness = fitnesses.iter().sum::<f32>() / fitnesses.len() as f32;
+            let worst_fitness = fitnesses.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
             info!(
                 "Generation {} fitness stats - Best: {:.6}, Avg: {:.6}, Worst: {:.6}",
                 generation, best_fitness, avg_fitness, worst_fitness
@@ -426,8 +426,8 @@ impl ParameterEvolution {
 
         // Sort by fitness (lower is better for minimization)
         population.sort_by(|a, b| {
-            let a_fitness = a.fitness.unwrap_or(f64::INFINITY);
-            let b_fitness = b.fitness.unwrap_or(f64::INFINITY);
+            let a_fitness = a.fitness.unwrap_or(f32::INFINITY);
+            let b_fitness = b.fitness.unwrap_or(f32::INFINITY);
             a_fitness.partial_cmp(&b_fitness).unwrap()
         });
 
@@ -476,7 +476,7 @@ impl ParameterEvolution {
                 continue;
             }
 
-            let mut offspring = if self.rng.gen::<f64>() < self.crossover_rate {
+            let mut offspring = if self.rng.gen::<f32>() < self.crossover_rate {
                 crossover_count += 1;
                 self.crossover(&parent1, &parent2)
             } else {
@@ -488,7 +488,7 @@ impl ParameterEvolution {
             offspring.generation_created = generation;
             offspring.parent_ids = vec![parent1.id.unwrap_or(0), parent2.id.unwrap_or(0)];
 
-            if self.rng.gen::<f64>() < self.mutation_rate {
+            if self.rng.gen::<f32>() < self.mutation_rate {
                 mutation_count += 1;
                 self.mutate(&mut offspring);
             }
@@ -520,11 +520,11 @@ impl ParameterEvolution {
             self.tournament_size
         );
         let mut best = None;
-        let mut best_fitness = f64::INFINITY;
+        let mut best_fitness = f32::INFINITY;
 
         for _ in 0..self.tournament_size {
             let idx = self.rng.gen_range(0..population.len());
-            let fitness = population[idx].fitness.unwrap_or(f64::INFINITY);
+            let fitness = population[idx].fitness.unwrap_or(f32::INFINITY);
             if fitness < best_fitness {
                 best_fitness = fitness;
                 best = Some(&population[idx]);
@@ -693,7 +693,7 @@ impl ParameterEvolution {
                     // Integer parameters
                     "lbfgs_history" | "history_size" | "max_iterations" => {
                         let int_val = (*value as i32 + (delta * 10.0) as i32).max(1);
-                        int_val as f64
+                        int_val as f32
                     }
                     // Line search method (categorical)
                     "line_search_method" => {
@@ -745,8 +745,8 @@ impl ParameterEvolution {
 
         let mut sorted = population.to_vec();
         sorted.sort_by(|a, b| {
-            let fitness_a = a.fitness.unwrap_or(f64::INFINITY);
-            let fitness_b = b.fitness.unwrap_or(f64::INFINITY);
+            let fitness_a = a.fitness.unwrap_or(f32::INFINITY);
+            let fitness_b = b.fitness.unwrap_or(f32::INFINITY);
             fitness_a.partial_cmp(&fitness_b).unwrap()
         });
 
@@ -763,13 +763,13 @@ impl ParameterEvolution {
     }
 
     /// Set mutation rate (0.0 to 1.0)
-    pub fn set_mutation_rate(&mut self, rate: f64) {
+    pub fn set_mutation_rate(&mut self, rate: f32) {
         self.mutation_rate = rate.max(0.0).min(1.0);
         debug!("Mutation rate set to {:.3}", self.mutation_rate);
     }
 
     /// Set crossover rate (0.0 to 1.0)
-    pub fn set_crossover_rate(&mut self, rate: f64) {
+    pub fn set_crossover_rate(&mut self, rate: f32) {
         self.crossover_rate = rate.max(0.0).min(1.0);
         debug!("Crossover rate set to {:.3}", self.crossover_rate);
     }
@@ -815,7 +815,7 @@ mod tests {
 
         // Set some fitness values
         for (i, genome) in population.iter_mut().enumerate() {
-            genome.fitness = Some((i as f64) * 0.1);
+            genome.fitness = Some((i as f32) * 0.1);
         }
 
         let new_population = evolution.evolve_generation(&mut population, 1);
@@ -863,7 +863,7 @@ mod tests {
                 total_evaluations: None,
                 optimizer_type: OptimizerType::QQN,
                 parameters: HashMap::new(),
-                fitness: Some(i as f64),
+                fitness: Some(i as f32),
                 id: Some(i),
                 generation_created: 0,
                 parent_ids: vec![],

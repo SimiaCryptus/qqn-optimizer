@@ -252,8 +252,8 @@ impl UnifiedReportTestSuite {
                         // Only successful runs have trace data
                         let num_iterations = 100 + i * 20;
                         for iter in 0..num_iterations {
-                            let progress = iter as f64 / num_iterations as f64;
-                            let function_value = 1e-6 * (i + 1) as f64 * (1.0 - progress * 0.9);
+                            let progress = iter as f32 / num_iterations as f32;
+                            let function_value = 1e-6 * (i + 1) as f32 * (1.0 - progress * 0.9);
                             trace.iterations.push(IterationData {
                                 iteration: iter,
                                 function_value,
@@ -273,7 +273,7 @@ impl UnifiedReportTestSuite {
                         problem_name: "".to_string(),
                         optimizer_name: optimizer.to_string(),
                         run_id,
-                        final_value: 1e-6 * (i + 1) as f64, // Different performance
+                        final_value: 1e-6 * (i + 1) as f32, // Different performance
                         final_gradient_norm: 1e-8,
                         iterations: 100 + i * 20,
                         function_evaluations: 150 + i * 30,
@@ -286,7 +286,7 @@ impl UnifiedReportTestSuite {
                             ConvergenceReason::MaxIterations
                         },
                         memory_usage: None,
-                        best_value: 1e-6 * (i + 1) as f64,
+                        best_value: 1e-6 * (i + 1) as f32,
                         trace,
                         error_message: None,
                         performance_metrics: PerformanceMetrics::default(),

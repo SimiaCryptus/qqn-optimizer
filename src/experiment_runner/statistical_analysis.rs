@@ -10,11 +10,11 @@ use std::path::Path;
 /// Minimum sample size required for statistical tests
 const MIN_SAMPLE_SIZE: usize = 2;
 /// Significance level for hypothesis testing
-const ALPHA: f64 = 0.05;
+const ALPHA: f32 = 0.05;
 /// Effect size thresholds for Cohen's d
-const COHEN_D_SMALL: f64 = 0.2;
-const COHEN_D_MEDIUM: f64 = 0.5;
-const COHEN_D_LARGE: f64 = 0.8;
+const COHEN_D_SMALL: f32 = 0.2;
+const COHEN_D_MEDIUM: f32 = 0.5;
+const COHEN_D_LARGE: f32 = 0.8;
 
 /// Statistical Analysis Module
 ///
@@ -118,12 +118,12 @@ impl StatisticalAnalysis {
         // Organize results by optimizer, storing (final_value, cost, problem_name)
         // Cost is defined as max(function_evaluations, gradient_evaluations)
 
-        let mut optimizer_results: HashMap<String, Vec<(f64, f64, String)>> = HashMap::new(); // (final_value, cost, problem)
+        let mut optimizer_results: HashMap<String, Vec<(f32, f32, String)>> = HashMap::new(); // (final_value, cost, problem)
 
         for (problem, results) in all_results {
             let problem_name = problem.get_name();
             for result in &results.results {
-                let cost = result.function_evaluations.max(result.gradient_evaluations) as f64;
+                let cost = result.function_evaluations.max(result.gradient_evaluations) as f32;
                 let optimizer_key = if use_optimizer_families {
                     get_optimizer_family(&result.optimizer_name)
                 } else {
@@ -180,7 +180,7 @@ impl StatisticalAnalysis {
 
         // Group results by problem for focused comparisons
         // This allows testing optimizer performance on specific problem types
-        let mut grouped_optimizer_results: HashMap<String, HashMap<String, Vec<(f64, f64)>>> =
+        let mut grouped_optimizer_results: HashMap<String, HashMap<String, Vec<(f32, f32)>>> =
             HashMap::new();
         for (optimizer, results) in &optimizer_results {
             for (final_value, cost, problem) in results {
@@ -227,11 +227,11 @@ impl StatisticalAnalysis {
 
                     // Test 1: Compare final objective function values
                     // Lower values indicate better performance for minimization problems
-                    let qqn_final_values: Vec<f64> = qqn_results
+                    let qqn_final_values: Vec<f32> = qqn_results
                         .iter()
                         .map(|(final_val, _)| *final_val)
                         .collect();
-                    let non_qqn_final_values: Vec<f64> = non_qqn_results
+                    let non_qqn_final_values: Vec<f32> = non_qqn_results
                         .iter()
                         .map(|(final_val, _)| *final_val)
                         .collect();
@@ -243,10 +243,10 @@ impl StatisticalAnalysis {
                             let significant = p_value < ALPHA;
 
                             // Determine winner: lower mean indicates better performance
-                            let qqn_mean: f64 = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean: f64 = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
+                            let qqn_mean: f32 = qqn_final_values.iter().sum::<f32>()
+                                / qqn_final_values.len() as f32;
+                            let non_qqn_mean: f32 = non_qqn_final_values.iter().sum::<f32>()
+                                / non_qqn_final_values.len() as f32;
 
                             // Handle infinite t-statistics from zero variance cases
                             let winner = if significant || t_stat.is_infinite() {
@@ -290,18 +290,18 @@ impl StatisticalAnalysis {
 
                     // Test 2: Compare computational costs
                     // Lower costs indicate better efficiency
-                    let costs_qqn: Vec<f64> = qqn_results.iter().map(|(_, c)| *c).collect();
-                    let costs_non_qqn: Vec<f64> = non_qqn_results.iter().map(|(_, c)| *c).collect();
+                    let costs_qqn: Vec<f32> = qqn_results.iter().map(|(_, c)| *c).collect();
+                    let costs_non_qqn: Vec<f32> = non_qqn_results.iter().map(|(_, c)| *c).collect();
                     match self.welch_t_test(&costs_qqn, &costs_non_qqn) {
                         Ok((t_stat, p_value)) => {
                             let effect_size = self.cohens_d(&costs_qqn, &costs_non_qqn);
                             let significant = p_value < ALPHA;
 
                             // Determine efficiency winner: lower mean cost is better
-                            let qqn_mean_cost: f64 =
-                                costs_qqn.iter().sum::<f64>() / costs_qqn.len() as f64;
-                            let non_qqn_mean_cost: f64 =
-                                costs_non_qqn.iter().sum::<f64>() / costs_non_qqn.len() as f64;
+                            let qqn_mean_cost: f32 =
+                                costs_qqn.iter().sum::<f32>() / costs_qqn.len() as f32;
+                            let non_qqn_mean_cost: f32 =
+                                costs_non_qqn.iter().sum::<f32>() / costs_non_qqn.len() as f32;
 
                             let winner_name = if significant || t_stat.is_infinite() {
                                 if qqn_mean_cost < non_qqn_mean_cost {
@@ -375,7 +375,7 @@ impl StatisticalAnalysis {
     ///
     /// * `Ok((t_statistic, p_value))` - Test results
     /// * `Err(anyhow::Error)` - If samples are too small or have computational issues
-    pub fn welch_t_test_public(&self, sample_a: &[f64], sample_b: &[f64]) -> Result<(f64, f64)> {
+    pub fn welch_t_test_public(&self, sample_a: &[f32], sample_b: &[f32]) -> Result<(f32, f32)> {
         self.welch_t_test(sample_a, sample_b)
     }
     /// Public interface for Cohen's d effect size calculation
@@ -388,7 +388,7 @@ impl StatisticalAnalysis {
     /// # Returns
     ///
     /// Cohen's d effect size (always positive)
-    pub fn cohens_d_public(&self, sample_a: &[f64], sample_b: &[f64]) -> f64 {
+    pub fn cohens_d_public(&self, sample_a: &[f32], sample_b: &[f32]) -> f32 {
         self.cohens_d(sample_a, sample_b)
     }
     /// Saves statistical analysis results to CSV file
@@ -462,18 +462,18 @@ impl StatisticalAnalysis {
     /// - Zero variance with different means: returns error
     /// - Zero standard error: returns error
     ///
-    fn welch_t_test(&self, sample_a: &[f64], sample_b: &[f64]) -> Result<(f64, f64)> {
+    fn welch_t_test(&self, sample_a: &[f32], sample_b: &[f32]) -> Result<(f32, f32)> {
         if sample_a.len() < MIN_SAMPLE_SIZE || sample_b.len() < MIN_SAMPLE_SIZE {
             return Err(anyhow::anyhow!("Insufficient sample size for t-test"));
         }
 
-        let mean_a = sample_a.iter().sum::<f64>() / sample_a.len() as f64;
-        let mean_b = sample_b.iter().sum::<f64>() / sample_b.len() as f64;
+        let mean_a = sample_a.iter().sum::<f32>() / sample_a.len() as f32;
+        let mean_b = sample_b.iter().sum::<f32>() / sample_b.len() as f32;
 
-        let var_a = sample_a.iter().map(|x| (x - mean_a).powi(2)).sum::<f64>()
-            / (sample_a.len() - 1) as f64;
-        let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f64>()
-            / (sample_b.len() - 1) as f64;
+        let var_a = sample_a.iter().map(|x| (x - mean_a).powi(2)).sum::<f32>()
+            / (sample_a.len() - 1) as f32;
+        let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f32>()
+            / (sample_b.len() - 1) as f32;
 
         // Handle special case: both samples have zero variance
 
@@ -485,9 +485,9 @@ impl StatisticalAnalysis {
                 // the difference is deterministic and significant
                 // Return a large t-statistic and very small p-value
                 let t_stat = if mean_a > mean_b {
-                    f64::INFINITY
+                    f32::INFINITY
                 } else {
-                    f64::NEG_INFINITY
+                    f32::NEG_INFINITY
                 };
                 return Ok((t_stat, 0.0));
             }
@@ -498,9 +498,9 @@ impl StatisticalAnalysis {
             // the difference is significant
             if mean_a != mean_b {
                 let t_stat = if mean_a > mean_b {
-                    f64::INFINITY
+                    f32::INFINITY
                 } else {
-                    f64::NEG_INFINITY
+                    f32::NEG_INFINITY
                 };
                 return Ok((t_stat, 0.0));
             } else {
@@ -511,7 +511,7 @@ impl StatisticalAnalysis {
 
         // Calculate standard error of the difference in means
 
-        let se = (var_a / sample_a.len() as f64 + var_b / sample_b.len() as f64).sqrt();
+        let se = (var_a / sample_a.len() as f32 + var_b / sample_b.len() as f32).sqrt();
         if se == 0.0 {
             return Err(anyhow::anyhow!("Zero standard error"));
         }
@@ -523,9 +523,9 @@ impl StatisticalAnalysis {
         // Calculate degrees of freedom using Welch-Satterthwaite equation
 
         let df = {
-            let numerator = (var_a / sample_a.len() as f64 + var_b / sample_b.len() as f64).powi(2);
-            let denom_a = (var_a / sample_a.len() as f64).powi(2) / (sample_a.len() - 1) as f64;
-            let denom_b = (var_b / sample_b.len() as f64).powi(2) / (sample_b.len() - 1) as f64;
+            let numerator = (var_a / sample_a.len() as f32 + var_b / sample_b.len() as f32).powi(2);
+            let denom_a = (var_a / sample_a.len() as f32).powi(2) / (sample_a.len() - 1) as f32;
+            let denom_b = (var_b / sample_b.len() as f32).powi(2) / (sample_b.len() - 1) as f32;
             numerator / (denom_a + denom_b)
         };
 
@@ -561,7 +561,7 @@ impl StatisticalAnalysis {
     /// The approximation is most accurate for common significance levels:
     /// - p < 0.001, p < 0.01, p < 0.05, p < 0.10
     /// - Less precise for intermediate p-values, but sufficient for hypothesis testing
-    fn t_distribution_p_value(&self, t_abs: f64, df: f64) -> f64 {
+    fn t_distribution_p_value(&self, t_abs: f32, df: f32) -> f32 {
         // Special case: if t = 0, p-value should be 1.0
         if t_abs == 0.0 {
             return 1.0;
@@ -651,22 +651,22 @@ impl StatisticalAnalysis {
     /// d = 0.8: QQN is 0.8 standard deviations better (large effect)
     /// d = 1.2: QQN is 1.2 standard deviations better (very large effect)
     /// ```
-    fn cohens_d(&self, sample_a: &[f64], sample_b: &[f64]) -> f64 {
+    fn cohens_d(&self, sample_a: &[f32], sample_b: &[f32]) -> f32 {
         if sample_a.len() < MIN_SAMPLE_SIZE || sample_b.len() < MIN_SAMPLE_SIZE {
             return 0.0;
         }
 
-        let mean_a = sample_a.iter().sum::<f64>() / sample_a.len() as f64;
-        let mean_b = sample_b.iter().sum::<f64>() / sample_b.len() as f64;
+        let mean_a = sample_a.iter().sum::<f32>() / sample_a.len() as f32;
+        let mean_b = sample_b.iter().sum::<f32>() / sample_b.len() as f32;
 
-        let var_a = sample_a.iter().map(|x| (x - mean_a).powi(2)).sum::<f64>()
-            / (sample_a.len() - 1) as f64;
-        let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f64>()
-            / (sample_b.len() - 1) as f64;
+        let var_a = sample_a.iter().map(|x| (x - mean_a).powi(2)).sum::<f32>()
+            / (sample_a.len() - 1) as f32;
+        let var_b = sample_b.iter().map(|x| (x - mean_b).powi(2)).sum::<f32>()
+            / (sample_b.len() - 1) as f32;
         // Handle zero variance cases
         if var_a == 0.0 && var_b == 0.0 {
             // If both have zero variance, effect size is either 0 or infinite
-            return if mean_a == mean_b { 0.0 } else { f64::INFINITY };
+            return if mean_a == mean_b { 0.0 } else { f32::INFINITY };
         }
 
         // Calculate pooled standard deviation
@@ -675,7 +675,7 @@ impl StatisticalAnalysis {
         if pooled_sd == 0.0 {
             // This can happen if one variance is 0 and the other is very small
             // In this case, if means differ, the effect is very large
-            return if mean_a == mean_b { 0.0 } else { f64::INFINITY };
+            return if mean_a == mean_b { 0.0 } else { f32::INFINITY };
         }
 
         // Return absolute effect size
@@ -691,7 +691,7 @@ impl StatisticalAnalysis {
     /// # Returns
     ///
     /// String description of effect size magnitude
-    pub fn interpret_cohens_d(&self, d: f64) -> &'static str {
+    pub fn interpret_cohens_d(&self, d: f32) -> &'static str {
         if d < COHEN_D_SMALL {
             "negligible"
         } else if d < COHEN_D_MEDIUM {
@@ -752,7 +752,7 @@ impl StatisticalAnalysis {
     /// but used more function evaluations (red, positive delta).
     fn generate_comparison_matrix(
         &self,
-        grouped_results: &HashMap<String, HashMap<String, Vec<(f64, f64)>>>,
+        grouped_results: &HashMap<String, HashMap<String, Vec<(f32, f32)>>>,
         use_optimizer_families: bool,
     ) -> Result<String> {
         let mut matrix_section = String::from(
@@ -829,15 +829,15 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                                 );
 
                                 // Analyze objective function performance
-                                let qqn_final_values: Vec<f64> =
+                                let qqn_final_values: Vec<f32> =
                                     qqn_results.iter().map(|(v, _)| *v).collect();
-                                let non_qqn_final_values: Vec<f64> =
+                                let non_qqn_final_values: Vec<f32> =
                                     non_qqn_results.iter().map(|(v, _)| *v).collect();
 
-                                let qqn_mean_obj = qqn_final_values.iter().sum::<f64>()
-                                    / qqn_final_values.len() as f64;
-                                let non_qqn_mean_obj = non_qqn_final_values.iter().sum::<f64>()
-                                    / non_qqn_final_values.len() as f64;
+                                let qqn_mean_obj = qqn_final_values.iter().sum::<f32>()
+                                    / qqn_final_values.len() as f32;
+                                let non_qqn_mean_obj = non_qqn_final_values.iter().sum::<f32>()
+                                    / non_qqn_final_values.len() as f32;
                                 let delta_obj = qqn_mean_obj - non_qqn_mean_obj;
                                 // Determine color based on statistical significance and winner
 
@@ -869,15 +869,15 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                                 ));
 
                                 // Analyze computational efficiency
-                                let qqn_costs: Vec<f64> =
+                                let qqn_costs: Vec<f32> =
                                     qqn_results.iter().map(|(_, c)| *c).collect();
-                                let non_qqn_costs: Vec<f64> =
+                                let non_qqn_costs: Vec<f32> =
                                     non_qqn_results.iter().map(|(_, c)| *c).collect();
 
                                 let qqn_mean_cost =
-                                    qqn_costs.iter().sum::<f64>() / qqn_costs.len() as f64;
+                                    qqn_costs.iter().sum::<f32>() / qqn_costs.len() as f32;
                                 let non_qqn_mean_cost =
-                                    non_qqn_costs.iter().sum::<f64>() / non_qqn_costs.len() as f64;
+                                    non_qqn_costs.iter().sum::<f32>() / non_qqn_costs.len() as f32;
                                 let delta_cost = qqn_mean_cost - non_qqn_mean_cost;
                                 // Determine color for cost comparison
 
@@ -971,7 +971,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
     /// - White: p ≥ 0.05 (not significant)
     fn generate_pairwise_statistical_matrix(
         &self,
-        optimizer_results: &HashMap<String, Vec<(f64, f64, String)>>,
+        optimizer_results: &HashMap<String, Vec<(f32, f32, String)>>,
         output_dir: &str,
     ) -> Result<()> {
         // Collect optimizer names and sort for consistent ordering
@@ -1123,13 +1123,13 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
                 entry.1 += 1;
 
                 all_final_values.push(result.final_value);
-                all_costs.push(result.function_evaluations.max(result.gradient_evaluations) as f64);
+                all_costs.push(result.function_evaluations.max(result.gradient_evaluations) as f32);
             }
             // Calculate overall success rate
             let total_successes: i32 = optimizer_success.values().map(|(s, _)| *s).sum();
             let total_attempts: i32 = optimizer_success.values().map(|(_, t)| *t).sum();
             let success_rate = if total_attempts > 0 {
-                total_successes as f64 / total_attempts as f64
+                total_successes as f32 / total_attempts as f32
             } else {
                 0.0
             };
@@ -1139,7 +1139,7 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
             let mut best_rate = -1.0;
             let mut worst_rate = 2.0;
             for (optimizer, (successes, total)) in &optimizer_success {
-                let rate = *successes as f64 / *total as f64;
+                let rate = *successes as f32 / *total as f32;
                 if rate > best_rate {
                     best_rate = rate;
                     best_optimizer = optimizer.clone();
@@ -1151,13 +1151,13 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
             }
             // Calculate difficulty score (0-100, higher = more difficult)
             let mean_final_value =
-                all_final_values.iter().sum::<f64>() / all_final_values.len() as f64;
-            let mean_cost = all_costs.iter().sum::<f64>() / all_costs.len() as f64;
+                all_final_values.iter().sum::<f32>() / all_final_values.len() as f32;
+            let mean_cost = all_costs.iter().sum::<f32>() / all_costs.len() as f32;
             let value_variance = all_final_values
                 .iter()
                 .map(|v| (v - mean_final_value).powi(2))
-                .sum::<f64>()
-                / all_final_values.len() as f64;
+                .sum::<f32>()
+                / all_final_values.len() as f32;
             // Composite difficulty score
             let difficulty_score = (
                 (1.0 - success_rate) * 40.0 +  // Success rate component (0-40)
@@ -1238,11 +1238,11 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
     /// Helper function to calculate p-value between two optimizer result sets
     fn calculate_pairwise_p_value(
         &self,
-        results_a: &[(f64, f64, String)],
-        results_b: &[(f64, f64, String)],
-    ) -> f64 {
-        let values_a: Vec<f64> = results_a.iter().map(|(v, _, _)| *v).collect();
-        let values_b: Vec<f64> = results_b.iter().map(|(v, _, _)| *v).collect();
+        results_a: &[(f32, f32, String)],
+        results_b: &[(f32, f32, String)],
+    ) -> f32 {
+        let values_a: Vec<f32> = results_a.iter().map(|(v, _, _)| *v).collect();
+        let values_b: Vec<f32> = results_b.iter().map(|(v, _, _)| *v).collect();
 
         if values_a.len() < MIN_SAMPLE_SIZE || values_b.len() < MIN_SAMPLE_SIZE {
             return 1.0; // No significant difference if insufficient data
@@ -1257,11 +1257,11 @@ Matrix showing all comparisons. Green indicates QQN won (statistically significa
     /// Helper function to calculate Cohen's d between two optimizer result sets
     fn calculate_pairwise_cohens_d(
         &self,
-        results_a: &[(f64, f64, String)],
-        results_b: &[(f64, f64, String)],
-    ) -> f64 {
-        let values_a: Vec<f64> = results_a.iter().map(|(v, _, _)| *v).collect();
-        let values_b: Vec<f64> = results_b.iter().map(|(v, _, _)| *v).collect();
+        results_a: &[(f32, f32, String)],
+        results_b: &[(f32, f32, String)],
+    ) -> f32 {
+        let values_a: Vec<f32> = results_a.iter().map(|(v, _, _)| *v).collect();
+        let values_b: Vec<f32> = results_b.iter().map(|(v, _, _)| *v).collect();
 
         if values_a.len() < MIN_SAMPLE_SIZE || values_b.len() < MIN_SAMPLE_SIZE {
             return 0.0;

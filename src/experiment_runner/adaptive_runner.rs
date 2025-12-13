@@ -11,7 +11,7 @@ use rand::rng;
 use serde::de::Unexpected::Float;
 use serde_json::json;
 use std::collections::HashMap;
-use std::f64::INFINITY;
+use std::f32::INFINITY;
 use std::fs;
 use std::iter::Take;
 use std::slice::Iter;
@@ -27,9 +27,9 @@ pub struct EvolutionaryEvent {
     pub timestamp: chrono::DateTime<chrono::Utc>,
     pub individual_id: usize,
     pub parent_ids: Vec<usize>,
-    pub fitness_before: Option<f64>,
-    pub fitness_after: Option<f64>,
-    pub parameters: HashMap<String, f64>,
+    pub fitness_before: Option<f32>,
+    pub fitness_after: Option<f32>,
+    pub parameters: HashMap<String, f32>,
     pub family: String,
     pub details: String,
 }
@@ -49,8 +49,8 @@ pub struct IndividualRecord {
     pub id: usize,
     pub generation_created: usize,
     pub family: String,
-    pub parameters: HashMap<String, f64>,
-    pub fitness_history: Vec<(usize, f64)>, // (generation, fitness)
+    pub parameters: HashMap<String, f32>,
+    pub fitness_history: Vec<(usize, f32)>, // (generation, fitness)
     pub parent_ids: Vec<usize>,
     pub offspring_ids: Vec<usize>,
     pub selection_count: usize,
@@ -63,12 +63,12 @@ pub struct IndividualRecord {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FamilyRepresentation {
     pub family_name: String,
-    pub target_proportion: f64,
+    pub target_proportion: f32,
     pub current_count: usize,
     pub total_created: usize,
-    pub best_fitness: Option<f64>,
-    pub worst_fitness: Option<f64>,
-    pub average_fitness: f64,
+    pub best_fitness: Option<f32>,
+    pub worst_fitness: Option<f32>,
+    pub average_fitness: f32,
     pub generations_dominated: Vec<usize>,
 }
 /// Final selected optimizer details
@@ -79,8 +79,8 @@ pub struct SelectedOptimizer {
     pub family: String,
     pub individual_id: usize,
     pub generation_created: usize,
-    pub final_fitness: f64,
-    pub parameters: HashMap<String, f64>,
+    pub final_fitness: f32,
+    pub parameters: HashMap<String, f32>,
     pub selection_rank: usize,
     pub parent_ids: Vec<usize>,
     pub total_evaluations: usize,
@@ -102,19 +102,19 @@ pub struct EvolutionTracker {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GenerationSummary {
     pub generation: usize,
-    pub best_fitness: f64,
-    pub worst_fitness: f64,
-    pub average_fitness: f64,
-    pub fitness_std: f64,
+    pub best_fitness: f32,
+    pub worst_fitness: f32,
+    pub average_fitness: f32,
+    pub fitness_std: f32,
     pub family_counts: HashMap<String, usize>,
     pub diversity_metrics: DiversityMetrics,
-    pub selection_pressure: f64,
+    pub selection_pressure: f32,
 }
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DiversityMetrics {
-    pub parameter_variance: HashMap<String, f64>,
-    pub fitness_diversity: f64,
-    pub family_diversity: f64,
+    pub parameter_variance: HashMap<String, f32>,
+    pub fitness_diversity: f32,
+    pub family_diversity: f32,
 }
 
 /// Adaptive experiment runner that evolves optimizer parameters for each problem
@@ -125,7 +125,7 @@ pub struct AdaptiveExperimentRunner {
     evaluation_runs: usize,
     output_dir: String,
     config: BenchmarkConfig,
-    family_proportions: HashMap<String, f64>,
+    family_proportions: HashMap<String, f32>,
     min_family_representation: usize,
 }
 
@@ -316,7 +316,7 @@ impl AdaptiveExperimentRunner {
             return;
         }
         // Equal proportions for all provided optimizer types
-        let equal_proportion = 1.0 / optimizer_types.len() as f64;
+        let equal_proportion = 1.0 / optimizer_types.len() as f32;
         for optimizer_type in optimizer_types {
             let family_name = format!("{:?}", optimizer_type);
             self.family_proportions
@@ -407,9 +407,9 @@ impl AdaptiveExperimentRunner {
                 .iter()
                 .filter_map(|g| g.fitness)
                 .min_by(|a, b| a.partial_cmp(b).unwrap())
-                .unwrap_or(f64::INFINITY);
+                .unwrap_or(f32::INFINITY);
             let avg_fitness =
-                population.iter().filter_map(|g| g.fitness).sum::<f64>() / population.len() as f64;
+                population.iter().filter_map(|g| g.fitness).sum::<f32>() / population.len() as f32;
 
             info!(
                 "{:?} optimizer - Generation {} results - Best: {:.6e}, Avg: {:.6e}",
@@ -471,11 +471,11 @@ impl AdaptiveExperimentRunner {
                     "Genome {:?} without fitness found, assigning penalty fitness",
                     genome.id
                 );
-                genome.fitness = Some(f64::INFINITY);
+                genome.fitness = Some(f32::INFINITY);
                 genome.success_rate = Some(0.0);
-                genome.mean_final_value = Some(f64::INFINITY);
+                genome.mean_final_value = Some(f32::INFINITY);
                 genome.total_evaluations = Some(usize::MAX);
-            } else if genome.fitness.unwrap() < f64::INFINITY {
+            } else if genome.fitness.unwrap() < f32::INFINITY {
                 has_valid_fitness = true;
             }
         }
@@ -511,9 +511,9 @@ impl AdaptiveExperimentRunner {
                         }
                         Err(e) => {
                             warn!("Emergency evaluation {} failed: {}", i, e);
-                            genome.fitness = Some(f64::INFINITY);
+                            genome.fitness = Some(f32::INFINITY);
                             genome.success_rate = Some(0.0);
-                            genome.mean_final_value = Some(f64::INFINITY);
+                            genome.mean_final_value = Some(f32::INFINITY);
                             genome.total_evaluations = Some(usize::MAX);
                         }
                     }
@@ -525,10 +525,10 @@ impl AdaptiveExperimentRunner {
         sorted_population.sort_by(|a, b| {
             if is_no_threshold_mode() {
                 // In no-threshold mode, sort by mean final value, then by total evaluations
-                let mean_a = a.mean_final_value.unwrap_or(f64::INFINITY);
-                let mean_b = b.mean_final_value.unwrap_or(f64::INFINITY);
-                let evals_a = a.total_evaluations.unwrap_or(usize::MAX) as f64;
-                let evals_b = b.total_evaluations.unwrap_or(usize::MAX) as f64;
+                let mean_a = a.mean_final_value.unwrap_or(f32::INFINITY);
+                let mean_b = b.mean_final_value.unwrap_or(f32::INFINITY);
+                let evals_a = a.total_evaluations.unwrap_or(usize::MAX) as f32;
+                let evals_b = b.total_evaluations.unwrap_or(usize::MAX) as f32;
 
                 match mean_a.total_cmp(&mean_b) {
                     std::cmp::Ordering::Equal => evals_a.total_cmp(&evals_b),
@@ -538,10 +538,10 @@ impl AdaptiveExperimentRunner {
                 // Sort by success rate first (higher is better), then by mean final value (lower is better), then by total evaluations (lower is better)
                 let success_a = a.success_rate.unwrap_or(0.0);
                 let success_b = b.success_rate.unwrap_or(0.0);
-                let mean_a = a.mean_final_value.unwrap_or(f64::INFINITY);
-                let mean_b = b.mean_final_value.unwrap_or(f64::INFINITY);
-                let evals_a = a.total_evaluations.unwrap_or(usize::MAX) as f64;
-                let evals_b = b.total_evaluations.unwrap_or(usize::MAX) as f64;
+                let mean_a = a.mean_final_value.unwrap_or(f32::INFINITY);
+                let mean_b = b.mean_final_value.unwrap_or(f32::INFINITY);
+                let evals_a = a.total_evaluations.unwrap_or(usize::MAX) as f32;
+                let evals_b = b.total_evaluations.unwrap_or(usize::MAX) as f32;
 
                 match success_b.total_cmp(&success_a) {
                     // Note: reversed for success rate (higher is better)
@@ -588,7 +588,7 @@ impl AdaptiveExperimentRunner {
                     }
                     Err(e) => {
                         warn!("Fallback genome evaluation failed: {}", e);
-                        fallback_genome.fitness = Some(f64::INFINITY);
+                        fallback_genome.fitness = Some(f32::INFINITY);
                     }
                 }
                 fallback_genome.id = Some(tracker.next_individual_id);
@@ -604,7 +604,7 @@ impl AdaptiveExperimentRunner {
             best_genomes.len(),
             best_genomes
                 .iter()
-                .map(|g| g.fitness.unwrap_or(f64::INFINITY))
+                .map(|g| g.fitness.unwrap_or(f32::INFINITY))
                 .collect::<Vec<_>>()
         );
         // Final check: ensure we're returning exactly top_n genomes
@@ -633,7 +633,7 @@ impl AdaptiveExperimentRunner {
                     family: format!("{:?}", genome.optimizer_type),
                     individual_id,
                     generation_created,
-                    final_fitness: genome.fitness.unwrap_or(f64::INFINITY),
+                    final_fitness: genome.fitness.unwrap_or(f32::INFINITY),
                     parameters: genome.get_parameters(),
                     selection_rank: rank + 1,
                     parent_ids,
@@ -750,9 +750,9 @@ impl AdaptiveExperimentRunner {
                 }
 
                 if valid_evaluations > 0 {
-                    let avg_fitness = total_fitness / valid_evaluations as f64;
-                    let avg_success_rate = total_success_rate / valid_evaluations as f64;
-                    let avg_mean_value = total_mean_value / valid_evaluations as f64;
+                    let avg_fitness = total_fitness / valid_evaluations as f32;
+                    let avg_success_rate = total_success_rate / valid_evaluations as f32;
+                    let avg_mean_value = total_mean_value / valid_evaluations as f32;
                     let avg_eval_count = total_eval_count / valid_evaluations;
                     Ok((
                         idx,
@@ -841,7 +841,7 @@ impl AdaptiveExperimentRunner {
                     "Genome {} still without fitness after evaluation, assigning penalty",
                     idx
                 );
-                genome.fitness = Some(f64::INFINITY);
+                genome.fitness = Some(f32::INFINITY);
             }
         }
 
@@ -956,7 +956,7 @@ impl AdaptiveExperimentRunner {
                         completed_count, total_to_evaluate, e
                     );
                     // Assign worst fitness to failed evaluations
-                    // population[idx].fitness = Some(f64::INFINITY);
+                    // population[idx].fitness = Some(f32::INFINITY);
                 }
                 Err(e) => {
                     completed_count += 1;
@@ -979,7 +979,7 @@ impl AdaptiveExperimentRunner {
                     "Genome {} still without fitness after evaluation, assigning penalty",
                     idx
                 );
-                genome.fitness = Some(f64::INFINITY);
+                genome.fitness = Some(f32::INFINITY);
             }
         }
 
@@ -1076,18 +1076,18 @@ impl AdaptiveExperimentRunner {
         population: &[OptimizerGenome],
         generation: usize,
     ) {
-        let fitnesses: Vec<f64> = population.iter().filter_map(|g| g.fitness).collect();
+        let fitnesses: Vec<f32> = population.iter().filter_map(|g| g.fitness).collect();
         if fitnesses.is_empty() {
             return;
         }
-        let best_fitness = fitnesses.iter().cloned().fold(f64::INFINITY, f64::min);
-        let worst_fitness = fitnesses.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let average_fitness = fitnesses.iter().sum::<f64>() / fitnesses.len() as f64;
+        let best_fitness = fitnesses.iter().cloned().fold(f32::INFINITY, f32::min);
+        let worst_fitness = fitnesses.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let average_fitness = fitnesses.iter().sum::<f32>() / fitnesses.len() as f32;
         let fitness_variance = fitnesses
             .iter()
             .map(|f| (f - average_fitness).powi(2))
-            .sum::<f64>()
-            / fitnesses.len() as f64;
+            .sum::<f32>()
+            / fitnesses.len() as f32;
         let fitness_std = fitness_variance.sqrt();
         // Count families
         let mut family_counts = HashMap::new();
@@ -1124,22 +1124,22 @@ impl AdaptiveExperimentRunner {
             .collect();
         // Calculate variance for each parameter
         for param_name in all_params {
-            let values: Vec<f64> = population
+            let values: Vec<f32> = population
                 .iter()
                 .filter_map(|g| g.get_parameters().get(&param_name).copied())
                 .collect();
             if values.len() > 1 {
-                let mean = values.iter().sum::<f64>() / values.len() as f64;
+                let mean = values.iter().sum::<f32>() / values.len() as f32;
                 let variance =
-                    values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+                    values.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / values.len() as f32;
                 parameter_variances.insert(param_name, variance);
             }
         }
         // Calculate fitness diversity
-        let fitnesses: Vec<f64> = population.iter().filter_map(|g| g.fitness).collect();
+        let fitnesses: Vec<f32> = population.iter().filter_map(|g| g.fitness).collect();
         let fitness_diversity = if fitnesses.len() > 1 {
-            let mean = fitnesses.iter().sum::<f64>() / fitnesses.len() as f64;
-            fitnesses.iter().map(|f| (f - mean).powi(2)).sum::<f64>() / fitnesses.len() as f64
+            let mean = fitnesses.iter().sum::<f32>() / fitnesses.len() as f32;
+            fitnesses.iter().map(|f| (f - mean).powi(2)).sum::<f32>() / fitnesses.len() as f32
         } else {
             0.0
         };
@@ -1149,18 +1149,18 @@ impl AdaptiveExperimentRunner {
             let family = format!("{:?}", genome.optimizer_type);
             *family_counts.entry(family).or_insert(0) += 1;
         }
-        let total = population.len() as f64;
+        let total = population.len() as f32;
         let family_diversity = family_counts
             .values()
             .map(|&count| {
-                let p = count as f64 / total;
+                let p = count as f32 / total;
                 if p > 0.0 {
                     -p * p.ln()
                 } else {
                     0.0
                 }
             })
-            .sum::<f64>();
+            .sum::<f32>();
         DiversityMetrics {
             parameter_variance: parameter_variances,
             fitness_diversity,
@@ -1181,7 +1181,7 @@ impl AdaptiveExperimentRunner {
         }
         // Check if any family is underrepresented
         for (family, target_proportion) in &self.family_proportions {
-            let target_count = (self.population_size as f64 * target_proportion) as usize;
+            let target_count = (self.population_size as f32 * target_proportion) as usize;
             let current_count = family_counts.get(family).copied().unwrap_or(0);
             let min_count = std::cmp::max(self.min_family_representation, target_count / 2);
             if current_count < min_count {
@@ -1301,7 +1301,7 @@ impl AdaptiveExperimentRunner {
         problem: ProblemSpec,
         config: BenchmarkConfig,
         num_runs: usize,
-    ) -> anyhow::Result<(f64, f64, f64, usize)> {
+    ) -> anyhow::Result<(f32, f32, f32, usize)> {
         trace!(
             "Starting genome evaluation with metrics for {} runs",
             num_runs
@@ -1331,7 +1331,7 @@ impl AdaptiveExperimentRunner {
             let fitness = if result.best_value.is_finite() {
                 total_final_value += result.best_value;
                 let value_component = result.best_value.abs().ln().max(-20.0);
-                let speed_component = (result.iterations as f64) / (config.max_iterations as f64);
+                let speed_component = (result.iterations as f32) / (config.max_iterations as f32);
                 value_component + 0.1 * speed_component
             } else {
                 trace!("Run {} failed to converge", run_id);
@@ -1349,16 +1349,16 @@ impl AdaptiveExperimentRunner {
 
         // Calculate metrics
         let final_fitness = if successful_runs > 0 {
-            total_fitness / (successful_runs as f64) + (num_runs - successful_runs) as f64 * 100.0
+            total_fitness / (successful_runs as f32) + (num_runs - successful_runs) as f32 * 100.0
         } else {
-            f64::INFINITY
+            f32::INFINITY
         };
 
-        let success_rate = successful_runs as f64 / num_runs as f64;
+        let success_rate = successful_runs as f32 / num_runs as f32;
         let mean_final_value = if successful_runs > 0 {
-            total_final_value / successful_runs as f64
+            total_final_value / successful_runs as f32
         } else {
-            f64::INFINITY
+            f32::INFINITY
         };
         let avg_evaluations = total_iterations / num_runs.max(1);
 
@@ -1380,7 +1380,7 @@ impl AdaptiveExperimentRunner {
         problem: ProblemSpec,
         config: BenchmarkConfig,
         num_runs: usize,
-    ) -> anyhow::Result<f64> {
+    ) -> anyhow::Result<f32> {
         trace!("Starting genome evaluation with {} runs", num_runs);
         let runner = BenchmarkRunner::new(config.clone());
         let mut total_fitness = 0.0;
@@ -1406,7 +1406,7 @@ impl AdaptiveExperimentRunner {
             let fitness = if result.best_value.is_finite() {
                 total_final_value += result.best_value;
                 let value_component = result.best_value.abs().ln().max(-20.0);
-                let speed_component = (result.iterations as f64) / (config.max_iterations as f64);
+                let speed_component = (result.iterations as f32) / (config.max_iterations as f32);
                 value_component + 0.1 * speed_component
             } else {
                 trace!("Run {} failed to converge", run_id);
@@ -1424,9 +1424,9 @@ impl AdaptiveExperimentRunner {
 
         // Return average fitness, with penalty for failed runs
         let final_fitness = if successful_runs > 0 {
-            total_fitness / (successful_runs as f64) + (num_runs - successful_runs) as f64 * 100.0
+            total_fitness / (successful_runs as f32) + (num_runs - successful_runs) as f32 * 100.0
         } else {
-            f64::INFINITY
+            f32::INFINITY
         };
 
         debug!(
@@ -1674,7 +1674,7 @@ impl AdaptiveExperimentRunner {
                 family_name,
                 family_data.target_proportion * 100.0,
                 family_data.total_created,
-                family_data.best_fitness.unwrap_or(f64::INFINITY),
+                family_data.best_fitness.unwrap_or(f32::INFINITY),
                 family_data.average_fitness
             ));
         }
@@ -1723,7 +1723,7 @@ impl AdaptiveExperimentRunner {
                     .fitness_history
                     .iter()
                     .map(|(_, f)| *f)
-                    .fold(f64::INFINITY, f64::min);
+                    .fold(f32::INFINITY, f32::min);
                 let params_str = individual
                     .parameters
                     .iter()
@@ -1783,7 +1783,7 @@ impl AdaptiveExperimentRunner {
                 .fitness_history
                 .iter()
                 .map(|(_, f)| *f)
-                .fold(f64::INFINITY, f64::min);
+                .fold(f32::INFINITY, f32::min);
             let params_str = individual
                 .parameters
                 .iter()
@@ -1861,7 +1861,7 @@ impl EvolutionTracker {
         population_size: usize,
         num_generations: usize,
         optimizer_types: &[super::parameter_evolution::OptimizerType],
-        family_proportions: &HashMap<String, f64>,
+        family_proportions: &HashMap<String, f32>,
     ) -> Self {
         let mut family_representations = HashMap::new();
         // Initialize family representations
@@ -1893,7 +1893,7 @@ impl EvolutionTracker {
         &mut self,
         individual_id: usize,
         generation: usize,
-        fitness: f64,
+        fitness: f32,
     ) {
         if let Some(individual) = self.individuals.get_mut(&individual_id) {
             individual.fitness_history.push((generation, fitness));
@@ -1911,7 +1911,7 @@ impl EvolutionTracker {
     }
 }
 impl FamilyRepresentation {
-    pub fn new(family_name: &str, target_proportion: f64) -> Self {
+    pub fn new(family_name: &str, target_proportion: f32) -> Self {
         Self {
             family_name: family_name.to_string(),
             target_proportion,
@@ -1919,7 +1919,7 @@ impl FamilyRepresentation {
             total_created: 0,
             best_fitness: None,
             worst_fitness: None,
-            average_fitness: f64::INFINITY,
+            average_fitness: f32::INFINITY,
             generations_dominated: Vec::new(),
         }
     }

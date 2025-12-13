@@ -67,7 +67,7 @@ pub async fn generate_family_vs_family_latex_table(
 "#,
     );
     // Find best and worst performers for coloring
-    let mut family_scores: HashMap<String, Vec<f64>> = HashMap::new();
+    let mut family_scores: HashMap<String, Vec<f32>> = HashMap::new();
     for problem_family in &problem_families {
         let problems_in_family: Vec<_> = all_results
             .iter()
@@ -258,7 +258,7 @@ pub fn generate_family_vs_family_table_content(
         return Ok(String::new());
     }
     // Find best and worst performers for coloring
-    let mut family_scores: HashMap<String, Vec<f64>> = HashMap::new();
+    let mut family_scores: HashMap<String, Vec<f32>> = HashMap::new();
     for problem_family in &problem_families {
         let problems_in_family: Vec<_> = all_results
             .iter()
@@ -531,8 +531,8 @@ pub(crate) fn calculate_family_performance_data(
 ) -> anyhow::Result<FamilyPerformanceData> {
     if problems_in_family.is_empty() {
         return Ok(FamilyPerformanceData {
-            average_ranking: f64::INFINITY,
-            best_rank_average: f64::INFINITY,
+            average_ranking: f32::INFINITY,
+            best_rank_average: f32::INFINITY,
             best_variant: "N/A".to_string(),
             worst_variant: "N/A".to_string(),
         });
@@ -552,7 +552,7 @@ pub(crate) fn calculate_family_performance_data(
         }
         let mut perf_data = Vec::new();
         for (optimizer, runs) in &optimizer_stats {
-            let final_values: Vec<f64> = runs
+            let final_values: Vec<f32> = runs
                 .iter()
                 .map(|r| r.best_value)
                 .filter(|&v| v.is_finite())
@@ -565,18 +565,18 @@ pub(crate) fn calculate_family_performance_data(
             } else {
                 runs.iter().filter(|r| r.convergence_achieved).count()
             };
-            let success_rate = success_count as f64 / runs.len() as f64;
-            let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+            let success_rate = success_count as f32 / runs.len() as f32;
+            let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
             let mean_func_evals = runs
                 .iter()
-                .map(|r| r.function_evaluations as f64)
-                .sum::<f64>()
-                / runs.len() as f64;
+                .map(|r| r.function_evaluations as f32)
+                .sum::<f32>()
+                / runs.len() as f32;
             let mean_grad_evals = runs
                 .iter()
-                .map(|r| r.gradient_evaluations as f64)
-                .sum::<f64>()
-                / runs.len() as f64;
+                .map(|r| r.gradient_evaluations as f32)
+                .sum::<f32>()
+                / runs.len() as f32;
             perf_data.push((
                 optimizer.clone(),
                 success_rate,
@@ -606,10 +606,10 @@ pub(crate) fn calculate_family_performance_data(
         });
         // Assign rankings and collect data for this optimizer family
         let mut family_ranks_this_problem = Vec::new();
-        let mut best_rank_this_problem = f64::INFINITY;
+        let mut best_rank_this_problem = f32::INFINITY;
         for (rank, (optimizer, _, mean_final, _)) in perf_data.iter().enumerate() {
             let current_family = get_optimizer_family(optimizer);
-            let rank_value = (rank + 1) as f64;
+            let rank_value = (rank + 1) as f32;
             if current_family == *optimizer_family {
                 all_rankings.push(rank_value);
                 family_ranks_this_problem.push(rank_value);
@@ -628,21 +628,21 @@ pub(crate) fn calculate_family_performance_data(
     }
     // Calculate averages
     let average_ranking = if !all_rankings.is_empty() {
-        all_rankings.iter().sum::<f64>() / all_rankings.len() as f64
+        all_rankings.iter().sum::<f32>() / all_rankings.len() as f32
     } else {
-        f64::INFINITY
+        f32::INFINITY
     };
     let best_rank_average = if !best_ranks_per_problem.is_empty() {
-        best_ranks_per_problem.iter().sum::<f64>() / best_ranks_per_problem.len() as f64
+        best_ranks_per_problem.iter().sum::<f32>() / best_ranks_per_problem.len() as f32
     } else {
-        f64::INFINITY
+        f32::INFINITY
     };
     // Find best and worst variants
     let mut variant_averages = Vec::new();
     for (variant, ranks_and_values) in variant_performance {
         if !ranks_and_values.is_empty() {
-            let avg_rank = ranks_and_values.iter().map(|(rank, _)| *rank).sum::<f64>()
-                / ranks_and_values.len() as f64;
+            let avg_rank = ranks_and_values.iter().map(|(rank, _)| *rank).sum::<f32>()
+                / ranks_and_values.len() as f32;
             variant_averages.push((variant, avg_rank));
         }
     }

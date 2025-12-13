@@ -337,7 +337,7 @@ Quickly identifies which optimizers work on which problem types.
         optimizers.sort();
         (optimizers, all_problems)
     }
-    fn calculate_success_rate(&self, results: &BenchmarkResults, optimizer: &str) -> (f64, bool) {
+    fn calculate_success_rate(&self, results: &BenchmarkResults, optimizer: &str) -> (f32, bool) {
         let optimizer_results: Vec<_> = results
             .results
             .iter()
@@ -350,11 +350,11 @@ Quickly identifies which optimizers work on which problem types.
                 .iter()
                 .filter(|r| r.convergence_achieved)
                 .count();
-            let success_rate = successful as f64 / optimizer_results.len() as f64 * 100.0;
+            let success_rate = successful as f32 / optimizer_results.len() as f32 * 100.0;
             (success_rate, true)
         }
     }
-    fn get_html_cell_style(&self, success_rate: f64, has_data: bool) -> (&'static str, String) {
+    fn get_html_cell_style(&self, success_rate: f32, has_data: bool) -> (&'static str, String) {
         if !has_data {
             ("no-data", "N/A".to_string())
         } else if success_rate >= 90.0 {
@@ -367,7 +367,7 @@ Quickly identifies which optimizers work on which problem types.
             ("very-poor", format!("{:.0}%", success_rate))
         }
     }
-    fn get_latex_cell_content(&self, success_rate: f64, has_data: bool) -> String {
+    fn get_latex_cell_content(&self, success_rate: f32, has_data: bool) -> String {
         if !has_data {
             "& \\cellcolor{gray!30}\\textcolor{white}{N/A}".to_string()
         } else {

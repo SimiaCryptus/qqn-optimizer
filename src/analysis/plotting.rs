@@ -67,7 +67,7 @@ impl Default for PlotConfig {
 #[derive(Debug, Clone)]
 pub struct ExtendedOptimizationTrace {
     pub optimizer_name: String,
-    pub objective_values: Vec<f64>,
+    pub objective_values: Vec<f32>,
     pub evaluation_counts: Vec<usize>,
 }
 impl ExtendedOptimizationTrace {
@@ -289,7 +289,7 @@ impl PlottingEngine {
             .iter()
             .flat_map(|t| t.objective_values.iter())
             .filter(|&&val| val.is_finite())
-            .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &val| {
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(min, max), &val| {
                 (min.min(val), max.max(val))
             });
         info!(
@@ -383,7 +383,7 @@ impl PlottingEngine {
             );
 
             for (run_idx, trace) in traces_for_optimizer.iter().enumerate() {
-                let series_data: Vec<(usize, f64)> = trace
+                let series_data: Vec<(usize, f32)> = trace
                     .evaluation_counts
                     .iter()
                     .zip(trace.objective_values.iter())
@@ -406,7 +406,7 @@ impl PlottingEngine {
                 } else {
                     // Make subsequent runs more transparent based on run index
                     (*color)
-                        .mix(0.8 - (run_idx as f64 * 0.05).min(0.3))
+                        .mix(0.8 - (run_idx as f32 * 0.05).min(0.3))
                         .to_rgba()
                 };
 
@@ -546,14 +546,14 @@ impl PlottingEngine {
             .iter()
             .flat_map(|t| t.objective_values.iter())
             .filter(|&&val| val > 0.0 && val.is_finite())
-            .fold(f64::INFINITY, |min, &val| min.min(val))
+            .fold(f32::INFINITY, |min, &val| min.min(val))
             .max(1e-15); // Ensure minimum bound to prevent extreme log values
 
         let max_obj = sanitized_traces
             .iter()
             .flat_map(|t| t.objective_values.iter())
             .filter(|&&val| val.is_finite())
-            .fold(f64::NEG_INFINITY, |max, &val| max.max(val))
+            .fold(f32::NEG_INFINITY, |max, &val| max.max(val))
             .min(1e10); // Cap maximum to prevent overflow
         info!(
             "Log scale data ranges - Min positive: {:.6e}, Max: {:.6e}",
@@ -622,7 +622,7 @@ impl PlottingEngine {
             );
 
             for (run_idx, trace) in traces_for_optimizer.iter().enumerate() {
-                let series_data: Vec<(usize, f64)> = trace
+                let series_data: Vec<(usize, f32)> = trace
                     .evaluation_counts
                     .iter()
                     .zip(trace.objective_values.iter())
@@ -648,7 +648,7 @@ impl PlottingEngine {
                     } else {
                         // Make subsequent runs more transparent based on run index
                         (*color)
-                            .mix(0.8 - (run_idx as f64 * 0.05).min(0.3))
+                            .mix(0.8 - (run_idx as f32 * 0.05).min(0.3))
                             .to_rgba()
                     };
 
@@ -737,7 +737,7 @@ impl PlottingEngine {
         root.fill(&WHITE)?;
 
         // Group results by problem and optimizer
-        let mut problem_results: HashMap<String, HashMap<String, Vec<f64>>> = HashMap::new();
+        let mut problem_results: HashMap<String, HashMap<String, Vec<f32>>> = HashMap::new();
 
         for result in &results.results {
             problem_results
@@ -752,13 +752,13 @@ impl PlottingEngine {
                         "Non-finite final value for {} on {}: {:.6e}",
                         result.optimizer_name, result.problem_name, result.final_value
                     );
-                    f64::NAN
+                    f32::NAN
                 });
         }
         info!("Grouped results into {} problems", problem_results.len());
 
         // Calculate mean final values for each optimizer on each problem
-        let mut chart_data: Vec<(String, Vec<(String, f64)>)> = Vec::new();
+        let mut chart_data: Vec<(String, Vec<(String, f32)>)> = Vec::new();
 
         for (problem, optimizers) in problem_results {
             debug!(
@@ -768,11 +768,11 @@ impl PlottingEngine {
             );
             let mut optimizer_means = Vec::new();
             for (optimizer, values) in optimizers {
-                let finite_values: Vec<f64> =
+                let finite_values: Vec<f32> =
                     values.iter().filter(|&&v| v.is_finite()).copied().collect();
 
                 if !finite_values.is_empty() {
-                    let mean = finite_values.iter().sum::<f64>() / finite_values.len() as f64;
+                    let mean = finite_values.iter().sum::<f32>() / finite_values.len() as f32;
                     if mean.is_finite() {
                         debug!(
                             "Optimizer {} on {}: mean = {:.6e} ({} runs)",
@@ -846,13 +846,13 @@ impl PlottingEngine {
                 .iter()
                 .map(|(_, val)| *val)
                 .filter(|&val| val.is_finite())
-                .fold(f64::NEG_INFINITY, f64::max);
+                .fold(f32::NEG_INFINITY, f32::max);
 
             let min_value = optimizer_data
                 .iter()
                 .map(|(_, val)| *val)
                 .filter(|&val| val.is_finite())
-                .fold(f64::INFINITY, f64::min);
+                .fold(f32::INFINITY, f32::min);
             debug!(
                 "Problem {} value range: [{:.6e}, {:.6e}]",
                 problem_name, min_value, max_value
@@ -873,7 +873,7 @@ impl PlottingEngine {
                 .margin(10)
                 .x_label_area_size(if self.has_fonts { 30 } else { 0 })
                 .y_label_area_size(if self.has_fonts { 50 } else { 0 })
-                .build_cartesian_2d(0.0..(optimizer_data.len() as f64), padded_min..padded_max)?;
+                .build_cartesian_2d(0.0..(optimizer_data.len() as f32), padded_min..padded_max)?;
 
             // Configure mesh based on font availability
             if self.has_fonts {
@@ -893,7 +893,7 @@ impl PlottingEngine {
                     .map(|(x, (_name, value))| {
                         let color = colors[x % colors.len()];
                         Rectangle::new(
-                            [(x as f64, padded_min), (x as f64 + 0.8, *value)],
+                            [(x as f32, padded_min), (x as f32 + 0.8, *value)],
                             color.filled(),
                         )
                     }),
@@ -965,7 +965,7 @@ impl PlottingEngine {
         root.fill(&WHITE)?;
 
         // Group results by optimizer across all problems
-        let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
+        let mut optimizer_results: HashMap<String, Vec<f32>> = HashMap::new();
 
         for result in &results.results {
             optimizer_results
@@ -978,7 +978,7 @@ impl PlottingEngine {
                         "Non-finite final value for {}: {:.6e}",
                         result.optimizer_name, result.final_value
                     );
-                    f64::NAN
+                    f32::NAN
                 });
         }
         info!("Grouped results by {} optimizers", optimizer_results.len());
@@ -1043,12 +1043,12 @@ impl PlottingEngine {
             .iter()
             .map(|(_, data)| data.min)
             .filter(|&v| v.is_finite())
-            .fold(f64::INFINITY, f64::min);
+            .fold(f32::INFINITY, f32::min);
         let global_max = box_data
             .iter()
             .map(|(_, data)| data.max)
             .filter(|&v| v.is_finite())
-            .fold(f64::NEG_INFINITY, f64::max);
+            .fold(f32::NEG_INFINITY, f32::max);
         info!(
             "Global boxplot range: [{:.6e}, {:.6e}]",
             global_min, global_max
@@ -1069,7 +1069,7 @@ impl PlottingEngine {
             .margin(20)
             .x_label_area_size(if self.has_fonts { 60 } else { 0 })
             .y_label_area_size(if self.has_fonts { 50 } else { 0 })
-            .build_cartesian_2d(0.0..(box_data.len() as f64), padded_min..padded_max)?;
+            .build_cartesian_2d(0.0..(box_data.len() as f32), padded_min..padded_max)?;
 
         // Configure mesh based on font availability
         if self.has_fonts {
@@ -1085,7 +1085,7 @@ impl PlottingEngine {
         info!("Drawing {} box plots", box_data.len());
         for (i, (name, data)) in box_data.iter().enumerate() {
             debug!("Drawing box plot {} for optimizer: {}", i, name);
-            let x = i as f64;
+            let x = i as f32;
             let box_width = 0.3;
 
             // Draw box (Q1 to Q3)
@@ -1139,7 +1139,7 @@ impl PlottingEngine {
                 if let Err(e) = root.draw(&Text::new(
                     name.as_str(),
                     (
-                        ((i as f64 + 0.5) * self.width as f64 / box_data.len() as f64) as i32,
+                        ((i as f32 + 0.5) * self.width as f32 / box_data.len() as f32) as i32,
                         (self.height - 20) as i32,
                     ),
                     ("sans-serif", 15)
@@ -1286,7 +1286,7 @@ impl PlottingEngine {
         info!("Writing performance comparison CSV to: {}", csv_path);
         let mut csv_content = String::from("Problem,Optimizer,MeanFinalValue,StdFinalValue,MeanIterations,MeanFunctionEvals,MeanGradientEvals,SuccessRate\n");
         // Group results by problem and optimizer
-        let mut problem_results: HashMap<String, HashMap<String, Vec<f64>>> = HashMap::new();
+        let mut problem_results: HashMap<String, HashMap<String, Vec<f32>>> = HashMap::new();
         for result in &results.results {
             problem_results
                 .entry(result.problem_name.clone())
@@ -1309,7 +1309,7 @@ impl PlottingEngine {
                     .filter(|r| r.problem_name == problem && r.optimizer_name == optimizer)
                     .collect();
                 if !optimizer_results.is_empty() {
-                    let finite_values: Vec<f64> =
+                    let finite_values: Vec<f32> =
                         values.iter().filter(|&&v| v.is_finite()).copied().collect();
 
                     if finite_values.is_empty() {
@@ -1320,35 +1320,35 @@ impl PlottingEngine {
                         continue;
                     }
 
-                    let mean_final = finite_values.iter().sum::<f64>() / finite_values.len() as f64;
+                    let mean_final = finite_values.iter().sum::<f32>() / finite_values.len() as f32;
                     let std_final = {
                         let variance = finite_values
                             .iter()
                             .map(|x| (x - mean_final).powi(2))
-                            .sum::<f64>()
-                            / finite_values.len() as f64;
+                            .sum::<f32>()
+                            / finite_values.len() as f32;
                         variance.sqrt()
                     };
                     let mean_iterations = optimizer_results
                         .iter()
-                        .map(|r| r.iterations as f64)
-                        .sum::<f64>()
-                        / optimizer_results.len() as f64;
+                        .map(|r| r.iterations as f32)
+                        .sum::<f32>()
+                        / optimizer_results.len() as f32;
                     let mean_function_evals = optimizer_results
                         .iter()
-                        .map(|r| r.function_evaluations as f64)
-                        .sum::<f64>()
-                        / optimizer_results.len() as f64;
+                        .map(|r| r.function_evaluations as f32)
+                        .sum::<f32>()
+                        / optimizer_results.len() as f32;
                     let mean_gradient_evals = optimizer_results
                         .iter()
-                        .map(|r| r.gradient_evaluations as f64)
-                        .sum::<f64>()
-                        / optimizer_results.len() as f64;
+                        .map(|r| r.gradient_evaluations as f32)
+                        .sum::<f32>()
+                        / optimizer_results.len() as f32;
                     let success_count = optimizer_results
                         .iter()
                         .filter(|r| r.convergence_achieved)
                         .count();
-                    let success_rate = success_count as f64 / optimizer_results.len() as f64;
+                    let success_rate = success_count as f32 / optimizer_results.len() as f32;
                     csv_content.push_str(&format!(
                         "{problem},{optimizer},{mean_final:.6e},{std_final:.6e},{mean_iterations:.1},{mean_function_evals:.1},{mean_gradient_evals:.1},{success_rate:.3}\n"
                     ));
@@ -1384,7 +1384,7 @@ impl PlottingEngine {
         info!("Writing performance boxplot CSV to: {}", csv_path);
         let mut csv_content = String::from("Optimizer,Min,Q1,Median,Q3,Max,AllValues\n");
         // Group results by optimizer across all problems
-        let mut optimizer_results: HashMap<String, Vec<f64>> = HashMap::new();
+        let mut optimizer_results: HashMap<String, Vec<f32>> = HashMap::new();
         for result in &results.results {
             optimizer_results
                 .entry(result.optimizer_name.clone())
@@ -1524,11 +1524,11 @@ impl PlottingEngine {
 
 #[derive(Debug, Clone)]
 struct BoxPlotData {
-    min: f64,
-    q1: f64,
-    median: f64,
-    q3: f64,
-    max: f64,
+    min: f32,
+    q1: f32,
+    median: f32,
+    q3: f32,
+    max: f32,
 }
 
 #[cfg(test)]

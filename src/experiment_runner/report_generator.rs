@@ -44,8 +44,8 @@ use std::path::Path;
 /// Data structure for family performance comparison
 #[derive(Debug, Clone)]
 pub struct FamilyPerformanceData {
-    pub(crate) average_ranking: f64,
-    pub(crate) best_rank_average: f64,
+    pub(crate) average_ranking: f32,
+    pub(crate) best_rank_average: f32,
     pub(crate) best_variant: String,
     pub(crate) worst_variant: String,
 }
@@ -438,7 +438,7 @@ fn generate_efficiency_matrix_table_content(
                         if result_optimizer_family == *optimizer_family
                             && result.convergence_achieved
                         {
-                            successful_evaluations.push(result.function_evaluations as f64);
+                            successful_evaluations.push(result.function_evaluations as f32);
                         }
                     }
                 }
@@ -446,13 +446,13 @@ fn generate_efficiency_matrix_table_content(
             let cell_content = if successful_evaluations.is_empty() {
                 "N/A".to_string()
             } else {
-                let mean = successful_evaluations.iter().sum::<f64>()
-                    / successful_evaluations.len() as f64;
+                let mean = successful_evaluations.iter().sum::<f32>()
+                    / successful_evaluations.len() as f32;
                 let variance = successful_evaluations
                     .iter()
                     .map(|x| (x - mean).powi(2))
-                    .sum::<f64>()
-                    / successful_evaluations.len() as f64;
+                    .sum::<f32>()
+                    / successful_evaluations.len() as f32;
                 let std_dev = variance.sqrt();
                 format!("{mean:.0} $\\pm$ {std_dev:.0}")
             };
@@ -746,7 +746,7 @@ fn extract_line_search_config(optimizer_name: &str) -> serde_json::Value {
     }
 }
 /// Extract numeric parameter from optimizer name
-fn extract_numeric_param(optimizer_name: &str, param_name: &str) -> Option<f64> {
+fn extract_numeric_param(optimizer_name: &str, param_name: &str) -> Option<f32> {
     // Simple regex-like extraction - in practice you'd want more robust parsing
     if let Some(start) = optimizer_name.find(param_name) {
         let after_param = &optimizer_name[start + param_name.len()..];
@@ -756,7 +756,7 @@ fn extract_numeric_param(optimizer_name: &str, param_name: &str) -> Option<f64> 
             let end = after_equals
                 .find(|c: char| !c.is_ascii_digit() && c != '.' && c != 'e' && c != '-' && c != '+')
                 .unwrap_or(after_equals.len());
-            if let Ok(value) = after_equals[..end].parse::<f64>() {
+            if let Ok(value) = after_equals[..end].parse::<f32>() {
                 return Some(value);
             }
         }
@@ -929,22 +929,22 @@ pub(crate) fn generate_detailed_report_header(
     let problem_name = problem.name();
     let successful_runs = runs.iter().filter(|r| r.convergence_achieved).count();
     let total_runs = runs.len();
-    let success_rate = successful_runs as f64 / total_runs as f64 * 100.0;
-    let final_values: Vec<f64> = runs
+    let success_rate = successful_runs as f32 / total_runs as f32 * 100.0;
+    let final_values: Vec<f32> = runs
         .iter()
         .map(|r| r.final_value)
         .filter(|&v| v.is_finite())
         .collect();
     let (best_value, worst_value, mean_value) = if !final_values.is_empty() {
-        let best = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+        let best = final_values.iter().cloned().fold(f32::INFINITY, f32::min);
         let worst = final_values
             .iter()
             .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
-        let mean = final_values.iter().sum::<f64>() / final_values.len() as f64;
+            .fold(f32::NEG_INFINITY, f32::max);
+        let mean = final_values.iter().sum::<f32>() / final_values.len() as f32;
         (best, worst, mean)
     } else {
-        (f64::INFINITY, f64::INFINITY, f64::INFINITY)
+        (f32::INFINITY, f32::INFINITY, f32::INFINITY)
     };
     format!(
         r#"# Detailed Analysis: {} on {}
@@ -972,7 +972,7 @@ pub(crate) fn generate_detailed_report_header(
         optimizer_name,
         get_family(problem_name),
         problem.dimension(),
-        problem.optimal_value().unwrap_or(f64::NEG_INFINITY),
+        problem.optimal_value().unwrap_or(f32::NEG_INFINITY),
         total_runs,
         successful_runs,
         success_rate,
@@ -1036,12 +1036,12 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
         }
         let mut perf_data = Vec::new();
         for (optimizer, runs) in &optimizer_stats {
-            let final_values: Vec<f64> = runs
+            let final_values: Vec<f32> = runs
                 .iter()
                 .map(|r| r.final_value)
                 .filter(|&v| v.is_finite())
                 .collect();
-            let best_values: Vec<f64> = runs
+            let best_values: Vec<f32> = runs
                 .iter()
                 .map(|r| r.best_value)
                 .filter(|&v| v.is_finite())
@@ -1050,8 +1050,8 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
                 continue;
             }
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-            let success_rate = success_count as f64 / runs.len() as f64;
-            let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+            let success_rate = success_count as f32 / runs.len() as f32;
+            let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
 
             // Calculate median best value
             let median_best = if !best_values.is_empty() {
@@ -1064,7 +1064,7 @@ fn generate_winner_summary_table(all_results: &[(&ProblemSpec, BenchmarkResults)
                     sorted_best[len / 2]
                 }
             } else {
-                f64::INFINITY
+                f32::INFINITY
             };
 
             perf_data.push((optimizer.clone(), success_rate, mean_final, median_best));
@@ -1221,7 +1221,7 @@ fn generate_conclusions(all_results: &[(&ProblemSpec, BenchmarkResults)]) -> Str
     for (_problem, results) in all_results {
         total_problems += 1;
         let mut best_optimizer = String::new();
-        let mut best_value = f64::INFINITY;
+        let mut best_value = f32::INFINITY;
         for result in &results.results {
             if result.final_value < best_value {
                 best_value = result.final_value;
@@ -1271,7 +1271,7 @@ fn generate_conclusions(all_results: &[(&ProblemSpec, BenchmarkResults)]) -> Str
 "#,
         qqn_wins,
         total_problems,
-        (qqn_wins as f64 / total_problems as f64) * 100.0
+        (qqn_wins as f32 / total_problems as f32) * 100.0
     )
 }
 
@@ -1360,7 +1360,7 @@ fn generate_csv_exports(
         }
 
         for (optimizer, runs) in optimizer_stats {
-            let final_values: Vec<f64> = runs
+            let final_values: Vec<f32> = runs
                 .iter()
                 .map(|r| r.final_value)
                 .filter(|&v| v.is_finite())
@@ -1376,92 +1376,92 @@ fn generate_csv_exports(
             // Calculate statistics for successful runs
             let (mean_final_success, mean_func_evals_success, mean_grad_evals_success) =
                 if !successful_runs.is_empty() {
-                    let final_vals: Vec<f64> = successful_runs
+                    let final_vals: Vec<f32> = successful_runs
                         .iter()
                         .map(|r| r.final_value)
                         .filter(|&v| v.is_finite())
                         .collect();
-                    let func_evals: Vec<f64> = successful_runs
+                    let func_evals: Vec<f32> = successful_runs
                         .iter()
-                        .map(|r| r.function_evaluations as f64)
+                        .map(|r| r.function_evaluations as f32)
                         .collect();
-                    let grad_evals: Vec<f64> = successful_runs
+                    let grad_evals: Vec<f32> = successful_runs
                         .iter()
-                        .map(|r| r.gradient_evaluations as f64)
+                        .map(|r| r.gradient_evaluations as f32)
                         .collect();
                     (
                         if !final_vals.is_empty() {
-                            final_vals.iter().sum::<f64>() / final_vals.len() as f64
+                            final_vals.iter().sum::<f32>() / final_vals.len() as f32
                         } else {
-                            f64::NAN
+                            f32::NAN
                         },
-                        func_evals.iter().sum::<f64>() / func_evals.len() as f64,
-                        grad_evals.iter().sum::<f64>() / grad_evals.len() as f64,
+                        func_evals.iter().sum::<f32>() / func_evals.len() as f32,
+                        grad_evals.iter().sum::<f32>() / grad_evals.len() as f32,
                     )
                 } else {
-                    (f64::NAN, f64::NAN, f64::NAN)
+                    (f32::NAN, f32::NAN, f32::NAN)
                 };
             // Calculate statistics for unsuccessful runs
             let (mean_final_fail, mean_func_evals_fail, mean_grad_evals_fail) =
                 if !unsuccessful_runs.is_empty() {
-                    let final_vals: Vec<f64> = unsuccessful_runs
+                    let final_vals: Vec<f32> = unsuccessful_runs
                         .iter()
                         .map(|r| r.final_value)
                         .filter(|&v| v.is_finite())
                         .collect();
-                    let func_evals: Vec<f64> = unsuccessful_runs
+                    let func_evals: Vec<f32> = unsuccessful_runs
                         .iter()
-                        .map(|r| r.function_evaluations as f64)
+                        .map(|r| r.function_evaluations as f32)
                         .collect();
-                    let grad_evals: Vec<f64> = unsuccessful_runs
+                    let grad_evals: Vec<f32> = unsuccessful_runs
                         .iter()
-                        .map(|r| r.gradient_evaluations as f64)
+                        .map(|r| r.gradient_evaluations as f32)
                         .collect();
                     (
                         if !final_vals.is_empty() {
-                            final_vals.iter().sum::<f64>() / final_vals.len() as f64
+                            final_vals.iter().sum::<f32>() / final_vals.len() as f32
                         } else {
-                            f64::NAN
+                            f32::NAN
                         },
-                        func_evals.iter().sum::<f64>() / func_evals.len() as f64,
-                        grad_evals.iter().sum::<f64>() / grad_evals.len() as f64,
+                        func_evals.iter().sum::<f32>() / func_evals.len() as f32,
+                        grad_evals.iter().sum::<f32>() / grad_evals.len() as f32,
                     )
                 } else {
-                    (f64::NAN, f64::NAN, f64::NAN)
+                    (f32::NAN, f32::NAN, f32::NAN)
                 };
 
-            let iterations: Vec<f64> = runs.iter().map(|r| r.iterations as f64).collect();
-            let function_evals: Vec<f64> =
-                runs.iter().map(|r| r.function_evaluations as f64).collect();
-            let gradient_evals: Vec<f64> =
-                runs.iter().map(|r| r.gradient_evaluations as f64).collect();
-            let execution_times: Vec<f64> = runs
+            let iterations: Vec<f32> = runs.iter().map(|r| r.iterations as f32).collect();
+            let function_evals: Vec<f32> =
+                runs.iter().map(|r| r.function_evaluations as f32).collect();
+            let gradient_evals: Vec<f32> =
+                runs.iter().map(|r| r.gradient_evaluations as f32).collect();
+            let execution_times: Vec<f32> = runs
                 .iter()
                 .map(|r| r.execution_time.as_secs_f64())
                 .collect();
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
 
-            let mean_final = final_values.iter().sum::<f64>() / final_values.len() as f64;
+            let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
             let std_final = {
                 let variance = final_values
                     .iter()
                     .map(|x| (x - mean_final).powi(2))
-                    .sum::<f64>()
-                    / final_values.len() as f64;
+                    .sum::<f32>()
+                    / final_values.len() as f32;
                 variance.sqrt()
             };
-            let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+            let best_final = final_values.iter().cloned().fold(f32::INFINITY, f32::min);
             let worst_final = final_values
                 .iter()
                 .cloned()
-                .fold(f64::NEG_INFINITY, f64::max);
-            let mean_iterations = iterations.iter().sum::<f64>() / iterations.len() as f64;
+                .fold(f32::NEG_INFINITY, f32::max);
+            let mean_iterations = iterations.iter().sum::<f32>() / iterations.len() as f32;
             let mean_function_evals =
-                function_evals.iter().sum::<f64>() / function_evals.len() as f64;
+                function_evals.iter().sum::<f32>() / function_evals.len() as f32;
             let mean_gradient_evals =
-                gradient_evals.iter().sum::<f64>() / gradient_evals.len() as f64;
-            let mean_time = execution_times.iter().sum::<f64>() / execution_times.len() as f64;
-            let success_rate = success_count as f64 / runs.len() as f64;
+                gradient_evals.iter().sum::<f32>() / gradient_evals.len() as f32;
+            let mean_time = execution_times.iter().sum::<f32>() / execution_times.len() as f32;
+            let success_rate = success_count as f32 / runs.len() as f32;
 
             let problem_name = problem.get_name();
             let problem_family = get_family(&problem_name);

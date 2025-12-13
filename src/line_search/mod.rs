@@ -6,7 +6,7 @@ pub use line_search::{
 };
 
 /// Tolerance for numerical comparisons
-pub const NUMERICAL_TOLERANCE: f64 = 1e-12;
+pub const NUMERICAL_TOLERANCE: f32 = 1e-12;
 
 /// Maximum number of line search iterations
 pub const MAX_LINE_SEARCH_ITERATIONS: usize = 50;

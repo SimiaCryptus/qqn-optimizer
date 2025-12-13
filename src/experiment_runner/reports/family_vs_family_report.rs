@@ -359,12 +359,12 @@ This report shows how different optimizer families perform across different prob
                     if cell_data.average_ranking.is_finite() {
                         cell_data.average_ranking
                     } else {
-                        f64::NAN
+                        f32::NAN
                     },
                     if cell_data.best_rank_average.is_finite() {
                         cell_data.best_rank_average
                     } else {
-                        f64::NAN
+                        f32::NAN
                     },
                     cell_data.best_variant,
                     cell_data.worst_variant

@@ -1,6 +1,4 @@
-use crate::utils::math::{tensor_from_vec, tensors_to_vec, DifferentiableFunction};
 use anyhow::Result;
-use candle_core::Tensor;
 /// Trait defining an optimization problem interface
 pub trait OptimizationProblem: Send + Sync {
     /// Get the problem name
@@ -8,13 +6,13 @@ pub trait OptimizationProblem: Send + Sync {
     /// Get the problem dimension
     fn dimension(&self) -> usize;
     /// Get the initial starting point
-    fn initial_point(&self) -> Vec<f64>;
+    fn initial_point(&self) -> Vec<f32>;
     /// Evaluate the objective function at point x
-    fn evaluate_f64(&self, x: &[f64]) -> Result<f64>;
+    fn evaluate_f64(&self, x: &[f32]) -> Result<f32>;
     /// Compute the gradient at point x
-    fn gradient_f64(&self, x: &[f64]) -> Result<Vec<f64>>;
+    fn gradient_f64(&self, x: &[f32]) -> Result<Vec<f32>>;
     /// Get the optimal value if known
-    fn optimal_value(&self) -> Option<f64>;
+    fn optimal_value(&self) -> Option<f32>;
     /// Clone this optimization problem
     fn clone_problem(&self) -> Box<dyn OptimizationProblem>;
 }
@@ -25,7 +23,7 @@ pub struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
 }
 impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {}
 impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
-    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
+    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f32> {
         let x_vec = tensors_to_vec(params);
         self.problem
             .evaluate_f64(&x_vec)

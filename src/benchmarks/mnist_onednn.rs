@@ -225,14 +225,14 @@ pub struct MnistOneDnnNeuralNetwork {
     y_data: Vec<Vec<f32>>,
     batch_size: usize,
     name: String,
-    optimal_value: Option<f64>,
+    optimal_value: Option<f32>,
     param_count: usize,
-    param_cache: Arc<RwLock<Option<Vec<f64>>>>,
-    gradient_cache: Arc<RwLock<Option<Vec<f64>>>>,
-    gradient_params_cache: Arc<RwLock<Option<Vec<f64>>>>,
+    param_cache: Arc<RwLock<Option<Vec<f32>>>>,
+    gradient_cache: Arc<RwLock<Option<Vec<f32>>>>,
+    gradient_params_cache: Arc<RwLock<Option<Vec<f32>>>>,
     layer_sizes: Vec<usize>,
     activation: ActivationType,
-    l2_regularization: f64,
+    l2_regularization: f32,
     #[cfg(feature = "onednn")]
     layers: Arc<RwLock<Vec<OneDnnLayer>>>,
     #[cfg(feature = "onednn")]
@@ -241,8 +241,8 @@ pub struct MnistOneDnnNeuralNetwork {
 
 impl MnistOneDnnNeuralNetwork {
     pub fn new(
-        x_data: Vec<Vec<f64>>,
-        y_data: Vec<Vec<f64>>,
+        x_data: Vec<Vec<f32>>,
+        y_data: Vec<Vec<f32>>,
         hidden_sizes: &[usize],
         batch_size: Option<usize>,
         rng: &mut StdRng,
@@ -370,7 +370,7 @@ impl MnistOneDnnNeuralNetwork {
         Ok(instance)
     }
 
-    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+    pub fn set_optimal_value(&mut self, value: Option<f32>) {
         info!("Setting optimal value: {:?}", value);
         self.optimal_value = value;
     }
@@ -409,10 +409,10 @@ impl MnistOneDnnNeuralNetwork {
         let mut y_data = Vec::with_capacity(actual_samples);
 
         for &i in &indices {
-            // Convert image data to f64 and normalize to [0, 1]
-            let image: Vec<f64> = mnist_data.images[i]
+            // Convert image data to f32 and normalize to [0, 1]
+            let image: Vec<f32> = mnist_data.images[i]
                 .iter()
-                .map(|&pixel| pixel as f64 / 255.0)
+                .map(|&pixel| pixel as f32 / 255.0)
                 .collect();
 
             // Convert label to one-hot encoding
@@ -718,7 +718,7 @@ impl MnistOneDnnNeuralNetwork {
         self.param_count
     }
 
-    fn set_parameters(&self, params: &[f64]) -> anyhow::Result<()> {
+    fn set_parameters(&self, params: &[f32]) -> anyhow::Result<()> {
         // Check all parameters for non-finite values before setting
         trace!("Setting {} parameters", params.len());
 
@@ -728,7 +728,7 @@ impl MnistOneDnnNeuralNetwork {
         }
 
         // Check for extreme values that might cause numerical instability
-        let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f64::max);
+        let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f32::max);
         if max_abs > 1e6 {
             warn!("Large parameter values detected: max abs = {:.2e}", max_abs);
             return Err(anyhow::anyhow!(
@@ -816,7 +816,7 @@ impl MnistOneDnnNeuralNetwork {
         Ok(())
     }
 
-    fn get_parameters(&self) -> anyhow::Result<Vec<f64>> {
+    fn get_parameters(&self) -> anyhow::Result<Vec<f32>> {
         // Check cache first
         if let Some(cached) = self.param_cache.read().as_ref() {
             trace!("Returning {} cached parameters", cached.len());
@@ -835,14 +835,14 @@ impl MnistOneDnnNeuralNetwork {
                     i, layer.input_size, layer.output_size
                 );
 
-                // Extract weights (convert f32 to f64)
+                // Extract weights (convert f32 to f32)
                 for &weight in &layer.weights {
-                    params.push(weight as f64);
+                    params.push(weight as f32);
                 }
 
-                // Extract biases (convert f32 to f64)
+                // Extract biases (convert f32 to f32)
                 for &bias in &layer.bias {
-                    params.push(bias as f64);
+                    params.push(bias as f32);
                 }
             }
 
@@ -871,7 +871,7 @@ impl MnistOneDnnNeuralNetwork {
             warn!("OneDNN not available, returning random initialized parameters");
             use rand::Rng;
             let mut rng = rand::thread_rng();
-            let params: Vec<f64> = (0..self.param_count)
+            let params: Vec<f32> = (0..self.param_count)
                 .map(|_| rng.gen_range(-0.1..0.1))
                 .collect();
 
@@ -905,15 +905,15 @@ impl MnistOneDnnNeuralNetwork {
                 let std_dev = match self.activation {
                     ActivationType::ReLU => {
                         // He initialization for ReLU
-                        (2.0 / input_size as f64).sqrt() * 1.0
+                        (2.0 / input_size as f32).sqrt() * 1.0
                     }
                     ActivationType::Logistic => {
                         // Xavier/Glorot initialization for logistic
-                        (6.0 / (input_size + output_size) as f64).sqrt()
+                        (6.0 / (input_size + output_size) as f32).sqrt()
                     }
                     ActivationType::Tanh => {
                         // Xavier initialization for tanh
-                        (6.0 / (input_size + output_size) as f64).sqrt()
+                        (6.0 / (input_size + output_size) as f32).sqrt()
                     }
                 };
                 let std_dev = std_dev / 5.0; // Scale down for better stability
@@ -925,14 +925,14 @@ impl MnistOneDnnNeuralNetwork {
                 // Generate initialized weights
                 let mut weights = Vec::with_capacity(input_size * output_size);
                 for _ in 0..(input_size * output_size) {
-                    let normal: f64 = rng.sample(rand_distr::StandardNormal);
+                    let normal: f32 = rng.sample(rand_distr::StandardNormal);
                     weights.push((normal * std_dev) as f32);
                 }
 
                 // Generate initialized biases (small random values for better gradient flow)
                 let mut biases = Vec::with_capacity(output_size);
                 for _ in 0..output_size {
-                    let normal: f64 = rng.sample(rand_distr::StandardNormal);
+                    let normal: f32 = rng.sample(rand_distr::StandardNormal);
                     biases.push((normal * 0.01) as f32);
                 }
                 if log::log_enabled!(log::Level::Trace) {
@@ -1081,7 +1081,7 @@ impl MnistOneDnnNeuralNetwork {
         Ok(results)
     }
     #[cfg(feature = "onednn")]
-    fn compute_gradient_backprop(&self) -> anyhow::Result<Vec<f64>> {
+    fn compute_gradient_backprop(&self) -> anyhow::Result<Vec<f32>> {
         trace!("Starting backpropagation gradient computation");
         let n_samples = self.x_data.len();
         let n_batches = n_samples.div_ceil(self.batch_size);
@@ -1126,13 +1126,13 @@ impl MnistOneDnnNeuralNetwork {
 
                     // Gradient for biases
                     for (i, &d) in delta.iter().enumerate() {
-                        total_gradient[param_idx + weights_per_layer + i] += d as f64;
+                        total_gradient[param_idx + weights_per_layer + i] += d as f32;
                     }
                     // Gradient for weights
                     for i in 0..layer.output_size {
                         for j in 0..layer.input_size {
                             let grad_idx = param_idx + i * layer.input_size + j;
-                            total_gradient[grad_idx] += (delta[i] * input_activation[j]) as f64;
+                            total_gradient[grad_idx] += (delta[i] * input_activation[j]) as f32;
                         }
                     }
                     // Compute delta for previous layer if not at input
@@ -1171,7 +1171,7 @@ impl MnistOneDnnNeuralNetwork {
         }
         // Average the gradient over all samples
         for g in &mut total_gradient {
-            *g /= total_samples_processed as f64;
+            *g /= total_samples_processed as f32;
         }
 
         // Add L2 regularization gradient
@@ -1182,13 +1182,13 @@ impl MnistOneDnnNeuralNetwork {
                 let weights_count = layer.input_size * layer.output_size;
                 for i in 0..weights_count {
                     total_gradient[param_idx + i] +=
-                        self.l2_regularization * layer.weights[i] as f64;
+                        self.l2_regularization * layer.weights[i] as f32;
                 }
                 param_idx += weights_count + layer.output_size; // weights + biases
             }
         }
         // Gradient clipping to prevent exploding gradients
-        let grad_norm: f64 = total_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+        let grad_norm: f32 = total_gradient.iter().map(|g| g * g).sum::<f32>().sqrt();
         debug!("Gradient norm: {:.3}", grad_norm);
         if grad_norm > 10.0 {
             let scale = 10.0 / grad_norm;
@@ -1220,7 +1220,7 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
         self.count_parameters()
     }
 
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         self.get_parameters().unwrap_or_else(|e| {
             warn!("Failed to get parameters for initial point: {}", e);
             use rand::Rng;
@@ -1231,7 +1231,7 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
         })
     }
 
-    fn evaluate_f64(&self, params: &[f64]) -> anyhow::Result<f64> {
+    fn evaluate_f64(&self, params: &[f32]) -> anyhow::Result<f32> {
         // Set parameters in the model
         trace!("Evaluating loss function with {} parameters", params.len());
         self.set_parameters(params)?;
@@ -1268,21 +1268,21 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
             for (pred, target) in y_pred.iter().zip(batch_y.iter()) {
                 for (p, t) in pred.iter().zip(target.iter()) {
                     let p_clamped = p.max(1e-10f32).min(1.0 - 1e-10);
-                    batch_loss += -(*t as f64) * (p_clamped as f64).ln();
+                    batch_loss += -(*t as f32) * (p_clamped as f32).ln();
                 }
             }
-            batch_loss /= batch_size as f64;
+            batch_loss /= batch_size as f32;
             trace!("Batch {} loss: {:.4}", batch_idx, batch_loss);
-            total_loss += batch_loss * (batch_size as f64);
+            total_loss += batch_loss * (batch_size as f32);
         }
 
         // Average loss across all samples
-        let mut loss_value = total_loss / (n_samples as f64);
+        let mut loss_value = total_loss / (n_samples as f32);
         debug!("Average cross-entropy loss: {:.4}", loss_value);
 
         // Add L2 regularization
         if self.l2_regularization > 0.0 {
-            let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
+            let params_squared_sum: f32 = params.iter().map(|p| p * p).sum();
             let reg_term = 0.5 * self.l2_regularization * params_squared_sum;
             loss_value += reg_term;
             debug!(
@@ -1301,7 +1301,7 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
         Ok(loss_value)
     }
 
-    fn gradient_f64(&self, params: &[f64]) -> anyhow::Result<Vec<f64>> {
+    fn gradient_f64(&self, params: &[f32]) -> anyhow::Result<Vec<f32>> {
         // Check gradient cache first
         if let Some(cached) = self.gradient_cache.read().as_ref() {
             if let Some(cached_params) = self.gradient_params_cache.read().as_ref() {
@@ -1350,7 +1350,7 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
             }
 
             // Gradient clipping
-            let grad_norm: f64 = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+            let grad_norm: f32 = gradient.iter().map(|g| g * g).sum::<f32>().sqrt();
             if grad_norm > 10.0 {
                 let scale = 10.0 / grad_norm;
                 for g in &mut gradient {
@@ -1362,7 +1362,7 @@ impl OptimizationProblem for MnistOneDnnNeuralNetwork {
         }
     }
 
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         self.optimal_value
     }
 }
@@ -1416,7 +1416,7 @@ mod tests {
         .unwrap();
 
         // Test with non-finite parameters
-        let bad_params = vec![f64::NAN; network.dimension()];
+        let bad_params = vec![f32::NAN; network.dimension()];
         assert!(network.set_parameters(&bad_params).is_err());
 
         // Test with extreme parameters
@@ -1570,7 +1570,7 @@ mod tests {
             assert_eq!(grad.len(), params.len());
             assert!(grad.iter().all(|g| g.is_finite()));
             // Gradient norm should be reasonable
-            let grad_norm: f64 = grad.iter().map(|g| g * g).sum::<f64>().sqrt();
+            let grad_norm: f32 = grad.iter().map(|g| g * g).sum::<f32>().sqrt();
             assert!(grad_norm <= 10.0); // Should be clipped if larger
         }
     }
@@ -1660,7 +1660,7 @@ mod tests {
         let loss_with_reg = network.evaluate_f64(&params).unwrap();
 
         // Calculate the expected regularization term
-        let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
+        let params_squared_sum: f32 = params.iter().map(|p| p * p).sum();
         let expected_reg_term = 0.5 * network.l2_regularization * params_squared_sum;
 
         // Loss should be positive and finite
@@ -1669,11 +1669,11 @@ mod tests {
 
         // To verify regularization is working, use a small perturbation
         // that primarily affects the regularization term
-        let scaled_params: Vec<f64> = params.iter().map(|p| p * 1.1).collect();
+        let scaled_params: Vec<f32> = params.iter().map(|p| p * 1.1).collect();
         let loss_with_scaled = network.evaluate_f64(&scaled_params).unwrap();
 
         // The scaled parameters have (1.1)^2 = 1.21x the L2 norm
-        let scaled_params_squared_sum: f64 = scaled_params.iter().map(|p| p * p).sum();
+        let scaled_params_squared_sum: f32 = scaled_params.iter().map(|p| p * p).sum();
         let scaled_reg_term = 0.5 * network.l2_regularization * scaled_params_squared_sum;
 
         // The difference in regularization terms
@@ -1841,9 +1841,9 @@ mod tests {
             assert!(verify_result.is_ok());
             // Get initial parameters and check they're reasonable
             let params = network.initial_point();
-            let mean: f64 = params.iter().sum::<f64>() / params.len() as f64;
-            let variance: f64 =
-                params.iter().map(|p| (p - mean).powi(2)).sum::<f64>() / params.len() as f64;
+            let mean: f32 = params.iter().sum::<f32>() / params.len() as f32;
+            let variance: f32 =
+                params.iter().map(|p| (p - mean).powi(2)).sum::<f32>() / params.len() as f32;
             // Mean should be close to 0
             assert!(
                 mean.abs() < 0.1,

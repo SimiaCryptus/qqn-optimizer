@@ -3,14 +3,14 @@
 use crate::benchmarks::functions::OptimizationProblem;
 use plotters::prelude::LogScalable;
 use rand_distr::num_traits::ToPrimitive;
-use std::f64;
+use std::f32;
 
 /// Test configuration for problem validation
 #[derive(Debug, Clone)]
 pub struct ProblemTestConfig {
-    pub gradient_tolerance: f64,
-    pub finite_check_tolerance: f64,
-    pub gradient_step_size: f64,
+    pub gradient_tolerance: f32,
+    pub finite_check_tolerance: f32,
+    pub gradient_step_size: f32,
     pub test_points_count: usize,
     pub random_seed: u64,
     pub derivative_validation: DerivativeValidationConfig,
@@ -18,12 +18,12 @@ pub struct ProblemTestConfig {
 /// Configuration for derivative validation tests
 #[derive(Debug, Clone)]
 pub struct DerivativeValidationConfig {
-    pub numerical_gradient_tolerance: f64,
-    pub second_derivative_tolerance: f64,
-    pub directional_derivative_tolerance: f64,
-    pub finite_difference_step_sizes: Vec<f64>,
+    pub numerical_gradient_tolerance: f32,
+    pub second_derivative_tolerance: f32,
+    pub directional_derivative_tolerance: f32,
+    pub finite_difference_step_sizes: Vec<f32>,
     pub test_directions_count: usize,
-    pub perturbation_magnitudes: Vec<f64>,
+    pub perturbation_magnitudes: Vec<f32>,
     pub enable_second_order_tests: bool,
     pub enable_directional_tests: bool,
     pub enable_consistency_tests: bool,
@@ -78,12 +78,12 @@ pub struct ProblemTestResults {
 /// Results from derivative validation tests
 #[derive(Debug, Clone)]
 pub struct DerivativeValidationResults {
-    pub numerical_gradient_accuracy: f64,
+    pub numerical_gradient_accuracy: f32,
     pub gradient_consistency_across_steps: bool,
     pub directional_derivatives_valid: bool,
     pub second_order_approximation_valid: bool,
-    pub gradient_lipschitz_estimate: Option<f64>,
-    pub robustness_score: f64,
+    pub gradient_lipschitz_estimate: Option<f32>,
+    pub robustness_score: f32,
     pub failed_test_points: Vec<String>,
     pub numerical_issues_detected: Vec<String>,
 }
@@ -354,8 +354,8 @@ impl UnifiedProblemTester {
     fn compute_numerical_gradient(
         &self,
         problem: &dyn OptimizationProblem,
-        point: &[f64],
-    ) -> Result<Vec<f64>, String> {
+        point: &[f32],
+    ) -> Result<Vec<f32>, String> {
         let mut numerical_grad = vec![0.0; point.len()];
         let h = self.config.gradient_step_size;
 
@@ -389,7 +389,7 @@ impl UnifiedProblemTester {
         Ok(numerical_grad)
     }
 
-    fn gradients_match(&self, analytical: &[f64], numerical: &[f64]) -> bool {
+    fn gradients_match(&self, analytical: &[f32], numerical: &[f32]) -> bool {
         if analytical.len() != numerical.len() {
             return false;
         }
@@ -432,7 +432,7 @@ impl UnifiedProblemTester {
 
         // Test at several random points
         for _ in 0..self.config.test_points_count {
-            let test_point: Vec<f64> = (0..dimension)
+            let test_point: Vec<f32> = (0..dimension)
                 .map(|_| rng.random_range(-10.0..10.0))
                 .collect();
 
@@ -566,7 +566,7 @@ impl UnifiedProblemTester {
         &self,
         problem: &dyn OptimizationProblem,
         config: &DerivativeValidationConfig,
-    ) -> Option<f64> {
+    ) -> Option<f32> {
         use rand::{Rng, SeedableRng};
         use rand_chacha::ChaCha8Rng;
         let mut rng = ChaCha8Rng::seed_from_u64(self.config.random_seed);
@@ -674,7 +674,7 @@ impl UnifiedProblemTester {
                         .iter()
                         .zip(direction.iter())
                         .map(|(&g, &d)| g * d)
-                        .sum::<f64>();
+                        .sum::<f32>();
                     // Compute directional derivative numerically
                     if let Ok(numerical_directional) = self
                         .compute_numerical_directional_derivative(
@@ -723,7 +723,7 @@ impl UnifiedProblemTester {
                 let mut approximation_errors = Vec::new();
                 for &magnitude in &config.perturbation_magnitudes {
                     let direction = self.generate_random_unit_vector(problem.dimension(), &mut rng);
-                    let perturbation: Vec<f64> = direction.iter().map(|&d| d * magnitude).collect();
+                    let perturbation: Vec<f32> = direction.iter().map(|&d| d * magnitude).collect();
                     let mut perturbed_point = test_point.clone();
                     for (i, &p) in perturbation.iter().enumerate() {
                         perturbed_point[i] += p;
@@ -734,7 +734,7 @@ impl UnifiedProblemTester {
                             .iter()
                             .zip(perturbation.iter())
                             .map(|(&g, &h)| g * h)
-                            .sum::<f64>();
+                            .sum::<f32>();
                         let first_order_approx = f0 + directional_derivative;
                         let actual_change = f_perturbed - f0;
                         let first_order_error = (actual_change - directional_derivative).abs();
@@ -748,7 +748,7 @@ impl UnifiedProblemTester {
                             // Both are very small, consider it valid
                             0.1
                         } else {
-                            f64::INFINITY
+                            f32::INFINITY
                         };
 
                         // For quadratic functions like Sphere, the error should be exactly O(h²)
@@ -762,7 +762,7 @@ impl UnifiedProblemTester {
                         if relative_error <= tolerance_factor {
                             approximation_errors.push(relative_error);
                         } else {
-                            approximation_errors.push(f64::INFINITY);
+                            approximation_errors.push(f32::INFINITY);
                         }
                     }
                 }
@@ -788,7 +788,7 @@ impl UnifiedProblemTester {
         &self,
         problem: &dyn OptimizationProblem,
         config: &DerivativeValidationConfig,
-    ) -> Option<f64> {
+    ) -> Option<f32> {
         use rand::{Rng, SeedableRng};
         use rand_chacha::ChaCha8Rng;
         let mut rng = ChaCha8Rng::seed_from_u64(self.config.random_seed);
@@ -809,7 +809,7 @@ impl UnifiedProblemTester {
         if !lipschitz_estimates.is_empty() {
             // Return the 90th percentile as a conservative estimate
             lipschitz_estimates.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            let index = ((lipschitz_estimates.len() as f64 * 0.9) as usize)
+            let index = ((lipschitz_estimates.len() as f32 * 0.9) as usize)
                 .min(lipschitz_estimates.len() - 1);
             Some(lipschitz_estimates[index])
         } else {
@@ -822,7 +822,7 @@ impl UnifiedProblemTester {
         problem: &dyn OptimizationProblem,
         config: &DerivativeValidationConfig,
         validation_results: &mut DerivativeValidationResults,
-    ) -> f64 {
+    ) -> f32 {
         // If robustness tests are disabled, return a default passing score
         if !config.enable_robustness_tests {
             // For ML problems, we can still give a passing score if basic gradient works
@@ -853,7 +853,7 @@ impl UnifiedProblemTester {
         robustness_scores.push(conditioning_score);
 
         // Filter out zero scores and compute average
-        let non_zero_scores: Vec<f64> = robustness_scores
+        let non_zero_scores: Vec<f32> = robustness_scores
             .iter()
             .copied()
             .filter(|&s| s > 0.0)
@@ -868,7 +868,7 @@ impl UnifiedProblemTester {
             }
         } else {
             // Return average of non-zero scores
-            non_zero_scores.iter().sum::<f64>() / non_zero_scores.len() as f64
+            non_zero_scores.iter().sum::<f32>() / non_zero_scores.len() as f32
         }
     }
     /// Test gradient stability under small perturbations
@@ -877,7 +877,7 @@ impl UnifiedProblemTester {
         problem: &dyn OptimizationProblem,
         rng: &mut rand_chacha::ChaCha8Rng,
         validation_results: &mut DerivativeValidationResults,
-    ) -> f64 {
+    ) -> f32 {
         use rand::Rng;
         let mut stable_tests = 0;
         let total_tests = self.config.test_points_count;
@@ -922,7 +922,7 @@ impl UnifiedProblemTester {
                 }
             }
         }
-        stable_tests as f64 / total_tests as f64
+        stable_tests as f32 / total_tests as f32
     }
     /// Test gradient behavior at different scales
     fn test_gradient_scale_invariance(
@@ -930,7 +930,7 @@ impl UnifiedProblemTester {
         problem: &dyn OptimizationProblem,
         rng: &mut rand_chacha::ChaCha8Rng,
         validation_results: &mut DerivativeValidationResults,
-    ) -> f64 {
+    ) -> f32 {
         let mut consistent_tests = 0;
         let total_tests = self.config.test_points_count;
 
@@ -952,7 +952,7 @@ impl UnifiedProblemTester {
             let base_point = self.generate_test_point(problem, rng);
             let mut scale_consistent = true;
             for &scale in &scales {
-                let scaled_point: Vec<f64> = base_point.iter().map(|&x| x * scale).collect();
+                let scaled_point: Vec<f32> = base_point.iter().map(|&x| x * scale).collect();
                 if problem.gradient_f64(&scaled_point).is_err() {
                     scale_consistent = false;
                     break;
@@ -962,7 +962,7 @@ impl UnifiedProblemTester {
                 consistent_tests += 1;
             }
         }
-        consistent_tests as f64 / total_tests as f64
+        consistent_tests as f32 / total_tests as f32
     }
     /// Test numerical conditioning of gradient computation
     fn test_gradient_conditioning(
@@ -970,7 +970,7 @@ impl UnifiedProblemTester {
         problem: &dyn OptimizationProblem,
         rng: &mut rand_chacha::ChaCha8Rng,
         validation_results: &mut DerivativeValidationResults,
-    ) -> f64 {
+    ) -> f32 {
         let mut well_conditioned_tests = 0;
         let total_tests = self.config.test_points_count;
         if total_tests == 0 {
@@ -1002,14 +1002,14 @@ impl UnifiedProblemTester {
                 }
             }
         }
-        well_conditioned_tests as f64 / total_tests as f64
+        well_conditioned_tests as f32 / total_tests as f32
     }
     // Helper methods for derivative validation
     fn generate_test_point(
         &self,
         problem: &dyn OptimizationProblem,
         rng: &mut rand_chacha::ChaCha8Rng,
-    ) -> Vec<f64> {
+    ) -> Vec<f32> {
         use rand::Rng;
         let initial = problem.initial_point();
         initial
@@ -1026,9 +1026,9 @@ impl UnifiedProblemTester {
     fn compute_numerical_gradient_with_step(
         &self,
         problem: &dyn OptimizationProblem,
-        point: &[f64],
-        step_size: f64,
-    ) -> Result<Vec<f64>, String> {
+        point: &[f32],
+        step_size: f32,
+    ) -> Result<Vec<f32>, String> {
         let mut numerical_grad = vec![0.0; point.len()];
         for i in 0..point.len() {
             let mut point_plus = point.to_vec();
@@ -1053,7 +1053,7 @@ impl UnifiedProblemTester {
         }
         Ok(numerical_grad)
     }
-    fn compute_gradient_accuracy(&self, analytical: &[f64], numerical: &[f64]) -> f64 {
+    fn compute_gradient_accuracy(&self, analytical: &[f32], numerical: &[f32]) -> f32 {
         if analytical.len() != numerical.len() {
             return 0.0;
         }
@@ -1068,14 +1068,14 @@ impl UnifiedProblemTester {
             }
         }
         if valid_components > 0 {
-            let average_relative_error = total_relative_error / valid_components as f64;
+            let average_relative_error = total_relative_error / valid_components as f32;
             // Convert to accuracy score (1.0 = perfect, 0.0 = terrible)
             (1.0 / (1.0 + average_relative_error)).min(1.0)
         } else {
             0.0
         }
     }
-    fn gradients_approximately_equal(&self, grad1: &[f64], grad2: &[f64], tolerance: f64) -> bool {
+    fn gradients_approximately_equal(&self, grad1: &[f32], grad2: &[f32], tolerance: f32) -> bool {
         if grad1.len() != grad2.len() {
             return false;
         }
@@ -1095,9 +1095,9 @@ impl UnifiedProblemTester {
         &self,
         dimension: usize,
         rng: &mut rand_chacha::ChaCha8Rng,
-    ) -> Vec<f64> {
+    ) -> Vec<f32> {
         use rand::Rng;
-        let mut vector: Vec<f64> = (0..dimension)
+        let mut vector: Vec<f32> = (0..dimension)
             .map(|_| rng.random_range(-1.0..1.0))
             .collect();
         let norm = self.vector_norm(&vector);
@@ -1114,10 +1114,10 @@ impl UnifiedProblemTester {
     fn compute_numerical_directional_derivative(
         &self,
         problem: &dyn OptimizationProblem,
-        point: &[f64],
-        direction: &[f64],
-        step_size: f64,
-    ) -> Result<f64, String> {
+        point: &[f32],
+        direction: &[f32],
+        step_size: f32,
+    ) -> Result<f32, String> {
         let mut point_plus = point.to_vec();
         let mut point_minus = point.to_vec();
         for (i, ((&d, p_plus), p_minus)) in direction
@@ -1143,13 +1143,13 @@ impl UnifiedProblemTester {
             (Err(e), _) | (_, Err(e)) => Err(format!("Function evaluation failed: {}", e)),
         }
     }
-    fn vector_norm(&self, vector: &[f64]) -> f64 {
-        vector.iter().map(|&x| x * x).sum::<f64>().sqrt()
+    fn vector_norm(&self, vector: &[f32]) -> f32 {
+        vector.iter().map(|&x| x * x).sum::<f32>().sqrt()
     }
-    fn vector_subtract(&self, v1: &[f64], v2: &[f64]) -> Vec<f64> {
+    fn vector_subtract(&self, v1: &[f32], v2: &[f32]) -> Vec<f32> {
         v1.iter().zip(v2.iter()).map(|(&a, &b)| a - b).collect()
     }
-    fn compute_relative_gradient_change(&self, grad1: &[f64], grad2: &[f64]) -> f64 {
+    fn compute_relative_gradient_change(&self, grad1: &[f32], grad2: &[f32]) -> f32 {
         let diff_norm = self.vector_norm(&self.vector_subtract(grad1, grad2));
         let base_norm = self.vector_norm(grad1);
         if base_norm > 1e-12 {
@@ -1186,7 +1186,7 @@ pub fn generate_test_report(results: &[ProblemTestResults]) -> String {
     report.push_str(&format!("Valid problems: {}\n", valid_problems));
     report.push_str(&format!(
         "Success rate: {:.1}%\n\n",
-        (valid_problems as f64 / total_problems as f64) * 100.0
+        (valid_problems as f32 / total_problems as f32) * 100.0
     ));
 
     // Summary by test type
@@ -1291,7 +1291,7 @@ pub fn generate_test_report(results: &[ProblemTestResults]) -> String {
             test_name,
             pass_count,
             total_problems,
-            (pass_count as f64 / total_problems as f64) * 100.0
+            (pass_count as f32 / total_problems as f32) * 100.0
         ));
     }
 
@@ -1302,13 +1302,13 @@ pub fn generate_test_report(results: &[ProblemTestResults]) -> String {
         let avg_accuracy = results
             .iter()
             .map(|r| r.derivative_validation_results.numerical_gradient_accuracy)
-            .sum::<f64>()
-            / results.len() as f64;
+            .sum::<f32>()
+            / results.len() as f32;
         let avg_robustness = results
             .iter()
             .map(|r| r.derivative_validation_results.robustness_score)
-            .sum::<f64>()
-            / results.len() as f64;
+            .sum::<f32>()
+            / results.len() as f32;
         let lipschitz_estimates: Vec<_> = results
             .iter()
             .filter_map(|r| r.derivative_validation_results.gradient_lipschitz_estimate)
@@ -1323,7 +1323,7 @@ pub fn generate_test_report(results: &[ProblemTestResults]) -> String {
         ));
         if !lipschitz_estimates.is_empty() {
             let avg_lipschitz =
-                lipschitz_estimates.iter().sum::<f64>() / lipschitz_estimates.len() as f64;
+                lipschitz_estimates.iter().sum::<f32>() / lipschitz_estimates.len() as f32;
             report.push_str(&format!(
                 "  Average Gradient Lipschitz Estimate: {:.3e}\n",
                 avg_lipschitz
@@ -1660,7 +1660,7 @@ mod tests {
         // Check that most functions pass (allow some failures for very specialized functions)
         let valid_count = results.iter().filter(|r| r.is_valid()).count();
         let total_count = results.len();
-        let success_rate = valid_count as f64 / total_count as f64;
+        let success_rate = valid_count as f32 / total_count as f32;
 
         assert!(
             success_rate >= 0.8,
@@ -1707,7 +1707,7 @@ mod tests {
         println!("{}", report);
         // ML problems should have reasonable success rate
         let valid_count = results.iter().filter(|r| r.is_valid()).count();
-        let success_rate = valid_count as f64 / results.len() as f64;
+        let success_rate = valid_count as f32 / results.len() as f32;
         assert!(
             success_rate >= 0.5,
             "At least 50% of ML problems should pass unified tests. Success rate: {:.1}%",
@@ -1760,7 +1760,7 @@ mod tests {
         println!("{}", report);
         // Neural networks are complex, allow some failures
         let valid_count = results.iter().filter(|r| r.is_valid()).count();
-        let success_rate = valid_count as f64 / results.len() as f64;
+        let success_rate = valid_count as f32 / results.len() as f32;
         // At least basic functionality should work
         assert!(
             success_rate >= 0.3,
@@ -1809,8 +1809,8 @@ mod tests {
             .filter(|r| r.problem_name.contains("Regression"))
             .collect();
         // Analytic functions should have high success rate
-        let analytic_success = analytic_results.iter().filter(|r| r.is_valid()).count() as f64
-            / analytic_results.len() as f64;
+        let analytic_success = analytic_results.iter().filter(|r| r.is_valid()).count() as f32
+            / analytic_results.len() as f32;
         assert!(
             analytic_success >= 0.9,
             "Analytic functions should have >90% success rate: {:.1}%",
@@ -1818,7 +1818,7 @@ mod tests {
         );
         // ML problems should have reasonable success rate
         let ml_success =
-            ml_results.iter().filter(|r| r.is_valid()).count() as f64 / ml_results.len() as f64;
+            ml_results.iter().filter(|r| r.is_valid()).count() as f32 / ml_results.len() as f32;
         assert!(
             ml_success >= 0.5,
             "ML problems should have >50% success rate: {:.1}%",

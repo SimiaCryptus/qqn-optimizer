@@ -3,9 +3,6 @@
 
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::optimizers::optimizer::Optimizer;
-use crate::utils::math::DifferentiableFunction;
-use candle_core::Result as CandleResult;
-use candle_core::{Device, Tensor};
 use log::{debug, info, warn};
 use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
@@ -62,10 +59,10 @@ impl From<DurationWrapper> for Duration {
 pub struct BenchmarkConfig {
     pub max_iterations: usize,
     pub maximum_function_calls: usize,
-    pub min_improvement_percent: f64,
+    pub min_improvement_percent: f32,
     pub time_limit: DurationWrapper,
     pub num_runs: usize,
-    pub initial_point_noise: f64, // Noise added to initial point for variability
+    pub initial_point_noise: f32, // Noise added to initial point for variability
 }
 
 impl Default for BenchmarkConfig {
@@ -92,10 +89,10 @@ pub struct OptimizationTrace {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IterationData {
     pub iteration: usize,
-    pub function_value: f64,
-    pub gradient_norm: f64,
-    pub step_size: f64,
-    pub parameters: Vec<f64>,
+    pub function_value: f32,
+    pub gradient_norm: f32,
+    pub step_size: f32,
+    pub parameters: Vec<f32>,
     pub timestamp: DurationWrapper,
     pub total_function_evaluations: usize,
     pub total_gradient_evaluations: usize,
@@ -122,7 +119,7 @@ impl OptimizationTrace {
         }
     }
 
-    pub fn final_value(&self) -> Option<f64> {
+    pub fn final_value(&self) -> Option<f32> {
         if self.iterations.is_empty() {
             None
         } else {
@@ -132,7 +129,7 @@ impl OptimizationTrace {
         }
     }
 
-    pub fn final_gradient_norm(&self) -> Option<f64> {
+    pub fn final_gradient_norm(&self) -> Option<f32> {
         self.iterations.last().map(|data| data.gradient_norm)
     }
 }
@@ -143,9 +140,9 @@ pub struct SingleResult {
     pub problem_name: String,
     pub optimizer_name: String,
     pub run_id: usize,
-    pub final_value: f64,
-    pub best_value: f64,
-    pub final_gradient_norm: f64,
+    pub final_value: f32,
+    pub best_value: f32,
+    pub final_gradient_norm: f32,
     pub iterations: usize,
     pub function_evaluations: usize,
     pub gradient_evaluations: usize,
@@ -163,9 +160,9 @@ impl SingleResult {
             problem_name: String::new(),
             optimizer_name,
             run_id,
-            final_value: f64::INFINITY,
-            best_value: f64::INFINITY,
-            final_gradient_norm: f64::INFINITY,
+            final_value: f32::INFINITY,
+            best_value: f32::INFINITY,
+            final_gradient_norm: f32::INFINITY,
             iterations: 0,
             function_evaluations: 0,
             gradient_evaluations: 0,
@@ -186,16 +183,16 @@ impl SingleResult {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryUsage {
-    pub peak_memory_mb: f64,
-    pub average_memory_mb: f64,
+    pub peak_memory_mb: f32,
+    pub average_memory_mb: f32,
     pub allocations: usize,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
-    pub iterations_per_second: f64,
-    pub function_evaluations_per_second: f64,
-    pub gradient_evaluations_per_second: f64,
-    pub convergence_rate: f64,
+    pub iterations_per_second: f32,
+    pub function_evaluations_per_second: f32,
+    pub gradient_evaluations_per_second: f32,
+    pub convergence_rate: f32,
 }
 
 impl PerformanceMetrics {
@@ -226,7 +223,7 @@ pub struct BenchmarkResults {
     pub config: BenchmarkConfig,
     pub timestamp: chrono::DateTime<chrono::Utc>,
     pub convergence_achieved: bool,
-    pub final_value: Option<f64>,
+    pub final_value: Option<f32>,
     pub function_evaluations: usize,
     pub gradient_evaluations: usize,
 }
@@ -350,7 +347,7 @@ impl BenchmarkRunner {
         optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
         opt_name: &str,
-        initial_point: Result<Vec<f64>, Result<SingleResult, BenchmarkError>>,
+        initial_point: Result<Vec<f32>, Result<SingleResult, BenchmarkError>>,
     ) -> Result<SingleResult, BenchmarkError> {
         info!(
             "Starting benchmark: {} with {} (run {})",
@@ -405,9 +402,9 @@ impl BenchmarkRunner {
                     .iterations
                     .iter()
                     .map(|iter| iter.function_value)
-                    .fold(f64::INFINITY, f64::min),
+                    .fold(f32::INFINITY, f32::min),
             ),
-            Ok(Err(_)) => (false, ConvergenceReason::NumericalError, f64::INFINITY),
+            Ok(Err(_)) => (false, ConvergenceReason::NumericalError, f32::INFINITY),
             Err(_) => (
                 false,
                 ConvergenceReason::TimeLimit,
@@ -415,7 +412,7 @@ impl BenchmarkRunner {
                     .iterations
                     .iter()
                     .map(|iter| iter.function_value)
-                    .fold(f64::INFINITY, f64::min),
+                    .fold(f32::INFINITY, f32::min),
             ),
         };
 
@@ -433,7 +430,7 @@ impl BenchmarkRunner {
             .problem
             .gradient_f64(&point)
             .map_err(|e| BenchmarkError::ProblemError(e.to_string()))?;
-        let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+        let final_gradient_norm = final_gradient.iter().map(|g| g * g).sum::<f32>().sqrt();
         // Update trace with final counts
         trace.total_function_evaluations = function_evaluations + 1; // +1 for final evaluation
         trace.total_gradient_evaluations = gradient_evaluations + 1; // +1 for final gradient
@@ -444,22 +441,22 @@ impl BenchmarkRunner {
         // Calculate performance metrics
         let performance_metrics = PerformanceMetrics {
             iterations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                iteration as f64 / execution_time.as_secs_f64()
+                iteration as f32 / execution_time.as_secs_f64()
             } else {
                 0.0
             },
             function_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                trace.total_function_evaluations as f64 / execution_time.as_secs_f64()
+                trace.total_function_evaluations as f32 / execution_time.as_secs_f64()
             } else {
                 0.0
             },
             gradient_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                trace.total_gradient_evaluations as f64 / execution_time.as_secs_f64()
+                trace.total_gradient_evaluations as f32 / execution_time.as_secs_f64()
             } else {
                 0.0
             },
             convergence_rate: if iteration > 0 {
-                final_gradient_norm.log10() / iteration as f64
+                final_gradient_norm.log10() / iteration as f32
             } else {
                 0.0
             },
@@ -499,7 +496,7 @@ impl BenchmarkRunner {
         &self,
         problem: &ProblemSpec,
         optimizer: &mut dyn Optimizer,
-        input_floats: &mut [f64],
+        input_floats: &mut [f32],
         iteration: &mut usize,
         function_evaluations: &mut usize,
         gradient_evaluations: &mut usize,
@@ -535,7 +532,7 @@ impl BenchmarkRunner {
         trace.iterations.push(IterationData {
             iteration: 0,
             function_value: initial_f_val,
-            gradient_norm: initial_gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+            gradient_norm: initial_gradient.iter().map(|g| g * g).sum::<f32>().sqrt(),
             step_size: 0.0,
             parameters: input_floats.to_vec(),
             timestamp: timestamp.into(),
@@ -637,7 +634,7 @@ impl BenchmarkRunner {
             // Record iteration data
 
             // Check convergence
-            let gradient_norm = gradient.iter().map(|g| g * g).sum::<f64>().sqrt();
+            let gradient_norm = gradient.iter().map(|g| g * g).sum::<f32>().sqrt();
             debug!("Iteration {iteration}: f_val={f_val:.6e}, grad_norm={gradient_norm:.6e}");
             // Use the more lenient of the two tolerances to ensure convergence is achievable
             // Check function value convergence if optimal value is known
@@ -649,7 +646,7 @@ impl BenchmarkRunner {
                         trace.iterations.push(IterationData {
                             iteration: *iteration,
                             function_value: f_val,
-                            gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                            gradient_norm: gradient.iter().map(|g| g * g).sum::<f32>().sqrt(),
                             step_size: 0.0,
                             parameters: input_floats.to_vec(),
                             timestamp: start_time.elapsed().into(),
@@ -692,7 +689,7 @@ impl BenchmarkRunner {
                 trace.iterations.push(IterationData {
                     iteration: iteration1,
                     function_value: f_val,
-                    gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                    gradient_norm: gradient.iter().map(|g| g * g).sum::<f32>().sqrt(),
                     step_size,
                     parameters: input_floats.to_vec(),
                     timestamp: timestamp.into(),
@@ -718,7 +715,7 @@ impl BenchmarkRunner {
                 trace.iterations.push(IterationData {
                     iteration: iteration1,
                     function_value: f_val,
-                    gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                    gradient_norm: gradient.iter().map(|g| g * g).sum::<f32>().sqrt(),
                     step_size,
                     parameters: input_floats.to_vec(),
                     timestamp: timestamp.into(),
@@ -730,7 +727,7 @@ impl BenchmarkRunner {
 
             // Update input floats with new parameters
             for tensor in tensors.iter() {
-                if let Ok(values) = tensor.to_vec1::<f64>() {
+                if let Ok(values) = tensor.to_vec1::<f32>() {
                     if values.len() != input_floats.len() {
                         return Err(BenchmarkError::ConfigError(
                             "Parameter size mismatch after optimization step".to_string(),
@@ -748,7 +745,7 @@ impl BenchmarkRunner {
                     }
                 } else {
                     return Err(BenchmarkError::ConfigError(
-                        "Failed to convert tensor to f64 vector".to_string(),
+                        "Failed to convert tensor to f32 vector".to_string(),
                     ));
                 }
             }
@@ -762,7 +759,7 @@ impl BenchmarkRunner {
             trace.iterations.push(IterationData {
                 iteration: iteration1,
                 function_value: f_val,
-                gradient_norm: gradient.iter().map(|g| g * g).sum::<f64>().sqrt(),
+                gradient_norm: gradient.iter().map(|g| g * g).sum::<f32>().sqrt(),
                 step_size,
                 parameters: input_floats.to_vec(),
                 timestamp: timestamp.into(),
@@ -782,7 +779,7 @@ impl BenchmarkRunner {
     }
 }
 
-fn create_1d_tensor(values: &[f64], device: &Device) -> CandleResult<Tensor> {
+fn create_1d_tensor(values: &[f32], device: &Device) -> CandleResult<Tensor> {
     Tensor::new(values, device)
 }
 
@@ -814,7 +811,7 @@ impl ProblemWrapper {
 }
 
 impl DifferentiableFunction for ProblemWrapper {
-    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f64> {
+    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f32> {
         self.function_evaluations.fetch_add(1, Ordering::Relaxed);
         let x_vec = crate::utils::math::tensors_to_f64(params)?;
         self.problem
@@ -856,7 +853,7 @@ pub enum BenchmarkError {
 /// Utility functions for benchmark analysis
 impl BenchmarkResults {
     /// Calculate success rate for each optimizer
-    pub fn success_rates(&self) -> HashMap<String, f64> {
+    pub fn success_rates(&self) -> HashMap<String, f32> {
         let mut rates = HashMap::new();
 
         for optimizer_name in self.get_optimizer_names() {
@@ -864,14 +861,14 @@ impl BenchmarkResults {
             let successful = results.iter().filter(|r| r.convergence_achieved).count();
             let total = results.len();
 
-            rates.insert(optimizer_name, successful as f64 / total as f64);
+            rates.insert(optimizer_name, successful as f32 / total as f32);
         }
 
         rates
     }
 
     /// Calculate average final values for each optimizer on each problem
-    pub fn average_final_values(&self) -> HashMap<(String, String), f64> {
+    pub fn average_final_values(&self) -> HashMap<(String, String), f32> {
         let mut averages = HashMap::new();
 
         for problem_name in self.get_problem_names() {
@@ -886,7 +883,7 @@ impl BenchmarkResults {
 
                 if !results.is_empty() {
                     let avg =
-                        results.iter().map(|r| r.final_value).sum::<f64>() / results.len() as f64;
+                        results.iter().map(|r| r.final_value).sum::<f32>() / results.len() as f32;
                     averages.insert((problem_name.clone(), optimizer_name.clone()), avg);
                 }
             }
@@ -1087,9 +1084,9 @@ impl ProblemSpec {
 
 pub fn new_initial_point(
     problem: &ProblemSpec,
-    noise: f64,
+    noise: f32,
     rng: &mut StdRng,
-) -> Result<Vec<f64>, Result<SingleResult, BenchmarkError>> {
+) -> Result<Vec<f32>, Result<SingleResult, BenchmarkError>> {
     // Initialize parameters
     let mut x = problem.problem.initial_point();
     // Validate initial point
@@ -1100,7 +1097,7 @@ pub fn new_initial_point(
     }
     // Randomize initial point to ensure variability
     for xi in x.iter_mut() {
-        let random_delta: f64 = rng.random();
+        let random_delta: f32 = rng.random();
         *xi += (random_delta * 2.0 - 1.0) * noise; // Random perturbation
     }
     Ok(x)

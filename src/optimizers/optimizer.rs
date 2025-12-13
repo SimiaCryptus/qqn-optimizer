@@ -4,19 +4,16 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
-pub(crate) use crate::utils::math::DifferentiableFunction;
-use candle_core::Result as CandleResult;
-use candle_core::Tensor;
+use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::sync::Arc;
 use std::time::Duration;
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OptimizationMetadata {
     /// Optimizer-specific data (e.g., QQN magnitude ratios, L-BFGS curvature info)
-    pub optimizer_data: std::collections::HashMap<String, f64>,
+    pub optimizer_data: std::collections::HashMap<String, f32>,
     /// Timing information for different phases of the step
     pub timing_info: TimingInfo,
     /// Memory usage information
@@ -26,7 +23,7 @@ pub struct OptimizationMetadata {
 #[derive(Debug, Clone)]
 pub struct OptimizationResult {
     /// Final function value
-    pub fx: f64,
+    pub fx: f32,
     /// Number of function evaluations
     pub num_f_evals: usize,
     /// Number of gradient evaluations  
@@ -34,7 +31,7 @@ pub struct OptimizationResult {
     /// Whether optimization converged
     pub converged: bool,
     /// Final parameters
-    pub x: Vec<f64>,
+    pub x: Vec<f32>,
 }
 
 /// Core trait that all optimization algorithms must implement.
@@ -49,123 +46,21 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
         format!("{self:?}")
     }
 
-    /// Perform a single optimization step using a differentiable function
+    /// Adds optimization operations to the graph.
     ///
     /// # Arguments
-    /// * `params` - Mutable reference to parameter tensors to be updated
-    /// * `function` - Differentiable function to optimize
+    /// * `graph` - The compute graph
+    /// * `loss` - The loss node
+    /// * `params` - The parameter nodes to optimize
     ///
     /// # Returns
-    /// A `StepResult` containing information about the optimization step
+    /// A vector of nodes representing the new values of the parameters.
     fn step(
         &mut self,
-        params: &mut [Tensor],
-        function: Arc<dyn DifferentiableFunction + Send + Sync>,
-    ) -> CandleResult<StepResult>;
-    /// Optimize a function using closures (for compatibility with examples)
-    ///
-    /// # Arguments
-    /// * `f` - Function to minimize
-    /// * `g` - Gradient function
-    /// * `x0` - Initial parameters
-    /// * `max_evals` - Maximum function evaluations
-    /// * `tol` - Gradient tolerance
-    ///
-    /// # Returns
-    /// An `OptimizationResult` with the final state
-    fn optimize(
-        &mut self,
-        f: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
-        g: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>,
-        x0: Vec<f64>,
-        max_evals: usize,
-        tol: f64,
-    ) -> OptimizationResult {
-        use crate::utils::math::DifferentiableFunction;
-        use candle_core::{Device, Tensor};
-        // Create a wrapper function that implements DifferentiableFunction
-        struct ClosureFunction {
-            f: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
-            g: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>,
-            f_evals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
-            g_evals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
-        }
-        impl DifferentiableFunction for ClosureFunction {
-            fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
-                self.f_evals
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let x: Vec<f64> = params
-                    .iter()
-                    .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-                    .collect();
-                Ok((self.f)(&x))
-            }
-            fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-                self.g_evals
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let x: Vec<f64> = params
-                    .iter()
-                    .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-                    .collect();
-                let grad = (self.g)(&x);
-                let device = &Device::Cpu;
-                Ok(vec![Tensor::from_slice(&grad, &[grad.len()], device)?])
-            }
-        }
-        let f_evals = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let g_evals = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let function = Arc::new(ClosureFunction {
-            f,
-            g,
-            f_evals: f_evals.clone(),
-            g_evals: g_evals.clone(),
-        });
-        // Convert initial point to tensor
-        let device = &Device::Cpu;
-        let mut params = vec![Tensor::from_slice(&x0, &[x0.len()], device).unwrap()];
-        let mut converged = false;
-        let mut iterations = 0;
-        while iterations < max_evals {
-            // Check gradient norm for convergence
-            let grad = function.gradient(&params).unwrap();
-            let grad_norm: f64 = grad[0]
-                .flatten_all()
-                .unwrap()
-                .to_vec1::<f64>()
-                .unwrap()
-                .iter()
-                .map(|x| x * x)
-                .sum::<f64>()
-                .sqrt();
-            if grad_norm < tol {
-                converged = true;
-                break;
-            }
-            // Take optimization step
-            match self.step(&mut params, function.clone()) {
-                Ok(result) => {
-                    if result.convergence_info.converged {
-                        converged = true;
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-            iterations += 1;
-        }
-        let final_x: Vec<f64> = params
-            .iter()
-            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-            .collect();
-        let final_fx = function.evaluate(&params).unwrap();
-        OptimizationResult {
-            fx: final_fx,
-            num_f_evals: f_evals.load(std::sync::atomic::Ordering::Relaxed),
-            num_g_evals: g_evals.load(std::sync::atomic::Ordering::Relaxed),
-            converged,
-            x: final_x,
-        }
-    }
+        graph: &mut Graph,
+        loss: GraphTensor,
+        params: &[GraphTensor],
+    ) -> Vec<GraphTensor>;
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);
@@ -181,7 +76,7 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
     fn iteration(&self) -> usize;
     /// Get the stagnation multiplier for relaxed convergence criteria
     /// This multiplier is applied to tolerance values to make convergence less strict
-    fn stagnation_multiplier(&self) -> f64 {
+    fn stagnation_multiplier(&self) -> f32 {
         1.0 // Default multiplier - no relaxation
     }
     /// Get the stagnation count threshold for applying relaxed convergence
@@ -190,7 +85,7 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
         1 // Default count - apply relaxation after 1 iteration of stagnation
     }
     /// Set the stagnation multiplier (mutable)
-    fn set_stagnation_multiplier(&mut self, multiplier: f64);
+    fn set_stagnation_multiplier(&mut self, multiplier: f32);
     /// Set the stagnation count threshold (mutable)
     fn set_stagnation_count(&mut self, count: usize);
 }
@@ -199,7 +94,7 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StepResult {
     /// Step size used in this iteration
-    pub step_size: f64,
+    pub step_size: f32,
 
     /// Information about convergence status
     pub convergence_info: ConvergenceInfo,
@@ -215,7 +110,7 @@ pub struct ConvergenceInfo {
     pub converged: bool,
 
     /// Change in function value from previous iteration
-    pub function_change: Option<f64>,
+    pub function_change: Option<f32>,
 }
 
 impl ConvergenceInfo {
@@ -228,7 +123,7 @@ impl ConvergenceInfo {
     }
 
     /// Update convergence status based on function change
-    pub fn with_function_change(mut self, change: f64) -> Self {
+    pub fn with_function_change(mut self, change: f32) -> Self {
         self.function_change = Some(change);
         self
     }

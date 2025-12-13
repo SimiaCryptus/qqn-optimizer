@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-const P_THRESHOLD: f64 = 0.05;
+const P_THRESHOLD: f32 = 0.05;
 
 /// Generate comparison matrix LaTeX table
 pub fn generate_comparison_matrix_latex_table(
@@ -96,21 +96,21 @@ pub fn generate_comparison_matrix_latex_table(
                     (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
                 {
                     if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
+                        let qqn_final_values: Vec<f32> = qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
+                        let non_qqn_final_values: Vec<f32> = non_qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
                         if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
+                            let qqn_mean = qqn_final_values.iter().sum::<f32>()
+                                / qqn_final_values.len() as f32;
+                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f32>()
+                                / non_qqn_final_values.len() as f32;
                             if let Ok((_, p_value)) = slf
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
@@ -242,21 +242,21 @@ pub fn generate_comparison_matrix_table_content(
                     (optimizers.get(qqn_opt), optimizers.get(non_qqn_opt))
                 {
                     if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
+                        let qqn_final_values: Vec<f32> = qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
+                        let non_qqn_final_values: Vec<f32> = non_qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
                         if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
+                            let qqn_mean = qqn_final_values.iter().sum::<f32>()
+                                / qqn_final_values.len() as f32;
+                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f32>()
+                                / non_qqn_final_values.len() as f32;
                             if let Ok((_, p_value)) = slf
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
@@ -373,21 +373,21 @@ pub fn generate_family_comparison_matrix_table_content(
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
                     if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
+                        let qqn_final_values: Vec<f32> = qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
+                        let non_qqn_final_values: Vec<f32> = non_qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
                         if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
+                            let qqn_mean = qqn_final_values.iter().sum::<f32>()
+                                / qqn_final_values.len() as f32;
+                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f32>()
+                                / non_qqn_final_values.len() as f32;
                             if let Ok((_, p_value)) = slf
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)
@@ -520,21 +520,21 @@ pub fn generate_family_comparison_matrix_latex_table(
                     (families.get(qqn_fam), families.get(non_qqn_fam))
                 {
                     if qqn_results.len() >= 2 && non_qqn_results.len() >= 2 {
-                        let qqn_final_values: Vec<f64> = qqn_results
+                        let qqn_final_values: Vec<f32> = qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
-                        let non_qqn_final_values: Vec<f64> = non_qqn_results
+                        let non_qqn_final_values: Vec<f32> = non_qqn_results
                             .iter()
                             .map(|r| r.final_value)
                             .filter(|&v| v.is_finite())
                             .collect();
                         if !qqn_final_values.is_empty() && !non_qqn_final_values.is_empty() {
-                            let qqn_mean = qqn_final_values.iter().sum::<f64>()
-                                / qqn_final_values.len() as f64;
-                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f64>()
-                                / non_qqn_final_values.len() as f64;
+                            let qqn_mean = qqn_final_values.iter().sum::<f32>()
+                                / qqn_final_values.len() as f32;
+                            let non_qqn_mean = non_qqn_final_values.iter().sum::<f32>()
+                                / non_qqn_final_values.len() as f32;
                             if let Ok((_, p_value)) = slf
                                 .statistical_analysis
                                 .welch_t_test_public(&qqn_final_values, &non_qqn_final_values)

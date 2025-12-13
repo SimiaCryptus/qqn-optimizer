@@ -197,7 +197,7 @@ impl ExperimentRunner {
             let initial_params = problem.problem.initial_point();
             let mut rng = rand::rngs::StdRng::try_from_os_rng()
                 .expect("Failed to create random number generator");
-            let initial_params: Vec<f64> = initial_params
+            let initial_params: Vec<f32> = initial_params
                 .iter()
                 .map(|&x| x + rng.random_range(-1.0..1.0))
                 .collect();
@@ -345,7 +345,7 @@ impl ExperimentRunner {
                 // Create a failed result instead of propagating the error
                 let mut failed_result = SingleResult::new(opt_name.to_string(), run_id);
                 failed_result.convergence_achieved = false;
-                failed_result.final_value = f64::INFINITY;
+                failed_result.final_value = f32::INFINITY;
                 failed_result.error_message = Some(format!("Evaluation error: {e}"));
                 return Ok(failed_result);
             }
@@ -386,7 +386,7 @@ pub async fn run_benchmark(
     max_concurrent_tasks: Option<usize>,
     problems: Vec<ProblemSpec>,
     optimizers: Vec<(String, Arc<dyn Optimizer>)>,
-    initial_point_noise: f64,
+    initial_point_noise: f32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
     let output_dir_name = format!("{report_path_prefix}{timestamp}");

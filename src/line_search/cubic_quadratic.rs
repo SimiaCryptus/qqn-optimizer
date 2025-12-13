@@ -24,21 +24,21 @@ use log::debug;
 /// - Configurable for different precision/speed tradeoffs
 #[derive(Debug, Clone)]
 pub struct CubicQuadraticConfig {
-    pub c1: f64,
-    pub c2: f64,
+    pub c1: f32,
+    pub c2: f32,
     pub max_iterations: usize,
-    pub min_step: f64,
-    pub max_step: f64,
-    pub initial_step: f64,
+    pub min_step: f32,
+    pub max_step: f32,
+    pub initial_step: f32,
     pub verbose: bool,
     /// Minimum fraction of interval to move during interpolation.
     /// Prevents interpolated points from getting too close to interval boundaries,
     /// which could cause numerical instability. Typical values: 0.05-0.2.
-    pub interpolation_safeguard: f64, // Minimum fraction of interval to move
+    pub interpolation_safeguard: f32, // Minimum fraction of interval to move
     /// Factor for extrapolation when curvature condition fails.
     /// When the curvature condition is not satisfied (gradient magnitude too large),
     /// the step size is multiplied by this factor. Typical values: 1.5-3.0.
-    pub extrapolation_factor: f64, // Factor for extrapolation steps
+    pub extrapolation_factor: f32, // Factor for extrapolation steps
 }
 
 impl Default for CubicQuadraticConfig {
@@ -129,7 +129,7 @@ impl CubicQuadraticLineSearch {
     ///
     /// The step size will be clamped to the configured min/max bounds.
     /// Set the initial step size for the next line search
-    pub fn set_initial_step(&mut self, step: f64) {
+    pub fn set_initial_step(&mut self, step: f32) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
     pub fn new(config: CubicQuadraticConfig) -> Self {
@@ -187,9 +187,9 @@ impl CubicQuadraticLineSearch {
     ///
     /// The returned point is safeguarded to be at least `interpolation_safeguard`
     /// fraction away from both interval endpoints.
-    fn cubic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64, gb: f64) -> Option<f64> {
+    fn cubic_interpolate(&self, a: f32, fa: f32, ga: f32, b: f32, fb: f32, gb: f32) -> Option<f32> {
         let h = b - a;
-        if h.abs() < f64::EPSILON {
+        if h.abs() < f32::EPSILON {
             return None;
         }
 
@@ -205,7 +205,7 @@ impl CubicQuadraticLineSearch {
         let numerator2 = gb - d2 - d1;
         let denominator = gb - ga + 2.0 * d2;
 
-        if denominator.abs() < f64::EPSILON * 10.0 {
+        if denominator.abs() < f32::EPSILON * 10.0 {
             return None;
         }
 
@@ -255,14 +255,14 @@ impl CubicQuadraticLineSearch {
     /// # Returns
     /// * `Some(t)` - Interpolated point (with safeguarding)
     /// * `None` - If interpolation fails (e.g., zero denominator)
-    fn quadratic_interpolate(&self, a: f64, fa: f64, ga: f64, b: f64, fb: f64) -> Option<f64> {
+    fn quadratic_interpolate(&self, a: f32, fa: f32, ga: f32, b: f32, fb: f32) -> Option<f32> {
         let h = b - a;
-        if h.abs() < f64::EPSILON {
+        if h.abs() < f32::EPSILON {
             return None;
         }
 
         let denom = 2.0 * (fb - fa - ga * h);
-        if denom.abs() < f64::EPSILON * 10.0 {
+        if denom.abs() < f32::EPSILON * 10.0 {
             return None;
         }
         let t = a - ga * h * h / denom;
@@ -290,11 +290,11 @@ impl CubicQuadraticLineSearch {
     /// - Curvature: |f'(α)| ≤ c₂·|f'(0)|
     fn check_wolfe(
         &self,
-        f0: f64,
-        f_alpha: f64,
-        g_alpha: f64,
-        alpha: f64,
-        g0: f64,
+        f0: f32,
+        f_alpha: f32,
+        g_alpha: f32,
+        alpha: f32,
+        g0: f32,
     ) -> (bool, bool) {
         let armijo = f_alpha <= f0 + self.config.c1 * alpha * g0;
         let curvature = g_alpha.abs() <= self.config.c2 * g0.abs();
@@ -313,7 +313,7 @@ impl LineSearch for CubicQuadraticLineSearch {
         let test_step = self.config.min_step;
         let f_test = (problem.objective)(test_step)?;
         if f_test >= f0 {
-            let eps_step = f64::EPSILON.sqrt();
+            let eps_step = f32::EPSILON.sqrt();
             let f_eps = (problem.objective)(eps_step)?;
             if f_eps < f0 {
                 return Ok(LineSearchResult {
@@ -467,12 +467,12 @@ mod tests {
     use approx::assert_relative_eq;
     use std::sync::Arc;
 
-    fn quadratic_function(x: &[f64]) -> anyhow::Result<f64> {
+    fn quadratic_function(x: &[f32]) -> anyhow::Result<f32> {
         // f(x) = 0.5 * x^T * x (simple quadratic)
-        Ok(0.5 * x.iter().map(|xi| xi * xi).sum::<f64>())
+        Ok(0.5 * x.iter().map(|xi| xi * xi).sum::<f32>())
     }
 
-    fn quadratic_gradient1(x: &[f64]) -> anyhow::Result<Vec<f64>> {
+    fn quadratic_gradient1(x: &[f32]) -> anyhow::Result<Vec<f32>> {
         // ∇f(x) = x
         Ok(x.to_vec())
     }
@@ -763,12 +763,12 @@ mod tests {
     #[test]
     fn test_strict_vs_lax_precision() {
         // Use a more complex function where precision matters
-        fn rosenbrock_1d(x: &[f64]) -> anyhow::Result<f64> {
+        fn rosenbrock_1d(x: &[f32]) -> anyhow::Result<f32> {
             let t = x[0];
             // f(t) = 100*(t^2 - 1)^2 + (t - 1)^2
             Ok(100.0 * (t * t - 1.0).powi(2) + (t - 1.0).powi(2))
         }
-        fn rosenbrock_1d_gradient(x: &[f64]) -> anyhow::Result<Vec<f64>> {
+        fn rosenbrock_1d_gradient(x: &[f32]) -> anyhow::Result<Vec<f32>> {
             let t = x[0];
             // f'(t) = 400*t*(t^2 - 1) + 2*(t - 1)
             Ok(vec![400.0 * t * (t * t - 1.0) + 2.0 * (t - 1.0)])

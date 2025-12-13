@@ -1,0 +1,3236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="QQN Optimizer Demo - Comparing Quasi-Quantum Newton optimizer against standard optimizers using TensorFlow.js">
+    <title>QQN Optimizer Demo - TensorFlow.js Benchmark</title>
+    
+    <!-- TensorFlow.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- CSS will be added here -->
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #7c3aed;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-bg: #1e1e2e;
+            --card-bg: #2a2a3e;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #3f3f5a;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        /* Header styles */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        /* Main container */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Configuration panel */
+        .config-panel {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .config-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .config-section {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .config-section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            margin-bottom: 0.375rem;
+            color: var(--text-secondary);
+        }
+        
+        .form-select,
+        .form-input {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .form-select:focus,
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+        
+        .form-range {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        
+        .range-value {
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        /* Checkbox group */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        /* Control buttons */
+        .control-panel {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #6d28d9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Visualization grid */
+        .viz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .viz-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .viz-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .viz-title-icon {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        /* 3D Surface visualization */
+        .surface-container {
+            position: relative;
+            height: 350px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .surface-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Stats panel */
+        .stats-panel {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+        
+        .stats-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--success-color);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .stat-value.qqn {
+            color: var(--primary-color);
+        }
+        
+        .stat-value.sgd {
+            color: var(--warning-color);
+        }
+        
+        .stat-value.adam {
+            color: var(--success-color);
+        }
+        
+        .stat-value.rmsprop {
+            color: var(--secondary-color);
+        }
+        
+        /* Log panel */
+        .log-panel {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .log-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .log-container {
+            background: #0d0d14;
+            border-radius: 8px;
+            padding: 1rem;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .log-entry {
+            margin-bottom: 0.25rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .log-entry.info {
+            color: var(--text-secondary);
+        }
+        
+        .log-entry.success {
+            color: var(--success-color);
+        }
+        
+        .log-entry.warning {
+            color: var(--warning-color);
+        }
+        
+        .log-entry.error {
+            color: var(--danger-color);
+        }
+        
+        .log-timestamp {
+            color: var(--text-secondary);
+            margin-right: 0.5rem;
+        }
+        
+        /* Progress indicator */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        /* Legend */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 1.75rem;
+            }
+            
+            .viz-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .main-container {
+                padding: 1rem;
+            }
+        }
+        
+        /* Animation for running state */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .running {
+            animation: pulse 1.5s infinite;
+        }
+        
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+    </style>
+
+    <style>
+        /* ============================================
+           QQN Optimizer Demo - Complete CSS Stylesheet
+           ============================================ */
+        
+        /* ----------------------------------------
+           CSS Reset and Base Styles
+           ---------------------------------------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+        
+        /* ----------------------------------------
+           CSS Custom Properties (Variables)
+           ---------------------------------------- */
+        :root {
+            /* Primary Colors */
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-light: rgba(37, 99, 235, 0.2);
+        
+            /* Secondary Colors */
+            --secondary-color: #7c3aed;
+            --secondary-hover: #6d28d9;
+            --secondary-light: rgba(124, 58, 237, 0.2);
+        
+            /* Status Colors */
+            --success-color: #10b981;
+            --success-light: rgba(16, 185, 129, 0.2);
+            --warning-color: #f59e0b;
+            --warning-light: rgba(245, 158, 11, 0.2);
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --danger-light: rgba(239, 68, 68, 0.2);
+        
+            /* Background Colors */
+            --dark-bg: #1e1e2e;
+            --darker-bg: #0d0d14;
+            --card-bg: #2a2a3e;
+            --card-bg-hover: #323248;
+            --overlay-bg: rgba(0, 0, 0, 0.2);
+            --surface-bg: #1a1a2e;
+        
+            /* Text Colors */
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        
+            /* Border Colors */
+            --border-color: #3f3f5a;
+            --border-light: rgba(255, 255, 255, 0.05);
+            --border-focus: var(--primary-color);
+        
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25);
+            --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 10px 40px rgba(0, 0, 0, 0.4);
+        
+            /* Spacing */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+        
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --radius-xl: 12px;
+        
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.2s ease;
+            --transition-slow: 0.3s ease;
+        
+            /* Typography */
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-lg: 1.1rem;
+            --font-size-xl: 1.25rem;
+            --font-size-2xl: 1.5rem;
+            --font-size-3xl: 2rem;
+            --font-size-4xl: 2.5rem;
+            --line-height-tight: 1.25;
+            --line-height-normal: 1.6;
+        }
+        
+        /* ----------------------------------------
+           Base Body Styles
+           ---------------------------------------- */
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-family);
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: var(--line-height-normal);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* ----------------------------------------
+           Header Section
+           ---------------------------------------- */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: var(--spacing-xl);
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Decorative background pattern */
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        .header-title {
+            font-size: var(--font-size-4xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+            letter-spacing: -0.5px;
+        }
+        
+        .header-subtitle {
+            font-size: var(--font-size-lg);
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+            font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* ----------------------------------------
+           Main Container
+           ---------------------------------------- */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--spacing-xl);
+        }
+        
+        /* ----------------------------------------
+           Configuration Panel
+           ---------------------------------------- */
+        .config-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            transition: box-shadow var(--transition-normal);
+        }
+        
+        .config-panel:hover {
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .config-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+        }
+        
+        .config-section {
+            background: var(--overlay-bg);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            transition: background-color var(--transition-normal), border-color var(--transition-normal);
+        }
+        
+        .config-section:hover {
+            background: rgba(0, 0, 0, 0.25);
+            border-color: var(--border-color);
+        }
+        
+        .config-section-title {
+            font-size: var(--font-size-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* ----------------------------------------
+           Form Elements
+           ---------------------------------------- */
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--spacing-xs);
+            color: var(--text-secondary);
+        }
+        
+        .form-select,
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--dark-bg);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-family: inherit;
+            transition: 
+                border-color var(--transition-normal),
+                box-shadow var(--transition-normal),
+                background-color var(--transition-normal);
+            cursor: pointer;
+        }
+        
+        .form-select:hover,
+        .form-input:hover {
+            border-color: var(--text-muted);
+            background: var(--darker-bg);
+        }
+        
+        .form-select:focus,
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        
+        /* Custom select arrow */
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.5rem;
+        }
+        
+        /* Range Input Styling */
+        .form-range {
+            width: 100%;
+            height: 6px;
+            margin-top: var(--spacing-sm);
+            background: var(--dark-bg);
+            border-radius: var(--radius-sm);
+            appearance: none;
+            cursor: pointer;
+        }
+        
+        .form-range::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        
+        .form-range::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .form-range::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .form-range::-webkit-slider-runnable-track {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            height: 6px;
+            border-radius: var(--radius-sm);
+        }
+        
+        .form-range::-moz-range-track {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            height: 6px;
+            border-radius: var(--radius-sm);
+        }
+        
+        .range-value {
+            font-size: var(--font-size-xs);
+            color: var(--primary-color);
+            font-weight: 600;
+            background: var(--primary-light);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+        }
+        
+        /* ----------------------------------------
+           Checkbox Group
+           ---------------------------------------- */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-md);
+            transition: background-color var(--transition-fast);
+            user-select: none;
+        }
+        
+        .checkbox-item:hover {
+            background: var(--overlay-bg);
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+            border-radius: var(--radius-sm);
+        }
+        
+        .checkbox-item span {
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+        }
+        
+        /* ----------------------------------------
+           Control Panel & Buttons
+           ---------------------------------------- */
+        .control-panel {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-base);
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 
+                all var(--transition-normal),
+                transform var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Button ripple effect */
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+        }
+        
+        .btn:active::after {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary-color), var(--secondary-hover));
+            color: white;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, var(--secondary-hover), var(--secondary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-color), var(--danger-hover));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, var(--danger-hover), var(--danger-color));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .btn:disabled:hover {
+            transform: none;
+        }
+        
+        /* ----------------------------------------
+           Progress Bar
+           ---------------------------------------- */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--overlay-bg);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-bottom: var(--spacing-xl);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--radius-sm);
+            transition: width var(--transition-slow);
+            position: relative;
+        }
+        
+        /* Animated shine effect */
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        /* ----------------------------------------
+           Visualization Grid
+           ---------------------------------------- */
+        .viz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .viz-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            transition: 
+                box-shadow var(--transition-normal),
+                transform var(--transition-normal),
+                border-color var(--transition-normal);
+        }
+        
+        .viz-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+            border-color: var(--text-muted);
+        }
+        
+        .viz-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+        
+        .viz-title-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--primary-color);
+            flex-shrink: 0;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            background: var(--overlay-bg);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm);
+        }
+        
+        /* ----------------------------------------
+           Surface Visualization
+           ---------------------------------------- */
+        .surface-container {
+            position: relative;
+            height: 350px;
+            background: var(--surface-bg);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+        
+        .surface-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* ----------------------------------------
+           Statistics Panel
+           ---------------------------------------- */
+        .stats-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border-color);
+            margin-bottom: var(--spacing-xl);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .stats-title {
+            font-size: var(--font-size-xl);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--success-color);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--spacing-md);
+        }
+        
+        .stat-card {
+            background: var(--overlay-bg);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            border: 1px solid var(--border-light);
+            transition: 
+                background-color var(--transition-normal),
+                transform var(--transition-fast),
+                border-color var(--transition-normal);
+        }
+        
+        .stat-card:hover {
+            background: rgba(0, 0, 0, 0.25);
+            transform: translateY(-2px);
+            border-color: var(--border-color);
+        }
+        
+        .stat-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            font-family: var(--font-mono);
+            transition: color var(--transition-normal);
+        }
+        
+        /* Optimizer-specific stat colors */
+        .stat-value.qqn {
+            color: var(--primary-color);
+            text-shadow: 0 0 20px var(--primary-light);
+        }
+        
+        .stat-value.sgd {
+            color: var(--warning-color);
+            text-shadow: 0 0 20px var(--warning-light);
+        }
+        
+        .stat-value.adam {
+            color: var(--success-color);
+            text-shadow: 0 0 20px var(--success-light);
+        }
+        
+        .stat-value.rmsprop {
+            color: var(--secondary-color);
+            text-shadow: 0 0 20px var(--secondary-light);
+        }
+        
+        .stat-value.adagrad {
+            color: var(--danger-color);
+            text-shadow: 0 0 20px var(--danger-light);
+        }
+        
+        /* ----------------------------------------
+           Log Panel
+           ---------------------------------------- */
+        .log-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .log-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .log-container {
+            background: var(--darker-bg);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            height: 200px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: var(--font-size-sm);
+            border: 1px solid var(--border-light);
+        }
+        
+        /* Custom scrollbar for log container */
+        .log-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .log-container::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+            border-radius: var(--radius-sm);
+        }
+        
+        .log-container::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: var(--radius-sm);
+        }
+        
+        .log-container::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+        
+        .log-entry {
+            margin-bottom: var(--spacing-xs);
+            padding: var(--spacing-xs) 0;
+            border-bottom: 1px solid var(--border-light);
+            line-height: var(--line-height-tight);
+            word-break: break-word;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .log-entry.info {
+            color: var(--text-secondary);
+        }
+        
+        .log-entry.success {
+            color: var(--success-color);
+        }
+        
+        .log-entry.warning {
+            color: var(--warning-color);
+        }
+        
+        .log-entry.error {
+            color: var(--danger-color);
+        }
+        
+        .log-timestamp {
+            color: var(--text-muted);
+            margin-right: var(--spacing-sm);
+            font-size: var(--font-size-xs);
+        }
+        
+        /* ----------------------------------------
+           Legend
+           ---------------------------------------- */
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-md);
+            justify-content: center;
+            padding: var(--spacing-sm);
+            background: var(--overlay-bg);
+            border-radius: var(--radius-lg);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* ----------------------------------------
+           Tooltip Styles
+           ---------------------------------------- */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--darker-bg);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-fast);
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 11px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--darker-bg);
+            color: var(--text-primary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-xs);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-fast);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            z-index: 1000;
+        }
+        
+        .tooltip:hover::before,
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+        
+        /* ----------------------------------------
+           Animations
+           ---------------------------------------- */
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.7;
+                transform: scale(0.98);
+            }
+        }
+        
+        .running {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease forwards;
+        }
+        
+        /* Glow effect for active elements */
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 5px var(--primary-color);
+            }
+            50% {
+                box-shadow: 0 0 20px var(--primary-color), 0 0 30px var(--primary-light);
+            }
+        }
+        
+        .glow {
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        /* ----------------------------------------
+           Responsive Design - Tablet
+           ---------------------------------------- */
+        @media (max-width: 1024px) {
+            .viz-grid {
+                grid-template-columns: 1fr;
+            }
+        
+            .config-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+        
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+        
+        /* ----------------------------------------
+           Responsive Design - Mobile
+           ---------------------------------------- */
+        @media (max-width: 768px) {
+            :root {
+                --spacing-xl: 1.5rem;
+                --spacing-lg: 1rem;
+            }
+        
+            .header {
+                padding: var(--spacing-lg);
+            }
+        
+            .header-title {
+                font-size: var(--font-size-2xl);
+            }
+        
+            .header-subtitle {
+                font-size: var(--font-size-sm);
+            }
+        
+            .main-container {
+                padding: var(--spacing-md);
+            }
+        
+            .viz-grid {
+                grid-template-columns: 1fr;
+            }
+        
+            .config-grid {
+                grid-template-columns: 1fr;
+            }
+        
+            .control-panel {
+                flex-direction: column;
+            }
+        
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        
+            .stat-value {
+                font-size: var(--font-size-xl);
+            }
+        
+            .chart-container {
+                height: 250px;
+            }
+        
+            .surface-container {
+                height: 280px;
+            }
+        
+            .log-container {
+                height: 150px;
+            }
+        
+            .checkbox-group {
+                flex-direction: column;
+            }
+        }
+        
+        /* ----------------------------------------
+           Responsive Design - Small Mobile
+           ---------------------------------------- */
+        @media (max-width: 480px) {
+            .header-title {
+                font-size: var(--font-size-xl);
+            }
+        
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        
+            .config-section {
+                padding: var(--spacing-sm);
+            }
+        
+            .viz-card {
+                padding: var(--spacing-md);
+            }
+        
+            .chart-container {
+                height: 200px;
+            }
+        
+            .surface-container {
+                height: 220px;
+            }
+        }
+        
+        /* ----------------------------------------
+           Print Styles
+           ---------------------------------------- */
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+        
+            .header {
+                background: none;
+                color: black;
+                box-shadow: none;
+                border-bottom: 2px solid black;
+            }
+        
+            .btn,
+            .control-panel,
+            .log-panel {
+                display: none;
+            }
+        
+            .viz-card,
+            .stats-panel,
+            .config-panel {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+        }
+        
+        /* ----------------------------------------
+           Accessibility - Focus States
+           ---------------------------------------- */
+        :focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        
+            .progress-fill::after {
+                animation: none;
+            }
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --border-color: #ffffff;
+                --text-secondary: #ffffff;
+            }
+        
+            .btn {
+                border: 2px solid currentColor;
+            }
+        }
+        
+        /* Dark mode is default, but support light mode preference */
+        @media (prefers-color-scheme: light) {
+            /* Uncomment to enable light mode support
+            :root {
+                --dark-bg: #f8fafc;
+                --card-bg: #ffffff;
+                --text-primary: #1e1e2e;
+                --text-secondary: #64748b;
+                --border-color: #e2e8f0;
+            }
+            */
+        }
+    </style>
+</head>
+<body>
+    <!-- Header section with title and description -->
+    <header class="header">
+        <h1 class="header-title">🔬 QQN Optimizer Demo</h1>
+        <p class="header-subtitle">Quasi-Quantum Newton Optimizer vs Standard Optimizers - TensorFlow.js Benchmark</p>
+    </header>
+    
+    <!-- Main content container -->
+    <main class="main-container">
+        <!-- Configuration panel for benchmark settings -->
+        <section class="config-panel">
+            <h2 class="config-title">⚙️ Configuration</h2>
+            <div class="config-grid">
+                <!-- Benchmark problem selection -->
+                <div class="config-section">
+                    <h3 class="config-section-title">Benchmark Problem</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="problem-select">Function</label>
+                        <select class="form-select" id="problem-select">
+                            <option value="rosenbrock">Rosenbrock (Banana)</option>
+                            <option value="rastrigin">Rastrigin</option>
+                            <option value="ackley">Ackley</option>
+                            <option value="sphere">Sphere</option>
+                            <option value="beale">Beale</option>
+                            <option value="booth">Booth</option>
+                            <option value="himmelblau">Himmelblau</option>
+                            <option value="goldstein-price">Goldstein-Price</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="dimensions">Dimensions: <span class="range-value" id="dim-value">2</span></label>
+                        <input type="range" class="form-range" id="dimensions" min="2" max="10" value="2">
+                    </div>
+                </div>
+                
+                <!-- Optimizer selection -->
+                <div class="config-section">
+                    <h3 class="config-section-title">Optimizers to Compare</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="opt-qqn" checked>
+                            <span>QQN (Ours)</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="opt-sgd" checked>
+                            <span>SGD</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="opt-adam" checked>
+                            <span>Adam</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="opt-rmsprop">
+                            <span>RMSprop</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="opt-adagrad">
+                            <span>Adagrad</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Training parameters -->
+                <div class="config-section">
+                    <h3 class="config-section-title">Training Parameters</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="iterations">Max Iterations: <span class="range-value" id="iter-value">500</span></label>
+                        <input type="range" class="form-range" id="iterations" min="100" max="2000" step="100" value="500">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="learning-rate">Learning Rate: <span class="range-value" id="lr-value">0.01</span></label>
+                        <input type="range" class="form-range" id="learning-rate" min="-4" max="0" step="0.1" value="-2">
+                    </div>
+                </div>
+                
+                <!-- QQN specific parameters -->
+                <div class="config-section">
+                    <h3 class="config-section-title">QQN Parameters</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="qqn-memory">Memory Size: <span class="range-value" id="memory-value">10</span></label>
+                        <input type="range" class="form-range" id="qqn-memory" min="3" max="30" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="qqn-damping">Damping Factor: <span class="range-value" id="damping-value">0.1</span></label>
+                        <input type="range" class="form-range" id="qqn-damping" min="-3" max="0" step="0.1" value="-1">
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Control buttons -->
+        <div class="control-panel">
+            <button class="btn btn-primary" id="btn-start">
+                <span>▶</span> Start Optimization
+            </button>
+            <button class="btn btn-secondary" id="btn-step" disabled>
+                <span>⏭</span> Step
+            </button>
+            <button class="btn btn-danger" id="btn-reset">
+                <span>↺</span> Reset
+            </button>
+        </div>
+        
+        <!-- Progress bar -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+        
+        <!-- Visualization grid -->
+        <div class="viz-grid">
+            <!-- Loss convergence chart -->
+            <div class="viz-card">
+                <h3 class="viz-title">
+                    <svg class="viz-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Loss Convergence
+                </h3>
+                <div class="chart-container">
+                    <canvas id="loss-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 2D Surface visualization -->
+            <div class="viz-card">
+                <h3 class="viz-title">
+                    <svg class="viz-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="6"></circle>
+                        <circle cx="12" cy="12" r="2"></circle>
+                    </svg>
+                    Optimization Trajectory (2D)
+                </h3>
+                <div class="surface-container">
+                    <canvas class="surface-canvas" id="surface-canvas"></canvas>
+                </div>
+            </div>
+            
+            <!-- Gradient norm chart -->
+            <div class="viz-card">
+                <h3 class="viz-title">
+                    <svg class="viz-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="20" x2="12" y2="10"></line>
+                        <line x1="18" y1="20" x2="18" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="16"></line>
+                    </svg>
+                    Gradient Norm
+                </h3>
+                <div class="chart-container">
+                    <canvas id="gradient-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Step size chart -->
+            <div class="viz-card">
+                <h3 class="viz-title">
+                    <svg class="viz-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                    </svg>
+                    Step Size
+                </h3>
+                <div class="chart-container">
+                    <canvas id="step-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics panel -->
+        <section class="stats-panel">
+            <h2 class="stats-title">📊 Performance Statistics</h2>
+            <div class="stats-grid" id="stats-grid">
+                <!-- Stats will be dynamically populated -->
+                <div class="stat-card">
+                    <div class="stat-label">QQN Final Loss</div>
+                    <div class="stat-value qqn" id="stat-qqn-loss">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">QQN Iterations</div>
+                    <div class="stat-value qqn" id="stat-qqn-iter">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">SGD Final Loss</div>
+                    <div class="stat-value sgd" id="stat-sgd-loss">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">SGD Iterations</div>
+                    <div class="stat-value sgd" id="stat-sgd-iter">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Adam Final Loss</div>
+                    <div class="stat-value adam" id="stat-adam-loss">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Adam Iterations</div>
+                    <div class="stat-value adam" id="stat-adam-iter">-</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Log panel -->
+        <section class="log-panel">
+            <h3 class="log-title">📝 Optimization Log</h3>
+            <div class="log-container" id="log-container">
+                <div class="log-entry info">
+                    <span class="log-timestamp">[00:00:00]</span>
+                    Ready to start optimization. Configure parameters and click "Start Optimization".
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ============================================
+        // ============================================
+        
+        /**
+         */
+        class QQNOptimizer extends tf.Optimizer {
+            constructor(learningRate = 0.01, memorySize = 10, damping = 0.1) {
+                super();
+                this.learningRate = learningRate;
+                this.memorySize = memorySize;
+                this.damping = damping;
+                this.ENGINE = tf.engine();
+        
+                // L-BFGS memory buffers for curvature approximation
+                this.sHistory = [];  // Position differences (s_k = x_{k+1} - x_k)
+                this.yHistory = [];  // Gradient differences (y_k = g_{k+1} - g_k)
+                this.rhoHistory = []; // Curvature estimates (rho_k = 1 / (y_k^T s_k))
+        
+                // Previous state storage for computing differences
+                this.prevGrads = new Map();
+                this.prevVars = new Map();
+        
+                // Tracking for adaptive behavior
+                this.iteration = 0;
+                this.stepSizes = [];
+            }
+        
+            static get className() {
+                return 'QQN';
+            }
+        
+            /**
+             * Apply gradients to update variables using QQN algorithm
+             * @param {Object|Array} variableGradients - Gradients for each variable
+             */
+            applyGradients(variableGradients) {
+                const varNames = Array.isArray(variableGradients) 
+                    ? variableGradients.map(v => v.name)
+                    : Object.keys(variableGradients);
+        
+                tf.tidy(() => {
+                    varNames.forEach(name => {
+                        const gradient = Array.isArray(variableGradients)
+                            ? variableGradients.find(v => v.name === name).tensor
+                            : variableGradients[name];
+                
+                        if (gradient == null) return;
+                
+const variable = this.ENGINE.registeredVariables[name];
+                        if (variable == null) return;
+                
+                    const currentVar = variable;
+                        const currentGrad = gradient;
+                
+                        // Compute search direction using two-loop recursion (L-BFGS style)
+                        let direction = this.computeDirection(name, currentGrad, currentVar);
+                
+                        // Apply update with adaptive step size
+                        const stepSize = this.computeStepSize(currentGrad, direction);
+                        this.stepSizes.push(stepSize);
+                
+                        const newValue = tf.sub(currentVar, tf.mul(direction, stepSize));
+                        variable.assign(newValue);
+                
+                        // Update history for next iteration
+                        this.updateHistory(name, currentVar, currentGrad);
+                    });
+                });
+        
+                this.iteration++;
+                this.incrementIterations();
+            }
+        
+            /**
+             * Compute search direction using L-BFGS two-loop recursion
+             * This approximates the Newton direction H^{-1} * g without explicit Hessian
+             */
+            computeDirection(name, gradient, variable) {
+                // If not enough history, fall back to gradient descent
+                if (this.sHistory.length === 0) {
+                    return gradient;
+                }
+        
+                // Two-loop recursion for L-BFGS direction computation
+                let q = gradient.clone();
+                const alphas = [];
+        
+                // First loop (backward through history)
+                for (let i = this.sHistory.length - 1; i >= 0; i--) {
+                    const s = this.sHistory[i];
+                    const y = this.yHistory[i];
+                    const rho = this.rhoHistory[i];
+            
+                    const alpha = tf.mul(rho, tf.sum(tf.mul(s, q)));
+                    alphas.unshift(alpha);
+                    q = tf.sub(q, tf.mul(alpha, y));
+                }
+        
+                // Initial Hessian approximation (scaled identity matrix)
+                // gamma = (s_k^T y_k) / (y_k^T y_k) provides good scaling
+                let gamma = 1.0;
+                if (this.sHistory.length > 0) {
+                    const lastS = this.sHistory[this.sHistory.length - 1];
+                    const lastY = this.yHistory[this.yHistory.length - 1];
+                    const sy = tf.sum(tf.mul(lastS, lastY));
+                    const yy = tf.sum(tf.mul(lastY, lastY));
+                    gamma = sy.div(yy.add(this.damping)).dataSync()[0];
+                    gamma = Math.max(0.01, Math.min(gamma, 100)); // Clamp for numerical stability
+                }
+        
+                let r = tf.mul(q, gamma);
+        
+                // Second loop (forward through history)
+                for (let i = 0; i < this.sHistory.length; i++) {
+                    const s = this.sHistory[i];
+                    const y = this.yHistory[i];
+                    const rho = this.rhoHistory[i];
+                    const alpha = alphas[i];
+            
+                    const beta = tf.mul(rho, tf.sum(tf.mul(y, r)));
+                    r = tf.add(r, tf.mul(tf.sub(alpha, beta), s));
+                }
+        
+                return r;
+            }
+        
+            /**
+             * Compute adaptive step size based on gradient-direction alignment
+             * Implements a simplified Wolfe-like condition
+             */
+            computeStepSize(gradient, direction) {
+                const gradNorm = tf.norm(gradient).dataSync()[0];
+                const dirNorm = tf.norm(direction).dataSync()[0];
+        
+                if (dirNorm < 1e-10) return this.learningRate;
+        
+                // Compute alignment between gradient and direction
+                const alignment = tf.sum(tf.mul(gradient, direction)).dataSync()[0] / (gradNorm * dirNorm + 1e-10);
+        
+                let stepSize = this.learningRate;
+                if (alignment > 0) {
+                    // Good descent direction - can use larger step
+                    stepSize *= Math.min(2.0, 1.0 + alignment);
+                } else {
+                    // Poor direction - reduce step for safety
+                    stepSize *= 0.5;
+                }
+        
+                // Apply iteration-based decay for convergence
+                stepSize *= 1.0 / (1.0 + 0.001 * this.iteration);
+        
+                return stepSize;
+            }
+        
+            /**
+             * Update L-BFGS history with new position and gradient information
+             */
+updateHistory(name, variable, gradient) {
+                const prevVar = this.prevVars.get(name);
+                const prevGrad = this.prevGrads.get(name);
+        
+                if (prevVar != null && prevGrad != null) {
+                    const s = tf.sub(variable, prevVar);
+                    const y = tf.sub(gradient, prevGrad);
+            
+                    const sy = tf.sum(tf.mul(s, y)).dataSync()[0];
+            
+                    // Only update if curvature condition is satisfied (ensures positive definiteness)
+                    if (sy > 1e-10) {
+                        const rho = tf.scalar(1.0 / sy);
+                
+                        this.sHistory.push(tf.keep(s.clone()));
+                        this.yHistory.push(tf.keep(y.clone()));
+                        this.rhoHistory.push(rho);
+                
+                        // Maintain fixed memory size (sliding window)
+                        if (this.sHistory.length > this.memorySize) {
+                            this.sHistory.shift().dispose();
+                            this.yHistory.shift().dispose();
+                            this.rhoHistory.shift().dispose();
+                        }
+                    }
+                }
+        
+                // Store current state for next iteration
+                if (this.prevVars.has(name)) {
+                    this.prevVars.get(name).dispose();
+                }
+                if (this.prevGrads.has(name)) {
+                    this.prevGrads.get(name).dispose();
+                }
+        
+                this.prevVars.set(name, tf.keep(variable.clone()));
+                this.prevGrads.set(name, tf.keep(gradient.clone()));
+            }
+        
+            getConfig() {
+                return {
+                    learningRate: this.learningRate,
+                    memorySize: this.memorySize,
+                    damping: this.damping
+                };
+            }
+        
+            static fromConfig(cls, config) {
+                return new cls(config.learningRate, config.memorySize, config.damping);
+            }
+        
+            dispose() {
+                this.sHistory.forEach(t => t.dispose());
+                this.yHistory.forEach(t => t.dispose());
+                this.rhoHistory.forEach(t => t.dispose());
+                this.prevVars.forEach(t => t.dispose());
+                this.prevGrads.forEach(t => t.dispose());
+                super.dispose();
+            }
+        }
+        
+        // Register the optimizer with TensorFlow.js serialization system
+        tf.serialization.registerClass(QQNOptimizer);
+        
+        // ============================================
+        // Benchmark Functions Library
+        // Standard test functions for optimization algorithms
+        // ============================================
+        
+        const BenchmarkFunctions = {
+            /**
+             * Rosenbrock Function (Banana Function)
+             * Global minimum at (1, 1, ..., 1) with f(x*) = 0
+             * Characterized by a narrow, curved valley
+             */
+            rosenbrock: {
+                name: 'Rosenbrock',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        let sum = tf.scalar(0);
+                        const n = x.shape[0];
+                        for (let i = 0; i < n - 1; i++) {
+                            const xi = x.slice([i], [1]);
+                            const xi1 = x.slice([i + 1], [1]);
+                            const term1 = tf.square(tf.sub(xi1, tf.square(xi))).mul(100);
+                            const term2 = tf.square(tf.sub(xi, 1));
+                            sum = sum.add(term1).add(term2);
+                        }
+                        return sum.squeeze();
+                    });
+                },
+                bounds: [-5, 5],
+                optimum: [1, 1],
+                optimumValue: 0,
+                description: 'Classic non-convex test function with narrow curved valley'
+            },
+        
+            /**
+             * Rastrigin Function
+             * Global minimum at (0, 0, ..., 0) with f(x*) = 0
+             * Highly multimodal with many local minima
+             */
+            rastrigin: {
+                name: 'Rastrigin',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        const n = x.shape[0];
+                        const A = 10;
+                        const sum = tf.sum(tf.sub(tf.square(x), tf.mul(A, tf.cos(tf.mul(x, 2 * Math.PI)))));
+                        return tf.add(A * n, sum);
+                    });
+                },
+                bounds: [-5.12, 5.12],
+                optimum: [0, 0],
+                optimumValue: 0,
+                description: 'Highly multimodal function with regular distribution of local minima'
+            },
+        
+            /**
+             * Ackley Function
+             * Global minimum at (0, 0, ..., 0) with f(x*) = 0
+             * Nearly flat outer region with large hole at center
+             */
+            ackley: {
+                name: 'Ackley',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        const a = 20, b = 0.2, c = 2 * Math.PI;
+                        const sum1 = tf.mean(tf.square(x));
+                        const sum2 = tf.mean(tf.cos(tf.mul(x, c)));
+                        const term1 = tf.mul(-a, tf.exp(tf.mul(-b, tf.sqrt(sum1))));
+                        const term2 = tf.exp(sum2).neg();
+                        return tf.add(tf.add(term1, term2), a + Math.E);
+                    });
+                },
+                bounds: [-5, 5],
+                optimum: [0, 0],
+                optimumValue: 0,
+                description: 'Nearly flat outer region with steep drop to global minimum'
+            },
+        
+            /**
+             * Sphere Function
+             * Global minimum at (0, 0, ..., 0) with f(x*) = 0
+             * Simple convex function, good for baseline testing
+             */
+            sphere: {
+                name: 'Sphere',
+                fn: (x) => {
+                    return tf.sum(tf.square(x));
+                },
+                bounds: [-5, 5],
+                optimum: [0, 0],
+                optimumValue: 0,
+                description: 'Simple convex quadratic function'
+            },
+        
+            /**
+             * Beale Function
+             * Global minimum at (3, 0.5) with f(x*) = 0
+             * 2D function with sharp peaks
+             */
+            beale: {
+                name: 'Beale',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        const x1 = x.slice([0], [1]).squeeze();
+                        const x2 = x.slice([1], [1]).squeeze();
+                        const term1 = tf.square(tf.sub(1.5, tf.add(x1, tf.mul(x1, x2).neg())));
+                        const term2 = tf.square(tf.sub(2.25, tf.add(x1, tf.mul(x1, tf.square(x2)).neg())));
+                        const term3 = tf.square(tf.sub(2.625, tf.add(x1, tf.mul(x1, tf.pow(x2, 3)).neg())));
+                        return tf.add(tf.add(term1, term2), term3);
+                    });
+                },
+                bounds: [-4.5, 4.5],
+                optimum: [3, 0.5],
+                optimumValue: 0,
+                description: 'Multimodal with sharp peaks at corners'
+            },
+        
+            /**
+             * Booth Function
+             * Global minimum at (1, 3) with f(x*) = 0
+             * Simple 2D function
+             */
+            booth: {
+                name: 'Booth',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        const x1 = x.slice([0], [1]).squeeze();
+                        const x2 = x.slice([1], [1]).squeeze();
+                        const term1 = tf.square(tf.sub(tf.add(x1, tf.mul(x2, 2)), 7));
+                        const term2 = tf.square(tf.sub(tf.add(tf.mul(x1, 2), x2), 5));
+                        return tf.add(term1, term2);
+                    });
+                },
+                bounds: [-10, 10],
+                optimum: [1, 3],
+                optimumValue: 0,
+                description: 'Simple plate-shaped function'
+            },
+        
+            /**
+             * Himmelblau Function
+             * Four identical local minima
+             */
+            himmelblau: {
+                name: 'Himmelblau',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        const x1 = x.slice([0], [1]).squeeze();
+                        const x2 = x.slice([1], [1]).squeeze();
+                        const term1 = tf.square(tf.sub(tf.add(tf.square(x1), x2), 11));
+                        const term2 = tf.square(tf.sub(tf.add(x1, tf.square(x2)), 7));
+                        return tf.add(term1, term2);
+                    });
+                },
+                bounds: [-5, 5],
+                optimum: [3, 2],
+                optimumValue: 0,
+                description: 'Four identical local minima'
+            },
+        
+            /**
+             * Goldstein-Price Function
+             * Global minimum at (0, -1) with f(x*) = 3
+             */
+            'goldstein-price': {
+                name: 'Goldstein-Price',
+                fn: (x) => {
+                    return tf.tidy(() => {
+                        const x1 = x.slice([0], [1]).squeeze();
+                        const x2 = x.slice([1], [1]).squeeze();
+                
+                        // First factor
+                        const a1 = tf.add(x1, x2).add(1);
+                        const a2 = tf.sub(19, tf.mul(14, x1))
+                            .add(tf.mul(3, tf.square(x1)))
+                            .sub(tf.mul(14, x2))
+                            .add(tf.mul(6, tf.mul(x1, x2)))
+                            .add(tf.mul(3, tf.square(x2)));
+                        const a = tf.add(1, tf.mul(tf.square(a1), a2));
+                
+                        // Second factor
+                        const b1 = tf.sub(tf.mul(2, x1), tf.mul(3, x2));
+                        const b2 = tf.sub(18, tf.mul(32, x1))
+                            .add(tf.mul(12, tf.square(x1)))
+                            .add(tf.mul(48, x2))
+                            .sub(tf.mul(36, tf.mul(x1, x2)))
+                            .add(tf.mul(27, tf.square(x2)));
+                        const b = tf.add(30, tf.mul(tf.square(b1), b2));
+                
+                        return tf.mul(a, b);
+                    });
+                },
+                bounds: [-2, 2],
+                optimum: [0, -1],
+                optimumValue: 3,
+                description: 'Complex function with several local minima'
+            }
+        };
+        
+        // ============================================
+        // Main Application Class
+        // Handles UI, optimization, and visualization
+        // ============================================
+        
+        class OptimizationDemo {
+            constructor() {
+                // Application state
+                this.isRunning = false;
+                this.currentIteration = 0;
+                this.maxIterations = 500;
+                this.animationId = null;
+        
+                // Chart instances (Chart.js)
+                this.lossChart = null;
+                this.gradientChart = null;
+                this.stepChart = null;
+        
+                // Optimization state for each optimizer
+                this.optimizers = {};
+                this.variables = {};
+                this.histories = {};
+                this.trajectories = {};
+        
+                // Canvas context for 2D surface visualization
+                this.surfaceCtx = null;
+        
+                // Initialize all components
+                this.initializeUI();
+                this.initializeCharts();
+                this.initializeSurface();
+        
+                // Log initial state
+                this.log('TensorFlow.js loaded successfully', 'success');
+                this.log(`Backend: ${tf.getBackend()}`, 'info');
+            }
+        
+            /**
+             * Initialize UI event listeners and bindings
+             */
+            initializeUI() {
+                // Control button event listeners
+                document.getElementById('btn-start').addEventListener('click', () => this.start());
+                document.getElementById('btn-step').addEventListener('click', () => this.step());
+                document.getElementById('btn-reset').addEventListener('click', () => this.reset());
+        
+                // Dimension slider
+                const dimSlider = document.getElementById('dimensions');
+                const dimValue = document.getElementById('dim-value');
+                dimSlider.addEventListener('input', (e) => {
+                    dimValue.textContent = e.target.value;
+                    // Disable dimensions > 2 for certain functions
+                    this.updateDimensionConstraints();
+                });
+        
+                // Iteration slider
+                const iterSlider = document.getElementById('iterations');
+                const iterValue = document.getElementById('iter-value');
+                iterSlider.addEventListener('input', (e) => {
+                    iterValue.textContent = e.target.value;
+                    this.maxIterations = parseInt(e.target.value);
+                });
+        
+                // Learning rate slider (logarithmic scale)
+                const lrSlider = document.getElementById('learning-rate');
+                const lrValue = document.getElementById('lr-value');
+                lrSlider.addEventListener('input', (e) => {
+                    const lr = Math.pow(10, parseFloat(e.target.value));
+                    lrValue.textContent = lr.toFixed(4);
+                });
+        
+                // QQN memory size slider
+                const memorySlider = document.getElementById('qqn-memory');
+                const memoryValue = document.getElementById('memory-value');
+                memorySlider.addEventListener('input', (e) => {
+                    memoryValue.textContent = e.target.value;
+                });
+        
+                // QQN damping slider (logarithmic scale)
+                const dampingSlider = document.getElementById('qqn-damping');
+                const dampingValue = document.getElementById('damping-value');
+                dampingSlider.addEventListener('input', (e) => {
+                    const damping = Math.pow(10, parseFloat(e.target.value));
+                    dampingValue.textContent = damping.toFixed(3);
+                });
+        
+                // Problem selection change handler
+                document.getElementById('problem-select').addEventListener('change', () => {
+                    this.reset();
+                    this.updateDimensionConstraints();
+                    this.drawSurface();
+                });
+        
+                // Optimizer checkbox handlers
+                const optimizerCheckboxes = ['opt-qqn', 'opt-sgd', 'opt-adam', 'opt-rmsprop', 'opt-adagrad'];
+                optimizerCheckboxes.forEach(id => {
+                    document.getElementById(id).addEventListener('change', () => {
+                        this.updateStatsDisplay();
+                    });
+                });
+        
+                // Window resize handler for canvas
+                window.addEventListener('resize', () => {
+                    this.initializeSurface();
+                });
+            }
+        
+            /**
+             * Update dimension constraints based on selected problem
+             * Some functions are only defined for 2D
+             */
+            updateDimensionConstraints() {
+                const problemKey = document.getElementById('problem-select').value;
+                const dimSlider = document.getElementById('dimensions');
+        
+                // Functions that only work in 2D
+                const twoDOnly = ['beale', 'booth', 'himmelblau', 'goldstein-price'];
+        
+                if (twoDOnly.includes(problemKey)) {
+                    dimSlider.value = 2;
+                    dimSlider.disabled = true;
+                    document.getElementById('dim-value').textContent = '2';
+                } else {
+                    dimSlider.disabled = false;
+                }
+            }
+        
+            /**
+             * Initialize Chart.js charts for visualization
+             */
+            initializeCharts() {
+                // Common chart options
+                const chartOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 }, // Disable animation for performance
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Iteration', color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Value', color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f8fafc' }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0,0,0,0.8)'
+                        }
+                    }
+                };
+        
+                // Loss convergence chart
+                this.lossChart = new Chart(document.getElementById('loss-chart'), {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        ...chartOptions,
+                        scales: {
+                            ...chartOptions.scales,
+                            y: { 
+                                ...chartOptions.scales.y, 
+                                title: { display: true, text: 'Loss (log scale)', color: '#94a3b8' } 
+                            }
+                        }
+                    }
+                });
+        
+                // Gradient norm chart
+                this.gradientChart = new Chart(document.getElementById('gradient-chart'), {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        ...chartOptions,
+                        scales: {
+                            ...chartOptions.scales,
+                            y: { 
+                                ...chartOptions.scales.y, 
+                                title: { display: true, text: 'Gradient Norm (log scale)', color: '#94a3b8' } 
+                            }
+                        }
+                    }
+                });
+        
+                // Step size chart (linear scale)
+                this.stepChart = new Chart(document.getElementById('step-chart'), {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        ...chartOptions,
+                        scales: {
+                            ...chartOptions.scales,
+                            y: { 
+                                type: 'linear',
+                                title: { display: true, text: 'Step Size', color: '#94a3b8' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: '#94a3b8' }
+                            }
+                        }
+                    }
+                });
+            }
+        
+            /**
+             * Initialize the 2D surface visualization canvas
+             */
+initializeSurface() {
+                const canvas = document.getElementById('surface-canvas');
+                this.surfaceCtx = canvas.getContext('2d');
+        
+                // Set canvas size to match container
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+        
+                // Clear cache when reinitializing
+                this._surfaceCache = null;
+
+                // Draw surface (will compute and cache values)
+                this.drawSurface();
+            }
+        
+            /**
+             * Draw the 2D contour plot of the objective function
+             */
+drawSurface() {
+                const ctx = this.surfaceCtx;
+                if (!ctx) return;
+        
+                const canvas = ctx.canvas;
+                const width = canvas.width;
+                const height = canvas.height;
+        
+                const problemKey = document.getElementById('problem-select').value;
+                const problem = BenchmarkFunctions[problemKey];
+        
+                // Clear canvas with dark background
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(0, 0, width, height);
+        
+                // Compute contour plot
+                const bounds = problem.bounds;
+                const resolution = 50; // Grid resolution (reduced for performance)
+                const cellWidth = width / resolution;
+                const cellHeight = height / resolution;
+        
+                // Use cached values if available for same problem
+                const cacheKey = `${problemKey}_${resolution}`;
+                if (!this._surfaceCache || this._surfaceCache.key !== cacheKey) {
+                    // Compute function values on grid
+                    const values = [];
+                    let minVal = Infinity, maxVal = -Infinity;
+        
+                    for (let j = 0; j < resolution; j++) {
+                        for (let i = 0; i < resolution; i++) {
+                            values[i] = [];
+                            for (let j = 0; j < resolution; j++) {
+                                const x = bounds[0] + (bounds[1] - bounds[0]) * i / resolution;
+                                const y = bounds[0] + (bounds[1] - bounds[0]) * j / resolution;
+
+                                const val = problem.fn(tf.tensor1d([x, y])).dataSync()[0];
+                                // Use log scale for better visualization
+                                values[i][j] = Math.log10(Math.max(val, 1e-10) + 1);
+                                minVal = Math.min(minVal, values[i][j]);
+                                maxVal = Math.max(maxVal, values[i][j]);
+                            }
+
+                        }
+                    }
+                    this._surfaceCache = { key: cacheKey, values, minVal, maxVal };
+                }
+                const { values, minVal, maxVal } = this._surfaceCache;
+        
+                // Draw heatmap
+                for (let i = 0; i < resolution; i++) {
+                    for (let j = 0; j < resolution; j++) {
+                        const normalized = (values[i][j] - minVal) / (maxVal - minVal + 1e-10);
+                        // Color gradient: blue (low) -> cyan -> green -> yellow -> red (high)
+                        const hue = 240 - normalized * 240;
+                        const lightness = 25 + normalized * 25;
+                        ctx.fillStyle = `hsl(${hue}, 70%, ${lightness}%)`;
+                        ctx.fillRect(
+                            i * cellWidth, 
+                            (resolution - 1 - j) * cellHeight, 
+                            cellWidth + 1, 
+                            cellHeight + 1
+                        );
+                    }
+                }
+        
+                // Draw contour lines
+                this.drawContourLines(ctx, values, resolution, cellWidth, cellHeight, minVal, maxVal);
+        
+                // Draw global optimum marker
+                const optX = (problem.optimum[0] - bounds[0]) / (bounds[1] - bounds[0]) * width;
+                const optY = height - (problem.optimum[1] - bounds[0]) / (bounds[1] - bounds[0]) * height;
+        
+                // Outer ring
+                ctx.beginPath();
+                ctx.arc(optX, optY, 10, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+        
+                // Inner filled circle
+                ctx.beginPath();
+                ctx.arc(optX, optY, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#10b981';
+                ctx.fill();
+        
+                // Draw optimization trajectories
+                this.drawTrajectories();
+        
+                // Draw legend
+                this.drawSurfaceLegend(ctx, width, height);
+            }
+        
+            /**
+             * Draw contour lines on the surface plot
+             */
+            drawContourLines(ctx, values, resolution, cellWidth, cellHeight, minVal, maxVal) {
+                const numContours = 10;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 0.5;
+        
+                for (let c = 0; c < numContours; c++) {
+                    const threshold = minVal + (maxVal - minVal) * c / numContours;
+            
+                    for (let i = 0; i < resolution - 1; i++) {
+                        for (let j = 0; j < resolution - 1; j++) {
+                            // Simple marching squares for contour detection
+                            const v00 = values[i][j] > threshold ? 1 : 0;
+                            const v10 = values[i + 1][j] > threshold ? 1 : 0;
+                            const v01 = values[i][j + 1] > threshold ? 1 : 0;
+                            const v11 = values[i + 1][j + 1] > threshold ? 1 : 0;
+                    
+                            const code = v00 + v10 * 2 + v01 * 4 + v11 * 8;
+                    
+                            if (code !== 0 && code !== 15) {
+                                const x = i * cellWidth + cellWidth / 2;
+                                const y = (resolution - 1 - j) * cellHeight - cellHeight / 2;
+                        
+                                ctx.beginPath();
+                                ctx.arc(x, y, 1, 0, 2 * Math.PI);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+            }
+        
+            /**
+             * Draw legend for the surface plot
+             */
+            drawSurfaceLegend(ctx, width, height) {
+                const legendWidth = 20;
+                const legendHeight = 100;
+                const legendX = width - legendWidth - 10;
+                const legendY = 10;
+        
+                // Draw gradient bar
+                const gradient = ctx.createLinearGradient(legendX, legendY + legendHeight, legendX, legendY);
+                gradient.addColorStop(0, 'hsl(240, 70%, 25%)');
+                gradient.addColorStop(0.5, 'hsl(120, 70%, 37%)');
+                gradient.addColorStop(1, 'hsl(0, 70%, 50%)');
+        
+                ctx.fillStyle = gradient;
+                ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+        
+                // Draw border
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
+        
+                // Draw labels
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText('High', legendX - 5, legendY + 10);
+                ctx.fillText('Low', legendX - 5, legendY + legendHeight);
+            }
+        
+            /**
+             * Draw optimization trajectories on the surface plot
+             */
+            drawTrajectories() {
+                const ctx = this.surfaceCtx;
+                if (!ctx) return;
+        
+                const canvas = ctx.canvas;
+                const width = canvas.width;
+                const height = canvas.height;
+        
+                const problemKey = document.getElementById('problem-select').value;
+                const problem = BenchmarkFunctions[problemKey];
+                const bounds = problem.bounds;
+        
+                // Color scheme for different optimizers
+                const colors = {
+                    'QQN': { line: '#2563eb', point: '#60a5fa' },
+                    'SGD': { line: '#f59e0b', point: '#fcd34d' },
+                    'Adam': { line: '#10b981', point: '#6ee7b7' },
+                    'RMSprop': { line: '#7c3aed', point: '#a78bfa' },
+                    'Adagrad': { line: '#ef4444', point: '#fca5a5' }
+                };
+        
+                // Draw each optimizer's trajectory
+                for (const [name, trajectory] of Object.entries(this.trajectories)) {
+                    if (trajectory.length < 2) continue;
+            
+                    const color = colors[name] || { line: '#ffffff', point: '#ffffff' };
+            
+                    // Draw path
+                    ctx.beginPath();
+                    ctx.strokeStyle = color.line;
+                    ctx.lineWidth = name === 'QQN' ? 3 : 2;
+                    ctx.globalAlpha = 0.8;
+            
+                    for (let i = 0; i < trajectory.length; i++) {
+                        const x = (trajectory[i][0] - bounds[0]) / (bounds[1] - bounds[0]) * width;
+                        const y = height - (trajectory[i][1] - bounds[0]) / (bounds[1] - bounds[0]) * height;
+                
+                        if (i === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+            
+                    // Draw starting point
+                    const startX = (trajectory[0][0] - bounds[0]) / (bounds[1] - bounds[0]) * width;
+                    const startY = height - (trajectory[0][1] - bounds[0]) / (bounds[1] - bounds[0]) * height;
+            
+                    ctx.beginPath();
+                    ctx.arc(startX, startY, 6, 0, 2 * Math.PI);
+                    ctx.fillStyle = color.line;
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+            
+                    // Draw current position (larger, pulsing effect)
+                    const lastPoint = trajectory[trajectory.length - 1];
+                    const lastX = (lastPoint[0] - bounds[0]) / (bounds[1] - bounds[0]) * width;
+                    const lastY = height - (lastPoint[1] - bounds[0]) / (bounds[1] - bounds[0]) * height;
+            
+                    // Outer glow
+                    ctx.beginPath();
+                    ctx.arc(lastX, lastY, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = color.point;
+                    ctx.globalAlpha = 0.3;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+            
+                    // Inner point
+                    ctx.beginPath();
+                    ctx.arc(lastX, lastY, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = color.line;
+                    ctx.fill();
+                }
+        
+                // Draw trajectory legend
+                this.drawTrajectoryLegend(ctx, colors);
+            }
+        
+            /**
+             * Draw legend for trajectories
+             */
+            drawTrajectoryLegend(ctx, colors) {
+                const selectedOptimizers = this.getSelectedOptimizers();
+                if (selectedOptimizers.length === 0) return;
+        
+                const legendX = 10;
+                let legendY = 10;
+                const lineHeight = 20;
+        
+                ctx.font = '12px sans-serif';
+        
+                selectedOptimizers.forEach(name => {
+                    const color = colors[name] || { line: '#ffffff' };
+            
+                    // Draw color indicator
+                    ctx.fillStyle = color.line;
+                    ctx.fillRect(legendX, legendY, 15, 12);
+            
+                    // Draw label
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(name, legendX + 20, legendY + 10);
+            
+                    legendY += lineHeight;
+                });
+            }
+        
+            /**
+             * Get list of selected optimizers from checkboxes
+             */
+            getSelectedOptimizers() {
+                const selected = [];
+                if (document.getElementById('opt-qqn').checked) selected.push('QQN');
+                if (document.getElementById('opt-sgd').checked) selected.push('SGD');
+                if (document.getElementById('opt-adam').checked) selected.push('Adam');
+                if (document.getElementById('opt-rmsprop').checked) selected.push('RMSprop');
+                if (document.getElementById('opt-adagrad').checked) selected.push('Adagrad');
+                return selected;
+            }
+        
+            /**
+             * Create optimizer instance based on name and current settings
+             */
+            createOptimizer(name) {
+                const lr = Math.pow(10, parseFloat(document.getElementById('learning-rate').value));
+                const memorySize = parseInt(document.getElementById('qqn-memory').value);
+                const damping = Math.pow(10, parseFloat(document.getElementById('qqn-damping').value));
+        
+                switch (name) {
+                    case 'QQN':
+                        return new QQNOptimizer(lr, memorySize, damping);
+                    case 'SGD':
+                        return tf.train.sgd(lr);
+                    case 'Adam':
+                        return tf.train.adam(lr);
+                    case 'RMSprop':
+                        return tf.train.rmsprop(lr);
+                    case 'Adagrad':
+                        return tf.train.adagrad(lr);
+                    default:
+                        return tf.train.sgd(lr);
+                }
+            }
+        
+            /**
+             * Initialize optimization state for all selected optimizers
+             */
+            initializeOptimization() {
+                const problemKey = document.getElementById('problem-select').value;
+                const problem = BenchmarkFunctions[problemKey];
+                const dims = parseInt(document.getElementById('dimensions').value);
+                const bounds = problem.bounds;
+        
+                const selectedOptimizers = this.getSelectedOptimizers();
+        
+                if (selectedOptimizers.length === 0) {
+                    this.log('Please select at least one optimizer', 'error');
+                    return false;
+                }
+        
+                // Clean up previous optimization state
+                this.disposeResources();
+        
+                this.optimizers = {};
+                this.variables = {};
+                this.histories = {};
+                this.trajectories = {};
+        
+                // Generate random starting point (same for all optimizers for fair comparison)
+                const startPoint = [];
+                for (let i = 0; i < dims; i++) {
+                    // Start away from optimum for interesting trajectories
+                    const range = bounds[1] - bounds[0];
+                    startPoint.push(bounds[0] + 0.2 * range + Math.random() * 0.6 * range);
+                }
+        
+                // Initialize each optimizer with the same starting point
+                selectedOptimizers.forEach(name => {
+                    this.optimizers[name] = this.createOptimizer(name);
+                    this.variables[name] = tf.variable(tf.tensor1d([...startPoint]));
+                    this.histories[name] = { 
+                        loss: [], 
+                        gradient: [], 
+                        step: [],
+                        position: []
+                    };
+                    this.trajectories[name] = [[...startPoint]];
+                });
+        
+                this.log(`Initialized ${selectedOptimizers.length} optimizer(s) for ${problem.name} function`, 'info');
+                this.log(`Dimensions: ${dims}, Starting point: [${startPoint.map(v => v.toFixed(3)).join(', ')}]`, 'info');
+                this.log(`Target optimum: [${problem.optimum.join(', ')}] with f(x*) = ${problem.optimumValue}`, 'info');
+        
+                this.updateStatsDisplay();
+                return true;
+            }
+        
+            /**
+             * Dispose of TensorFlow.js resources
+             */
+            disposeResources() {
+                Object.values(this.optimizers).forEach(opt => {
+                    if (opt && opt.dispose) opt.dispose();
+                });
+                Object.values(this.variables).forEach(v => {
+                    if (v && v.dispose) v.dispose();
+                });
+            }
+        
+            /**
+             * Start or resume optimization
+             */
+            async start() {
+                if (this.isRunning) {
+                    this.pause();
+                    return;
+                }
+        
+                // Initialize if starting fresh
+                if (this.currentIteration === 0) {
+                    if (!this.initializeOptimization()) {
+                        return;
+                    }
+                }
+        
+                this.isRunning = true;
+                document.getElementById('btn-start').innerHTML = '<span>⏸</span> Pause';
+                document.getElementById('btn-step').disabled = true;
+        
+                this.log('Optimization started', 'success');
+        
+                await this.runOptimization();
+            }
+        
+            /**
+             * Pause optimization
+             */
+            pause() {
+                this.isRunning = false;
+                document.getElementById('btn-start').innerHTML = '<span>▶</span> Resume';
+                document.getElementById('btn-step').disabled = false;
+                this.log('Optimization paused', 'warning');
+            }
+        
+            /**
+             * Execute a single optimization step
+             */
+            async step() {
+                if (this.currentIteration === 0) {
+                    if (!this.initializeOptimization()) {
+                        return;
+                    }
+                }
+        
+                await this.optimizationStep();
+                this.updateCharts();
+                this.updateStats();
+                this.drawSurface();
+            }
+        
+            /**
+             * Reset optimization to initial state
+             */
+            reset() {
+                this.isRunning = false;
+                this.currentIteration = 0;
+        
+                // Dispose TensorFlow.js resources
+                this.disposeResources();
+        
+                this.optimizers = {};
+                this.variables = {};
+                this.histories = {};
+                this.trajectories = {};
+        
+                // Reset UI elements
+                document.getElementById('btn-start').innerHTML = '<span>▶</span> Start Optimization';
+                document.getElementById('btn-step').disabled = false;
+                document.getElementById('progress-fill').style.width = '0%';
+        
+                // Clear charts
+                this.clearCharts();
+        
+                // Reset stats display
+                this.resetStats();
+        
+                // Redraw clean surface
+                this.drawSurface();
+        
+                this.log('Reset complete - ready for new optimization', 'info');
+            }
+        
+            /**
+             * Clear all chart data
+             */
+            clearCharts() {
+                [this.lossChart, this.gradientChart, this.stepChart].forEach(chart => {
+                    if (chart) {
+                        chart.data.labels = [];
+                        chart.data.datasets = [];
+                        chart.update();
+                    }
+                });
+            }
+        
+            /**
+             * Reset statistics display
+             */
+            resetStats() {
+                document.querySelectorAll('.stat-value').forEach(el => {
+                    el.textContent = '-';
+                });
+            }
+        
+            /**
+             * Main optimization loop
+             */
+            async runOptimization() {
+                const updateInterval = 5; // Update UI every N iterations
+        
+                while (this.isRunning && this.currentIteration < this.maxIterations) {
+                    await this.optimizationStep();
+            
+                    // Update UI periodically for performance
+                    if (this.currentIteration % updateInterval === 0) {
+                        this.updateCharts();
+                        this.updateStats();
+                        this.drawSurface();
+                
+                        // Allow UI to update
+                        await tf.nextFrame();
+                    }
+            
+                    // Check for convergence
+                    if (this.checkConvergence()) {
+                        this.log('🎉 Convergence reached!', 'success');
+                        break;
+                    }
+                }
+        
+                if (this.currentIteration >= this.maxIterations) {
+                    this.log('Maximum iterations reached', 'warning');
+                }
+        
+                // Final update
+                this.isRunning = false;
+                document.getElementById('btn-start').innerHTML = '<span>▶</span> Start Optimization';
+                document.getElementById('btn-step').disabled = false;
+        
+                this.updateCharts();
+                this.updateStats();
+                this.drawSurface();
+        
+                // Log final results
+                this.logFinalResults();
+            }
+        
+            /**
+             * Execute one optimization step for all optimizers
+             */
+            async optimizationStep() {
+                const problemKey = document.getElementById('problem-select').value;
+                const problem = BenchmarkFunctions[problemKey];
+        
+                for (const [name, optimizer] of Object.entries(this.optimizers)) {
+                    const variable = this.variables[name];
+            
+                    tf.tidy(() => {
+                        // Compute loss and gradients
+                        const { value: loss, grads } = tf.variableGrads(() => problem.fn(variable));
+                
+                        const lossVal = loss.dataSync()[0];
+                        const gradTensor = grads[variable.name];
+                        const gradNorm = tf.norm(gradTensor).dataSync()[0];
+                
+                        // Store history
+                        this.histories[name].loss.push(lossVal);
+                        this.histories[name].gradient.push(gradNorm);
+                
+                        // Apply gradients
+                        optimizer.applyGradients(grads);
+                
+                        // Store step size
+                        if (optimizer instanceof QQNOptimizer && optimizer.stepSizes && optimizer.stepSizes.length > 0) {
+                            this.histories[name].step.push(optimizer.stepSizes[optimizer.stepSizes.length - 1]);
+                        } else {
+                            const lr = Math.pow(10, parseFloat(document.getElementById('learning-rate').value));
+                            this.histories[name].step.push(lr);
+                        }
+                
+                        // Store trajectory (first 2 dimensions for visualization)
+                        const pos = variable.dataSync();
+                        this.trajectories[name].push([pos[0], pos[1]]);
+                    });
+                }
+        
+                this.currentIteration++;
+        
+                // Update progress bar
+                const progress = (this.currentIteration / this.maxIterations) * 100;
+                document.getElementById('progress-fill').style.width = `${progress}%`;
+            }
+        
+            /**
+             * Check if any optimizer has converged
+             */
+            checkConvergence() {
+                const threshold = 1e-8;
+                const gradThreshold = 1e-6;
+        
+                for (const [name, history] of Object.entries(this.histories)) {
+                    if (history.loss.length > 0) {
+                        const lastLoss = history.loss[history.loss.length - 1];
+                        const lastGrad = history.gradient[history.gradient.length - 1];
+                
+                        // Check both loss and gradient criteria
+                        if (lastLoss < threshold || lastGrad < gradThreshold) {
+                            return true;
+                        }
+                    }
+                }
+        
+                return false;
+            }
+        
+            /**
+             * Update all charts with current data
+             */
+            updateCharts() {
+                // Color scheme for optimizers
+                const colors = {
+                    'QQN': { border: '#2563eb', background: 'rgba(37, 99, 235, 0.1)' },
+                    'SGD': { border: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)' },
+                    'Adam': { border: '#10b981', background: 'rgba(16, 185, 129, 0.1)' },
+                    'RMSprop': { border: '#7c3aed', background: 'rgba(124, 58, 237, 0.1)' },
+                    'Adagrad': { border: '#ef4444', background: 'rgba(239, 68, 68, 0.1)' }
+                };
+        
+                const labels = Array.from({ length: this.currentIteration }, (_, i) => i + 1);
+        
+                // Helper function to create dataset
+                const createDataset = (name, data, isQQN) => ({
+                    label: name,
+                    data: data,
+                    borderColor: colors[name]?.border || '#ffffff',
+                    backgroundColor: colors[name]?.background || 'rgba(255,255,255,0.1)',
+                    borderWidth: isQQN ? 3 : 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false
+                });
+        
+                // Update loss chart
+                this.lossChart.data.labels = labels;
+                this.lossChart.data.datasets = Object.entries(this.histories).map(([name, history]) => 
+                    createDataset(name, history.loss, name === 'QQN')
+                );
+                this.lossChart.update('none');
+        
+                // Update gradient chart
+                this.gradientChart.data.labels = labels;
+                this.gradientChart.data.datasets = Object.entries(this.histories).map(([name, history]) => 
+                    createDataset(name, history.gradient, name === 'QQN')
+                );
+                this.gradientChart.update('none');
+        
+                // Update step size chart
+                this.stepChart.data.labels = labels;
+                this.stepChart.data.datasets = Object.entries(this.histories).map(([name, history]) => 
+                    createDataset(name, history.step, name === 'QQN')
+                );
+                this.stepChart.update('none');
+            }
+        
+            /**
+             * Update statistics display
+             */
+            updateStats() {
+                for (const [name, history] of Object.entries(this.histories)) {
+                    const nameLower = name.toLowerCase();
+                    const lossEl = document.getElementById(`stat-${nameLower}-loss`);
+                    const iterEl = document.getElementById(`stat-${nameLower}-iter`);
+            
+                    if (lossEl && history.loss.length > 0) {
+                        const lastLoss = history.loss[history.loss.length - 1];
+                        lossEl.textContent = lastLoss.toExponential(4);
+                    }
+            
+                    if (iterEl) {
+                        iterEl.textContent = this.currentIteration;
+                    }
+                }
+            }
+        
+            /**
+             * Update stats display based on selected optimizers
+             */
+            updateStatsDisplay() {
+                const statsGrid = document.getElementById('stats-grid');
+                const selectedOptimizers = this.getSelectedOptimizers();
+        
+                // Clear existing stats
+                statsGrid.innerHTML = '';
+        
+                // Create stat cards for each selected optimizer
+                selectedOptimizers.forEach(name => {
+                    const nameLower = name.toLowerCase();
+            
+                    // Loss card
+                    const lossCard = document.createElement('div');
+                    lossCard.className = 'stat-card';
+                    lossCard.innerHTML = `
+                        <div class="stat-label">${name} Final Loss</div>
+                        <div class="stat-value ${nameLower}" id="stat-${nameLower}-loss">-</div>
+                    `;
+                    statsGrid.appendChild(lossCard);
+            
+                    // Iterations card
+                    const iterCard = document.createElement('div');
+                    iterCard.className = 'stat-card';
+                    iterCard.innerHTML = `
+                        <div class="stat-label">${name} Iterations</div>
+                        <div class="stat-value ${nameLower}" id="stat-${nameLower}-iter">-</div>
+                    `;
+                    statsGrid.appendChild(iterCard);
+                });
+            }
+        
+            /**
+             * Log final optimization results
+             */
+            logFinalResults() {
+                this.log('=== Final Results ===', 'info');
+        
+                const problemKey = document.getElementById('problem-select').value;
+                const problem = BenchmarkFunctions[problemKey];
+        
+                // Sort optimizers by final loss
+                const results = Object.entries(this.histories)
+                    .map(([name, history]) => ({
+                        name,
+                        finalLoss: history.loss[history.loss.length - 1] || Infinity,
+                        iterations: history.loss.length
+                    }))
+                    .sort((a, b) => a.finalLoss - b.finalLoss);
+        
+                results.forEach((result, index) => {
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '  ';
+                    const distanceToOptimum = Math.abs(result.finalLoss - problem.optimumValue);
+                    this.log(
+                        `${medal} ${result.name}: Loss = ${result.finalLoss.toExponential(4)} ` +
+                        `(distance to optimum: ${distanceToOptimum.toExponential(2)})`,
+                        result.name === 'QQN' ? 'success' : 'info'
+                    );
+                });
+        
+                // Calculate speedup if QQN is present
+                const qqnResult = results.find(r => r.name === 'QQN');
+                if (qqnResult) {
+                    const otherResults = results.filter(r => r.name !== 'QQN');
+                    otherResults.forEach(other => {
+                        if (qqnResult.finalLoss < other.finalLoss) {
+                            const improvement = ((other.finalLoss - qqnResult.finalLoss) / other.finalLoss * 100).toFixed(1);
+                            this.log(`QQN achieved ${improvement}% lower loss than ${other.name}`, 'success');
+                        }
+                    });
+                }
+            }
+        
+            /**
+             * Add entry to the log panel
+             */
+            log(message, type = 'info') {
+                const container = document.getElementById('log-container');
+                const timestamp = new Date().toLocaleTimeString();
+        
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> ${message}`;
+        
+                container.appendChild(entry);
+        
+                // Auto-scroll to bottom
+                container.scrollTop = container.scrollHeight;
+        
+                // Limit log entries to prevent memory issues
+                while (container.children.length > 100) {
+                    container.removeChild(container.firstChild);
+                }
+            }
+        }
+        
+        // ============================================
+        // Application Initialization
+        // ============================================
+        
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if TensorFlow.js is loaded
+            if (typeof tf === 'undefined') {
+                console.error('TensorFlow.js not loaded!');
+                alert('Error: TensorFlow.js failed to load. Please refresh the page.');
+                return;
+            }
+        
+            // Check if Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js not loaded!');
+                alert('Error: Chart.js failed to load. Please refresh the page.');
+                return;
+            }
+        
+            // Initialize the demo application
+            window.demo = new OptimizationDemo();
+        
+            // Expose useful functions for debugging
+            window.tf = tf;
+            window.BenchmarkFunctions = BenchmarkFunctions;
+            window.QQNOptimizer = QQNOptimizer;
+        });
+        
+        // Handle page unload to clean up resources
+        window.addEventListener('beforeunload', () => {
+            if (window.demo) {
+                window.demo.disposeResources();
+            }
+        });
+    </script>
+</body>
+</html>
+                            // Compute function value at this point
+                            const val = tf.tidy(() => {
+                                const point = tf.tensor1d([x, y]);
+                                return problem.fn(point).dataSync()[0];
+                            });

@@ -107,33 +107,33 @@ impl PerformanceTableReport {
             let mut perf_data = Vec::new();
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
+                let success_rate = success_count as f32 / runs.len() as f32 * 100.0;
 
-                let final_values: Vec<f64> = runs
+                let final_values: Vec<f32> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
 
                 let mean_final = if !final_values.is_empty() {
-                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                    final_values.iter().sum::<f32>() / final_values.len() as f32
                 } else {
-                    f64::INFINITY
+                    f32::INFINITY
                 };
 
-                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+                let best_final = final_values.iter().cloned().fold(f32::INFINITY, f32::min);
 
                 let mean_func_evals = runs
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.function_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 perf_data.push((
                     optimizer.clone(),
@@ -229,33 +229,33 @@ impl PerformanceTableReport {
 
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
+                let success_rate = success_count as f32 / runs.len() as f32 * 100.0;
 
-                let final_values: Vec<f64> = runs
+                let final_values: Vec<f32> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
 
                 let mean_final = if !final_values.is_empty() {
-                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                    final_values.iter().sum::<f32>() / final_values.len() as f32
                 } else {
-                    f64::INFINITY
+                    f32::INFINITY
                 };
 
-                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+                let best_final = final_values.iter().cloned().fold(f32::INFINITY, f32::min);
 
                 let mean_func_evals = runs
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.function_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 latex.push_str(&format!(
                     "{} & {:.1} & {:.2e} & {:.2e} & {:.1} & {:.3} \\\\\n",
@@ -306,33 +306,33 @@ impl PerformanceTableReport {
 
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
+                let success_rate = success_count as f32 / runs.len() as f32 * 100.0;
 
-                let final_values: Vec<f64> = runs
+                let final_values: Vec<f32> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
 
                 let mean_final = if !final_values.is_empty() {
-                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                    final_values.iter().sum::<f32>() / final_values.len() as f32
                 } else {
-                    f64::INFINITY
+                    f32::INFINITY
                 };
 
-                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+                let best_final = final_values.iter().cloned().fold(f32::INFINITY, f32::min);
 
                 let mean_func_evals = runs
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.function_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 md.push_str(&format!(
                     "| {} | {:.1} | {:.2e} | {:.2e} | {:.1} | {:.3} |\n",
@@ -366,33 +366,33 @@ impl PerformanceTableReport {
 
             for (optimizer, runs) in &optimizer_stats {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
+                let success_rate = success_count as f32 / runs.len() as f32 * 100.0;
 
-                let final_values: Vec<f64> = runs
+                let final_values: Vec<f32> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
 
                 let mean_final = if !final_values.is_empty() {
-                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                    final_values.iter().sum::<f32>() / final_values.len() as f32
                 } else {
-                    f64::INFINITY
+                    f32::INFINITY
                 };
 
-                let best_final = final_values.iter().cloned().fold(f64::INFINITY, f64::min);
+                let best_final = final_values.iter().cloned().fold(f32::INFINITY, f32::min);
 
                 let mean_func_evals = runs
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.function_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 let mean_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .sum::<f32>()
+                    / runs.len() as f32;
 
                 csv.push_str(&format!(
                     "{},{},{:.1},{:.2e},{:.2e},{:.1},{:.3}\n",

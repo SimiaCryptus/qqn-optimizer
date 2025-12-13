@@ -1,7 +1,7 @@
-use crate::line_search::line_search::OneDimensionalProblem;
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
+use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Strong Wolfe line search implementation following Nocedal & Wright Algorithm 3.5.
@@ -25,12 +25,12 @@ use serde::{Deserialize, Serialize};
 /// Configuration for Strong Wolfe line search
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrongWolfeConfig {
-    pub c1: f64, // Armijo condition parameter: controls sufficient decrease strictness
-    pub c2: f64, // Curvature condition parameter: controls gradient reduction requirement
+    pub c1: f32, // Armijo condition parameter: controls sufficient decrease strictness
+    pub c2: f32, // Curvature condition parameter: controls gradient reduction requirement
     pub max_iterations: usize, // Maximum line search iterations
-    pub min_step: f64, // Minimum step size
-    pub max_step: f64, // Maximum step size
-    pub initial_step: f64, // Initial step size
+    pub min_step: f32, // Minimum step size
+    pub max_step: f32, // Maximum step size
+    pub initial_step: f32, // Initial step size
     pub verbose: bool, // Enable verbose logging
 }
 
@@ -173,7 +173,7 @@ impl StrongWolfeLineSearch {
     ///
     /// The step size will be clamped to [min_step, max_step] range.
     /// This is useful for adaptive step size strategies.
-    pub fn set_initial_step(&mut self, step: f64) {
+    pub fn set_initial_step(&mut self, step: f32) {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
     pub fn new(config: StrongWolfeConfig) -> Self {
@@ -216,10 +216,10 @@ impl StrongWolfeLineSearch {
     /// from the origin. Smaller c₁ = flatter line = stricter acceptance.
     fn armijo_condition(
         &self,
-        f0: f64,
-        f_alpha: f64,
-        alpha: f64,
-        directional_derivative: f64,
+        f0: f32,
+        f_alpha: f32,
+        alpha: f32,
+        directional_derivative: f32,
     ) -> bool {
         let threshold = f0 + self.config.c1 * alpha * directional_derivative;
         let satisfied = f_alpha <= threshold;
@@ -259,7 +259,7 @@ impl StrongWolfeLineSearch {
     /// **Why method-dependent?**
     /// - Conjugate gradient needs orthogonal directions → requires flat gradients → small c₂
     /// - Newton methods have good curvature info → can handle steep gradients → large c₂
-    fn curvature_condition(&self, grad_alpha: f64, directional_derivative: f64) -> bool {
+    fn curvature_condition(&self, grad_alpha: f32, directional_derivative: f32) -> bool {
         let threshold = self.config.c2 * directional_derivative.abs();
         let satisfied = grad_alpha.abs() <= threshold;
         if self.config.verbose {
@@ -285,16 +285,19 @@ impl StrongWolfeLineSearch {
     /// getting stuck in very small intervals.
     fn zoom(
         &self,
-        alpha_lo: f64,
-        alpha_hi: f64,
-        f0: f64,
-        directional_derivative: f64,
-        problem: &OneDimensionalProblem,
-    ) -> anyhow::Result<f64> {
+        alpha_lo: f32,
+        alpha_hi: f32,
+        f0: f32,
+        directional_derivative: f32,
+        mut evaluate: F,
+    ) -> anyhow::Result<f32> 
+    where
+        F: FnMut(f32) -> anyhow::Result<(f32, f32)>,
+    {
         let mut alpha_lo = alpha_lo;
         let mut alpha_hi = alpha_hi;
         let mut best_alpha = alpha_lo;
-        let mut best_value = f64::INFINITY;
+        let mut best_value = f32::INFINITY;
 
         for _ in 0..self.config.max_iterations {
             // Use quadratic interpolation when possible
@@ -311,7 +314,7 @@ impl StrongWolfeLineSearch {
             };
 
             // Evaluate 1D function at trial point
-            let f_alpha_j = (problem.objective)(alpha_j)?;
+            let (f_alpha_j, grad_alpha_j) = evaluate(alpha_j)?;
             // Track best point found
             if f_alpha_j < best_value {
                 best_value = f_alpha_j;
@@ -324,8 +327,6 @@ impl StrongWolfeLineSearch {
                 continue;
             }
 
-            // Evaluate 1D gradient at trial point
-            let grad_alpha_j = (problem.gradient)(alpha_j)?;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_j, directional_derivative) {
@@ -349,22 +350,23 @@ impl StrongWolfeLineSearch {
 }
 
 impl LineSearch for StrongWolfeLineSearch {
-    /// Perform one-dimensional optimization using Strong Wolfe line search.
-    ///
-    /// This method implements the complete Strong Wolfe algorithm:
-    /// 1. **Initialization**: Start with initial step size
-    /// 2. **Bracketing phase**: Find interval containing acceptable step
-    /// 3. **Zoom phase**: Refine the interval using interpolation
-    ///
-    /// ## Error Conditions
-    /// - Returns error if direction is not a descent direction (f'(0) ≥ 0)
-    /// - Returns error if function appears ill-conditioned
-    ///
-    /// ## Fallback Strategy
-    /// If standard algorithm fails, tries machine epsilon steps as last resort.
-    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
-        let f0 = (problem.objective)(0.0)?;
-        let directional_derivative = problem.initial_directional_derivative;
+    fn search(
+        &mut self,
+        cx: &mut Graph,
+        params: GraphTensor,
+        loss: GraphTensor,
+        gradient: GraphTensor,
+        current_params: &[f32],
+        direction: &[f32],
+        initial_loss: f32,
+        initial_gradient: &[f32],
+    ) -> anyhow::Result<LineSearchResult> {
+        let f0 = initial_loss;
+        let directional_derivative: f32 = initial_gradient
+            .iter()
+            .zip(direction.iter())
+            .map(|(g, d)| g * d)
+            .sum();
 
         self.log_verbose(&format!("Starting 1D optimization with f(0)={f0:.3e}"));
         self.log_verbose(&format!(
@@ -374,6 +376,22 @@ impl LineSearch for StrongWolfeLineSearch {
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
+        let mut evaluate = |alpha: f32| -> anyhow::Result<(f32, f32)> {
+            let new_params: Vec<f32> = current_params
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + alpha * d)
+                .collect();
+            params.set(new_params);
+            loss.retrieve();
+            gradient.retrieve();
+            cx.execute();
+            let loss_val = loss.data().unwrap()[0];
+            let grad_val = gradient.data().unwrap();
+            let dir_deriv = grad_val.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+            Ok((loss_val, dir_deriv))
+        };
+
 
         let alpha = self.config.initial_step;
         let alpha_prev = 0.0;
@@ -389,7 +407,7 @@ impl LineSearch for StrongWolfeLineSearch {
             ));
 
             // Evaluate function at current step size
-            let f_alpha = (problem.objective)(alpha)?;
+            let (f_alpha, grad_alpha) = evaluate(alpha)?;
             self.log_verbose(&format!("  f({alpha:.3e}) = {f_alpha:.3e}"));
             // Track best point found
             if f_alpha < best_f {
@@ -406,7 +424,7 @@ impl LineSearch for StrongWolfeLineSearch {
                 ));
                 // Zoom between alpha_prev and alpha
                 let final_alpha =
-                    self.zoom(alpha_prev, alpha, f0, directional_derivative, problem)?;
+                    self.zoom(alpha_prev, alpha, f0, directional_derivative, &mut evaluate)?;
                 self.log_verbose(&format!("Zoom completed with alpha={final_alpha:.3e}"));
 
                 return Ok(LineSearchResult {
@@ -416,8 +434,6 @@ impl LineSearch for StrongWolfeLineSearch {
                 });
             }
 
-            // Evaluate gradient at current point
-            let grad_alpha = (problem.gradient)(alpha)?;
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha, directional_derivative) {
@@ -437,7 +453,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     "  Gradient indicates overshoot, zooming between {alpha:.3e} and {alpha_prev:.3e}"
                 ));
                 let final_alpha =
-                    self.zoom(alpha, alpha_prev, f0, directional_derivative, problem)?;
+                    self.zoom(alpha, alpha_prev, f0, directional_derivative, &mut evaluate)?;
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -463,8 +479,8 @@ impl LineSearch for StrongWolfeLineSearch {
         }
 
         // Last resort: try machine epsilon steps
-        let eps_step = f64::EPSILON.sqrt();
-        let f_eps = (problem.objective)(eps_step)?;
+        let eps_step = f32::EPSILON.sqrt();
+        let (f_eps, _) = evaluate(eps_step)?;
         if f_eps < f0 {
             self.log_verbose(&format!("Using machine epsilon step {eps_step:.3e}"));
             return Ok(LineSearchResult {
@@ -488,90 +504,5 @@ impl LineSearch for StrongWolfeLineSearch {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::line_search::line_search::create_1d_problem_linear;
-    use anyhow::Result;
-    use approx::assert_relative_eq;
-    use std::sync::Arc;
-
-    fn quadratic_function(x: &[f64]) -> Result<f64> {
-        // f(x) = 0.5 * x^T * x (simple quadratic)
-        Ok(0.5 * x.iter().map(|xi| xi * xi).sum::<f64>())
-    }
-
-    fn quadratic_gradient1(x: &[f64]) -> Result<Vec<f64>> {
-        // ∇f(x) = x
-        Ok(x.to_vec())
-    }
-
-    #[test]
-    fn test_rosenbrock_function() {
-        // Test on Rosenbrock function: f(x,y) = (1-x)^2 + 100(y-x^2)^2
-        fn rosenbrock(x: &[f64]) -> Result<f64> {
-            let a = 1.0 - x[0];
-            let b = x[1] - x[0] * x[0];
-            Ok(a * a + 100.0 * b * b)
-        }
-        fn rosenbrock_gradient(x: &[f64]) -> Result<Vec<f64>> {
-            let dx = -2.0 * (1.0 - x[0]) - 400.0 * x[0] * (x[1] - x[0] * x[0]);
-            let dy = 200.0 * (x[1] - x[0] * x[0]);
-            Ok(vec![dx, dy])
-        }
-        let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig {
-            c1: 1e-4,
-            c2: 0.9,
-            ..Default::default()
-        });
-        let current_point = vec![0.0, 0.0];
-        let current_gradient = rosenbrock_gradient(&current_point).unwrap();
-        let direction = vec![-current_gradient[0], -current_gradient[1]]; // Steepest descent
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(rosenbrock),
-            Arc::new(rosenbrock_gradient),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
-        assert!(result.success);
-        assert!(result.step_size > 0.0);
-        // Verify that the function value decreased
-        let new_point: Vec<f64> = current_point
-            .iter()
-            .zip(direction.iter())
-            .map(|(x, d)| x + result.step_size * d)
-            .collect();
-        let f_old = rosenbrock(&current_point).unwrap();
-        let f_new = rosenbrock(&new_point).unwrap();
-        assert!(f_new < f_old);
-    }
-
-    #[test]
-    fn test_strong_wolfe_quadratic() {
-        // init_logging();
-        let mut line_search = StrongWolfeLineSearch::new(StrongWolfeConfig::default());
-
-        let current_point = vec![2.0, 3.0];
-        let direction = vec![-2.0, -3.0]; // Negative gradient (descent direction)
-
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
-
-        assert!(result.success);
-        assert!(result.step_size > 0.0);
-
-        // For quadratic function, optimal step should be 1.0
-        assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
     }
 }

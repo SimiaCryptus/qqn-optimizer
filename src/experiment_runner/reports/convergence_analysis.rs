@@ -98,7 +98,7 @@ impl ConvergenceAnalysisReport {
     fn calculate_convergence_averages(
         &self,
         data: &[(&ProblemSpec, BenchmarkResults)],
-    ) -> anyhow::Result<Vec<(String, f64, f64, f64)>> {
+    ) -> anyhow::Result<Vec<(String, f32, f32, f32)>> {
         let mut optimizer_speed_data = HashMap::new();
         for (_, results) in data {
             for result in &results.results {
@@ -138,19 +138,19 @@ impl ConvergenceAnalysisReport {
             if !speed_data.is_empty() {
                 let avg_50 = speed_data
                     .iter()
-                    .map(|(iter_50, _, _)| *iter_50 as f64)
-                    .sum::<f64>()
-                    / speed_data.len() as f64;
+                    .map(|(iter_50, _, _)| *iter_50 as f32)
+                    .sum::<f32>()
+                    / speed_data.len() as f32;
                 let avg_90 = speed_data
                     .iter()
-                    .map(|(_, iter_90, _)| *iter_90 as f64)
-                    .sum::<f64>()
-                    / speed_data.len() as f64;
+                    .map(|(_, iter_90, _)| *iter_90 as f32)
+                    .sum::<f32>()
+                    / speed_data.len() as f32;
                 let avg_final = speed_data
                     .iter()
-                    .map(|(_, _, final_iter)| *final_iter as f64)
-                    .sum::<f64>()
-                    / speed_data.len() as f64;
+                    .map(|(_, _, final_iter)| *final_iter as f32)
+                    .sum::<f32>()
+                    / speed_data.len() as f32;
                 optimizer_averages.push((optimizer, avg_50, avg_90, avg_final));
             }
         }
@@ -335,7 +335,7 @@ impl Report for ConvergenceAnalysisReport {
             "convergence_rate".to_string(),
             format!(
                 "{:.1}%",
-                (convergent_runs as f64 / total_runs as f64) * 100.0
+                (convergent_runs as f32 / total_runs as f32) * 100.0
             ),
         );
         let optimizer_count = data
@@ -395,14 +395,14 @@ pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<S
             .iter()
             .map(|r| r.function_evaluations)
             .collect();
-        let times: Vec<f64> = successful_runs
+        let times: Vec<f32> = successful_runs
             .iter()
             .map(|r| r.execution_time.as_secs_f64())
             .collect();
-        let mean_iterations = iterations.iter().sum::<usize>() as f64 / iterations.len() as f64;
+        let mean_iterations = iterations.iter().sum::<usize>() as f32 / iterations.len() as f32;
         let mean_func_evals =
-            function_evals.iter().sum::<usize>() as f64 / function_evals.len() as f64;
-        let mean_time = times.iter().sum::<f64>() / times.len() as f64;
+            function_evals.iter().sum::<usize>() as f32 / function_evals.len() as f32;
+        let mean_time = times.iter().sum::<f32>() / times.len() as f32;
         // Find min and max times with their corresponding iterations
         let (min_iter, min_time) = successful_runs
             .iter()
@@ -528,19 +528,19 @@ pub fn generate_convergence_speed_latex_table(
         if !speed_data.is_empty() {
             let avg_50 = speed_data
                 .iter()
-                .map(|(iter_50, _, _)| *iter_50 as f64)
-                .sum::<f64>()
-                / speed_data.len() as f64;
+                .map(|(iter_50, _, _)| *iter_50 as f32)
+                .sum::<f32>()
+                / speed_data.len() as f32;
             let avg_90 = speed_data
                 .iter()
-                .map(|(_, iter_90, _)| *iter_90 as f64)
-                .sum::<f64>()
-                / speed_data.len() as f64;
+                .map(|(_, iter_90, _)| *iter_90 as f32)
+                .sum::<f32>()
+                / speed_data.len() as f32;
             let avg_final = speed_data
                 .iter()
-                .map(|(_, _, final_iter)| *final_iter as f64)
-                .sum::<f64>()
-                / speed_data.len() as f64;
+                .map(|(_, _, final_iter)| *final_iter as f32)
+                .sum::<f32>()
+                / speed_data.len() as f32;
             optimizer_averages.push((optimizer, avg_50, avg_90, avg_final));
         }
     }

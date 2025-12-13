@@ -7,7 +7,6 @@
 //! - Comparing performance
 
 use anyhow::Result;
-use candle_core::{Device, Tensor};
 use qqn_optimizer::utils::math::DifferentiableFunction;
 use qqn_optimizer::{
     LBFGSConfig, LBFGSOptimizer, OptimizationProblem, Optimizer, QQNConfig, QQNOptimizer,

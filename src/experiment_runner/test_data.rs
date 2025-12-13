@@ -109,7 +109,7 @@ pub fn create_test_data() -> Vec<(ProblemSpec, BenchmarkResults)> {
 
 fn create_mock_benchmark_result(
     optimizer_name: &str,
-    best_value: f64,
+    best_value: f32,
     convergence_achieved: bool,
     function_evaluations: u32,
     gradient_evaluations: u32,
@@ -160,19 +160,19 @@ impl OptimizationProblem for MockProblem {
         self.dimensions
     }
 
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         todo!()
     }
 
-    fn evaluate_f64(&self, _x: &[f64]) -> anyhow::Result<f64> {
+    fn evaluate_f64(&self, _x: &[f32]) -> anyhow::Result<f32> {
         todo!()
     }
 
-    fn gradient_f64(&self, _x: &[f64]) -> anyhow::Result<Vec<f64>> {
+    fn gradient_f64(&self, _x: &[f32]) -> anyhow::Result<Vec<f32>> {
         todo!()
     }
 
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         todo!()
     }
 

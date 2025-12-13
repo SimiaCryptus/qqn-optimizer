@@ -1,7 +1,5 @@
 #![allow(clippy::upper_case_acronyms)]
 use crate::OptimizationProblem;
-use candle_core::{Device, Tensor};
-use candle_nn::{linear, ops::softmax, Linear, Module, VarBuilder, VarMap};
 use parking_lot::RwLock;
 use rand::prelude::StdRng;
 use rand::Rng;
@@ -90,22 +88,22 @@ impl Module for MLP {
 /// MNIST-like neural network training problem
 #[derive(Clone)]
 pub struct MnistNeuralNetwork {
-    x_data: Vec<Vec<f64>>, // Store raw data instead of tensors
-    y_data: Vec<Vec<f64>>, // Store raw labels
+    x_data: Vec<Vec<f32>>, // Store raw data instead of tensors
+    y_data: Vec<Vec<f32>>, // Store raw labels
     batch_size: usize,
     device: Device,
     name: String,
     varmap: VarMap,
     model: MLP,
-    optimal_value: Option<f64>,
+    optimal_value: Option<f32>,
     param_count: usize,
-    param_cache: Arc<RwLock<Option<Vec<f64>>>>,
-    gradient_cache: Arc<RwLock<Option<Vec<f64>>>>,
+    param_cache: Arc<RwLock<Option<Vec<f32>>>>,
+    gradient_cache: Arc<RwLock<Option<Vec<f32>>>>,
     #[allow(dead_code)]
     batch_tensors: Arc<RwLock<Option<(Tensor, Tensor)>>>, // Cache for batch tensors
     #[allow(dead_code)]
-    dropout_rate: f64,
-    l2_regularization: f64,
+    dropout_rate: f32,
+    l2_regularization: f32,
     activation: ActivationType,
     #[allow(dead_code)]
     precision: candle_core::DType,
@@ -113,8 +111,8 @@ pub struct MnistNeuralNetwork {
 
 impl MnistNeuralNetwork {
     pub fn new(
-        x_data: Vec<Vec<f64>>,
-        y_data: Vec<Vec<f64>>,
+        x_data: Vec<Vec<f32>>,
+        y_data: Vec<Vec<f32>>,
         hidden_sizes: &[usize],
         batch_size: Option<usize>,
         rng: &mut StdRng,
@@ -185,7 +183,7 @@ impl MnistNeuralNetwork {
         Ok(instance)
     }
 
-    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+    pub fn set_optimal_value(&mut self, value: Option<f32>) {
         self.optimal_value = value;
     }
 
@@ -211,10 +209,10 @@ impl MnistNeuralNetwork {
         let mut y_data = Vec::with_capacity(actual_samples);
 
         for &i in &indices {
-            // Convert image data to f64 and normalize to [0, 1]
-            let image: Vec<f64> = mnist_data.images[i]
+            // Convert image data to f32 and normalize to [0, 1]
+            let image: Vec<f32> = mnist_data.images[i]
                 .iter()
-                .map(|&pixel| pixel as f64 / 255.0)
+                .map(|&pixel| pixel as f32 / 255.0)
                 .collect();
 
             // Convert label to one-hot encoding
@@ -449,13 +447,13 @@ impl MnistNeuralNetwork {
         self.param_count
     }
 
-    fn set_parameters(&self, params: &[f64]) -> anyhow::Result<()> {
+    fn set_parameters(&self, params: &[f32]) -> anyhow::Result<()> {
         // Check all parameters for non-finite values before setting
         if params.iter().any(|&p| !p.is_finite()) {
             return Err(anyhow::anyhow!("Non-finite parameters detected"));
         }
         // Check for extreme values that might cause numerical instability
-        let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f64::max);
+        let max_abs = params.iter().map(|p| p.abs()).fold(0.0, f32::max);
         if max_abs > 1e6 {
             return Err(anyhow::anyhow!(
                 "Parameters too large: max abs value = {}",
@@ -489,7 +487,7 @@ impl MnistNeuralNetwork {
         Ok(())
     }
 
-    fn get_parameters(&self) -> anyhow::Result<Vec<f64>> {
+    fn get_parameters(&self) -> anyhow::Result<Vec<f32>> {
         // Check cache first
         if let Some(cached) = self.param_cache.read().as_ref() {
             return Ok(cached.clone());
@@ -501,7 +499,7 @@ impl MnistNeuralNetwork {
 
         for (_, var) in data.iter() {
             let tensor = var.as_tensor();
-            let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+            let values = tensor.flatten_all()?.to_vec1::<f32>()?;
             params.extend(values);
         }
         // Cache the parameters
@@ -526,16 +524,16 @@ impl MnistNeuralNetwork {
                 let std_dev = match self.activation {
                     ActivationType::ReLU => {
                         // He initialization for ReLU
-                        (2.0 / fan_in as f64).sqrt()
+                        (2.0 / fan_in as f32).sqrt()
                     }
                     ActivationType::Logistic => {
                         // Xavier/Glorot initialization for logistic
-                        (2.0 / (fan_in + fan_out) as f64).sqrt()
+                        (2.0 / (fan_in + fan_out) as f32).sqrt()
                     }
                     ActivationType::Sinewave => {
                         // For sine activation, use a smaller initialization
                         // to keep inputs in the linear region of sine
-                        (1.0 / (fan_in + fan_out) as f64).sqrt()
+                        (1.0 / (fan_in + fan_out) as f32).sqrt()
                     }
                 };
 
@@ -543,7 +541,7 @@ impl MnistNeuralNetwork {
                 let mut weights = Vec::with_capacity(tensor.elem_count());
                 for _ in 0..tensor.elem_count() {
                     // Sample from normal distribution with appropriate scaling
-                    let normal: f64 = rng.sample(rand_distr::StandardNormal);
+                    let normal: f32 = rng.sample(rand_distr::StandardNormal);
                     weights.push(normal * std_dev);
                 }
                 let new_tensor = Tensor::from_vec(weights, shape, &self.device)?;
@@ -563,26 +561,26 @@ impl MnistNeuralNetwork {
         let data = self.varmap.data().lock().unwrap();
         for (name, var) in data.iter() {
             let tensor = var.as_tensor();
-            let values = tensor.flatten_all()?.to_vec1::<f64>()?;
+            let values = tensor.flatten_all()?.to_vec1::<f32>()?;
             if values.is_empty() {
                 continue;
             }
             // Calculate statistics
-            let mean: f64 = values.iter().sum::<f64>() / values.len() as f64;
-            let variance: f64 =
-                values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
+            let mean: f32 = values.iter().sum::<f32>() / values.len() as f32;
+            let variance: f32 =
+                values.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / values.len() as f32;
             let std_dev = variance.sqrt();
-            let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
-            let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let min = values.iter().cloned().fold(f32::INFINITY, f32::min);
+            let max = values.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
             // Check for dead neurons (all zeros)
             let zero_count = values.iter().filter(|&&x| x.abs() < 1e-10).count();
-            let zero_percentage = (zero_count as f64 / values.len() as f64) * 100.0;
+            let zero_percentage = (zero_count as f32 / values.len() as f32) * 100.0;
             // Check for extreme values
             let extreme_count = values
                 .iter()
                 .filter(|&&x| x.abs() > 3.0 * std_dev + mean.abs())
                 .count();
-            let extreme_percentage = (extreme_count as f64 / values.len() as f64) * 100.0;
+            let extreme_percentage = (extreme_count as f32 / values.len() as f32) * 100.0;
             println!("\nParameter: {name}");
             println!("  Shape: {:?}", tensor.shape());
             println!("  Mean: {mean:.6}");
@@ -597,9 +595,9 @@ impl MnistNeuralNetwork {
                 let fan_in = dims[1];
                 let fan_out = dims[0];
                 let expected_std = match self.activation {
-                    ActivationType::ReLU => (2.0 / fan_in as f64).sqrt(),
-                    ActivationType::Logistic => (2.0 / (fan_in + fan_out) as f64).sqrt(),
-                    ActivationType::Sinewave => (1.0 / (fan_in + fan_out) as f64).sqrt(),
+                    ActivationType::ReLU => (2.0 / fan_in as f32).sqrt(),
+                    ActivationType::Logistic => (2.0 / (fan_in + fan_out) as f32).sqrt(),
+                    ActivationType::Sinewave => (1.0 / (fan_in + fan_out) as f32).sqrt(),
                 };
                 let std_ratio = std_dev / expected_std;
                 let init_name = match self.activation {
@@ -648,14 +646,14 @@ impl OptimizationProblem for MnistNeuralNetwork {
     fn dimension(&self) -> usize {
         self.count_parameters()
     }
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         // Model is already initialized with proper Xavier initialization
         // Just return the current parameters
         self.get_parameters()
             .unwrap_or_else(|_| vec![0.0; self.count_parameters()])
     }
 
-    fn evaluate_f64(&self, params: &[f64]) -> anyhow::Result<f64> {
+    fn evaluate_f64(&self, params: &[f32]) -> anyhow::Result<f32> {
         // Set parameters in the model
         self.set_parameters(params)?;
 
@@ -664,9 +662,9 @@ impl OptimizationProblem for MnistNeuralNetwork {
         let mut total_loss = 0.0;
 
         // Process batches in parallel using rayon
-        let batch_losses: Vec<(f64, usize)> = (0..n_batches)
+        let batch_losses: Vec<(f32, usize)> = (0..n_batches)
             .into_par_iter()
-            .map(|batch_idx| -> anyhow::Result<(f64, usize)> {
+            .map(|batch_idx| -> anyhow::Result<(f32, usize)> {
                 let start = batch_idx * self.batch_size;
                 let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
                 let batch_size = end - start;
@@ -702,22 +700,22 @@ impl OptimizationProblem for MnistNeuralNetwork {
                 let log_probs = y_pred.clamp(1e-10, 1.0 - 1e-10)?.log()?;
                 let batch_loss = (&y_batch * &log_probs)?.sum_keepdim(1)?.mean_all()?.neg()?;
 
-                let batch_loss_value = batch_loss.to_scalar::<f64>()?;
+                let batch_loss_value = batch_loss.to_scalar::<f32>()?;
                 Ok((batch_loss_value, batch_size))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
         // Aggregate batch losses
         for (loss, size) in batch_losses {
-            total_loss += loss * (size as f64);
+            total_loss += loss * (size as f32);
         }
 
         // Average loss across all samples
-        let mut loss_value = total_loss / (n_samples as f64);
+        let mut loss_value = total_loss / (n_samples as f32);
 
         // Add L2 regularization
         if self.l2_regularization > 0.0 {
-            let params_squared_sum: f64 = params.iter().map(|p| p * p).sum();
+            let params_squared_sum: f32 = params.iter().map(|p| p * p).sum();
             loss_value += 0.5 * self.l2_regularization * params_squared_sum;
         }
 
@@ -729,7 +727,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         Ok(loss_value)
     }
 
-    fn gradient_f64(&self, params: &[f64]) -> anyhow::Result<Vec<f64>> {
+    fn gradient_f64(&self, params: &[f32]) -> anyhow::Result<Vec<f32>> {
         // Check gradient cache first
         if let Some(cached) = self.gradient_cache.read().as_ref() {
             if let Some(cached_params) = self.param_cache.read().as_ref() {
@@ -748,9 +746,9 @@ impl OptimizationProblem for MnistNeuralNetwork {
         let mut accumulated_grads = vec![0.0; self.param_count];
 
         // Process batches in parallel
-        let batch_grads: Vec<Vec<f64>> = (0..n_batches)
+        let batch_grads: Vec<Vec<f32>> = (0..n_batches)
             .into_par_iter()
-            .map(|batch_idx| -> anyhow::Result<Vec<f64>> {
+            .map(|batch_idx| -> anyhow::Result<Vec<f32>> {
                 let start = batch_idx * self.batch_size;
                 let end = ((batch_idx + 1) * self.batch_size).min(n_samples);
                 let batch_size = end - start;
@@ -804,9 +802,9 @@ impl OptimizationProblem for MnistNeuralNetwork {
 
                 for var in &vars {
                     if let Some(grad) = grads.get(var) {
-                        let grad_values = grad.flatten_all()?.to_vec1::<f64>()?;
+                        let grad_values = grad.flatten_all()?.to_vec1::<f32>()?;
                         for (i, &g) in grad_values.iter().enumerate() {
-                            batch_grads[grad_idx + i] = g * (batch_size as f64);
+                            batch_grads[grad_idx + i] = g * (batch_size as f32);
                         }
                         grad_idx += grad_values.len();
                     } else {
@@ -827,7 +825,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
 
         // Average gradients across all samples
         for g in &mut accumulated_grads {
-            *g /= n_samples as f64;
+            *g /= n_samples as f32;
         }
 
         // Add L2 regularization gradient
@@ -838,7 +836,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
         }
 
         // Gradient clipping to prevent exploding gradients
-        let grad_norm: f64 = accumulated_grads.iter().map(|g| g * g).sum::<f64>().sqrt();
+        let grad_norm: f32 = accumulated_grads.iter().map(|g| g * g).sum::<f32>().sqrt();
         if grad_norm > 10.0 {
             let scale = 10.0 / grad_norm;
             for g in &mut accumulated_grads {
@@ -850,7 +848,7 @@ impl OptimizationProblem for MnistNeuralNetwork {
 
         Ok(accumulated_grads)
     }
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         self.optimal_value
     }
 }

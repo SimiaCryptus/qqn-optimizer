@@ -57,32 +57,32 @@ pub fn generate_summary_statistics_latex_table(
             let mut optimizer_data = Vec::new();
             for (optimizer, runs) in optimizers {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-                let final_values: Vec<f64> = runs
+                let success_rate = success_count as f32 / runs.len() as f32 * 100.0;
+                let final_values: Vec<f32> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
                 let avg_final = if !final_values.is_empty() {
-                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                    final_values.iter().sum::<f32>() / final_values.len() as f32
                 } else {
-                    f64::INFINITY
+                    f32::INFINITY
                 };
                 let avg_func_evals = runs
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.function_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
                 let avg_grad_evals = runs
                     .iter()
-                    .map(|r| r.gradient_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.gradient_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
                 let avg_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .sum::<f32>()
+                    / runs.len() as f32;
                 optimizer_data.push((
                     optimizer.clone(),
                     success_rate,
@@ -191,32 +191,32 @@ pub fn generate_summary_statistics_table_content(
             let mut optimizer_data = Vec::new();
             for (optimizer, runs) in optimizers {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
-                let success_rate = success_count as f64 / runs.len() as f64 * 100.0;
-                let final_values: Vec<f64> = runs
+                let success_rate = success_count as f32 / runs.len() as f32 * 100.0;
+                let final_values: Vec<f32> = runs
                     .iter()
                     .map(|r| r.final_value)
                     .filter(|&v| v.is_finite())
                     .collect();
                 let avg_final = if !final_values.is_empty() {
-                    final_values.iter().sum::<f64>() / final_values.len() as f64
+                    final_values.iter().sum::<f32>() / final_values.len() as f32
                 } else {
-                    f64::INFINITY
+                    f32::INFINITY
                 };
                 let avg_func_evals = runs
                     .iter()
-                    .map(|r| r.function_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.function_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
                 let avg_grad_evals = runs
                     .iter()
-                    .map(|r| r.gradient_evaluations as f64)
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .map(|r| r.gradient_evaluations as f32)
+                    .sum::<f32>()
+                    / runs.len() as f32;
                 let avg_time = runs
                     .iter()
                     .map(|r| r.execution_time.as_secs_f64())
-                    .sum::<f64>()
-                    / runs.len() as f64;
+                    .sum::<f32>()
+                    / runs.len() as f32;
                 optimizer_data.push((
                     optimizer.clone(),
                     success_rate,

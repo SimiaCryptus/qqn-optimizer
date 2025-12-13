@@ -1,7 +1,6 @@
 //! Machine learning optimization problems for benchmarking.
 use crate::benchmarks::functions::OptimizationProblem;
 use anyhow::Result;
-use candle_core::{Device, Tensor};
 use rand::rngs::StdRng;
 
 /// Logistic regression optimization problem
@@ -10,16 +9,16 @@ pub struct LogisticRegression {
     x_tensor: Tensor,
     y_tensor: Tensor,
     device: Device,
-    regularization: f64,
+    regularization: f32,
     name: String,
     n_samples: usize,
     #[allow(dead_code)]
     n_features: usize,
-    optimal_value: Option<f64>,
+    optimal_value: Option<f32>,
 }
 
 impl LogisticRegression {
-    pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<f64>, regularization: f64) -> Result<Self> {
+    pub fn new(x_data: Vec<Vec<f32>>, y_data: Vec<f32>, regularization: f32) -> Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
@@ -28,7 +27,7 @@ impl LogisticRegression {
         );
 
         // Convert to tensors
-        let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
+        let x_flat: Vec<f32> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
         // Set default optimal value based on problem size
@@ -61,10 +60,10 @@ impl LogisticRegression {
             for _ in 0..n_features {
                 x.push(rng.random_range(-1.0..1.0));
             }
-            let linear_combination: f64 = x
+            let linear_combination: f32 = x
                 .iter()
                 .enumerate()
-                .map(|(i, &xi)| xi * (i as f64 + 1.0))
+                .map(|(i, &xi)| xi * (i as f32 + 1.0))
                 .sum();
             let y = if linear_combination > 0.0 { 1.0 } else { 0.0 };
 
@@ -74,7 +73,7 @@ impl LogisticRegression {
 
         Self::new(x_data, y_data, 0.01)
     }
-    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+    pub fn set_optimal_value(&mut self, value: Option<f32>) {
         self.optimal_value = value;
     }
 }
@@ -83,11 +82,11 @@ impl OptimizationProblem for LogisticRegression {
     fn name(&self) -> &str {
         &self.name
     }
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         self.optimal_value
     }
 
-    fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, weights: &[f32]) -> Result<f32> {
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute logits: X @ weights
@@ -114,10 +113,10 @@ impl OptimizationProblem for LogisticRegression {
             (&weights_tensor * &weights_tensor)?.sum_all()? * (0.5 * self.regularization);
         let total_loss = (loss? + reg_term?)?;
 
-        Ok(total_loss.to_scalar::<f64>()?)
+        Ok(total_loss.to_scalar::<f32>()?)
     }
 
-    fn gradient_f64(&self, weights: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, weights: &[f32]) -> Result<Vec<f32>> {
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute predictions
@@ -136,21 +135,21 @@ impl OptimizationProblem for LogisticRegression {
             .t()?
             .matmul(&error.unsqueeze(1)?)?
             .squeeze(1)?;
-        let n_samples = self.n_samples as f64;
+        let n_samples = self.n_samples as f32;
         let grad = (&grad / n_samples)?;
 
         // Add regularization gradient
         let reg_grad = (&weights_tensor * self.regularization)?;
         let total_grad = (&grad + &reg_grad)?;
 
-        Ok(total_grad.to_vec1::<f64>()?)
+        Ok(total_grad.to_vec1::<f32>()?)
     }
 
     fn dimension(&self) -> usize {
         self.x_tensor.dim(1).unwrap_or(0)
     }
 
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         vec![0.0; self.dimension()]
     }
     fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
@@ -166,14 +165,14 @@ pub struct NeuralNetworkTraining {
     y_tensor: Tensor,
     device: Device,
     name: String,
-    optimal_value: Option<f64>,
+    optimal_value: Option<f32>,
 }
 
 impl NeuralNetworkTraining {
     pub fn new(
         layer_sizes: Vec<usize>,
-        x_data: Vec<Vec<f64>>,
-        y_data: Vec<Vec<f64>>,
+        x_data: Vec<Vec<f32>>,
+        y_data: Vec<Vec<f32>>,
     ) -> Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
@@ -188,8 +187,8 @@ impl NeuralNetworkTraining {
         let input_dim = x_data.first().map(|x| x.len()).unwrap_or(0);
         let output_dim = y_data.first().map(|y| y.len()).unwrap_or(0);
 
-        let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
-        let y_flat: Vec<f64> = y_data.into_iter().flatten().collect();
+        let x_flat: Vec<f32> = x_data.into_iter().flatten().collect();
+        let y_flat: Vec<f32> = y_data.into_iter().flatten().collect();
 
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, input_dim), &device)?;
         let y_tensor = Tensor::from_vec(y_flat, (n_samples, output_dim), &device)?;
@@ -224,7 +223,7 @@ impl NeuralNetworkTraining {
         let mut y_data = Vec::new();
 
         for _ in 0..n_samples {
-            let x: Vec<f64> = (0..input_size)
+            let x: Vec<f32> = (0..input_size)
                 .map(|_| rng.random_range(-1.0..1.0))
                 .collect();
             let mut y = vec![0.0; output_size];
@@ -237,7 +236,7 @@ impl NeuralNetworkTraining {
 
         Self::new(layer_sizes, x_data, y_data)
     }
-    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+    pub fn set_optimal_value(&mut self, value: Option<f32>) {
         self.optimal_value = value;
     }
 
@@ -249,7 +248,7 @@ impl NeuralNetworkTraining {
         }
         count
     }
-    fn forward_pass(&self, params: &[f64]) -> Result<Tensor> {
+    fn forward_pass(&self, params: &[f32]) -> Result<Tensor> {
         let mut param_idx = 0;
         let mut x = &self.x_tensor;
         let mut owned_x: Option<Tensor> = None;
@@ -278,8 +277,8 @@ impl NeuralNetworkTraining {
         }
         Ok(owned_x.unwrap())
     }
-    fn backward_pass(&self, params: &[f64]) -> Result<Vec<f64>> {
-        let batch_size = self.x_tensor.dim(0)? as f64;
+    fn backward_pass(&self, params: &[f32]) -> Result<Vec<f32>> {
+        let batch_size = self.x_tensor.dim(0)? as f32;
         let mut gradients = Vec::with_capacity(params.len());
         gradients.resize(params.len(), 0.0);
 
@@ -319,14 +318,14 @@ impl NeuralNetworkTraining {
             let output_size = self.layer_sizes[i + 1];
             // Gradient for biases
             let bias_grad = delta.sum(0)?;
-            let bias_grad_vec = bias_grad.to_vec1::<f64>()?;
+            let bias_grad_vec = bias_grad.to_vec1::<f32>()?;
             param_idx -= output_size;
             for (j, &g) in bias_grad_vec.iter().enumerate() {
                 gradients[param_idx + j] = g;
             }
             // Gradient for weights
             let weight_grad = activations[i].t()?.matmul(&delta)?;
-            let weight_grad_vec = weight_grad.flatten_all()?.to_vec1::<f64>()?;
+            let weight_grad_vec = weight_grad.flatten_all()?.to_vec1::<f32>()?;
             param_idx -= input_size * output_size;
             for (j, &g) in weight_grad_vec.iter().enumerate() {
                 gradients[param_idx + j] = g;
@@ -364,7 +363,7 @@ impl OptimizationProblem for NeuralNetworkTraining {
     fn dimension(&self) -> usize {
         self.count_parameters()
     }
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         use rand::Rng;
         let mut rng = rand::rng();
         (0..self.dimension())
@@ -372,21 +371,21 @@ impl OptimizationProblem for NeuralNetworkTraining {
             .collect()
     }
 
-    fn evaluate_f64(&self, params: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, params: &[f32]) -> Result<f32> {
         let y_pred = self.forward_pass(params)?;
 
         // MSE loss
         let diff = (&y_pred - &self.y_tensor)?;
         let loss = (&diff * &diff)?.mean_all()?;
 
-        Ok(loss.to_scalar::<f64>()?)
+        Ok(loss.to_scalar::<f32>()?)
     }
 
-    fn gradient_f64(&self, params: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, params: &[f32]) -> Result<Vec<f32>> {
         self.backward_pass(params)
     }
 
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         self.optimal_value
     }
 }
@@ -397,13 +396,13 @@ pub struct LinearRegression {
     x_tensor: Tensor,
     y_tensor: Tensor,
     device: Device,
-    regularization: f64,
+    regularization: f32,
     name: String,
-    optimal_value: Option<f64>,
+    optimal_value: Option<f32>,
 }
 
 impl LinearRegression {
-    pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<f64>, regularization: f64) -> Result<Self> {
+    pub fn new(x_data: Vec<Vec<f32>>, y_data: Vec<f32>, regularization: f32) -> Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
@@ -411,7 +410,7 @@ impl LinearRegression {
             format!("LinearRegression_{n_samples}samples_{n_features}features_reg{regularization}");
 
         // Convert to tensors
-        let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
+        let x_flat: Vec<f32> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
         // Set default optimal value based on problem size
@@ -430,7 +429,7 @@ impl LinearRegression {
             optimal_value,
         })
     }
-    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+    pub fn set_optimal_value(&mut self, value: Option<f32>) {
         self.optimal_value = value;
     }
 }
@@ -442,11 +441,11 @@ impl OptimizationProblem for LinearRegression {
     fn name(&self) -> &str {
         &self.name
     }
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         self.optimal_value
     }
 
-    fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, weights: &[f32]) -> Result<f32> {
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute predictions: X @ weights
@@ -464,10 +463,10 @@ impl OptimizationProblem for LinearRegression {
             (&weights_tensor * &weights_tensor)?.sum_all()? * (0.5 * self.regularization);
         let total_loss = (mse + reg_term)?;
 
-        Ok(total_loss.to_scalar::<f64>()?)
+        Ok(total_loss.to_scalar::<f32>()?)
     }
 
-    fn gradient_f64(&self, weights: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, weights: &[f32]) -> Result<Vec<f32>> {
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute predictions and error
@@ -483,21 +482,21 @@ impl OptimizationProblem for LinearRegression {
             .t()?
             .matmul(&error.unsqueeze(1)?)?
             .squeeze(1)?;
-        let n_samples = self.x_tensor.dim(0)? as f64;
+        let n_samples = self.x_tensor.dim(0)? as f32;
         let grad = (&grad * (2.0 / n_samples))?;
 
         // Add regularization gradient
         let reg_grad = (&weights_tensor * self.regularization)?;
         let total_grad = (&grad + &reg_grad)?;
 
-        Ok(total_grad.to_vec1::<f64>()?)
+        Ok(total_grad.to_vec1::<f32>()?)
     }
 
     fn dimension(&self) -> usize {
         self.x_tensor.dim(1).unwrap_or(0)
     }
 
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         vec![0.0; self.dimension()]
     }
 }
@@ -508,21 +507,21 @@ pub struct SupportVectorMachine {
     x_tensor: Tensor,
     y_tensor: Tensor,
     device: Device,
-    c: f64, // Regularization parameter
+    c: f32, // Regularization parameter
     name: String,
     ones_tensor: Option<Tensor>, // Cache for ones tensor
-    optimal_value: Option<f64>,
+    optimal_value: Option<f32>,
 }
 
 impl SupportVectorMachine {
-    pub fn new(x_data: Vec<Vec<f64>>, y_data: Vec<f64>, c: f64) -> Result<Self> {
+    pub fn new(x_data: Vec<Vec<f32>>, y_data: Vec<f32>, c: f32) -> Result<Self> {
         let device = Device::Cpu;
         let n_samples = x_data.len();
         let n_features = x_data.first().map(|x| x.len()).unwrap_or(0);
         let name = format!("SVM_{n_samples}samples_{n_features}features_C{c}");
 
         // Convert to tensors
-        let x_flat: Vec<f64> = x_data.into_iter().flatten().collect();
+        let x_flat: Vec<f32> = x_data.into_iter().flatten().collect();
         let x_tensor = Tensor::from_vec(x_flat, (n_samples, n_features), &device)?;
         let y_tensor = Tensor::from_vec(y_data, n_samples, &device)?;
         // Set default optimal value based on problem size
@@ -542,7 +541,7 @@ impl SupportVectorMachine {
             optimal_value,
         })
     }
-    pub fn set_optimal_value(&mut self, value: Option<f64>) {
+    pub fn set_optimal_value(&mut self, value: Option<f32>) {
         self.optimal_value = value;
     }
 }
@@ -554,11 +553,11 @@ impl OptimizationProblem for SupportVectorMachine {
     fn name(&self) -> &str {
         &self.name
     }
-    fn optimal_value(&self) -> Option<f64> {
+    fn optimal_value(&self) -> Option<f32> {
         self.optimal_value
     }
 
-    fn evaluate_f64(&self, weights: &[f64]) -> Result<f64> {
+    fn evaluate_f64(&self, weights: &[f32]) -> Result<f32> {
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
 
         // Compute scores: X @ weights
@@ -585,12 +584,12 @@ impl OptimizationProblem for SupportVectorMachine {
         let hinge_loss_scaled = (&hinge_loss * self.c)?;
         let total_loss = (hinge_loss_scaled + reg_term)?;
 
-        Ok(total_loss.to_scalar::<f64>()?)
+        Ok(total_loss.to_scalar::<f32>()?)
     }
 
-    fn gradient_f64(&self, weights: &[f64]) -> Result<Vec<f64>> {
+    fn gradient_f64(&self, weights: &[f32]) -> Result<Vec<f32>> {
         let weights_tensor = Tensor::from_vec(weights.to_vec(), weights.len(), &self.device)?;
-        let n_samples = self.x_tensor.dim(0)? as f64;
+        let n_samples = self.x_tensor.dim(0)? as f32;
 
         // Compute scores: X @ weights
         let scores = self
@@ -621,14 +620,14 @@ impl OptimizationProblem for SupportVectorMachine {
         // Add regularization gradient (weights themselves)
         let total_grad = (&hinge_grad + &weights_tensor)?;
 
-        Ok(total_grad.to_vec1::<f64>()?)
+        Ok(total_grad.to_vec1::<f32>()?)
     }
 
     fn dimension(&self) -> usize {
         self.x_tensor.dim(1).unwrap_or(0)
     }
 
-    fn initial_point(&self) -> Vec<f64> {
+    fn initial_point(&self) -> Vec<f32> {
         vec![0.0; self.dimension()]
     }
 }
@@ -638,20 +637,20 @@ pub fn generate_linear_regression_data(
     n_samples: usize,
     n_features: usize,
     rng: &mut StdRng,
-) -> (Vec<Vec<f64>>, Vec<f64>) {
+) -> (Vec<Vec<f32>>, Vec<f32>) {
     use rand::Rng;
     let mut x_data = Vec::new();
     let mut y_data = Vec::new();
-    let true_weights: Vec<f64> = (0..n_features).map(|i| (i as f64 + 1.0) * 0.5).collect();
+    let true_weights: Vec<f32> = (0..n_features).map(|i| (i as f32 + 1.0) * 0.5).collect();
     for _ in 0..n_samples {
-        let x: Vec<f64> = (0..n_features)
+        let x: Vec<f32> = (0..n_features)
             .map(|_| rng.random_range(-2.0..2.0))
             .collect();
-        let y: f64 = x
+        let y: f32 = x
             .iter()
             .zip(true_weights.iter())
             .map(|(xi, wi)| xi * wi)
-            .sum::<f64>()
+            .sum::<f32>()
             + rng.random_range(-0.1..0.1);
         x_data.push(x);
         y_data.push(y);
@@ -663,18 +662,18 @@ pub fn generate_svm_data(
     n_samples: usize,
     n_features: usize,
     rng: &mut StdRng,
-) -> (Vec<Vec<f64>>, Vec<f64>) {
+) -> (Vec<Vec<f32>>, Vec<f32>) {
     use rand::Rng;
     let mut x_data = Vec::new();
     let mut y_data = Vec::new();
     for _ in 0..n_samples {
-        let x: Vec<f64> = (0..n_features)
+        let x: Vec<f32> = (0..n_features)
             .map(|_| rng.random_range(-2.0..2.0))
             .collect();
-        let decision_value: f64 = x
+        let decision_value: f32 = x
             .iter()
             .enumerate()
-            .map(|(i, xi)| xi * (i as f64 + 1.0) * 0.3)
+            .map(|(i, xi)| xi * (i as f32 + 1.0) * 0.3)
             .sum();
         let y = if decision_value > 0.0 { 1.0 } else { -1.0 };
         x_data.push(x);

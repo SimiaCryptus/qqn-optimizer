@@ -7,7 +7,6 @@
 //! - Analyze the results
 
 use anyhow::Result;
-use candle_core::{Device, Tensor};
 use qqn_optimizer::benchmarks::analytic_functions::RosenbrockFunction;
 use qqn_optimizer::line_search::{LineSearchConfig, LineSearchMethod};
 use qqn_optimizer::utils::math::SeparateFunctions;
