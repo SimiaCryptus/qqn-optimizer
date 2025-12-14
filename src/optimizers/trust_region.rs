@@ -25,7 +25,7 @@
 //! - **Memory requirements**: Needs to store Hessian approximation
 //! - **Conservative**: May take smaller steps than necessary on well-behaved problems
 
-use crate::optimizers::optimizer::Optimizer;
+use crate::optimizers::optimizer::{GradientContext, Optimizer, OptimizerSetup};
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
@@ -202,29 +202,44 @@ impl TrustRegionOptimizer {
     }
 }
 
-impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
-    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
+impl Optimizer for TrustRegionOptimizer {
+    fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
 
-    fn step(
+    fn config_string(&self) -> String {
+        format!(
+            "TrustRegion(radius={}, max_radius={}, eta1={}, eta2={}, gamma1={}, gamma2={})",
+            self.config.initial_radius,
+            self.config.max_radius,
+            self.config.eta_1,
+            self.config.eta_2,
+            self.config.gamma_1,
+            self.config.gamma_2
+        )
+    }
+
+    fn setup_on_graph(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor<()>,
-        params: &[GraphTensor<S>],
-    ) -> Vec<GraphTensor<S>> {
-        // 1. Get gradients
-        let grads_map = graph.add_backward(loss);
-        let grads: Vec<GraphTensor<S>> = params.iter().map(|p| *grads_map.get(p).unwrap()).collect();
 
-        // 2. Compute global gradient norm (L2)
-        let mut squared_norm = graph.constant(0.0);
-        for grad in &grads {
-            squared_norm = squared_norm + grad.pow2().sum_reduce();
+        weights: &[GraphTensor],
+        gradients: &[GraphTensor],
+    ) -> OptimizerSetup {
+        // 1. Compute global gradient norm (L2)
+        let mut squared_norm: Option<GraphTensor> = None;
+        for grad in gradients {
+            let grad_sq_sum = grad.sum_reduce().pow(graph.constant(2.0));
+            squared_norm = Some(match squared_norm {
+                Some(acc) => acc + grad_sq_sum,
+                None => grad_sq_sum,
+            });
         }
-        let grad_norm = squared_norm.sqrt();
+        let grad_norm = squared_norm
+            .map(|s| s.sqrt())
+            .unwrap_or_else(|| graph.constant(0.0));
 
-        // 3. Determine step scaling
+        // 2. Determine step scaling
         // We use a simplified Trust Region approach where we take the steepest descent step
         // clipped to the trust region radius.
         // p = - min(1, radius / ||g||) * g
@@ -233,15 +248,30 @@ impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
         let epsilon = graph.constant(1e-6);
         let scale = (radius / (grad_norm + epsilon)).min(one);
 
-        // 4. Apply updates
-        let mut new_params = Vec::with_capacity(params.len());
-        for (param, grad) in params.iter().zip(grads) {
-            new_params.push(*param - (*grad * scale));
+        // 3. Apply updates: new_weight = weight - scale * gradient
+        let mut new_weights = Vec::with_capacity(weights.len());
+        for (weight, grad) in weights.iter().zip(gradients.iter()) {
+            let update = *grad * scale;
+            let new_weight = *weight - update;
+            new_weights.push(new_weight);
         }
 
-        self.state.iteration += 1;
+        OptimizerSetup::new(new_weights)
+    }
 
-        new_params
+    fn setup_with_line_search(
+        &mut self,
+        graph: &mut Graph,
+        weights: &[GraphTensor],
+        gradients: &[GraphTensor],
+        loss: GraphTensor,
+    ) -> OptimizerSetup {
+        let mut setup = self.setup_on_graph(graph, weights, gradients);
+
+        // Create gradient context for potential line search / trust region adjustment
+        let grad_ctx = GradientContext::new(weights.to_vec(), gradients.to_vec(), loss);
+        setup.gradient_context = Some(grad_ctx);
+        setup
     }
 
     fn reset(&mut self) {
@@ -255,6 +285,15 @@ impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
     fn iteration(&self) -> usize {
         self.state.iteration
     }
+    fn increment_iteration(&mut self) {
+        self.state.iteration += 1;
+    }
+    fn stagnation_multiplier(&self) -> f32 {
+        self.stagnation_multiplier
+    }
+    fn stagnation_count(&self) -> usize {
+        self.stagnation_count
+    }
 
     fn set_stagnation_multiplier(&mut self, multiplier: f32) {
         self.stagnation_multiplier = multiplier;
@@ -263,9 +302,18 @@ impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
     fn set_stagnation_count(&mut self, count: usize) {
         self.stagnation_count = count;
     }
+    fn learning_rate(&self) -> Option<f32> {
+        // Trust region uses radius instead of learning rate
+        Some(self.state.radius)
+    }
+    fn set_learning_rate(&mut self, lr: f32) {
+        // Map learning rate to trust region radius
+        self.state.radius = lr.clamp(self.config.min_radius, self.config.max_radius);
+    }
 }
 
 #[cfg(test)]
+use super::*;
 mod tests {
 
     #[test]

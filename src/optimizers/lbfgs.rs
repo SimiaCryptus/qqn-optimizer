@@ -40,10 +40,11 @@
 //! - **QQN**: Specialized settings when used as a component within QQN
 
 use crate::optimizers::optimizer::Optimizer;
+use crate::optimizers::optimizer::{GradientContext, OptimizerSetup};
+use crate::{LineSearchConfig, LineSearchMethod};
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use crate::{LineSearchConfig, LineSearchMethod};
 
 /// Configuration parameters for the L-BFGS optimizer.
 ///
@@ -196,7 +197,7 @@ impl LBFGSConfig {
                 max_step: 1.0,     // Conservative maximum step
                 ..LineSearchConfig::default()
             },
-            epsilon: 1e-10,  // Higher precision
+            epsilon: 1e-10, // Higher precision
             max_correction_pairs: 5,
             max_step_size: 0.5,    // Conservative step size
             min_step_size: 1e-20,  // Allow very small steps
@@ -232,7 +233,7 @@ impl LBFGSConfig {
                 max_step: 50.0,    // Large maximum step
                 ..LineSearchConfig::default()
             },
-            epsilon: 1e-6,    // Lower precision for speed
+            epsilon: 1e-6, // Lower precision for speed
             max_correction_pairs: 20,
             max_step_size: 50.0,     // Large step sizes allowed
             min_step_size: 1e-12,    // Reasonable minimum
@@ -301,34 +302,34 @@ impl LBFGSConfig {
 /// When violated, Powell's damping may be applied to maintain positive definiteness
 /// of the Hessian approximation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LBFGSState<S: Shape> {
+pub struct LBFGSState {
     /// History of parameter differences (s_k = x_{k+1} - x_k).
     ///
     /// Each entry represents how parameters changed in a previous iteration.
     /// Used in the two-loop recursion to apply curvature corrections.
     #[serde(skip)]
-    s_history: VecDeque<Vec<GraphTensor<S>>>,
+    s_history: VecDeque<Vec<GraphTensor>>,
 
     /// History of gradient differences (y_k = ∇f_{k+1} - ∇f_k).
     ///
     /// Each entry represents how gradients changed in a previous iteration.
     /// Combined with s_history to capture local curvature information.
     #[serde(skip)]
-    y_history: VecDeque<Vec<GraphTensor<S>>>,
+    y_history: VecDeque<Vec<GraphTensor>>,
 
     /// Precomputed reciprocals ρ_k = 1/(s_k^T y_k) for computational efficiency.
     ///
     /// These values are used repeatedly in the two-loop recursion, so precomputing
     /// them avoids redundant dot product calculations.
     #[serde(skip)]
-    rho_history: VecDeque<GraphTensor<()>>,
+    rho_history: VecDeque<GraphTensor>,
 
     /// Previous gradient for computing y_k differences in next update.
     ///
     /// Stored from the previous iteration to compute y_k = ∇f_k - ∇f_{k-1}
     /// when the next update occurs.
     #[serde(skip)]
-    prev_gradient: Option<Vec<GraphTensor<S>>>,
+    prev_gradient: Option<Vec<GraphTensor>>,
 
     /// Current iteration number for tracking optimization progress.
     iteration: usize,
@@ -338,13 +339,16 @@ pub struct LBFGSState<S: Shape> {
     /// Updated each iteration as γ = (s_k^T y_k)/(y_k^T y_k) to capture
     /// the characteristic scale of the problem's curvature.
     #[serde(skip)]
-    gamma: Option<GraphTensor<()>>,
+    gamma: Option<GraphTensor>,
 
     /// Numerical stability constant for avoiding division by zero and other issues.
     epsilon: f32,
     /// Maximum history size for L-BFGS updates.
     history_size: usize,
-
+    /// Stagnation multiplier for relaxed convergence criteria
+    stagnation_multiplier: f32,
+    /// Stagnation count threshold
+    stagnation_count: usize,
 
     /// Best function value encountered during optimization.
     ///
@@ -363,7 +367,7 @@ pub struct LBFGSState<S: Shape> {
     /// If the current iteration produces non-finite values, optimization
     /// can revert to this previous state.
     #[serde(skip)]
-    prev_params: Option<Vec<GraphTensor<S>>>,
+    prev_params: Option<Vec<GraphTensor>>,
 
     /// Flag to disable certain safety checks when used within QQN.
     ///
@@ -377,11 +381,10 @@ pub struct LBFGSState<S: Shape> {
     /// in subsequent computations.
     max_gradient_norm: f32,
 }
-unsafe impl<S: Shape> Send for LBFGSState<S> {}
-unsafe impl<S: Shape> Sync for LBFGSState<S> {}
+unsafe impl Send for LBFGSState {}
+unsafe impl Sync for LBFGSState {}
 
-
-impl<S: Shape> LBFGSState<S> {
+impl LBFGSState {
     /// Create a new L-BFGS state with the given history size.
     pub fn new(history_size: usize, epsilon: f32) -> Self {
         Self::new_with_options(history_size, epsilon, false)
@@ -402,6 +405,8 @@ impl<S: Shape> LBFGSState<S> {
             prev_params: None,
             disable_checks,
             max_gradient_norm: 1e10,
+            stagnation_multiplier: 1.0,
+            stagnation_count: 1,
         }
     }
 
@@ -417,6 +422,8 @@ impl<S: Shape> LBFGSState<S> {
         self.no_improvement_count = 0;
         self.prev_params = None;
         // Don't reset disable_checks as it's a configuration option
+        self.stagnation_multiplier = 1.0;
+        self.stagnation_count = 1;
     }
 
     /// Compute the L-BFGS search direction using the two-loop recursion
@@ -449,7 +456,7 @@ impl<S: Shape> LBFGSState<S> {
     /// - Handles numerical issues (NaN, Inf) gracefully
     /// - Skips problematic history pairs while preserving others
     /// - Validates gradient magnitude and applies scaling if needed
-    pub fn estimate_optimum(&mut self, gradient: &[GraphTensor<S>]) -> Vec<GraphTensor<S>> {
+    pub fn estimate_optimum(&mut self, gradient: &[GraphTensor]) -> Vec<GraphTensor> {
         // If no history, use steepest descent
 
         if self.s_history.is_empty() {
@@ -514,7 +521,7 @@ impl<S: Shape> LBFGSState<S> {
 
     /// Compute the L-BFGS search direction without negation
     /// This is used by QQN which needs the actual direction, not the descent direction
-    pub fn compute_direction(&mut self, gradient: &[GraphTensor<S>]) -> Vec<GraphTensor<S>> {
+    pub fn compute_direction(&mut self, gradient: &[GraphTensor]) -> Vec<GraphTensor> {
         let descent_dir = self.estimate_optimum(gradient);
         // estimate_optimum returns -H*g (descent direction)
         // We want H*g (search direction before negation), but QQN might expect the descent direction?
@@ -551,7 +558,7 @@ impl<S: Shape> LBFGSState<S> {
     ///
     /// When history reaches capacity, the oldest (s_k, y_k, ρ_k) triple is removed
     /// to make room for the new information, maintaining constant memory usage.
-    pub fn update(&mut self, new_params: &[GraphTensor<S>], new_gradient: &[GraphTensor<S>]) {
+    pub fn update(&mut self, new_params: &[GraphTensor], new_gradient: &[GraphTensor]) {
         // We need old_params and old_gradient (prev_gradient) to compute s_k and y_k.
         // In this implementation, we assume update is called after a step.
         // But we need the values from the *previous* step.
@@ -608,16 +615,32 @@ impl<S: Shape> LBFGSState<S> {
     fn epsilon(&self) -> f32 {
         self.epsilon
     }
+    /// Get the stagnation multiplier
+    fn stagnation_multiplier(&self) -> f32 {
+        self.stagnation_multiplier
+    }
+    /// Set the stagnation multiplier
+    fn set_stagnation_multiplier(&mut self, multiplier: f32) {
+        self.stagnation_multiplier = multiplier;
+    }
+    /// Get the stagnation count
+    fn stagnation_count(&self) -> usize {
+        self.stagnation_count
+    }
+    /// Set the stagnation count
+    fn set_stagnation_count(&mut self, count: usize) {
+        self.stagnation_count = count;
+    }
 }
 
 /// L-BFGS optimizer implementation.
 #[derive(Debug)]
-pub struct LBFGSOptimizer<S: Shape> {
+pub struct LBFGSOptimizer {
     config: LBFGSConfig,
-    state: LBFGSState<S>,
+    state: LBFGSState,
 }
 
-impl<S: Shape> Clone for LBFGSOptimizer<S> {
+impl Clone for LBFGSOptimizer {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
@@ -626,7 +649,7 @@ impl<S: Shape> Clone for LBFGSOptimizer<S> {
     }
 }
 
-impl<S: Shape> LBFGSOptimizer<S> {
+impl LBFGSOptimizer {
     /// Create a new L-BFGS optimizer with the given configuration.
     pub fn new(config: LBFGSConfig) -> Self {
         let state = LBFGSState::new(config.history_size, config.epsilon);
@@ -635,48 +658,55 @@ impl<S: Shape> LBFGSOptimizer<S> {
     }
 
     /// Get a reference to the internal L-BFGS state.
-    pub fn lbfgs_state(&self) -> &LBFGSState<S> {
+    pub fn lbfgs_state(&self) -> &LBFGSState {
         &self.state
     }
 
     /// Get a mutable reference to the internal L-BFGS state.
-    pub fn lbfgs_state_mut(&mut self) -> &mut LBFGSState<S> {
+    pub fn lbfgs_state_mut(&mut self) -> &mut LBFGSState {
         &mut self.state
     }
 }
 
-impl<S: Shape> Optimizer<S> for LBFGSOptimizer<S> {
-    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
+impl Optimizer for LBFGSOptimizer {
+    fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
 
-    fn step(
+    fn setup_on_graph(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor<()>,
-        params: &[GraphTensor<S>],
-    ) -> Vec<GraphTensor<S>> {
-        // Register backward pass to compute gradients
 
-        let grads = graph.add_backward(loss);
-        let gradients: Vec<GraphTensor<S>> = params.iter().map(|p| *grads.get(p).unwrap()).collect();
+        weights: &[GraphTensor],
+        gradients: &[GraphTensor],
+    ) -> OptimizerSetup {
+        // Compute L-BFGS search direction using the two-loop recursion
+        let search_direction = self.state.estimate_optimum(gradients);
 
-        // Update history with previous step's info (if available)
-        // Note: This assumes params and gradients are valid for history update
-        self.state.update(params, &gradients);
+        // Create learning rate tensor (L-BFGS typically uses step size 1.0)
+        let lr = graph
+            .tensor(())
+            .set(vec![self.config.line_search.initial_step]);
 
-        // Compute L-BFGS search direction
-
-        let search_direction = self.state.estimate_optimum(&gradients);
-
-        // Update parameters: x_{k+1} = x_k + p_k
-        // We use a fixed step size of 1.0 as L-BFGS estimates the full step.
-        // Line search is omitted in this graph-based implementation.
-        params
+        // Update parameters: x_{k+1} = x_k + lr * p_k
+        // L-BFGS estimates the full step, so lr is typically 1.0
+        let new_weights: Vec<GraphTensor> = weights
             .iter()
             .zip(search_direction.iter())
-            .map(|(p, d)| *p + *d)
-            .collect()
+            .map(|(w, d)| *w + lr * *d)
+            .collect();
+
+        // Create gradient context for potential line search
+        let grad_ctx = GradientContext::new(
+            weights.to_vec(),
+            gradients.to_vec(),
+            // Note: loss tensor is not available here, will be set via setup_with_line_search
+            gradients[0], // Placeholder - will be replaced if line search is used
+        );
+
+        OptimizerSetup::new(new_weights)
+            .with_learning_rate(lr)
+            .with_gradient_context(grad_ctx)
     }
 
     fn reset(&mut self) {
@@ -686,33 +716,52 @@ impl<S: Shape> Optimizer<S> for LBFGSOptimizer<S> {
     fn name(&self) -> &str {
         &self.config.name
     }
+
     fn iteration(&self) -> usize {
         self.state.iteration()
     }
-    fn set_stagnation_multiplier(&mut self, _multiplier: f32) {
-        // L-BFGS doesn't use stagnation multiplier in its current implementation
-        // This is a no-op to satisfy the trait requirement
+    fn increment_iteration(&mut self) {
+        self.state.iteration += 1;
     }
+    fn stagnation_multiplier(&self) -> f32 {
+        self.state.stagnation_multiplier()
+    }
+    fn stagnation_count(&self) -> usize {
+        self.state.stagnation_count()
+    }
+
+    fn set_stagnation_multiplier(&mut self, _multiplier: f32) {
+        self.state.set_stagnation_multiplier(_multiplier);
+    }
+
     fn set_stagnation_count(&mut self, _count: usize) {
-        // L-BFGS doesn't use stagnation count in its current implementation
-        // This is a no-op to satisfy the trait requirement
+        self.state.set_stagnation_count(_count);
+    }
+
+    fn learning_rate(&self) -> Option<f32> {
+        Some(self.config.line_search.initial_step)
+    }
+
+    fn set_learning_rate(&mut self, lr: f32) {
+        self.config.line_search.initial_step = lr;
     }
 }
+
 // Helper functions for vector operations on GraphTensor
-fn dot_product<S: Shape>(a: &[GraphTensor<S>], b: &[GraphTensor<S>]) -> GraphTensor<()> {
+fn dot_product(a: &[GraphTensor], b: &[GraphTensor]) -> GraphTensor {
     a.iter()
         .zip(b.iter())
         .map(|(x, y)| (*x * *y).sum_reduce())
         .reduce(|acc, x| acc + x)
         .expect("Empty vector")
 }
-fn vector_scale<S: Shape>(v: &[GraphTensor<S>], scale: GraphTensor<()>) -> Vec<GraphTensor<S>> {
+fn vector_scale(v: &[GraphTensor], scale: GraphTensor) -> Vec<GraphTensor> {
     v.iter().map(|x| *x * scale).collect()
 }
-fn vector_add<S: Shape>(a: &[GraphTensor<S>], b: &[GraphTensor<S>]) -> Vec<GraphTensor<S>> {
+fn vector_add(a: &[GraphTensor], b: &[GraphTensor]) -> Vec<GraphTensor> {
     a.iter().zip(b.iter()).map(|(x, y)| *x + *y).collect()
 }
-fn vector_subtract<S: Shape>(a: &[GraphTensor<S>], b: &[GraphTensor<S>]) -> Vec<GraphTensor<S>> {
+fn vector_subtract(a: &[GraphTensor], b: &[GraphTensor]) -> Vec<GraphTensor> {
     a.iter().zip(b.iter()).map(|(x, y)| *x - *y).collect()
 }
 
@@ -725,7 +774,7 @@ mod tests {
         let state = LBFGSState::new(5, 1e-8);
         assert_eq!(state.history_length(), 0);
         assert_eq!(state.iteration(), 0);
-        assert_eq!(state.gamma(), 1.0);
+        assert!(state.gamma.is_none());
         assert!(state.best_function_value.is_none());
         assert_eq!(state.no_improvement_count, 0);
     }
@@ -746,14 +795,14 @@ mod tests {
 
         // Manually set some state
         optimizer.state.iteration = 5;
-        optimizer.state.gamma = 2.0;
+        // gamma is now Option<GraphTensor>, skip setting it in test
         optimizer.state.best_function_value = Some(1.0);
         optimizer.state.no_improvement_count = 3;
 
         optimizer.reset();
         assert_eq!(optimizer.state.iteration(), 0);
         assert_eq!(optimizer.state.history_length(), 0);
-        assert_eq!(optimizer.state.gamma(), 1.0);
+        assert!(optimizer.state.gamma.is_none());
         assert!(optimizer.state.best_function_value.is_none());
         assert_eq!(optimizer.state.no_improvement_count, 0);
     }

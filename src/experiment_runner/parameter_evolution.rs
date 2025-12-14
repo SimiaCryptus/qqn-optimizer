@@ -4,6 +4,7 @@ use crate::{
     Optimizer, QQNConfig, QQNOptimizer,
 };
 use anyhow::Error;
+use dfdx::prelude::Shape;
 use log::{debug, info, trace, warn};
 use plotters::prelude::LogScalable;
 use rand::prelude::*;
@@ -11,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-use luminal::prelude::Shape;
 
 /// Represents a genome for an optimizer configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -158,7 +158,7 @@ impl OptimizerGenome {
         params
     }
 
-    pub fn to_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
+    pub fn to_optimizer(&self) -> Arc<dyn Optimizer> {
         debug!(
             "Converting genome (ID: {:?}) to optimizer: {}",
             self.id, self.optimizer_type
@@ -172,7 +172,7 @@ impl OptimizerGenome {
         }
     }
 
-    fn build_qqn_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
+    fn build_qqn_optimizer(&self) -> Arc<dyn Optimizer> {
         let method_idx = self
             .parameters
             .get("line_search_method")
@@ -212,7 +212,7 @@ impl OptimizerGenome {
         }))
     }
 
-    fn build_lbfgs_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
+    fn build_lbfgs_optimizer(&self) -> Arc<dyn Optimizer> {
         Arc::new(LBFGSOptimizer::new(LBFGSConfig {
             name: format!("LBFGS_{}", self.id.unwrap_or(0)),
             history_size: self.parameters.get("history_size").copied().unwrap_or(10.0) as usize,
@@ -228,7 +228,7 @@ impl OptimizerGenome {
         }))
     }
 
-    fn build_adam_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
+    fn build_adam_optimizer(&self) -> Arc<dyn Optimizer> {
         Arc::new(AdamOptimizer::new(
             format!("Adam_{}", self.id.unwrap_or(0)),
             AdamConfig {
@@ -246,7 +246,7 @@ impl OptimizerGenome {
         ))
     }
 
-    fn build_gd_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
+    fn build_gd_optimizer(&self) -> Arc<dyn Optimizer> {
         Arc::new(GDOptimizer::new(GDConfig {
             name: format!("GD_{}", self.id.unwrap_or(0)),
             learning_rate: self
@@ -261,7 +261,7 @@ impl OptimizerGenome {
         }))
     }
 
-    fn build_trust_region_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
+    fn build_trust_region_optimizer(&self) -> Arc<dyn Optimizer> {
         Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
             name: format!("TrustRegion_{}", self.id.unwrap_or(0)),
             initial_radius: self

@@ -62,11 +62,13 @@
 //! - Problems where SGD with momentum performs well
 //!
 
-use crate::optimizers::optimizer::Optimizer;
+use crate::optimizers::optimizer::SafeTensor;
+use crate::optimizers::optimizer::{GradientContext, Optimizer, OptimizerSetup};
+use dfdx::prelude::Shape;
 use log::{debug, info};
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::optimizers::optimizer::SafeTensor;
+use std::collections::HashMap;
 
 /// Configuration parameters for the Adam optimizer.
 ///
@@ -286,7 +288,7 @@ impl AdamConfig {
 ///
 /// **Memory Requirements:** O(number of parameters) for each moment estimate
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AdamState<S: Shape> {
+pub struct AdamState {
     /// Current iteration number (used for bias correction)
     ///
     /// **Purpose:** Bias correction terms depend on iteration count: (1 - β^t)
@@ -298,7 +300,7 @@ pub struct AdamState<S: Shape> {
     /// **Purpose:** Provides momentum and direction information
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
-    pub m: Option<Vec<SafeTensor<S>>>,
+    pub m: Option<Vec<SafeTensor>>,
 
     /// Second moment estimates (exponentially decaying average of squared gradients)
     ///
@@ -306,7 +308,7 @@ pub struct AdamState<S: Shape> {
     /// **Purpose:** Adapts learning rates based on gradient variance
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
-    pub v: Option<Vec<SafeTensor<S>>>,
+    pub v: Option<Vec<SafeTensor>>,
 
     /// Maximum second moment estimates (AMSGrad variant only)
     ///
@@ -314,16 +316,16 @@ pub struct AdamState<S: Shape> {
     /// **Purpose:** Ensures non-increasing effective learning rates
     /// **Memory:** Only allocated when AMSGrad is enabled
     #[serde(skip_serializing, skip_deserializing)]
-    pub v_max: Option<Vec<SafeTensor<S>>>,
+    pub v_max: Option<Vec<SafeTensor>>,
 }
 
-impl<S: Shape> Default for AdamState<S> {
+impl Default for AdamState {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S: Shape> AdamState<S> {
+impl AdamState {
     /// Create a new Adam state with default initialization.
     ///
     /// **Initial state:** All moment estimates are None and will be initialized
@@ -373,13 +375,15 @@ impl<S: Shape> AdamState<S> {
 /// **Thread Safety:** The optimizer itself is not thread-safe, but can be used
 /// with thread-safe functions through the Arc<dyn DifferentiableFunction> interface.
 #[derive(Debug)]
-pub struct AdamOptimizer<S: Shape> {
+pub struct AdamOptimizer {
     config: AdamConfig,
-    state: AdamState<S>,
+    state: AdamState,
     /// Current effective learning rate (may differ from config due to scheduling)
     current_lr: f32,
     /// Stagnation multiplier for relaxed convergence criteria (future use)
     stagnation_multiplier: f32,
+    /// Learning rate tensor for graph-based updates
+    lr_tensor: Option<GraphTensor>,
     /// Stagnation count threshold (future use)
     stagnation_count: usize,
     /// Name of the optimizer variant
@@ -388,20 +392,21 @@ pub struct AdamOptimizer<S: Shape> {
     name: String,
 }
 
-impl<S: Shape> Clone for AdamOptimizer<S> {
+impl Clone for AdamOptimizer {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
             state: self.state.clone(),
             current_lr: self.current_lr,
             stagnation_multiplier: self.stagnation_multiplier,
+            lr_tensor: self.lr_tensor,
             stagnation_count: self.stagnation_count,
             name: self.name.clone(),
         }
     }
 }
 
-impl<S: Shape> AdamOptimizer<S> {
+impl AdamOptimizer {
     /// Create a new Adam optimizer with the given configuration.
     pub fn autoname(config: AdamConfig) -> Self {
         Self::new(
@@ -436,110 +441,137 @@ impl<S: Shape> AdamOptimizer<S> {
             state: AdamState::new(),
             current_lr,
             stagnation_multiplier: 10.0,
+            lr_tensor: None,
             stagnation_count: 5,
             name: name,
         }
     }
 }
 
-impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
-    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
+impl Optimizer for AdamOptimizer {
+    fn clone_box(&self) -> Box<dyn Optimizer> {
         Box::new(self.clone())
     }
 
-    fn step(
+    fn setup_on_graph(
         &mut self,
 
         graph: &mut Graph,
-        loss: GraphTensor<()>,
-        params: &[GraphTensor<S>],
-    ) -> Vec<GraphTensor<S>> {
-        // Initialize moment estimates if needed
-        if self.state.m.is_none() {
-            self.state.m = Some(
-                params
-                    .iter()
-                    .map(|p| SafeTensor(graph.constant(0.0).expand()))
-                    .collect(),
-            );
-            self.state.v = Some(
-                params
-                    .iter()
-                    .map(|p| SafeTensor(graph.constant(0.0).expand()))
-                    .collect(),
-            );
-            if self.config.amsgrad {
-                self.state.v_max = Some(
-                    params
-                        .iter()
-                        .map(|p| SafeTensor(graph.constant(0.0).expand()))
-                        .collect(),
-                );
-            }
-        }
+        weights: &[GraphTensor],
+        gradients: &[GraphTensor],
+    ) -> OptimizerSetup {
+        // Create learning rate tensor
+        let lr = graph.tensor(()).set(vec![self.config.learning_rate]);
+        self.lr_tensor = Some(lr);
 
-        let m = self.state.m.as_mut().unwrap();
-        let v = self.state.v.as_mut().unwrap();
+        // Create constants for beta values and epsilon
+        let beta1 = graph.tensor(()).set(vec![self.config.beta1]);
+        let one_minus_beta1 = graph.tensor(()).set(vec![1.0 - self.config.beta1]);
+        let beta2 = graph.tensor(()).set(vec![self.config.beta2]);
+        let one_minus_beta2 = graph.tensor(()).set(vec![1.0 - self.config.beta2]);
+        let epsilon = graph.tensor(()).set(vec![self.config.epsilon]);
 
-        // Get gradients
-        let grads = graph.add_backward(loss);
-        let gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
-
-        let mut new_params = Vec::with_capacity(params.len());
+        // Bias correction terms (will be updated each iteration)
+        // For now, use iteration 1 values
         let t = (self.state.iteration + 1) as f32;
         let bias_correction1 = 1.0 - self.config.beta1.powf(t);
         let bias_correction2 = 1.0 - self.config.beta2.powf(t);
+        let bc1_tensor = graph.tensor(()).set(vec![bias_correction1]);
+        let bc2_tensor = graph.tensor(()).set(vec![bias_correction2]);
 
-        for i in 0..params.len() {
+        let mut new_weights = Vec::with_capacity(weights.len());
+        let mut state_tensors = Vec::new();
+
+        // Initialize moment estimate tensors
+        let mut m_tensors: Vec<GraphTensor> = Vec::with_capacity(weights.len());
+        let mut v_tensors: Vec<GraphTensor> = Vec::with_capacity(weights.len());
+
+        for (i, (w, g)) in weights.iter().zip(gradients.iter()).enumerate() {
+            // Create moment estimate tensors initialized to zero
+            // These will accumulate across iterations
+            let m = graph.tensor(()).set(vec![0.0f32]).expand_to(g.shape);
+            let v = graph.tensor(()).set(vec![0.0f32]).expand_to(g.shape);
+
             // m_t = beta1 * m_{t-1} + (1 - beta1) * g_t
-            let m_new = m[i].0 * self.config.beta1 + gradients[i] * (1.0 - self.config.beta1);
-            m[i] = SafeTensor(m_new); // Update state reference for next step if graph is rebuilt
+            let m_new = m * beta1.expand_to(g.shape) + *g * one_minus_beta1.expand_to(g.shape);
 
             // v_t = beta2 * v_{t-1} + (1 - beta2) * g_t^2
+            let g_squared = *g * *g;
             let v_new =
-                v[i].0 * self.config.beta2 + gradients[i].square() * (1.0 - self.config.beta2);
-            v[i] = SafeTensor(v_new);
+                v * beta2.expand_to(g.shape) + g_squared * one_minus_beta2.expand_to(g.shape);
 
+            // Bias-corrected estimates
             // m_hat = m_t / (1 - beta1^t)
-            let m_hat = m_new / bias_correction1;
+            let m_hat = m_new / bc1_tensor.expand_to(g.shape);
 
             // v_hat = v_t / (1 - beta2^t)
-            let v_hat = v_new / bias_correction2;
+            let v_hat = v_new / bc2_tensor.expand_to(g.shape);
 
-            // theta_{t+1} = theta_t - lr * m_hat / (sqrt(v_hat) + epsilon)
-            let update = m_hat / (v_hat.sqrt() + self.config.epsilon);
+            // Update: theta_{t+1} = theta_t - lr * m_hat / (sqrt(v_hat) + epsilon)
+            let v_hat_sqrt = v_hat.sqrt();
+            let denom = v_hat_sqrt + epsilon.expand_to(g.shape);
+            let update = m_hat / denom;
+
+            let mut w_new = *w - update * lr.expand_to(g.shape);
 
             // Apply weight decay if configured
-            let mut p_next = params[i] - update * self.current_lr;
             if self.config.weight_decay > 0.0 {
-                p_next = p_next - params[i] * (self.config.weight_decay * self.current_lr);
+                let wd = graph.tensor(()).set(vec![self.config.weight_decay]);
+                w_new = w_new - *w * wd.expand_to(g.shape) * lr.expand_to(g.shape);
             }
 
-            new_params.push(p_next);
+            new_weights.push(w_new);
+
+            // Track state tensors for persistence
+            state_tensors.push(m.id);
+            state_tensors.push(v.id);
+            m_tensors.push(m);
+            v_tensors.push(v);
         }
 
-        self.state.iteration += 1;
+        // Store moment tensors in state for future reference
+        self.state.m = Some(m_tensors.iter().map(|t| SafeTensor(*t)).collect());
+        self.state.v = Some(v_tensors.iter().map(|t| SafeTensor(*t)).collect());
 
-        new_params
+        // Add bias correction tensors to state
+        state_tensors.push(bc1_tensor.id);
+        state_tensors.push(bc2_tensor.id);
+
+        OptimizerSetup::new(new_weights)
+            .with_learning_rate(lr)
+            .with_state_tensors(state_tensors)
     }
 
     fn reset(&mut self) {
         self.state.reset();
         self.current_lr = self.config.learning_rate;
+        self.lr_tensor = None;
         // Note: name is not reset as it's determined by configuration
     }
 
     fn name(&self) -> &str {
         &self.name
     }
+
     fn iteration(&self) -> usize {
         self.state.iteration()
     }
+    fn increment_iteration(&mut self) {
+        self.state.iteration += 1;
+    }
+
     fn set_stagnation_multiplier(&mut self, multiplier: f32) {
         self.stagnation_multiplier = multiplier;
     }
+
     fn set_stagnation_count(&mut self, count: usize) {
         self.stagnation_count = count;
+    }
+    fn learning_rate(&self) -> Option<f32> {
+        Some(self.current_lr)
+    }
+    fn set_learning_rate(&mut self, lr: f32) {
+        self.current_lr = lr;
     }
 }
 
@@ -555,5 +587,4 @@ mod tests {
         assert!(state.v.is_none());
         assert!(state.v_max.is_none());
     }
-
 }

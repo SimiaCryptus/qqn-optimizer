@@ -152,12 +152,11 @@ impl MoreThuenteConfig {
 /// let result = line_search.optimize_1d(&problem)?;
 /// ```
 #[derive(Debug, Clone)]
-pub struct MoreThuenteLineSearch<S: Shape> {
+pub struct MoreThuenteLineSearch {
     config: MoreThuenteConfig,
-    _marker: std::marker::PhantomData<S>,
 }
 
-impl<S: Shape> MoreThuenteLineSearch<S> {
+impl MoreThuenteLineSearch {
     /// Set the initial step size for the next line search
     ///
     /// The step size will be clamped to [min_step, max_step] bounds.
@@ -166,10 +165,7 @@ impl<S: Shape> MoreThuenteLineSearch<S> {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
     pub fn new(config: MoreThuenteConfig) -> Self {
-        Self {
-            config,
-            _marker: std::marker::PhantomData,
-        }
+        Self { config }
     }
     /// Create with default configuration
     pub fn default_search() -> Self {
@@ -445,13 +441,13 @@ impl<S: Shape> MoreThuenteLineSearch<S> {
     }
 }
 
-impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
+impl LineSearch for MoreThuenteLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor<S>,
-        loss: GraphTensor<()>,
-        gradient: GraphTensor<S>,
+        params: GraphTensor,
+        loss: GraphTensor,
+        gradient: GraphTensor,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -471,6 +467,9 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
         if !f0.is_finite() || !g0.is_finite() {
             return Err(anyhow!("Initial function value or gradient is not finite"));
         }
+        let mut num_f_evals = 0usize;
+        let mut num_g_evals = 0usize;
+
         // Helper to evaluate function and gradient at a step size
         let mut evaluate = |step: f32| -> Result<(f32, f32)> {
             let new_params_data: Vec<f32> = current_params
@@ -489,9 +488,10 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
                 .zip(direction.iter())
                 .map(|(g, d)| g * d)
                 .sum();
+            num_f_evals += 1;
+            num_g_evals += 1;
             Ok((loss_val, dir_deriv))
         };
-
 
         // Verify we can make progress
         let test_step = self.config.min_step;
@@ -504,6 +504,8 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
                     step_size: eps_step,
                     success: true,
                     termination_reason: TerminationReason::StepSizeTooSmall,
+                    num_f_evals,
+                    num_g_evals,
                 });
             }
             return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
@@ -545,6 +547,8 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
                         step_size: best_stp,
                         success: true,
                         termination_reason: TerminationReason::MaxIterationsReached,
+                        num_f_evals,
+                        num_g_evals,
                     });
                 }
                 return Err(anyhow!("Non-finite function or gradient value encountered"));
@@ -568,6 +572,8 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
                     step_size: stp,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                    num_f_evals,
+                    num_g_evals,
                 });
             }
             // Check for convergence based on interval width
@@ -579,6 +585,8 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
                         step_size: stp,
                         success: true,
                         termination_reason: TerminationReason::StepSizeTooSmall,
+                        num_f_evals,
+                        num_g_evals,
                     });
                 }
             }
@@ -618,12 +626,16 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
                 step_size: best_stp,
                 success: true,
                 termination_reason: TerminationReason::MaxIterationsReached,
+                num_f_evals,
+                num_g_evals,
             })
         } else {
             Ok(LineSearchResult {
                 step_size: stp,
                 success: true,
                 termination_reason: TerminationReason::MaxIterationsReached,
+                num_f_evals,
+                num_g_evals,
             })
         }
     }
@@ -632,7 +644,7 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
         // More-Thuente is stateless
     }
 
-    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
+    fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
 

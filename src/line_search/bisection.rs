@@ -128,60 +128,111 @@ pub struct BisectionLineSearch {
 trait ProblemEvaluator {
     fn objective(&mut self, step: f32) -> Result<f32>;
     fn gradient(&mut self, step: f32) -> Result<f32>;
+    fn num_f_evals(&self) -> usize;
+    fn num_g_evals(&self) -> usize;
 }
-struct LuminalEvaluator<'a, S: Shape> {
+struct LuminalEvaluator<'a> {
     cx: &'a mut Graph,
-    params: GraphTensor<S>,
-    loss: GraphTensor<()>,
+    params: GraphTensor,
+    loss: GraphTensor,
+    gradient: GraphTensor,
     current_params: &'a [f32],
     direction: &'a [f32],
     initial_loss: f32,
     initial_dd: f32,
+    num_f_evals: usize,
+    num_g_evals: usize,
 }
 
-impl<'a, S: Shape> ProblemEvaluator for LuminalEvaluator<'a, S> {
+impl<'a> ProblemEvaluator for LuminalEvaluator<'a> {
     fn objective(&mut self, step: f32) -> Result<f32> {
         if step.abs() < 1e-10 {
             return Ok(self.initial_loss);
         }
-        let new_params: Vec<f32> = self.current_params
+        let new_params: Vec<f32> = self
+            .current_params
             .iter()
             .zip(self.direction.iter())
             .map(|(p, d)| p + step * d)
             .collect();
-        self.cx.set_tensor(self.params.id, 0, Tensor::new(new_params));
-        self.cx.keep_tensors(&mut [self.loss.id] as &mut [_]);
+        self.cx
+            .set_tensor(self.params.id, 0, Tensor::new(new_params));
         self.cx.execute();
-        let loss_tensor = self.cx.get_tensor(self.loss.id, 0).unwrap();
-        let loss_val = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap()[0];
+        self.num_f_evals += 1;
+        let loss_tensor = self
+            .cx
+            .get_tensor(self.loss.id, 0)
+            .ok_or_else(|| anyhow!("Failed to get loss tensor"))?;
+        let loss_val = loss_tensor
+            .data
+            .as_any()
+            .downcast_ref::<Vec<f32>>()
+            .ok_or_else(|| anyhow!("Failed to downcast loss data"))?[0];
         Ok(loss_val)
     }
+
     fn gradient(&mut self, step: f32) -> Result<f32> {
         if step.abs() < 1e-10 {
             return Ok(self.initial_dd);
         }
-        // Finite difference approximation since we don't have gradient tensors
-        let h = 1e-4f32.max(step.abs() * 1e-4);
-        let f_plus = self.objective(step + h)?;
-        let f_minus = self.objective(step - h)?;
-        Ok((f_plus - f_minus) / (2.0 * h))
+        // Set parameters and execute graph to get gradient
+        let new_params: Vec<f32> = self
+            .current_params
+            .iter()
+            .zip(self.direction.iter())
+            .map(|(p, d)| p + step * d)
+            .collect();
+        self.cx
+            .set_tensor(self.params.id, 0, Tensor::new(new_params));
+        self.cx.execute();
+        self.num_g_evals += 1;
+
+        // Get gradient tensor
+        let grad_tensor = self
+            .cx
+            .get_tensor(self.gradient.id, 0)
+            .ok_or_else(|| anyhow!("Failed to get gradient tensor"))?;
+        let grad_data = grad_tensor
+            .data
+            .as_any()
+            .downcast_ref::<Vec<f32>>()
+            .ok_or_else(|| anyhow!("Failed to downcast gradient data"))?;
+
+        // Compute directional derivative: g^T * d
+        let dd: f32 = grad_data
+            .iter()
+            .zip(self.direction.iter())
+            .map(|(g, d)| g * d)
+            .sum();
+        Ok(dd)
+    }
+
+    fn num_f_evals(&self) -> usize {
+        self.num_f_evals
+    }
+
+    fn num_g_evals(&self) -> usize {
+        self.num_g_evals
     }
 }
 
-
-impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
+impl LineSearch for BisectionLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor<S>,
-        loss: GraphTensor<()>,
-        gradient: GraphTensor<S>,
+        params: GraphTensor,
+        loss: GraphTensor,
+        gradient: GraphTensor,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
         initial_gradient: &[f32],
     ) -> Result<LineSearchResult> {
-        let directional_derivative: f32 = initial_gradient.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+        let directional_derivative: f32 = initial_gradient
+            .iter()
+            .zip(direction.iter())
+            .map(|(g, d)| g * d)
+            .sum();
         self.log_verbose("Starting bisection line search");
         self.log_verbose(&format!(
             "Initial directional derivative: {directional_derivative:.3e}"
@@ -193,12 +244,14 @@ impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
             cx,
             params,
             loss,
+            gradient,
             current_params,
             direction,
             initial_loss,
             initial_dd: directional_derivative,
+            num_f_evals: 0,
+            num_g_evals: 0,
         };
-
 
         // Step 1: Find the far point
         let config = self.config.clone();
@@ -295,6 +348,8 @@ impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
             final_gradient,
             success
         ));
+        let num_f_evals = evaluator.num_f_evals();
+        let num_g_evals = evaluator.num_g_evals();
 
         Ok(LineSearchResult {
             step_size,
@@ -304,6 +359,8 @@ impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
             } else {
                 TerminationReason::MaxIterationsReached
             },
+            num_f_evals,
+            num_g_evals,
         })
     }
 
@@ -311,9 +368,10 @@ impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
         // Bisection line search is stateless, nothing to reset
     }
 
-    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
+    fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
+
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }

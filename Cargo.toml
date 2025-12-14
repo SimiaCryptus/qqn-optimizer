@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-luminal = "0.2"
+luminal = {path="/home/andrew/code/luminal"}
+luminal_training = {path="/home/andrew/code/luminal/crates/luminal_training"}
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0.12"
 rand = { version = "0.9.1", features = ["small_rng", "std"] }
@@ -28,6 +29,8 @@ rand_chacha = "0.9.0"
 rayon = "1.10.0"
 html-escape = "0.2.13"
 itertools = "0.13.0"
+dfdx = { version = "0.13", features = ["f16"] }
+luminal_nn = {path="/home/andrew/code/luminal/crates/luminal_nn"}
 
 [features]
 default = ["plotting"]

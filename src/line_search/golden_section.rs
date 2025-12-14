@@ -1,5 +1,6 @@
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::{anyhow, Result};
+use dfdx::prelude::ConstShape;
 use log::debug;
 use luminal::prelude::*;
 
@@ -123,44 +124,64 @@ impl GoldenSectionConfig {
 pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
 }
-impl<S: ConstShape> LineSearch<S> for GoldenSectionLineSearch {
-
+impl LineSearch for GoldenSectionLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor<S>,
-        loss: GraphTensor<()>,
-        gradient: GraphTensor<S>,
+        params: GraphTensor,
+        loss: GraphTensor,
+        _gradient: GraphTensor,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
         initial_gradient: &[f32],
     ) -> Result<LineSearchResult> {
+        let mut num_f_evals = 0usize;
+
+        // Inline the evaluation logic to avoid borrow checker issues with closures
+        let mut num_f_evals = 0usize;
+
+        // Create objective function that evaluates loss at a given step
+        let mut num_f_evals = 0usize;
+
         let mut objective = |step: f32| -> Result<f32> {
             if step == 0.0 {
                 return Ok(initial_loss);
             }
-            let new_params: Vec<f32> = current_params
+            num_f_evals += 1;
+
+            let candidate_params: Vec<f32> = current_params
                 .iter()
                 .zip(direction.iter())
                 .map(|(p, d)| p + step * d)
                 .collect();
 
-            params.set(new_params);
-            loss.retrieve();
-            cx.execute();
+            cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
+            cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
 
-            let data = loss.data();
-            Ok(data[0])
+            let loss_tensor = cx
+                .get_tensor(loss.id, 0)
+                .ok_or_else(|| anyhow::anyhow!("Failed to get loss tensor"))?;
+            let f_val = loss_tensor
+                .data
+                .as_any()
+                .downcast_ref::<Vec<f32>>()
+                .ok_or_else(|| anyhow::anyhow!("Failed to downcast loss data"))?[0];
+            Ok(f_val)
         };
 
-        self.solve_1d(&mut objective, initial_loss, initial_gradient, direction)
+        let mut result =
+            self.solve_1d(&mut objective, initial_loss, initial_gradient, direction)?;
+        result.num_f_evals = num_f_evals;
+        result.num_g_evals = 0; // Golden section doesn't use gradients during search
+
+        Ok(result)
     }
 
     fn reset(&mut self) {
         // Golden section search is stateless
     }
-    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
+    fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
 
@@ -232,6 +253,8 @@ impl GoldenSectionLineSearch {
                     step_size: eps_step,
                     success: true,
                     termination_reason: TerminationReason::StepSizeTooSmall,
+                    num_f_evals: 0,
+                    num_g_evals: 0,
                 });
             }
             return Err(anyhow!(
@@ -248,9 +271,10 @@ impl GoldenSectionLineSearch {
             } else {
                 TerminationReason::StepSizeTooSmall
             },
+            num_f_evals: 0, // Will be set by caller
+            num_g_evals: 0, // Golden section doesn't use gradients
         })
     }
-
 
     /// Find minimum using golden section search.
     ///
@@ -687,7 +711,6 @@ mod tests {
         let current_point = vec![0.0];
         let direction = vec![-1.0];
 
-
         let initial_loss = nearly_flat_function(&current_point).unwrap();
         let initial_gradient = nearly_flat_gradient(&current_point).unwrap();
         let mut objective = |step: f32| {
@@ -699,12 +722,8 @@ mod tests {
             nearly_flat_function(&new_point)
         };
 
-        let line_search_result = line_search.solve_1d(
-            &mut objective,
-            initial_loss,
-            &initial_gradient,
-            &direction,
-        );
+        let line_search_result =
+            line_search.solve_1d(&mut objective, initial_loss, &initial_gradient, &direction);
         // Should either succeed with tiny step or fail gracefully
         if let Ok(res) = line_search_result {
             assert!(res.step_size > 0.0);

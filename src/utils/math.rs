@@ -6,7 +6,7 @@
 //! - Numerical stability utilities
 //! - Common mathematical functions for optimization
 
-use luminal::prelude::{Graph, GraphTensor, Shape};
+use luminal::prelude::{Graph, GraphTensor};
 
 /// Trait for building compute graphs for objective functions
 pub trait GraphFunction {
@@ -18,9 +18,8 @@ pub trait GraphFunction {
     ///
     /// # Returns
     /// * The loss tensor (scalar)
-    fn build<S: Shape>(&self, cx: &mut Graph, params: &[GraphTensor<S>]) -> GraphTensor<S>;
+    fn build(&self, cx: &mut Graph, params: &[GraphTensor]) -> GraphTensor;
 }
-
 
 /// Compute dot product between two f32 slices
 pub fn dot_product(a: &[f32], b: &[f32]) -> f32 {

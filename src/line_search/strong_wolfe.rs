@@ -1,5 +1,6 @@
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
+use dfdx::prelude::{ConstShape, Shape};
 use log::debug;
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -164,12 +165,13 @@ impl StrongWolfeConfig {
 ///
 /// Strong Wolfe line search implementation
 #[derive(Debug, Clone)]
-pub struct StrongWolfeLineSearch<S: Shape> {
+pub struct StrongWolfeLineSearch {
     config: StrongWolfeConfig,
-    _marker: std::marker::PhantomData<S>,
+    num_f_evals: usize,
+    num_g_evals: usize,
 }
 
-impl<S: Shape> StrongWolfeLineSearch<S> {
+impl StrongWolfeLineSearch {
     /// Set the initial step size for the next line search
     ///
     /// The step size will be clamped to [min_step, max_step] range.
@@ -180,7 +182,8 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
     pub fn new(config: StrongWolfeConfig) -> Self {
         Self {
             config,
-            _marker: std::marker::PhantomData,
+            num_f_evals: 0,
+            num_g_evals: 0,
         }
     }
     /// Create with default configuration
@@ -194,6 +197,19 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
     /// Create with lax configuration
     pub fn lax() -> Self {
         Self::new(StrongWolfeConfig::lax())
+    }
+    /// Reset evaluation counters
+    fn reset_counters(&mut self) {
+        self.num_f_evals = 0;
+        self.num_g_evals = 0;
+    }
+    /// Increment function evaluation counter
+    fn inc_f_eval(&mut self) {
+        self.num_f_evals += 1;
+    }
+    /// Increment gradient evaluation counter
+    fn inc_g_eval(&mut self) {
+        self.num_g_evals += 1;
     }
     /// Log line search details if verbose mode is enabled
     fn log_verbose(&self, message: &str) {
@@ -294,6 +310,8 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
         f0: f32,
         directional_derivative: f32,
         mut evaluate: F,
+        num_f_evals: &mut usize,
+        num_g_evals: &mut usize,
     ) -> anyhow::Result<f32>
     where
         F: FnMut(f32) -> anyhow::Result<(f32, f32)>,
@@ -319,6 +337,8 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
 
             // Evaluate 1D function at trial point
             let (f_alpha_j, grad_alpha_j) = evaluate(alpha_j)?;
+            *num_f_evals += 1;
+            *num_g_evals += 1;
             // Track best point found
             if f_alpha_j < best_value {
                 best_value = f_alpha_j;
@@ -330,7 +350,6 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
                 alpha_hi = alpha_j;
                 continue;
             }
-
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha_j, directional_derivative) {
@@ -353,18 +372,21 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
     }
 }
 
-impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
+impl LineSearch for StrongWolfeLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor<S>,
-        loss: GraphTensor<()>,
-        gradient: GraphTensor<S>,
+        params: GraphTensor,
+        loss: GraphTensor,
+        gradient: GraphTensor,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
         initial_gradient: &[f32],
     ) -> anyhow::Result<LineSearchResult> {
+        // Reset evaluation counters at the start of each search
+        self.reset_counters();
+
         let f0 = initial_loss;
         let directional_derivative: f32 = initial_gradient
             .iter()
@@ -380,6 +402,10 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
+        // Track evaluation counts in the closure
+        let mut local_f_evals = 0usize;
+        let mut local_g_evals = 0usize;
+
         let mut evaluate = |alpha: f32| -> anyhow::Result<(f32, f32)> {
             let new_params: Vec<f32> = current_params
                 .iter()
@@ -387,16 +413,28 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
                 .map(|(p, d)| p + alpha * d)
                 .collect();
             cx.set_tensor(params.id, 0, Tensor::new(new_params));
-            cx.keep_tensors(&mut [loss.id, gradient.id] as &mut [_]);
             cx.execute();
             let loss_tensor = cx.get_tensor(loss.id, 0).unwrap();
             let grad_tensor = cx.get_tensor(gradient.id, 0).unwrap();
-            let loss_val = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap()[0];
-            let grad_val = grad_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap();
-            let dir_deriv = grad_val.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+            let loss_val = loss_tensor
+                .data
+                .as_any()
+                .downcast_ref::<Vec<f32>>()
+                .unwrap()[0];
+            let grad_val = grad_tensor
+                .data
+                .as_any()
+                .downcast_ref::<Vec<f32>>()
+                .unwrap();
+            let dir_deriv = grad_val
+                .iter()
+                .zip(direction.iter())
+                .map(|(g, d)| g * d)
+                .sum();
+            local_f_evals += 1;
+            local_g_evals += 1;
             Ok((loss_val, dir_deriv))
         };
-
 
         let alpha = self.config.initial_step;
         let alpha_prev = 0.0;
@@ -428,27 +466,42 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
                     "  Armijo failed or insufficient decrease, zooming between {alpha_prev:.3e} and {alpha:.3e}"
                 ));
                 // Zoom between alpha_prev and alpha
-                let final_alpha =
-                    self.zoom(alpha_prev, alpha, f0, directional_derivative, &mut evaluate)?;
+                let final_alpha = self.zoom(
+                    alpha_prev,
+                    alpha,
+                    f0,
+                    directional_derivative,
+                    &mut evaluate,
+                    &mut local_f_evals,
+                    &mut local_g_evals,
+                )?;
                 self.log_verbose(&format!("Zoom completed with alpha={final_alpha:.3e}"));
+                self.num_f_evals = local_f_evals;
+                self.num_g_evals = local_g_evals;
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                    num_f_evals: self.num_f_evals,
+                    num_g_evals: self.num_g_evals,
                 });
             }
-
 
             // Check curvature condition
             if self.curvature_condition(grad_alpha, directional_derivative) {
                 self.log_verbose(&format!(
                     "Both Wolfe conditions satisfied at alpha={alpha:.3e}"
                 ));
+                self.num_f_evals = local_f_evals;
+                self.num_g_evals = local_g_evals;
+
                 return Ok(LineSearchResult {
                     step_size: alpha,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                    num_f_evals: self.num_f_evals,
+                    num_g_evals: self.num_g_evals,
                 });
             }
 
@@ -457,13 +510,25 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
                 self.log_verbose(&format!(
                     "  Gradient indicates overshoot, zooming between {alpha:.3e} and {alpha_prev:.3e}"
                 ));
-                let final_alpha =
-                    self.zoom(alpha, alpha_prev, f0, directional_derivative, &mut evaluate)?;
+                let final_alpha = self.zoom(
+                    alpha,
+                    alpha_prev,
+                    f0,
+                    directional_derivative,
+                    &mut evaluate,
+                    &mut local_f_evals,
+                    &mut local_g_evals,
+                )?;
+
+                self.num_f_evals = local_f_evals;
+                self.num_g_evals = local_g_evals;
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                    num_f_evals: self.num_f_evals,
+                    num_g_evals: self.num_g_evals,
                 });
             }
 
@@ -476,10 +541,15 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
             self.log_verbose(&format!(
                 "Returning best point found: alpha={best_alpha:.3e}, f={best_f:.3e}"
             ));
+            self.num_f_evals = local_f_evals;
+            self.num_g_evals = local_g_evals;
+
             return Ok(LineSearchResult {
                 step_size: best_alpha,
                 success: true,
                 termination_reason: TerminationReason::MaxIterationsReached,
+                num_f_evals: self.num_f_evals,
+                num_g_evals: self.num_g_evals,
             });
         }
 
@@ -488,10 +558,15 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
         let (f_eps, _) = evaluate(eps_step)?;
         if f_eps < f0 {
             self.log_verbose(&format!("Using machine epsilon step {eps_step:.3e}"));
+            self.num_f_evals = local_f_evals;
+            self.num_g_evals = local_g_evals;
+
             return Ok(LineSearchResult {
                 step_size: eps_step,
                 success: true,
                 termination_reason: TerminationReason::StepSizeTooSmall,
+                num_f_evals: self.num_f_evals,
+                num_g_evals: self.num_g_evals,
             });
         }
 
@@ -501,9 +576,9 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
     }
 
     fn reset(&mut self) {
-        // Strong Wolfe line search is stateless, nothing to reset
+        self.reset_counters();
     }
-    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
+    fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
 

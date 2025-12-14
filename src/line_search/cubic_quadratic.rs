@@ -3,7 +3,6 @@ use anyhow::anyhow;
 use log::debug;
 use luminal::graph::Graph;
 use luminal::graph_tensor::GraphTensor;
-use luminal::prelude::{ConstShape, Shape};
 
 /// A sophisticated line search algorithm that uses cubic and quadratic interpolation
 /// to efficiently find step sizes satisfying the Wolfe conditions.
@@ -304,62 +303,80 @@ impl CubicQuadraticLineSearch {
     }
 }
 
-impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
-
+impl LineSearch for CubicQuadraticLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor<S>,
-        loss: GraphTensor<()>,
-        gradient: GraphTensor<S>,
+        params: GraphTensor,
+        loss: GraphTensor,
+        gradient: GraphTensor,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
         initial_gradient: &[f32],
-    ) -> anyhow::Result<LineSearchResult>{
+    ) -> anyhow::Result<LineSearchResult> {
         let f0 = initial_loss;
-        let g0: f32 = initial_gradient.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+        let mut num_f_evals = 0usize;
+        let mut num_g_evals = 0usize;
+        let g0: f32 = initial_gradient
+            .iter()
+            .zip(direction.iter())
+            .map(|(g, d)| g * d)
+            .sum();
 
         if g0 >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction: g0 = {:.6e} >= 0. This indicates the search direction is pointing uphill.", g0));
         }
         // Helper to evaluate function and gradient
         let evaluate = |alpha: f32, cx: &mut Graph| -> anyhow::Result<(f32, f32)> {
-            let new_params: Vec<f32> = current_params.iter()
+            let (loss_val, grad_val) = self.evaluate_with_gradient(
+                cx,
+                params,
+                loss,
+                gradient,
+                current_params,
+                direction,
+                alpha,
+            )?;
+            let dir_deriv: f32 = grad_val
+                .iter()
                 .zip(direction.iter())
-                .map(|(p, d)| p + alpha * d)
-                .collect();
-            params.set(new_params);
-            loss.retrieve();
-            gradient.retrieve();
-            cx.execute();
-            let loss_val = loss.data()[0];
-            let grad_val = gradient.data();
-            let dir_deriv = grad_val.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+                .map(|(g, d)| g * d)
+                .sum();
             Ok((loss_val, dir_deriv))
         };
 
         // Verify we can make progress
         let test_step = self.config.min_step;
         let (f_test, _) = evaluate(test_step, cx)?;
+        num_f_evals += 1;
+        num_g_evals += 1;
         if f_test >= f0 {
             let eps_step = f32::EPSILON.sqrt();
             let (f_eps, _) = evaluate(eps_step, cx)?;
+            num_f_evals += 1;
+            num_g_evals += 1;
             if f_eps < f0 {
                 return Ok(LineSearchResult {
                     step_size: eps_step,
                     success: true,
                     termination_reason: TerminationReason::StepSizeTooSmall,
+                    num_f_evals,
+                    num_g_evals,
                 });
             }
             // Try a slightly larger step
             let small_step = 1e-8;
             let (f_small, _) = evaluate(small_step, cx)?;
+            num_f_evals += 1;
+            num_g_evals += 1;
             if f_small < f0 {
                 return Ok(LineSearchResult {
                     step_size: small_step,
                     success: true,
                     termination_reason: TerminationReason::StepSizeTooSmall,
+                    num_f_evals,
+                    num_g_evals,
                 });
             }
             return Err(anyhow!(
@@ -383,6 +400,8 @@ impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
         for iter in 0..self.config.max_iterations {
             // Evaluate at current step
             let (f_alpha, g_alpha) = evaluate(alpha, cx)?;
+            num_f_evals += 1;
+            num_g_evals += 1;
             // Track best point
             if f_alpha < best_f {
                 best_f = f_alpha;
@@ -407,6 +426,8 @@ impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
                     step_size: alpha,
                     success: true,
                     termination_reason: TerminationReason::WolfeConditionsSatisfied,
+                    num_f_evals,
+                    num_g_evals,
                 });
             }
             // If Armijo condition fails or function increased, interpolate
@@ -459,16 +480,22 @@ impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
                 step_size: best_alpha,
                 success: true,
                 termination_reason: TerminationReason::MaxIterationsReached,
+                num_f_evals,
+                num_g_evals,
             })
         } else {
             // Try a very small step as last resort
             let small_step = self.config.min_step * 10.0;
             let (f_small, _) = evaluate(small_step, cx)?;
+            num_f_evals += 1;
+            num_g_evals += 1;
             if f_small < f0 {
                 Ok(LineSearchResult {
                     step_size: small_step,
                     success: true,
                     termination_reason: TerminationReason::StepSizeTooSmall,
+                    num_f_evals,
+                    num_g_evals,
                 })
             } else {
                 Err(anyhow!(
@@ -481,7 +508,7 @@ impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
     fn reset(&mut self) {
         // Stateless
     }
-    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
+    fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

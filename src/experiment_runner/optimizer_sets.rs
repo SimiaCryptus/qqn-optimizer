@@ -4,9 +4,8 @@ use crate::{
     Optimizer, QQNConfig, QQNOptimizer,
 };
 use std::sync::Arc;
-use luminal::prelude::Shape;
 
-pub fn qqn_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
+pub fn qqn_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         // Top performers from benchmark
         (
@@ -111,7 +110,7 @@ pub fn qqn_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
     ]
 }
 
-pub fn lbfgs_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
+pub fn lbfgs_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         (
             "L-BFGS-Aggressive".to_string(),
@@ -239,7 +238,7 @@ pub fn lbfgs_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
     ]
 }
 
-pub fn gd_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
+pub fn gd_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         (
             "GD".to_string(),
@@ -314,7 +313,7 @@ pub fn gd_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
     ]
 }
 
-pub fn adam_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
+pub fn adam_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         (
             "Adam-Fast".to_string(),
@@ -416,7 +415,7 @@ pub fn adam_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
     ]
 }
 
-pub fn trust_region_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
+pub fn trust_region_variants() -> Vec<(String, Arc<dyn Optimizer>)> {
     vec![
         (
             "Trust Region-Adaptive".to_string(),
@@ -506,10 +505,10 @@ pub fn trust_region_variants<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)>
     ]
 }
 // Add a new function for comprehensive testing
-pub fn benchmark_optimizers<S: Shape>() -> Vec<(String, Arc<dyn Optimizer<S>>)> {
-    let mut optimizers: Vec<(String, Arc<dyn Optimizer<S>>)> = vec![];
+pub fn benchmark_optimizers() -> Vec<(String, Arc<dyn Optimizer>)> {
+    let mut optimizers: Vec<(String, Arc<dyn Optimizer>)> = vec![];
     // Add top QQN performers
-    let vec1: Vec<(String, Arc<dyn Optimizer<S>>)> = vec![
+    let vec1: Vec<(String, Arc<dyn Optimizer>)> = vec![
         (
             "QQN-GoldenSection".to_string(),
             Arc::new(QQNOptimizer::new(QQNConfig {

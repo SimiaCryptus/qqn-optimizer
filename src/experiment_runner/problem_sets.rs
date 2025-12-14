@@ -8,11 +8,7 @@ use crate::benchmarks::{
     BoothFunction, GriewankFunction, HimmelblauFunction, LevyFunction, MichalewiczFunction,
     SchwefelFunction, ZakharovFunction,
 };
-use crate::{
-    AckleyFunction, BealeFunction, RastriginFunction, RosenbrockFunction, SphereFunction,
-};
-use rand::prelude::StdRng;
-use rand::SeedableRng;
+use crate::{AckleyFunction, BealeFunction, RastriginFunction, RosenbrockFunction, SphereFunction};
 use std::sync::Arc;
 
 pub fn analytic_problems() -> Vec<ProblemSpec> {

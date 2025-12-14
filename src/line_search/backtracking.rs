@@ -150,12 +150,11 @@ impl BacktrackingConfig {
 /// - When simplicity and robustness are preferred over efficiency
 /// - Problems where second-order information is unavailable or unreliable
 #[derive(Debug, Clone)]
-pub struct BacktrackingLineSearch<S: Shape> {
+pub struct BacktrackingLineSearch {
     config: BacktrackingConfig,
-    _marker: std::marker::PhantomData<S>,
 }
 
-impl<S: Shape> BacktrackingLineSearch<S> {
+impl BacktrackingLineSearch {
     /// Set the initial step size for the next line search.
     ///
     /// The step size will be clamped to the range [min_step, max_step].
@@ -167,10 +166,7 @@ impl<S: Shape> BacktrackingLineSearch<S> {
     }
     /// Create a new backtracking line search with the given configuration.
     pub fn new(config: BacktrackingConfig) -> Self {
-        Self {
-            config,
-            _marker: std::marker::PhantomData,
-        }
+        Self { config }
     }
 
     /// Create a backtracking line search with default configuration.
@@ -234,13 +230,13 @@ impl<S: Shape> BacktrackingLineSearch<S> {
     }
 }
 
-impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
+impl LineSearch for BacktrackingLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor<S>,
-        loss: GraphTensor<()>,
-        gradient: GraphTensor<S>,
+        params: GraphTensor,
+        loss: GraphTensor,
+        _gradient: GraphTensor,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -260,8 +256,8 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
         let mut best_alpha = 0.0;
         let mut best_f = initial_loss;
 
-        // Ensure loss is retrieved
-        cx.keep_tensors(&mut [loss.id] as &mut [_]);
+        // Mark loss tensor to be kept after execution
+        let mut loss = loss.retrieve();
 
         for _ in 0..self.config.max_iterations {
             let candidate_params: Vec<f32> = current_params
@@ -280,25 +276,11 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
             let loss_tensor = cx
                 .get_tensor(loss.id, 0)
                 .ok_or(anyhow!("Failed to get loss tensor"))?;
-            let f_alpha = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
-
-            let candidate_params: Vec<f32> = current_params
-                .iter()
-                .zip(direction.iter())
-                .map(|(x, d)| x + alpha * d)
-                .collect();
-
-            // Update parameters in graph
-            cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
-
-            // Execute graph
-            cx.execute();
-
-            // Get loss value
-            let loss_tensor = cx
-                .get_tensor(loss.id, 0)
-                .ok_or(anyhow!("Failed to get loss tensor"))?;
-            let f_alpha = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+            let f_alpha = loss_tensor
+                .data
+                .as_any()
+                .downcast_ref::<Vec<f32>>()
+                .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
 
             // Track best point
             if f_alpha < best_f {
@@ -313,22 +295,13 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
                     step_size: alpha,
                     success: true,
                     termination_reason: TerminationReason::ArmijoConditionSatisfied,
+                    num_f_evals: 0, // TODO: track properly
+                    num_g_evals: 0,
                 });
             }
 
             // Backtrack
             alpha *= self.config.rho;
-
-
-
-
-
-
-
-
-
-
-
 
             if alpha < self.config.min_step {
                 // Try minimum step
@@ -343,13 +316,19 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
                 let loss_tensor = cx
                     .get_tensor(loss.id, 0)
                     .ok_or(anyhow!("Failed to get loss tensor"))?;
-                let f_min = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+                let f_min = loss_tensor
+                    .data
+                    .as_any()
+                    .downcast_ref::<Vec<f32>>()
+                    .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
 
                 if f_min < initial_loss {
                     return Ok(LineSearchResult {
                         step_size: self.config.min_step,
                         success: true,
                         termination_reason: TerminationReason::StepSizeTooSmall,
+                        num_f_evals: 0,
+                        num_g_evals: 0,
                     });
                 }
                 break;
@@ -362,6 +341,8 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
                 step_size: best_alpha,
                 success: true,
                 termination_reason: TerminationReason::MaxIterationsReached,
+                num_f_evals: 0,
+                num_g_evals: 0,
             });
         }
 
@@ -378,13 +359,19 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
         let loss_tensor = cx
             .get_tensor(loss.id, 0)
             .ok_or(anyhow!("Failed to get loss tensor"))?;
-        let f_eps = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+        let f_eps = loss_tensor
+            .data
+            .as_any()
+            .downcast_ref::<Vec<f32>>()
+            .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
 
         if f_eps < initial_loss {
             return Ok(LineSearchResult {
                 step_size: eps_step,
                 success: true,
                 termination_reason: TerminationReason::StepSizeTooSmall,
+                num_f_evals: 0,
+                num_g_evals: 0,
             });
         }
 
@@ -402,7 +389,7 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
     ///
     /// This is used by the optimization framework to create independent copies
     /// of the line search for different optimization runs.
-    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
+    fn clone_box(&self) -> Box<dyn LineSearch> {
         Box::new(self.clone())
     }
     /// Get a mutable reference to this instance as `Any` for downcasting.

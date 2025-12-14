@@ -4,7 +4,6 @@ pub type OptResult<T> = Result<T, OptError>;
 /// Comprehensive error type for optimization operations
 #[derive(Debug, thiserror::Error)]
 pub enum OptError {
-    
     #[error("Numerical error: {0}")]
     NumericalError(String),
 

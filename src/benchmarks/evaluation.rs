@@ -3,9 +3,12 @@
 
 use crate::benchmarks::functions::OptimizationProblem;
 use crate::optimizers::optimizer::Optimizer;
+use dfdx::prelude::Shape;
 use log::{debug, info, warn};
+use luminal::prelude::*;
 use rand::prelude::StdRng;
 use rand::{Rng, SeedableRng};
+use rand_distr::num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use statrs::statistics::Statistics;
 use std::cmp::max;
@@ -14,8 +17,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use luminal::prelude::*;
-use rand_distr::num_traits::ToPrimitive;
 use tokio::time::timeout;
 /// Global flag to disable optimal value thresholds for all problems
 static NO_THRESHOLD_MODE: AtomicBool = AtomicBool::new(false);
@@ -40,7 +41,6 @@ pub enum Device {
 pub fn create_1d_tensor(data: &[f32], _device: &Device) -> Result<Tensor, String> {
     Ok(Tensor::new(data.to_vec()))
 }
-
 
 /// Wrapper for Duration that implements bincode traits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,9 +135,14 @@ impl OptimizationTrace {
         if self.iterations.is_empty() {
             None
         } else {
-            Some(Statistics::min(
-                self.iterations.iter().map(|data| data.function_value as f64),
-            ).to_f32()?)
+            Some(
+                Statistics::min(
+                    self.iterations
+                        .iter()
+                        .map(|data| data.function_value as f64),
+                )
+                .to_f32()?,
+            )
         }
     }
 
@@ -310,10 +315,10 @@ impl BenchmarkRunner {
     }
 
     /// Run benchmarks for all combinations of problems and optimizers
-    pub async fn run_benchmarks<S: Shape>(
+    pub async fn run_benchmarks(
         &self,
         problems: Vec<Box<ProblemSpec>>,
-        mut optimizers: Vec<Box<dyn Optimizer<S>>>,
+        mut optimizers: Vec<Box<dyn Optimizer>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
         info!(
@@ -353,10 +358,10 @@ impl BenchmarkRunner {
     }
 
     /// Run a single benchmark with one problem and one optimizer
-    pub async fn run_single_benchmark<S: Shape>(
+    pub async fn run_single_benchmark(
         &self,
         problem: &ProblemSpec,
-        optimizer: &mut Box<dyn Optimizer<S>>,
+        optimizer: &mut Box<dyn Optimizer>,
         run_id: usize,
         opt_name: &str,
         initial_point: Result<Vec<f32>, Result<SingleResult, BenchmarkError>>,
@@ -504,10 +509,10 @@ impl BenchmarkRunner {
         }
     }
 
-    async fn optimization_loop<S: Shape>(
+    async fn optimization_loop(
         &self,
         problem: &ProblemSpec,
-        optimizer: &mut dyn Optimizer<S>,
+        optimizer: &mut dyn Optimizer,
         input_floats: &mut [f32],
         iteration: &mut usize,
         function_evaluations: &mut usize,
@@ -683,7 +688,7 @@ impl BenchmarkRunner {
             // This benchmark runner needs to be rewritten to support graph-based optimizers.
             // For now, we return an error to allow compilation.
             return Err(BenchmarkError::OptimizerError("Optimizer::step signature mismatch: BenchmarkRunner requires update for graph-based optimizers".to_string()));
-            
+
             #[allow(unreachable_code)]
             let step_result = crate::optimizers::optimizer::StepResult {
                 step_size: 0.0,
