@@ -210,11 +210,12 @@ impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // 1. Get gradients
-        let grads = graph.add_gradients(&[loss], params);
+        let grads_map = loss.backward();
+        let grads: Vec<GraphTensor<S>> = params.iter().map(|p| *grads_map.get(p).unwrap()).collect();
 
         // 2. Compute global gradient norm (L2)
         let mut squared_norm = graph.constant(0.0);

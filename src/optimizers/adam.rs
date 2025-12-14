@@ -66,6 +66,7 @@ use crate::optimizers::optimizer::Optimizer;
 use log::{debug, info};
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
+use crate::optimizers::optimizer::SafeTensor;
 
 /// Configuration parameters for the Adam optimizer.
 ///
@@ -297,7 +298,7 @@ pub struct AdamState<S: Shape> {
     /// **Purpose:** Provides momentum and direction information
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
-    pub m: Option<Vec<GraphTensor<S>>>,
+    pub m: Option<Vec<SafeTensor<S>>>,
 
     /// Second moment estimates (exponentially decaying average of squared gradients)
     ///
@@ -305,7 +306,7 @@ pub struct AdamState<S: Shape> {
     /// **Purpose:** Adapts learning rates based on gradient variance
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
-    pub v: Option<Vec<GraphTensor<S>>>,
+    pub v: Option<Vec<SafeTensor<S>>>,
 
     /// Maximum second moment estimates (AMSGrad variant only)
     ///
@@ -313,7 +314,7 @@ pub struct AdamState<S: Shape> {
     /// **Purpose:** Ensures non-increasing effective learning rates
     /// **Memory:** Only allocated when AMSGrad is enabled
     #[serde(skip_serializing, skip_deserializing)]
-    pub v_max: Option<Vec<GraphTensor<S>>>,
+    pub v_max: Option<Vec<SafeTensor<S>>>,
 }
 
 impl<S: Shape> Default for AdamState<S> {
@@ -458,20 +459,20 @@ impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
             self.state.m = Some(
                 params
                     .iter()
-                    .map(|p| graph.constant(0.0).expand_to(p.shape()))
+                    .map(|p| SafeTensor(graph.constant(0.0).expand()))
                     .collect(),
             );
             self.state.v = Some(
                 params
                     .iter()
-                    .map(|p| graph.constant(0.0).expand_to(p.shape()))
+                    .map(|p| SafeTensor(graph.constant(0.0).expand()))
                     .collect(),
             );
             if self.config.amsgrad {
                 self.state.v_max = Some(
                     params
                         .iter()
-                        .map(|p| graph.constant(0.0).expand_to(p.shape()))
+                        .map(|p| SafeTensor(graph.constant(0.0).expand()))
                         .collect(),
                 );
             }
@@ -481,7 +482,8 @@ impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
         let v = self.state.v.as_mut().unwrap();
 
         // Get gradients
-        let gradients = params.iter().map(|p| loss.grad(p)).collect::<Vec<_>>();
+        let grads = loss.backward(graph);
+        let gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
 
         let mut new_params = Vec::with_capacity(params.len());
         let t = (self.state.iteration + 1) as f32;
@@ -490,13 +492,13 @@ impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
 
         for i in 0..params.len() {
             // m_t = beta1 * m_{t-1} + (1 - beta1) * g_t
-            let m_new = m[i] * self.config.beta1 + gradients[i] * (1.0 - self.config.beta1);
-            m[i] = m_new; // Update state reference for next step if graph is rebuilt
+            let m_new = m[i].0 * self.config.beta1 + gradients[i] * (1.0 - self.config.beta1);
+            m[i] = SafeTensor(m_new); // Update state reference for next step if graph is rebuilt
 
             // v_t = beta2 * v_{t-1} + (1 - beta2) * g_t^2
             let v_new =
-                v[i] * self.config.beta2 + gradients[i].square() * (1.0 - self.config.beta2);
-            v[i] = v_new;
+                v[i].0 * self.config.beta2 + gradients[i].square() * (1.0 - self.config.beta2);
+            v[i] = SafeTensor(v_new);
 
             // m_hat = m_t / (1 - beta1^t)
             let m_hat = m_new / bias_correction1;

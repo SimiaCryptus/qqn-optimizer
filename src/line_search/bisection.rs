@@ -1,5 +1,5 @@
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Error, Result};
 use log::debug;
 use luminal::prelude::*;
 
@@ -148,10 +148,11 @@ impl<'a, S: Shape> ProblemEvaluator for LuminalEvaluator<'a, S> {
             .zip(self.direction.iter())
             .map(|(p, d)| p + step * d)
             .collect();
-        self.params.set(self.cx, Tensor::new(new_params));
-        self.loss.retrieve(self.cx);
+        self.cx.set_tensor(self.params.id, 0, Tensor::new(new_params));
+        self.cx.keep_tensors(&[self.loss.id]);
         self.cx.execute();
-        let loss_val = self.loss.data(self.cx).unwrap()[0];
+        let loss_tensor = self.cx.get_tensor(self.loss.id, 0).unwrap();
+        let loss_val = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap()[0];
         Ok(loss_val)
     }
     fn gradient(&mut self, step: f32) -> Result<f32> {
@@ -167,7 +168,7 @@ impl<'a, S: Shape> ProblemEvaluator for LuminalEvaluator<'a, S> {
 }
 
 
-impl<S: Shape> LineSearch<S> for BisectionLineSearch {
+impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
@@ -178,13 +179,12 @@ impl<S: Shape> LineSearch<S> for BisectionLineSearch {
         direction: &[f32],
         initial_loss: f32,
         initial_gradient: &[f32],
-    ) -> Result<LineSearchResult<S>> {
+    ) -> Result<LineSearchResult> {
         let directional_derivative: f32 = initial_gradient.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
         self.log_verbose("Starting bisection line search");
         self.log_verbose(&format!(
             "Initial directional derivative: {directional_derivative:.3e}"
         ));
-
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }

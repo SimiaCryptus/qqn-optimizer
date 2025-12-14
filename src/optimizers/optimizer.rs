@@ -8,6 +8,27 @@ use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::time::Duration;
+/// A wrapper around GraphTensor that implements Send and Sync.
+/// This is necessary because GraphTensor contains a raw pointer to the Graph,
+/// which is !Send and !Sync. We assert safety because the Optimizer is typically
+/// moved to a thread before the Graph is populated or used, and once running,
+/// it stays on that thread.
+#[derive(Debug, Clone, Copy)]
+pub struct SafeTensor<S: Shape>(pub GraphTensor<S>);
+unsafe impl<S: Shape> Send for SafeTensor<S> {}
+unsafe impl<S: Shape> Sync for SafeTensor<S> {}
+impl<S: Shape> std::ops::Deref for SafeTensor<S> {
+    type Target = GraphTensor<S>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<S: Shape> From<GraphTensor<S>> for SafeTensor<S> {
+    fn from(t: GraphTensor<S>) -> Self {
+        SafeTensor(t)
+    }
+}
+
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -38,7 +59,7 @@ pub struct OptimizationResult {
 ///
 /// This trait provides a unified interface for different optimization methods,
 /// enabling easy benchmarking and comparison between algorithms.
-pub trait Optimizer<S: Shape>: Send + Sync + Debug + 'static {
+pub trait Optimizer<S: Shape>: Debug + Send + Sync + 'static {
     /// Clone the optimizer (required for trait object safety)
     fn clone_box(&self) -> Box<dyn Optimizer<S>>;
     /// Get optimizer configuration as a string for serialization
@@ -58,7 +79,7 @@ pub trait Optimizer<S: Shape>: Send + Sync + Debug + 'static {
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>>;
 

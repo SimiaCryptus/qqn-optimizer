@@ -166,6 +166,7 @@ impl StrongWolfeConfig {
 #[derive(Debug, Clone)]
 pub struct StrongWolfeLineSearch<S: Shape> {
     config: StrongWolfeConfig,
+    _marker: std::marker::PhantomData<S>,
 }
 
 impl<S: Shape> StrongWolfeLineSearch<S> {
@@ -177,7 +178,10 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
     pub fn new(config: StrongWolfeConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            _marker: std::marker::PhantomData,
+        }
     }
     /// Create with default configuration
     pub fn default_search() -> Self {
@@ -283,7 +287,7 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
     ///
     /// Uses safeguarded interpolation to ensure robust convergence and avoid
     /// getting stuck in very small intervals.
-    fn zoom(
+    fn zoom<F>(
         &self,
         alpha_lo: f32,
         alpha_hi: f32,
@@ -349,7 +353,7 @@ impl<S: Shape> StrongWolfeLineSearch<S> {
     }
 }
 
-impl<S: Shape> LineSearch<S> for StrongWolfeLineSearch<S> {
+impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
     fn search(
         &mut self,
         cx: &mut Graph,
@@ -382,12 +386,13 @@ impl<S: Shape> LineSearch<S> for StrongWolfeLineSearch<S> {
                 .zip(direction.iter())
                 .map(|(p, d)| p + alpha * d)
                 .collect();
-            params.set(new_params);
-            loss.retrieve();
-            gradient.retrieve();
+            cx.set_tensor(params.id, 0, Tensor::new(new_params));
+            cx.keep_tensors(&[loss.id, gradient.id]);
             cx.execute();
-            let loss_val = loss.data().unwrap()[0];
-            let grad_val = gradient.data().unwrap();
+            let loss_tensor = cx.get_tensor(loss.id, 0).unwrap();
+            let grad_tensor = cx.get_tensor(gradient.id, 0).unwrap();
+            let loss_val = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap()[0];
+            let grad_val = grad_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap();
             let dir_deriv = grad_val.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
             Ok((loss_val, dir_deriv))
         };

@@ -43,7 +43,7 @@ use crate::optimizers::optimizer::Optimizer;
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use crate::LineSearchConfig;
+use crate::{LineSearchConfig, LineSearchMethod};
 
 /// Configuration parameters for the L-BFGS optimizer.
 ///
@@ -342,6 +342,9 @@ pub struct LBFGSState<S: Shape> {
 
     /// Numerical stability constant for avoiding division by zero and other issues.
     epsilon: f32,
+    /// Maximum history size for L-BFGS updates.
+    history_size: usize,
+
 
     /// Best function value encountered during optimization.
     ///
@@ -393,6 +396,7 @@ impl<S: Shape> LBFGSState<S> {
             iteration: 0,
             gamma: None,
             epsilon,
+            history_size,
             best_function_value: None,
             no_improvement_count: 0,
             prev_params: None,
@@ -571,7 +575,7 @@ impl<S: Shape> LBFGSState<S> {
             let rho_k = s_dot_y.recip();
 
             // Add to history (maintain limited size)
-            if self.s_history.len() >= self.config.history_size {
+            if self.s_history.len() >= self.history_size {
                 self.s_history.pop_front();
                 self.y_history.pop_front();
                 self.rho_history.pop_front();
@@ -653,13 +657,9 @@ impl<S: Shape> Optimizer<S> for LBFGSOptimizer<S> {
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // Register backward pass to compute gradients
-        graph.add_backward(loss);
 
-        // Retrieve gradients for parameters
-        let gradients: Vec<GraphTensor<S>> = params
-            .iter()
-            .map(|p| graph.get_gradient(*p).expect("Gradient not found"))
-            .collect();
+        let grads = loss.backward(graph);
+        let gradients: Vec<GraphTensor<S>> = params.iter().map(|p| *grads.get(p).unwrap()).collect();
 
         // Update history with previous step's info (if available)
         // Note: This assumes params and gradients are valid for history update

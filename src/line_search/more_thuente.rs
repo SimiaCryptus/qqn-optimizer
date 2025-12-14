@@ -154,6 +154,7 @@ impl MoreThuenteConfig {
 #[derive(Debug, Clone)]
 pub struct MoreThuenteLineSearch<S: Shape> {
     config: MoreThuenteConfig,
+    _marker: std::marker::PhantomData<S>,
 }
 
 impl<S: Shape> MoreThuenteLineSearch<S> {
@@ -165,7 +166,10 @@ impl<S: Shape> MoreThuenteLineSearch<S> {
         self.config.initial_step = step.clamp(self.config.min_step, self.config.max_step);
     }
     pub fn new(config: MoreThuenteConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            _marker: std::marker::PhantomData,
+        }
     }
     /// Create with default configuration
     pub fn default_search() -> Self {
@@ -441,7 +445,7 @@ impl<S: Shape> MoreThuenteLineSearch<S> {
     }
 }
 
-impl<S: Shape> LineSearch<S> for MoreThuenteLineSearch<S> {
+impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
     fn search(
         &mut self,
         cx: &mut Graph,
@@ -474,17 +478,12 @@ impl<S: Shape> LineSearch<S> for MoreThuenteLineSearch<S> {
                 .zip(direction.iter())
                 .map(|(p, d)| p + step * d)
                 .collect();
-            params.set_on(cx, new_params_data);
-            loss.retrieve_on(cx);
-            params.grad().retrieve_on(cx);
+            params.set(new_params_data);
+            loss.retrieve();
+            gradient.retrieve();
             cx.execute();
-            let loss_val = loss
-                .data(cx)
-                .ok_or_else(|| anyhow!("Failed to retrieve loss"))?[0];
-            let grad_data = params
-                .grad()
-                .data(cx)
-                .ok_or_else(|| anyhow!("Failed to retrieve gradients"))?;
+            let loss_val = loss.data()[0];
+            let grad_data = gradient.data();
             let dir_deriv: f32 = grad_data
                 .iter()
                 .zip(direction.iter())
@@ -511,7 +510,7 @@ impl<S: Shape> LineSearch<S> for MoreThuenteLineSearch<S> {
         }
 
         let mut stp = self.config.initial_step;
-        let mut stx = 0.0_f64;
+        let mut stx = 0.0;
         let mut fx = f0;
         let mut gx = g0;
         let mut sty = 0.0;

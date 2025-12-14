@@ -62,13 +62,13 @@ impl Default for LineSearchConfig {
     }
 }
 /// Create a line search algorithm from configuration
-pub fn create_line_search<S: Shape>(_config: LineSearchConfig) -> Box<dyn LineSearch<S>> {
+pub fn create_line_search<S: ConstShape>(_config: LineSearchConfig) -> Box<dyn LineSearch<S>> {
     // Implementations will be restored in subsequent tasks
     unimplemented!("Line search implementations are being migrated to Luminal");
 }
 
 /// Trait for line search algorithms
-pub trait LineSearch<S: Shape>: Send + Sync + Debug {
+pub trait LineSearch<S: ConstShape>: Send + Sync + Debug {
     /// Perform 1D line search optimization
     fn search(
         &mut self,

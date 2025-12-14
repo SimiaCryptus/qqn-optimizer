@@ -152,6 +152,7 @@ impl BacktrackingConfig {
 #[derive(Debug, Clone)]
 pub struct BacktrackingLineSearch<S: Shape> {
     config: BacktrackingConfig,
+    _marker: std::marker::PhantomData<S>,
 }
 
 impl<S: Shape> BacktrackingLineSearch<S> {
@@ -166,7 +167,10 @@ impl<S: Shape> BacktrackingLineSearch<S> {
     }
     /// Create a new backtracking line search with the given configuration.
     pub fn new(config: BacktrackingConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            _marker: std::marker::PhantomData,
+        }
     }
 
     /// Create a backtracking line search with default configuration.
@@ -230,7 +234,7 @@ impl<S: Shape> BacktrackingLineSearch<S> {
     }
 }
 
-impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
+impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
     fn search(
         &mut self,
         cx: &mut Graph,
@@ -257,7 +261,7 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
         let mut best_f = initial_loss;
 
         // Ensure loss is retrieved
-        loss.retrieve();
+        cx.keep_tensors(&[loss.id]);
 
         for _ in 0..self.config.max_iterations {
             let candidate_params: Vec<f32> = current_params
@@ -267,14 +271,14 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
                 .collect();
 
             // Update parameters in graph
-            cx.set_tensor(params.id, Tensor::new(candidate_params));
+            cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
 
             // Execute graph
             cx.execute();
 
             // Get loss value
             let loss_tensor = cx
-                .get_tensor(loss.id)
+                .get_tensor(loss.id, 0)
                 .ok_or(anyhow!("Failed to get loss tensor"))?;
             let f_alpha = loss_tensor.data()[0];
 
@@ -285,16 +289,16 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
                 .collect();
 
             // Update parameters in graph
-            cx.set_tensor(params.id, Tensor::new(candidate_params));
+            cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
 
             // Execute graph
             cx.execute();
 
             // Get loss value
             let loss_tensor = cx
-                .get_tensor(loss.id)
+                .get_tensor(loss.id, 0)
                 .ok_or(anyhow!("Failed to get loss tensor"))?;
-            let f_alpha = loss_tensor.data()[0];
+            let f_alpha = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
 
             // Track best point
             if f_alpha < best_f {
@@ -323,10 +327,10 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
                     .map(|(x, d)| x + self.config.min_step * d)
                     .collect();
 
-                cx.set_tensor(params.id, Tensor::new(min_step_params));
+                cx.set_tensor(params.id, 0, Tensor::new(min_step_params));
                 cx.execute();
                 let loss_tensor = cx
-                    .get_tensor(loss.id)
+                    .get_tensor(loss.id, 0)
                     .ok_or(anyhow!("Failed to get loss tensor"))?;
                 let f_min = loss_tensor.data()[0];
 
@@ -337,10 +341,10 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
                         .map(|(x, d)| x + self.config.min_step * d)
                         .collect();
 
-                    cx.set_tensor(params.id, Tensor::new(min_step_params));
+                    cx.set_tensor(params.id, 0, Tensor::new(min_step_params));
                     cx.execute();
                     let loss_tensor = cx
-                        .get_tensor(loss.id)
+                        .get_tensor(loss.id, 0)
                         .ok_or(anyhow!("Failed to get loss tensor"))?;
                     let f_min = loss_tensor.data()[0];
 
@@ -373,10 +377,10 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
                     .map(|(x, d)| x + eps_step * d)
                     .collect();
 
-                cx.set_tensor(params.id, Tensor::new(eps_params));
+                cx.set_tensor(params.id, 0, Tensor::new(eps_params));
                 cx.execute();
                 let loss_tensor = cx
-                    .get_tensor(loss.id)
+                    .get_tensor(loss.id, 0)
                     .ok_or(anyhow!("Failed to get loss tensor"))?;
                 let f_eps = loss_tensor.data()[0];
 
@@ -387,10 +391,10 @@ impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
                         .map(|(x, d)| x + eps_step * d)
                         .collect();
 
-                    cx.set_tensor(params.id, Tensor::new(eps_params));
+                    cx.set_tensor(params.id, 0, Tensor::new(eps_params));
                     cx.execute();
                     let loss_tensor = cx
-                        .get_tensor(loss.id)
+                        .get_tensor(loss.id, 0)
                         .ok_or(anyhow!("Failed to get loss tensor"))?;
                     let f_eps = loss_tensor.data()[0];
 

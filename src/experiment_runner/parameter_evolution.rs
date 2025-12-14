@@ -84,59 +84,59 @@ impl OptimizerGenome {
         }
     }
 
-    fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert("c1".to_string(), rng.random_range(1e-6..1e-2));
         params.insert("c2".to_string(), rng.random_range(0.1..0.99));
         params.insert("lbfgs_history".to_string(), rng.random_range(3.0..20.0));
         params.insert(
             "epsilon".to_string(),
-            10f64.powf(rng.random_range(-10.0..-4.0)),
+            10f32.powf(rng.random_range(-10.0..-4.0)),
         );
         params.insert("initial_step".to_string(), rng.random_range(0.1..2.0));
         params.insert("max_iterations".to_string(), rng.random_range(10.0..50.0));
         params.insert(
             "line_search_method".to_string(),
-            rng.random_range(0.0..6.0).as_f64().floor(),
+            rng.random_range(0.0..6.0).floor(),
         );
         params
     }
 
-    fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert("history_size".to_string(), rng.random_range(3.0..30.0));
         params.insert("c1".to_string(), rng.random_range(1e-6..1e-2));
         params.insert("c2".to_string(), rng.random_range(0.1..0.99));
         params.insert(
             "epsilon".to_string(),
-            10f64.powf(rng.random_range(-12.0..-6.0)),
+            10f32.powf(rng.random_range(-12.0..-6.0)),
         );
         params.insert("max_step_size".to_string(), rng.random_range(0.5..10.0));
         params.insert("initial_step".to_string(), rng.random_range(0.01..2.0));
         params
     }
 
-    fn random_adam_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_adam_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
-            10f64.powf(rng.random_range(-4.0..0.0)),
+            10f32.powf(rng.random_range(-4.0..0.0)),
         );
         params.insert("beta1".to_string(), rng.random_range(0.8..0.99));
         params.insert("beta2".to_string(), rng.random_range(0.9..0.9999));
         params.insert(
             "epsilon".to_string(),
-            10f64.powf(rng.random_range(-10.0..-6.0)),
+            10f32.powf(rng.random_range(-10.0..-6.0)),
         );
         params.insert("weight_decay".to_string(), rng.random_range(0.0..1e-3));
         params
     }
 
-    fn random_gd_params(rng: &mut StdRng) -> HashMap<String, f64> {
+    fn random_gd_params(rng: &mut StdRng) -> HashMap<String, f32> {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
-            10f64.powf(rng.random_range(-3.0..0.0)),
+            10f32.powf(rng.random_range(-3.0..0.0)),
         );
         params.insert("momentum".to_string(), rng.random_range(0.0..0.99));
         params.insert("weight_decay".to_string(), rng.random_range(0.0..1e-3));

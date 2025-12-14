@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use log::debug;
 use luminal::graph::Graph;
 use luminal::graph_tensor::GraphTensor;
-use luminal::prelude::Shape;
+use luminal::prelude::{ConstShape, Shape};
 
 /// A sophisticated line search algorithm that uses cubic and quadratic interpolation
 /// to efficiently find step sizes satisfying the Wolfe conditions.
@@ -304,7 +304,7 @@ impl CubicQuadraticLineSearch {
     }
 }
 
-impl<S: Shape> LineSearch<S> for CubicQuadraticLineSearch {
+impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
 
     fn search(
         &mut self,
@@ -317,17 +317,34 @@ impl<S: Shape> LineSearch<S> for CubicQuadraticLineSearch {
         initial_loss: f32,
         initial_gradient: &[f32],
     ) -> anyhow::Result<LineSearchResult>{
-        let f0 = (problem.objective)(0.0)?;
-        let g0 = problem.initial_directional_derivative;
+        let f0 = initial_loss;
+        let g0: f32 = initial_gradient.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+
         if g0 >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction: g0 = {:.6e} >= 0. This indicates the search direction is pointing uphill.", g0));
         }
+        // Helper to evaluate function and gradient
+        let evaluate = |alpha: f32, cx: &mut Graph| -> anyhow::Result<(f32, f32)> {
+            let new_params: Vec<f32> = current_params.iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + alpha * d)
+                .collect();
+            params.set(new_params);
+            loss.retrieve();
+            gradient.retrieve();
+            cx.execute();
+            let loss_val = loss.data()[0];
+            let grad_val = gradient.data();
+            let dir_deriv = grad_val.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+            Ok((loss_val, dir_deriv))
+        };
+
         // Verify we can make progress
         let test_step = self.config.min_step;
-        let f_test = (problem.objective)(test_step)?;
+        let (f_test, _) = evaluate(test_step, cx)?;
         if f_test >= f0 {
             let eps_step = f32::EPSILON.sqrt();
-            let f_eps = (problem.objective)(eps_step)?;
+            let (f_eps, _) = evaluate(eps_step, cx)?;
             if f_eps < f0 {
                 return Ok(LineSearchResult {
                     step_size: eps_step,
@@ -337,7 +354,7 @@ impl<S: Shape> LineSearch<S> for CubicQuadraticLineSearch {
             }
             // Try a slightly larger step
             let small_step = 1e-8;
-            let f_small = (problem.objective)(small_step)?;
+            let (f_small, _) = evaluate(small_step, cx)?;
             if f_small < f0 {
                 return Ok(LineSearchResult {
                     step_size: small_step,
@@ -365,8 +382,7 @@ impl<S: Shape> LineSearch<S> for CubicQuadraticLineSearch {
         ));
         for iter in 0..self.config.max_iterations {
             // Evaluate at current step
-            let f_alpha = (problem.objective)(alpha)?;
-            let g_alpha = (problem.gradient)(alpha)?;
+            let (f_alpha, g_alpha) = evaluate(alpha, cx)?;
             // Track best point
             if f_alpha < best_f {
                 best_f = f_alpha;
@@ -447,7 +463,7 @@ impl<S: Shape> LineSearch<S> for CubicQuadraticLineSearch {
         } else {
             // Try a very small step as last resort
             let small_step = self.config.min_step * 10.0;
-            let f_small = (problem.objective)(small_step)?;
+            let (f_small, _) = evaluate(small_step, cx)?;
             if f_small < f0 {
                 Ok(LineSearchResult {
                     step_size: small_step,

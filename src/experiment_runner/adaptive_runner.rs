@@ -221,7 +221,7 @@ impl AdaptiveExperimentRunner {
                 );
 
                 let family_best = self
-                    .evolve_optimizer_for_problem_family(
+                    .evolve_optimizer_for_problem_family::<S>(
                         family_problems.clone(),
                         optimizer_type.clone(),
                         &evolution_dir,
@@ -289,7 +289,7 @@ impl AdaptiveExperimentRunner {
                     "Created evolved optimizer '{}' with fitness: {:?}",
                     name, genome.fitness
                 );
-                optimizers.push((name, genome.to_optimizer()));
+                optimizers.push((name, genome.to_optimizer::<S>()));
             }
 
             family_best_optimizers.insert(family_name.clone(), optimizers);
@@ -336,7 +336,7 @@ impl AdaptiveExperimentRunner {
         }
     }
 
-    async fn evolve_optimizer_for_problem_family(
+    async fn evolve_optimizer_for_problem_family<S: Shape>(
         &self,
         family_problems: Vec<ProblemSpec>,
         optimizer_type: super::parameter_evolution::OptimizerType,
@@ -394,7 +394,7 @@ impl AdaptiveExperimentRunner {
 
             // Evaluate fitness of population
             debug!("Starting fitness evaluation for generation {}", generation);
-            self.evaluate_population_on_family(
+            self.evaluate_population_on_family::<S>(
                 &mut population,
                 &family_problems,
                 &mut tracker,
@@ -492,7 +492,7 @@ impl AdaptiveExperimentRunner {
                 if i < sorted_population.len() {
                     let genome = &mut sorted_population[i];
                     match Self::evaluate_genome_with_metrics(
-                        genome.to_optimizer(),
+                        genome.to_optimizer::<S>(),
                         (&family_problems[0]).clone().clone(),
                         self.config.clone(),
                         1, // Just one run for emergency evaluation
@@ -573,7 +573,7 @@ impl AdaptiveExperimentRunner {
                     OptimizerGenome::new_random(optimizer_type.clone(), &mut rng);
                 // Try to evaluate the fallback genome
                 match Self::evaluate_genome(
-                    fallback_genome.to_optimizer(),
+                    fallback_genome.to_optimizer::<S>(),
                     (&family_problems[0]).clone(),
                     self.config.clone(),
                     1,
@@ -659,7 +659,7 @@ impl AdaptiveExperimentRunner {
         Ok(best_genomes)
     }
 
-    async fn evaluate_population_on_family(
+    async fn evaluate_population_on_family<S: Shape>(
         &self,
         population: &mut [OptimizerGenome],
         family_problems: &[ProblemSpec],
@@ -705,7 +705,7 @@ impl AdaptiveExperimentRunner {
             });
 
             let semaphore = semaphore.clone();
-            let optimizer = genome.to_optimizer();
+            let optimizer = genome.to_optimizer::<S>();
             let problems = family_problems.to_vec();
             let config = self.config.clone();
             let evaluation_runs = self.evaluation_runs;
@@ -854,7 +854,7 @@ impl AdaptiveExperimentRunner {
         Ok(())
     }
 
-    async fn evaluate_population(
+    async fn evaluate_population<S: Shape>(
         &self,
         population: &mut [OptimizerGenome],
         problem: &ProblemSpec,
@@ -895,7 +895,7 @@ impl AdaptiveExperimentRunner {
             });
 
             let semaphore = semaphore.clone();
-            let optimizer = genome.to_optimizer();
+            let optimizer = genome.to_optimizer::<S>();
             let problem = problem.clone();
             let config = self.config.clone();
             let evaluation_runs = self.evaluation_runs;
@@ -1927,7 +1927,7 @@ impl FamilyRepresentation {
 }
 
 /// Convenience function to run adaptive evolution experiments
-pub async fn run_adaptive_benchmark(
+pub async fn run_adaptive_benchmark<S: Shape>(
     report_path_prefix: &str,
     max_evals: usize,
     num_runs: usize,
@@ -1984,7 +1984,7 @@ pub async fn run_adaptive_benchmark(
     // First, evolve optimizer parameters for each problem
     info!("Starting parameter evolution phase");
     let evolved_optimizers = runner
-        .run_adaptive_evolution(problems.clone(), optimizer_types)
+        .run_adaptive_evolution::<S>(problems.clone(), optimizer_types)
         .await?;
     info!("Parameter evolution phase completed");
 

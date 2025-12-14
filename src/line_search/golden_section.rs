@@ -173,7 +173,7 @@ impl GoldenSectionConfig {
 pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
 }
-impl<S: Shape> LineSearch<S> for GoldenSectionLineSearch {
+impl<S: ConstShape> LineSearch<S> for GoldenSectionLineSearch {
 
     fn search(
         &mut self,
@@ -196,14 +196,12 @@ impl<S: Shape> LineSearch<S> for GoldenSectionLineSearch {
                 .map(|(p, d)| p + step * d)
                 .collect();
 
-            cx.set_tensor(params.id, Tensor::new(new_params));
+            params.set(new_params);
             loss.retrieve();
             cx.execute();
 
-            let res = cx
-                .get_tensor(loss.id)
-                .ok_or(anyhow!("Loss tensor not found"))?;
-            Ok(res.data()[0])
+            let data = loss.data();
+            Ok(data[0])
         };
 
         self.solve_1d(&mut objective, initial_loss, initial_gradient, direction)

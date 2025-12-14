@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use crate::{LineSearchConfig, LineSearchMethod};
 use crate::LineSearchMethod::Bisection;
+use crate::optimizers::optimizer::SafeTensor;
 
 /// Configuration for the QQN optimizer
 #[derive(Debug, Clone)]
@@ -111,11 +112,11 @@ pub struct QQNState<S: Shape> {
     /// L-BFGS history: (s, y) pairs
     /// s = x_{k+1} - x_k
     /// y = g_{k+1} - g_k
-    pub history: VecDeque<(Vec<GraphTensor<S>>, Vec<GraphTensor<S>>)>,
+    pub history: VecDeque<(Vec<SafeTensor<S>>, Vec<SafeTensor<S>>)>,
     /// Previous parameters (x_k)
-    pub prev_params: Option<Vec<GraphTensor<S>>>,
+    pub prev_params: Option<Vec<SafeTensor<S>>>,
     /// Previous gradients (g_k)
-    pub prev_grads: Option<Vec<GraphTensor<S>>>,
+    pub prev_grads: Option<Vec<SafeTensor<S>>>,
     /// Previous ideal step size for line search initialization
     pub previous_step_size: Option<f32>,
 }
@@ -156,10 +157,10 @@ impl<S: Shape> QQNOptimizer<S> {
     }
 
     /// Helper to compute dot product of two lists of tensors
-    fn dot(&self, a: &[GraphTensor<S>], b: &[GraphTensor<S>]) -> GraphTensor<S> {
+    fn dot(&self, a: &[SafeTensor<S>], b: &[SafeTensor<S>]) -> GraphTensor<S> {
         let mut sum = None;
         for (t1, t2) in a.iter().zip(b.iter()) {
-            let dot = (*t1 * *t2).sum_reduce();
+            let dot = (t1.0 * t2.0).sum_reduce();
             sum = match sum {
                 Some(s) => Some(s + dot),
                 None => Some(dot),
@@ -181,26 +182,22 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // 1. Compute Gradients
-        // Assuming we can get gradients relative to loss.
-        let mut gradients = Vec::new();
-        for param in params {
-            // Assuming loss.grad(param) or similar exists in luminal to get gradient tensor
-            gradients.push(loss.grad(param));
-        }
+        let grads = loss.backward(graph);
+        let gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
 
         // 2. Update L-BFGS History (s, y)
         // s = x_{k+1} - x_k
         // y = g_{k+1} - g_k
         if let (Some(prev_p), Some(prev_g)) = (&self.state.prev_params, &self.state.prev_grads) {
-            let s: Vec<GraphTensor<S>> = params
+            let s: Vec<SafeTensor<S>> = params
                 .iter()
                 .zip(prev_p.iter())
-                .map(|(c, p)| *c - *p)
+                .map(|(c, p)| SafeTensor(*c - p.0))
                 .collect();
-            let y: Vec<GraphTensor<S>> = gradients
+            let y: Vec<SafeTensor<S>> = gradients
                 .iter()
                 .zip(prev_g.iter())
-                .map(|(c, p)| *c - *p)
+                .map(|(c, p)| SafeTensor(*c - p.0))
                 .collect();
 
             self.state.history.push_back((s, y));
@@ -211,7 +208,7 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
 
         // 3. Compute Search Direction (L-BFGS Two-Loop Recursion)
         // q = g
-        let mut q = gradients.clone();
+        let mut q: Vec<SafeTensor<S>> = gradients.iter().map(|g| SafeTensor(*g)).collect();
         let mut alphas = Vec::new();
 
         // First loop (backward)
@@ -222,7 +219,7 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
 
             // q = q - alpha * y
             for (q_i, y_i) in q.iter_mut().zip(y.iter()) {
-                *q_i = *q_i - (*y_i * alpha);
+                *q_i = SafeTensor(q_i.0 - (y_i.0 * alpha));
             }
         }
 
@@ -233,7 +230,7 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
             let den = self.dot(y_last, y_last);
             let gamma = num / den;
             for q_i in q.iter_mut() {
-                *q_i = *q_i * gamma;
+                *q_i = SafeTensor(q_i.0 * gamma);
             }
         }
 
@@ -245,13 +242,13 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
             // q = q + s * (alpha - beta)
             let coeff = alpha - beta;
             for (q_i, s_i) in q.iter_mut().zip(s.iter()) {
-                *q_i = *q_i + (*s_i * coeff);
+                *q_i = SafeTensor(q_i.0 + (s_i.0 * coeff));
             }
         }
 
         // q is now the direction d = -H * g (approx).
         // Actually L-BFGS computes H * g. So direction is -q.
-        let direction: Vec<GraphTensor<S>> = q.iter().map(|t| -*t).collect();
+        let direction: Vec<GraphTensor<S>> = q.iter().map(|t| -t.0).collect();
 
         // 4. Update Parameters
         // x_new = x + step_size * direction
@@ -265,8 +262,8 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
             .collect();
 
         // 5. Update State for next iteration
-        self.state.prev_params = Some(params.to_vec());
-        self.state.prev_grads = Some(gradients);
+        self.state.prev_params = Some(params.iter().map(|p| SafeTensor(*p)).collect());
+        self.state.prev_grads = Some(gradients.iter().map(|g| SafeTensor(*g)).collect());
         self.state.iteration += 1;
 
         new_params

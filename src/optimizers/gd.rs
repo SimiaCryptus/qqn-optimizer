@@ -62,6 +62,7 @@ use crate::optimizers::optimizer::Optimizer;
 use log::{debug, info};
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
+use crate::optimizers::optimizer::SafeTensor;
 
 /// Configuration parameters for the GD optimizer.
 ///
@@ -325,7 +326,7 @@ pub struct GDState<S: Shape> {
     /// Only allocated when momentum > 0. The buffer has the same
     /// structure as the parameter tensors.
     #[serde(skip_serializing, skip_deserializing)]
-    pub momentum_buffer: Vec<GraphTensor<S>>,
+    pub momentum_buffer: Vec<SafeTensor<S>>,
 }
 
 impl<S: Shape> Default for GDState<S> {
@@ -459,11 +460,12 @@ impl<S: Shape> Optimizer<S> for GDOptimizer<S> {
         &mut self,
 
         graph: &mut Graph,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // 1. Get gradients
-        let mut gradients = graph.add_gradients(loss, params);
+        let grads = loss.backward();
+        let mut gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
 
         // 2. Apply weight decay
         if self.config.weight_decay > 0.0 {
@@ -531,13 +533,13 @@ impl<S: Shape> Optimizer<S> for GDOptimizer<S> {
                 // Create a zero tensor with same shape as param
                 // In luminal, we might need to know shape.
                 // Assuming we can create a zero tensor like param * 0.0
-                self.state.momentum_buffer.push(*param * 0.0);
+                self.state.momentum_buffer.push(SafeTensor(*param * 0.0));
             }
         }
 
         for (i, (param, grad)) in params.iter().zip(gradients.iter()).enumerate() {
             let update = if self.config.momentum > 0.0 {
-                let v_prev = self.state.momentum_buffer[i];
+                let v_prev = *self.state.momentum_buffer[i];
                 let momentum = graph.constant(self.config.momentum);
 
                 // v_t = momentum * v_{t-1} + grad
@@ -548,7 +550,7 @@ impl<S: Shape> Optimizer<S> for GDOptimizer<S> {
                 // This usually requires a variable assignment or state update mechanism.
                 // Assuming luminal handles this if we reuse the tensor or if we are building the graph.
                 // If we can't assign, we just use v_curr.
-                self.state.momentum_buffer[i] = v_curr;
+                self.state.momentum_buffer[i] = SafeTensor(v_curr);
 
                 if self.config.nesterov {
                     // update = momentum * v_t + grad
