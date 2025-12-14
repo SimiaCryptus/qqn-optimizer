@@ -136,11 +136,6 @@ impl LineSearch for GoldenSectionLineSearch {
         initial_loss: f32,
         initial_gradient: &[f32],
     ) -> Result<LineSearchResult> {
-        let mut num_f_evals = 0usize;
-
-        // Inline the evaluation logic to avoid borrow checker issues with closures
-        let mut num_f_evals = 0usize;
-
         // Create objective function that evaluates loss at a given step
         let mut num_f_evals = 0usize;
 
