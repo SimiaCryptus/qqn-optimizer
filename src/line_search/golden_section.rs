@@ -90,56 +90,6 @@ impl GoldenSectionConfig {
         self.verbose = true;
         self
     }
-    /// Generic solver for 1D problems, useful for testing or other backends
-    pub fn solve_1d<F>(
-        &self,
-        objective: &mut F,
-        initial_loss: f32,
-        initial_gradient: &[f32],
-        direction: &[f32],
-    ) -> Result<LineSearchResult>
-    where
-        F: FnMut(f32) -> Result<f32>,
-    {
-        let directional_derivative: f32 = initial_gradient
-            .iter()
-            .zip(direction.iter())
-            .map(|(g, d)| g * d)
-            .sum();
-        if directional_derivative >= 0.0 {
-            return Err(anyhow!("Direction is not a descent direction"));
-        }
-        // First verify we can make progress
-        let f0 = initial_loss;
-        let test_step = self.min_step;
-        let f_test = objective(test_step)?;
-        if f_test >= f0 {
-            // Try machine epsilon
-            let eps_step = f32::EPSILON.sqrt();
-            let f_eps = objective(eps_step)?;
-            if f_eps < f0 {
-                return Ok(LineSearchResult {
-                    step_size: eps_step,
-                    success: true,
-                    termination_reason: TerminationReason::StepSizeTooSmall,
-                });
-            }
-            return Err(anyhow!(
-                "Function appears to be ill-conditioned: no improvement possible within machine precision"
-            ));
-        }
-        let step_size = self.find_minimum(objective)?;
-        let success = step_size >= self.min_step && step_size <= self.max_step;
-        Ok(LineSearchResult {
-            step_size,
-            success,
-            termination_reason: if success {
-                TerminationReason::WolfeConditionsSatisfied
-            } else {
-                TerminationReason::StepSizeTooSmall
-            },
-        })
-    }
 }
 
 /// Golden Section line search implementation.
@@ -179,7 +129,7 @@ impl<S: ConstShape> LineSearch<S> for GoldenSectionLineSearch {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
@@ -250,6 +200,57 @@ impl GoldenSectionLineSearch {
     }
     /// Golden ratio constant
     const RESPHI: f32 = 0.618033988749895; // 1/phi = phi - 1
+    /// Generic solver for 1D problems, useful for testing or other backends
+    pub fn solve_1d<F>(
+        &self,
+        objective: &mut F,
+        initial_loss: f32,
+        initial_gradient: &[f32],
+        direction: &[f32],
+    ) -> Result<LineSearchResult>
+    where
+        F: FnMut(f32) -> Result<f32>,
+    {
+        let directional_derivative: f32 = initial_gradient
+            .iter()
+            .zip(direction.iter())
+            .map(|(g, d)| g * d)
+            .sum();
+        if directional_derivative >= 0.0 {
+            return Err(anyhow!("Direction is not a descent direction"));
+        }
+        // First verify we can make progress
+        let f0 = initial_loss;
+        let test_step = self.config.min_step;
+        let f_test = objective(test_step)?;
+        if f_test >= f0 {
+            // Try machine epsilon
+            let eps_step = f32::EPSILON.sqrt();
+            let f_eps = objective(eps_step)?;
+            if f_eps < f0 {
+                return Ok(LineSearchResult {
+                    step_size: eps_step,
+                    success: true,
+                    termination_reason: TerminationReason::StepSizeTooSmall,
+                });
+            }
+            return Err(anyhow!(
+                "Function appears to be ill-conditioned: no improvement possible within machine precision"
+            ));
+        }
+        let step_size = self.find_minimum(objective)?;
+        let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
+        Ok(LineSearchResult {
+            step_size,
+            success,
+            termination_reason: if success {
+                TerminationReason::WolfeConditionsSatisfied
+            } else {
+                TerminationReason::StepSizeTooSmall
+            },
+        })
+    }
+
 
     /// Find minimum using golden section search.
     ///

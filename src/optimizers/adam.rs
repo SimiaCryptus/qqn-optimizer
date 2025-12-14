@@ -451,7 +451,7 @@ impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
         &mut self,
 
         graph: &mut Graph,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // Initialize moment estimates if needed
@@ -482,7 +482,7 @@ impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
         let v = self.state.v.as_mut().unwrap();
 
         // Get gradients
-        let grads = loss.backward(graph);
+        let grads = graph.add_backward(loss);
         let gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
 
         let mut new_params = Vec::with_capacity(params.len());

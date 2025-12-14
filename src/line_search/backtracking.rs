@@ -239,7 +239,7 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
@@ -261,7 +261,7 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
         let mut best_f = initial_loss;
 
         // Ensure loss is retrieved
-        cx.keep_tensors(&[loss.id]);
+        cx.keep_tensors(&mut [loss.id] as &mut [_]);
 
         for _ in 0..self.config.max_iterations {
             let candidate_params: Vec<f32> = current_params
@@ -280,7 +280,7 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
             let loss_tensor = cx
                 .get_tensor(loss.id, 0)
                 .ok_or(anyhow!("Failed to get loss tensor"))?;
-            let f_alpha = loss_tensor.data()[0];
+            let f_alpha = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
 
             let candidate_params: Vec<f32> = current_params
                 .iter()
@@ -319,6 +319,17 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
             // Backtrack
             alpha *= self.config.rho;
 
+
+
+
+
+
+
+
+
+
+
+
             if alpha < self.config.min_step {
                 // Try minimum step
                 let min_step_params: Vec<f32> = current_params
@@ -332,84 +343,52 @@ impl<S: ConstShape> LineSearch<S> for BacktrackingLineSearch<S> {
                 let loss_tensor = cx
                     .get_tensor(loss.id, 0)
                     .ok_or(anyhow!("Failed to get loss tensor"))?;
-                let f_min = loss_tensor.data()[0];
+                let f_min = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
 
                 if f_min < initial_loss {
-                    let min_step_params: Vec<f32> = current_params
-                        .iter()
-                        .zip(direction.iter())
-                        .map(|(x, d)| x + self.config.min_step * d)
-                        .collect();
-
-                    cx.set_tensor(params.id, 0, Tensor::new(min_step_params));
-                    cx.execute();
-                    let loss_tensor = cx
-                        .get_tensor(loss.id, 0)
-                        .ok_or(anyhow!("Failed to get loss tensor"))?;
-                    let f_min = loss_tensor.data()[0];
-
-                    if f_min < initial_loss {
-                        return Ok(LineSearchResult {
-                            step_size: self.config.min_step,
-                            success: true,
-                            termination_reason: TerminationReason::StepSizeTooSmall,
-                        });
-                    }
-                    break;
-                }
-            }
-
-            // Return best point found if any improvement
-            if best_alpha > 0.0 && best_f < initial_loss {
-                if best_alpha > 0.0 && best_f < initial_loss {
                     return Ok(LineSearchResult {
-                        step_size: best_alpha,
+                        step_size: self.config.min_step,
                         success: true,
-                        termination_reason: TerminationReason::MaxIterationsReached,
+                        termination_reason: TerminationReason::StepSizeTooSmall,
                     });
                 }
-
-                // Try machine epsilon
-                let eps_step = f32::EPSILON.sqrt();
-                let eps_params: Vec<f32> = current_params
-                    .iter()
-                    .zip(direction.iter())
-                    .map(|(x, d)| x + eps_step * d)
-                    .collect();
-
-                cx.set_tensor(params.id, 0, Tensor::new(eps_params));
-                cx.execute();
-                let loss_tensor = cx
-                    .get_tensor(loss.id, 0)
-                    .ok_or(anyhow!("Failed to get loss tensor"))?;
-                let f_eps = loss_tensor.data()[0];
-
-                if f_eps < initial_loss {
-                    let eps_params: Vec<f32> = current_params
-                        .iter()
-                        .zip(direction.iter())
-                        .map(|(x, d)| x + eps_step * d)
-                        .collect();
-
-                    cx.set_tensor(params.id, 0, Tensor::new(eps_params));
-                    cx.execute();
-                    let loss_tensor = cx
-                        .get_tensor(loss.id, 0)
-                        .ok_or(anyhow!("Failed to get loss tensor"))?;
-                    let f_eps = loss_tensor.data()[0];
-
-                    if f_eps < initial_loss {
-                        return Ok(LineSearchResult {
-                            step_size: eps_step,
-                            success: true,
-                            termination_reason: TerminationReason::StepSizeTooSmall,
-                        });
-                    }
-
-                    Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"))
-                }
+                break;
             }
         }
+
+        // Return best point found if any improvement
+        if best_alpha > 0.0 && best_f < initial_loss {
+            return Ok(LineSearchResult {
+                step_size: best_alpha,
+                success: true,
+                termination_reason: TerminationReason::MaxIterationsReached,
+            });
+        }
+
+        // Try machine epsilon
+        let eps_step = f32::EPSILON.sqrt();
+        let eps_params: Vec<f32> = current_params
+            .iter()
+            .zip(direction.iter())
+            .map(|(x, d)| x + eps_step * d)
+            .collect();
+
+        cx.set_tensor(params.id, 0, Tensor::new(eps_params));
+        cx.execute();
+        let loss_tensor = cx
+            .get_tensor(loss.id, 0)
+            .ok_or(anyhow!("Failed to get loss tensor"))?;
+        let f_eps = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+
+        if f_eps < initial_loss {
+            return Ok(LineSearchResult {
+                step_size: eps_step,
+                success: true,
+                termination_reason: TerminationReason::StepSizeTooSmall,
+            });
+        }
+
+        Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"))
     }
 
     /// Reset the line search state.

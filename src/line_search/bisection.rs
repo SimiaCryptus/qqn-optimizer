@@ -132,12 +132,13 @@ trait ProblemEvaluator {
 struct LuminalEvaluator<'a, S: Shape> {
     cx: &'a mut Graph,
     params: GraphTensor<S>,
-    loss: GraphTensor<S>,
+    loss: GraphTensor<()>,
     current_params: &'a [f32],
     direction: &'a [f32],
     initial_loss: f32,
     initial_dd: f32,
 }
+
 impl<'a, S: Shape> ProblemEvaluator for LuminalEvaluator<'a, S> {
     fn objective(&mut self, step: f32) -> Result<f32> {
         if step.abs() < 1e-10 {
@@ -149,7 +150,7 @@ impl<'a, S: Shape> ProblemEvaluator for LuminalEvaluator<'a, S> {
             .map(|(p, d)| p + step * d)
             .collect();
         self.cx.set_tensor(self.params.id, 0, Tensor::new(new_params));
-        self.cx.keep_tensors(&[self.loss.id]);
+        self.cx.keep_tensors(&mut [self.loss.id] as &mut [_]);
         self.cx.execute();
         let loss_tensor = self.cx.get_tensor(self.loss.id, 0).unwrap();
         let loss_val = loss_tensor.data.as_any().downcast_ref::<Vec<f32>>().unwrap()[0];
@@ -173,7 +174,7 @@ impl<S: ConstShape> LineSearch<S> for BisectionLineSearch {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],

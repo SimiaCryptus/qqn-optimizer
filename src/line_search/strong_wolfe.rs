@@ -358,7 +358,7 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
@@ -387,7 +387,7 @@ impl<S: ConstShape> LineSearch<S> for StrongWolfeLineSearch<S> {
                 .map(|(p, d)| p + alpha * d)
                 .collect();
             cx.set_tensor(params.id, 0, Tensor::new(new_params));
-            cx.keep_tensors(&[loss.id, gradient.id]);
+            cx.keep_tensors(&mut [loss.id, gradient.id] as &mut [_]);
             cx.execute();
             let loss_tensor = cx.get_tensor(loss.id, 0).unwrap();
             let grad_tensor = cx.get_tensor(gradient.id, 0).unwrap();

@@ -450,7 +450,7 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
@@ -510,10 +510,10 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
         }
 
         let mut stp = self.config.initial_step;
-        let mut stx = 0.0;
+        let mut stx = 0.0f32;
         let mut fx = f0;
         let mut gx = g0;
-        let mut sty = 0.0;
+        let mut sty = 0.0f32;
         let mut fy = f0;
         let mut gy = g0;
         let mut brackt = false;
@@ -573,7 +573,7 @@ impl<S: ConstShape> LineSearch<S> for MoreThuenteLineSearch<S> {
             // Check for convergence based on interval width
             if brackt {
                 let width = (sty - stx).abs();
-                if width <= self.config.xtol * stx.abs().max(1.0) {
+                if width <= self.config.xtol * stx.abs().max(1.0f32) {
                     self.log_verbose("Converged: interval width below tolerance");
                     return Ok(LineSearchResult {
                         step_size: stp,

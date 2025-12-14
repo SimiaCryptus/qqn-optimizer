@@ -464,7 +464,7 @@ impl<S: Shape> Optimizer<S> for GDOptimizer<S> {
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // 1. Get gradients
-        let grads = loss.backward();
+        let grads = graph.add_backward(loss);
         let mut gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
 
         // 2. Apply weight decay
@@ -514,7 +514,7 @@ impl<S: Shape> Optimizer<S> for GDOptimizer<S> {
 
             // if grad_norm <= threshold, factor = 1.0
             let is_small = grad_norm.less_than(scale_threshold);
-            let adaptive_factor = is_small.select(one, factor);
+            let adaptive_factor = (is_small * one) + ((one - is_small) * factor);
 
             lr = lr * adaptive_factor;
 

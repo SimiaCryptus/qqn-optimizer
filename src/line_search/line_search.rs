@@ -74,7 +74,7 @@ pub trait LineSearch<S: ConstShape>: Send + Sync + Debug {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],

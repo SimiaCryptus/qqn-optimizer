@@ -157,10 +157,10 @@ impl<S: Shape> QQNOptimizer<S> {
     }
 
     /// Helper to compute dot product of two lists of tensors
-    fn dot(&self, a: &[SafeTensor<S>], b: &[SafeTensor<S>]) -> GraphTensor<S> {
+    fn dot(&self, a: &[SafeTensor<S>], b: &[SafeTensor<S>]) -> GraphTensor<()> {
         let mut sum = None;
         for (t1, t2) in a.iter().zip(b.iter()) {
-            let dot = (t1.0 * t2.0).sum_reduce();
+            let dot = (t1.0 * t2.0).sum_reduce::<(), _>();
             sum = match sum {
                 Some(s) => Some(s + dot),
                 None => Some(dot),
@@ -178,11 +178,11 @@ impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // 1. Compute Gradients
-        let grads = loss.backward(graph);
+        let grads = graph.add_backward(loss);
         let gradients = params.iter().map(|p| *grads.get(p).unwrap()).collect::<Vec<_>>();
 
         // 2. Update L-BFGS History (s, y)

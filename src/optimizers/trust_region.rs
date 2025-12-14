@@ -214,7 +214,7 @@ impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // 1. Get gradients
-        let grads_map = loss.backward();
+        let grads_map = graph.add_backward(loss);
         let grads: Vec<GraphTensor<S>> = params.iter().map(|p| *grads_map.get(p).unwrap()).collect();
 
         // 2. Compute global gradient norm (L2)

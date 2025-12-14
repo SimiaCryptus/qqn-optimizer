@@ -97,7 +97,7 @@ impl OptimizerGenome {
         params.insert("max_iterations".to_string(), rng.random_range(10.0..50.0));
         params.insert(
             "line_search_method".to_string(),
-            rng.random_range(0.0..6.0).floor(),
+            rng.random_range(0.0f32..6.0f32).floor(),
         );
         params
     }
@@ -700,7 +700,7 @@ impl ParameterEvolution {
                     "line_search_method" => {
                         if self.rng.gen_bool(0.3) {
                             // 30% chance to change method
-                            self.rng.random_range(0.0..6.0).floor()
+                            self.rng.random_range(0.0f32..6.0f32).floor()
                         } else {
                             *value
                         }

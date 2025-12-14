@@ -310,7 +310,7 @@ impl<S: ConstShape> LineSearch<S> for CubicQuadraticLineSearch {
         &mut self,
         cx: &mut Graph,
         params: GraphTensor<S>,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],

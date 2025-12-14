@@ -653,12 +653,12 @@ impl<S: Shape> Optimizer<S> for LBFGSOptimizer<S> {
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor<S>,
+        loss: GraphTensor<()>,
         params: &[GraphTensor<S>],
     ) -> Vec<GraphTensor<S>> {
         // Register backward pass to compute gradients
 
-        let grads = loss.backward(graph);
+        let grads = graph.add_backward(loss);
         let gradients: Vec<GraphTensor<S>> = params.iter().map(|p| *grads.get(p).unwrap()).collect();
 
         // Update history with previous step's info (if available)

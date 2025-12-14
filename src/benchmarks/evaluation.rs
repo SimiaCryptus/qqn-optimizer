@@ -37,7 +37,7 @@ pub enum Device {
     Cpu,
 }
 /// Helper to create a 1D tensor
-pub fn create_1d_tensor(data: &[f32], _device: &Device) -> Result<Tensor<Dyn<'d'>>, String> {
+pub fn create_1d_tensor(data: &[f32], _device: &Device) -> Result<Tensor, String> {
     Ok(Tensor::new(data.to_vec()))
 }
 
@@ -136,7 +136,7 @@ impl OptimizationTrace {
             None
         } else {
             Some(Statistics::min(
-                self.iterations.iter().map(|data| data.function_value),
+                self.iterations.iter().map(|data| data.function_value as f64),
             ).to_f32()?)
         }
     }
