@@ -26,7 +26,7 @@ pub mod optimizer;
 pub mod qqn;
 pub use lbfgs::{LBFGSConfig, LBFGSOptimizer, LBFGSState};
 pub use optimizer::{ConvergenceInfo, OptimizationMetadata, Optimizer, StepResult};
-pub use qqn::{QQNConfig, QQNOptimizer, QQNState, QuadraticPath};
+pub use qqn::{QQNConfig, QQNOptimizer, QQNState};
 
 /// Tolerance for numerical comparisons
 pub const NUMERICAL_TOLERANCE: f32 = 1e-12;

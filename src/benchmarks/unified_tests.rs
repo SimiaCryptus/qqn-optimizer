@@ -125,20 +125,20 @@ impl ProblemTestResults {
             && self.initial_point_valid
             && self.evaluation_at_initial_valid
             && self.gradient_at_initial_valid
-            && (self.gradient_numerical_match || 
-                // Allow ML problems with high derivative accuracy to pass even without numerical match
-                (self.problem_name.contains("Regression") || self.problem_name.contains("SVM") || self.problem_name.contains("NeuralNetwork")) 
+            && (self.gradient_numerical_match ||
+            // Allow ML problems with high derivative accuracy to pass even without numerical match
+            (self.problem_name.contains("Regression") || self.problem_name.contains("SVM") || self.problem_name.contains("NeuralNetwork"))
                 && self.derivative_validation_results.numerical_gradient_accuracy > 0.8)
             && self.finite_values_maintained
             && self.clone_behavior_correct
             && self
-                .derivative_validation_results
-                .numerical_gradient_accuracy
-                > 0.7
+            .derivative_validation_results
+            .numerical_gradient_accuracy
+            > 0.7
             && (self.derivative_validation_results.robustness_score > 0.5 ||
-                // For ML problems, allow lower robustness scores if other metrics are good
-                ((self.problem_name.contains("Regression") || self.problem_name.contains("SVM") || self.problem_name.contains("NeuralNetwork"))
-                 && self.derivative_validation_results.numerical_gradient_accuracy > 0.9))
+            // For ML problems, allow lower robustness scores if other metrics are good
+            ((self.problem_name.contains("Regression") || self.problem_name.contains("SVM") || self.problem_name.contains("NeuralNetwork"))
+                && self.derivative_validation_results.numerical_gradient_accuracy > 0.9))
     }
 
     pub fn add_error(&mut self, error: String) {
@@ -445,8 +445,8 @@ impl UnifiedProblemTester {
                     // Only flag as error if the values are extremely large
                     if f_val.abs() > self.config.finite_check_tolerance
                         || grad
-                            .iter()
-                            .any(|&g| g.abs() > self.config.finite_check_tolerance)
+                        .iter()
+                        .any(|&g| g.abs() > self.config.finite_check_tolerance)
                     {
                         all_finite = false;
                         break;
@@ -691,8 +691,8 @@ impl UnifiedProblemTester {
                             successful_tests += 1;
                         } else {
                             validation_results.failed_test_points.push(
-                                format!("Point {}: Directional derivative mismatch: analytical={:.6e}, numerical={:.6e}, error={:.6e}", 
-                                       point_idx, analytical_directional, numerical_directional, error)
+                                format!("Point {}: Directional derivative mismatch: analytical={:.6e}, numerical={:.6e}, error={:.6e}",
+                                        point_idx, analytical_directional, numerical_directional, error)
                             );
                         }
                     }
@@ -1685,7 +1685,7 @@ mod tests {
                         .collect(),
                     0.01,
                 )
-                .unwrap(),
+                    .unwrap(),
             ),
             Box::new(SupportVectorMachine::new(svm_x, svm_y, 1.0).unwrap()),
             Box::new(NeuralNetworkTraining::mlp_classification(vec![3, 5, 2], &mut rng).unwrap()),
@@ -1733,7 +1733,7 @@ mod tests {
                     &mut rng,
                     None,
                 )
-                .unwrap(),
+                    .unwrap(),
             ),
             #[cfg(feature = "onednn")]
             Box::new(
@@ -1789,7 +1789,7 @@ mod tests {
                         .collect(),
                     0.01,
                 )
-                .unwrap(),
+                    .unwrap(),
             ),
         ];
         let results = test_multiple_problems(problems, None);

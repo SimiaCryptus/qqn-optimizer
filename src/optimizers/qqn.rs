@@ -2,6 +2,8 @@ use crate::optimizers::Optimizer;
 use luminal::prelude::*;
 use std::collections::VecDeque;
 use std::fmt::Debug;
+use crate::{LineSearchConfig, LineSearchMethod};
+use crate::LineSearchMethod::Bisection;
 
 /// Configuration for the QQN optimizer
 #[derive(Debug, Clone)]
@@ -12,6 +14,8 @@ pub struct QQNConfig {
     pub lbfgs_history: usize,
     /// Minimum number of iterations before enabling L-BFGS
     pub min_lbfgs_iterations: usize,
+    /// Line search configuration
+    pub line_search: LineSearchConfig,
     /// Numerical stability constant
     pub epsilon: f32,
     /// Enable verbose logging of tensor data and internal state
@@ -29,6 +33,10 @@ impl Default for QQNConfig {
         Self {
             lbfgs_history: 10,
             min_lbfgs_iterations: 1,
+            line_search: LineSearchConfig {
+                method: Bisection,
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-6,
             verbose: false,
             min_step_persist: 1e-1,
@@ -48,6 +56,13 @@ impl QQNConfig {
         Self {
             lbfgs_history: 20,
             min_lbfgs_iterations: 5, // More steepest descent iterations
+            line_search: LineSearchConfig {
+                method: LineSearchMethod::Bisection,
+                max_iterations: 50,
+                c1: 1e-4,
+                c2: 0.9,
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-8,
             verbose: false,
             min_step_persist: 1e-2,
@@ -65,6 +80,11 @@ impl QQNConfig {
         Self {
             lbfgs_history: 5,
             min_lbfgs_iterations: 1,
+            line_search: LineSearchConfig {
+                method: LineSearchMethod::Bisection,
+                max_iterations: 20,
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-4,
             verbose: false,
             min_step_persist: 1e-2,

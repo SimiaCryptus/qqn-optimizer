@@ -43,6 +43,7 @@ use crate::optimizers::optimizer::Optimizer;
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use crate::LineSearchConfig;
 
 /// Configuration parameters for the L-BFGS optimizer.
 ///
@@ -58,6 +59,12 @@ pub struct LBFGSConfig {
     /// computation. Values below 5 may converge slowly, while values above 20
     /// rarely provide significant benefit and can cause numerical issues.
     pub history_size: usize,
+
+    /// Line search configuration for step size selection.
+    ///
+    /// Controls how the optimizer finds an appropriate step size along the search
+    /// direction. Uses strong Wolfe conditions by default for robust convergence.
+    pub line_search: LineSearchConfig,
 
     /// Numerical stability constant for avoiding division by zero.
     ///
@@ -144,6 +151,14 @@ impl Default for LBFGSConfig {
     fn default() -> Self {
         Self {
             history_size: 10,
+            line_search: LineSearchConfig {
+                c1: 1e-4, // Standard Armijo condition
+                c2: 0.9,  // Standard curvature condition for L-BFGS
+                initial_step: 1.0,
+                max_step: 2.0, // Moderate maximum step
+                method: LineSearchMethod::StrongWolfe,
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-8,
             max_correction_pairs: 10,
             max_step_size: 2.0, // Moderate step size limit
@@ -174,6 +189,13 @@ impl LBFGSConfig {
     pub fn strict() -> Self {
         Self {
             history_size: 5, // Smaller history to reduce memory effects
+            line_search: LineSearchConfig {
+                c1: 1e-4,          // Standard Armijo condition
+                c2: 0.9,           // Strict curvature condition
+                initial_step: 0.1, // Conservative initial step
+                max_step: 1.0,     // Conservative maximum step
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-10,  // Higher precision
             max_correction_pairs: 5,
             max_step_size: 0.5,    // Conservative step size
@@ -203,6 +225,13 @@ impl LBFGSConfig {
     pub fn lax() -> Self {
         Self {
             history_size: 20, // Larger history for better approximation
+            line_search: LineSearchConfig {
+                c1: 1e-4,          // Standard Armijo condition
+                c2: 0.1,           // Relaxed curvature condition
+                initial_step: 2.0, // Aggressive initial step
+                max_step: 50.0,    // Large maximum step
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-6,    // Lower precision for speed
             max_correction_pairs: 20,
             max_step_size: 50.0,     // Large step sizes allowed
@@ -232,6 +261,13 @@ impl LBFGSConfig {
     pub fn for_qqn() -> Self {
         Self {
             history_size: 10,
+            line_search: LineSearchConfig {
+                c1: 1e-4,
+                c2: 0.5, // Balanced curvature condition
+                initial_step: 1.0,
+                max_step: 10.0,
+                ..LineSearchConfig::default()
+            },
             epsilon: 1e-8,
             max_correction_pairs: 10,
             max_step_size: 10.0,

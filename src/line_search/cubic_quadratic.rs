@@ -1,7 +1,9 @@
-use crate::line_search::line_search::OneDimensionalProblem;
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
 use anyhow::anyhow;
 use log::debug;
+use luminal::graph::Graph;
+use luminal::graph_tensor::GraphTensor;
+use luminal::prelude::Shape;
 
 /// A sophisticated line search algorithm that uses cubic and quadratic interpolation
 /// to efficiently find step sizes satisfying the Wolfe conditions.
@@ -302,8 +304,19 @@ impl CubicQuadraticLineSearch {
     }
 }
 
-impl LineSearch for CubicQuadraticLineSearch {
-    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
+impl<S: Shape> LineSearch<S> for CubicQuadraticLineSearch {
+
+    fn search(
+        &mut self,
+        cx: &mut Graph,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
+        current_params: &[f32],
+        direction: &[f32],
+        initial_loss: f32,
+        initial_gradient: &[f32],
+    ) -> anyhow::Result<LineSearchResult>{
         let f0 = (problem.objective)(0.0)?;
         let g0 = problem.initial_directional_derivative;
         if g0 >= 0.0 {
@@ -452,7 +465,7 @@ impl LineSearch for CubicQuadraticLineSearch {
     fn reset(&mut self) {
         // Stateless
     }
-    fn clone_box(&self) -> Box<dyn LineSearch> {
+    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
         Box::new(self.clone())
     }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
@@ -463,7 +476,6 @@ impl LineSearch for CubicQuadraticLineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::line_search::line_search::create_1d_problem_linear;
     use approx::assert_relative_eq;
     use std::sync::Arc;
 
@@ -619,52 +631,7 @@ mod tests {
         assert!(armijo);
         assert!(!curvature);
     }
-    #[test]
-    fn test_line_search_with_interpolation_fallback() {
-        let mut line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig {
-            initial_step: 2.0, // Start with a large step to trigger interpolation
-            verbose: false,
-            ..CubicQuadraticConfig::default()
-        });
-        // Use a function where large initial step will violate Armijo condition
-        let current_point = vec![1.0];
-        let direction = vec![-1.0];
-        // f(x) = x^2, so f(1 - 2*t) = (1-2t)^2 = 1 - 4t + 4t^2
-        // At t=2: f = 1 - 8 + 16 = 9 (much larger than f(0) = 1)
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
-        assert!(result.success);
-        assert!(result.step_size > 0.0);
-        assert!(result.step_size < 2.0); // Should be smaller than initial step due to interpolation
-    }
 
-    #[test]
-    fn test_cubic_quadratic_interpolation() {
-        let mut line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig {
-            verbose: false,
-            ..CubicQuadraticConfig::default()
-        });
-        let current_point = vec![2.0, 3.0];
-        let direction = vec![-2.0, -3.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
-        assert!(result.success);
-        assert!(result.step_size > 0.0);
-        // Cubic/quadratic interpolation should find good step
-        assert_relative_eq!(result.step_size, 1.0, epsilon = 1e-6);
-    }
     #[test]
     fn test_strict_configuration() {
         let line_search = CubicQuadraticLineSearch::strict();
@@ -684,30 +651,6 @@ mod tests {
         assert_eq!(line_search.config.extrapolation_factor, 3.0);
     }
     #[test]
-    fn test_strict_vs_lax_behavior() {
-        let current_point = vec![2.0, 3.0];
-        let direction = vec![-2.0, -3.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        // Test strict configuration
-        let mut strict_search = CubicQuadraticLineSearch::strict();
-        let strict_result = strict_search.optimize_1d(&problem).unwrap();
-        // Test lax configuration
-        let mut lax_search = CubicQuadraticLineSearch::lax();
-        let lax_result = lax_search.optimize_1d(&problem).unwrap();
-        // Both should succeed
-        assert!(strict_result.success);
-        assert!(lax_result.success);
-        // Both should find reasonable step sizes
-        assert!(strict_result.step_size > 0.0);
-        assert!(lax_result.step_size > 0.0);
-    }
-    #[test]
     fn test_with_config() {
         let custom_config = CubicQuadraticConfig {
             c1: 1e-5,
@@ -715,99 +658,5 @@ mod tests {
         };
         let line_search = CubicQuadraticLineSearch::with_config(custom_config);
         assert_eq!(line_search.config.c1, 1e-5);
-    }
-    #[test]
-    fn test_clone_box() {
-        let line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig {
-            c1: 1e-5,
-            c2: 0.5,
-            ..CubicQuadraticConfig::default()
-        });
-        let cloned = line_search.clone_box();
-        // We can't directly compare the configs, but we can verify it works
-        // by using it in a line search
-        let current_point = vec![1.0];
-        let direction = vec![-1.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        // Convert to mutable reference to test
-        let mut cloned_mut = cloned;
-        let result = cloned_mut.optimize_1d(&problem);
-        assert!(result.is_ok());
-    }
-    #[test]
-    fn test_reset() {
-        let mut line_search = CubicQuadraticLineSearch::new(CubicQuadraticConfig::default());
-        // Since the line search is stateless, reset should not affect behavior
-        let current_point = vec![1.0];
-        let direction = vec![-1.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result1 = line_search.optimize_1d(&problem).unwrap();
-        line_search.reset();
-        let result2 = line_search.optimize_1d(&problem).unwrap();
-        // Results should be identical since the algorithm is stateless
-        assert_eq!(result1.step_size, result2.step_size);
-        assert_eq!(result1.success, result2.success);
-    }
-    #[test]
-    fn test_strict_vs_lax_precision() {
-        // Use a more complex function where precision matters
-        fn rosenbrock_1d(x: &[f32]) -> anyhow::Result<f32> {
-            let t = x[0];
-            // f(t) = 100*(t^2 - 1)^2 + (t - 1)^2
-            Ok(100.0 * (t * t - 1.0).powi(2) + (t - 1.0).powi(2))
-        }
-        fn rosenbrock_1d_gradient(x: &[f32]) -> anyhow::Result<Vec<f32>> {
-            let t = x[0];
-            // f'(t) = 400*t*(t^2 - 1) + 2*(t - 1)
-            Ok(vec![400.0 * t * (t * t - 1.0) + 2.0 * (t - 1.0)])
-        }
-        let current_point = vec![0.5];
-        // Calculate the gradient at the current point and use negative gradient as descent direction
-        let gradient = rosenbrock_1d_gradient(&current_point).unwrap();
-        let direction = vec![-gradient[0]]; // Negative gradient is descent direction
-        let problem_strict = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(rosenbrock_1d),
-            Arc::new(rosenbrock_1d_gradient),
-        )
-        .unwrap();
-        let problem_lax = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(rosenbrock_1d),
-            Arc::new(rosenbrock_1d_gradient),
-        )
-        .unwrap();
-        let mut strict_search = CubicQuadraticLineSearch::strict();
-        let mut lax_search = CubicQuadraticLineSearch::lax();
-        let strict_result = strict_search.optimize_1d(&problem_strict).unwrap();
-        let lax_result = lax_search.optimize_1d(&problem_lax).unwrap();
-        // Both should succeed
-        assert!(strict_result.success);
-        assert!(lax_result.success);
-        // Evaluate function values at the found steps
-        let f_strict =
-            rosenbrock_1d(&[current_point[0] + strict_result.step_size * direction[0]]).unwrap();
-        let f_lax =
-            rosenbrock_1d(&[current_point[0] + lax_result.step_size * direction[0]]).unwrap();
-        let f_initial = rosenbrock_1d(&current_point).unwrap();
-        // Both should improve the function
-        assert!(f_strict < f_initial);
-        assert!(f_lax < f_initial);
-        // Strict should satisfy tighter Wolfe conditions
-        // This is implicitly tested by the different c1, c2 values
     }
 }

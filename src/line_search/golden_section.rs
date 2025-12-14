@@ -111,7 +111,7 @@ impl GoldenSectionConfig {
         }
         // First verify we can make progress
         let f0 = initial_loss;
-        let test_step = self.config.min_step;
+        let test_step = self.min_step;
         let f_test = objective(test_step)?;
         if f_test >= f0 {
             // Try machine epsilon
@@ -129,7 +129,7 @@ impl GoldenSectionConfig {
             ));
         }
         let step_size = self.find_minimum(objective)?;
-        let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
+        let success = step_size >= self.min_step && step_size <= self.max_step;
         Ok(LineSearchResult {
             step_size,
             success,
