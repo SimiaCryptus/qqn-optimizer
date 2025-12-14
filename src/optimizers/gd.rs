@@ -643,7 +643,7 @@ mod tests {
         let config = GDConfig::default();
         let optimizer = GDOptimizer::new(config);
 
-        assert_eq!(optimizer.name(), "GD-Strict");
+        assert_eq!(optimizer.name(), config.name);
         assert_eq!(optimizer.state.iteration(), 0);
     }
 
