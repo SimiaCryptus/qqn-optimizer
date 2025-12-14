@@ -12,10 +12,10 @@ pub mod constants {
     pub const DEFAULT_TOLERANCE: f32 = 1e-6;
 
     /// Maximum safe value for numerical computations
-    pub const MAX_SAFE_VALUE: f32 = 1e100;
+    pub const MAX_SAFE_VALUE: f32 = 1e30;
 
     /// Minimum safe value for numerical computations
-    pub const MIN_SAFE_VALUE: f32 = 1e-100;
+    pub const MIN_SAFE_VALUE: f32 = 1e-30;
 }
 
 /// Utility functions for working with file paths

@@ -419,17 +419,17 @@ pub struct GDOptimizer {
 }
 
 impl Clone for GDOptimizer {
-     fn clone(&self) -> Self {
-         Self {
-             config: self.config.clone(),
-             state: self.state.clone(),
-             stagnation_multiplier: self.stagnation_multiplier,
-             lr_tensor: self.lr_tensor,
-             new_weights: self.new_weights.clone(),
-             stagnation_count: self.stagnation_count,
-         }
-     }
- }
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            state: self.state.clone(),
+            stagnation_multiplier: self.stagnation_multiplier,
+            lr_tensor: self.lr_tensor,
+            new_weights: self.new_weights.clone(),
+            stagnation_count: self.stagnation_count,
+        }
+    }
+}
 
 impl GDOptimizer {
     /// Create a new GD optimizer with the given configuration.
@@ -535,7 +535,6 @@ impl Optimizer for GDOptimizer {
             let new_weight = *weight - update * lr;
             new_weights.push(new_weight);
         }
-
 
         OptimizerSetup::new(new_weights)
             .with_learning_rate(lr)

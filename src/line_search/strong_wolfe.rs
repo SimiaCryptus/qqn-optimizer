@@ -4,6 +4,7 @@ use dfdx::prelude::{ConstShape, Shape};
 use log::debug;
 use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 
 /// Strong Wolfe line search implementation following Nocedal & Wright Algorithm 3.5.
 ///
@@ -310,8 +311,6 @@ impl StrongWolfeLineSearch {
         f0: f32,
         directional_derivative: f32,
         mut evaluate: F,
-        num_f_evals: &mut usize,
-        num_g_evals: &mut usize,
     ) -> anyhow::Result<f32>
     where
         F: FnMut(f32) -> anyhow::Result<(f32, f32)>,
@@ -337,8 +336,6 @@ impl StrongWolfeLineSearch {
 
             // Evaluate 1D function at trial point
             let (f_alpha_j, grad_alpha_j) = evaluate(alpha_j)?;
-            *num_f_evals += 1;
-            *num_g_evals += 1;
             // Track best point found
             if f_alpha_j < best_value {
                 best_value = f_alpha_j;
@@ -402,9 +399,9 @@ impl LineSearch for StrongWolfeLineSearch {
         if directional_derivative >= 0.0 {
             return Err(anyhow!("Direction is not a descent direction"));
         }
-        // Track evaluation counts in the closure
-        let mut local_f_evals = 0usize;
-        let mut local_g_evals = 0usize;
+        // Track evaluation counts using RefCell for interior mutability
+        let local_f_evals = RefCell::new(0usize);
+        let local_g_evals = RefCell::new(0usize);
 
         let mut evaluate = |alpha: f32| -> anyhow::Result<(f32, f32)> {
             let new_params: Vec<f32> = current_params
@@ -414,23 +411,16 @@ impl LineSearch for StrongWolfeLineSearch {
                 .collect();
             cx.set_tensor(params.id, 0, Tensor::new(new_params));
             cx.execute();
-            let loss_val = loss
-                .data()
-                .as_any()
-                .downcast_ref::<Vec<f32>>()
-                .unwrap()[0];
+            let loss_val = loss.data().as_any().downcast_ref::<Vec<f32>>().unwrap()[0];
             let grad_binding = gradient.data();
-            let grad_val = grad_binding
-                .as_any()
-                .downcast_ref::<Vec<f32>>()
-                .unwrap();
+            let grad_val = grad_binding.as_any().downcast_ref::<Vec<f32>>().unwrap();
             let dir_deriv = grad_val
                 .iter()
                 .zip(direction.iter())
                 .map(|(g, d)| g * d)
                 .sum();
-            local_f_evals += 1;
-            local_g_evals += 1;
+            *local_f_evals.borrow_mut() += 1;
+            *local_g_evals.borrow_mut() += 1;
             Ok((loss_val, dir_deriv))
         };
 
@@ -464,18 +454,11 @@ impl LineSearch for StrongWolfeLineSearch {
                     "  Armijo failed or insufficient decrease, zooming between {alpha_prev:.3e} and {alpha:.3e}"
                 ));
                 // Zoom between alpha_prev and alpha
-                let final_alpha = self.zoom(
-                    alpha_prev,
-                    alpha,
-                    f0,
-                    directional_derivative,
-                    &mut evaluate,
-                    &mut local_f_evals,
-                    &mut local_g_evals
-                )?;
+                let final_alpha =
+                    self.zoom(alpha_prev, alpha, f0, directional_derivative, &mut evaluate)?;
                 self.log_verbose(&format!("Zoom completed with alpha={final_alpha:.3e}"));
-                self.num_f_evals = local_f_evals;
-                self.num_g_evals = local_g_evals;
+                self.num_f_evals = *local_f_evals.borrow();
+                self.num_g_evals = *local_g_evals.borrow();
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -491,8 +474,8 @@ impl LineSearch for StrongWolfeLineSearch {
                 self.log_verbose(&format!(
                     "Both Wolfe conditions satisfied at alpha={alpha:.3e}"
                 ));
-                self.num_f_evals = local_f_evals;
-                self.num_g_evals = local_g_evals;
+                self.num_f_evals = *local_f_evals.borrow();
+                self.num_g_evals = *local_g_evals.borrow();
 
                 return Ok(LineSearchResult {
                     step_size: alpha,
@@ -508,18 +491,11 @@ impl LineSearch for StrongWolfeLineSearch {
                 self.log_verbose(&format!(
                     "  Gradient indicates overshoot, zooming between {alpha:.3e} and {alpha_prev:.3e}"
                 ));
-                let final_alpha = self.zoom(
-                    alpha,
-                    alpha_prev,
-                    f0,
-                    directional_derivative,
-                    &mut evaluate,
-                    &mut local_f_evals,
-                    &mut local_g_evals,
-                )?;
+                let final_alpha =
+                    self.zoom(alpha, alpha_prev, f0, directional_derivative, &mut evaluate)?;
 
-                self.num_f_evals = local_f_evals;
-                self.num_g_evals = local_g_evals;
+                self.num_f_evals = *local_f_evals.borrow();
+                self.num_g_evals = *local_g_evals.borrow();
 
                 return Ok(LineSearchResult {
                     step_size: final_alpha,
@@ -539,8 +515,8 @@ impl LineSearch for StrongWolfeLineSearch {
             self.log_verbose(&format!(
                 "Returning best point found: alpha={best_alpha:.3e}, f={best_f:.3e}"
             ));
-            self.num_f_evals = local_f_evals;
-            self.num_g_evals = local_g_evals;
+            self.num_f_evals = *local_f_evals.borrow();
+            self.num_g_evals = *local_g_evals.borrow();
 
             return Ok(LineSearchResult {
                 step_size: best_alpha,
@@ -556,8 +532,8 @@ impl LineSearch for StrongWolfeLineSearch {
         let (f_eps, _) = evaluate(eps_step)?;
         if f_eps < f0 {
             self.log_verbose(&format!("Using machine epsilon step {eps_step:.3e}"));
-            self.num_f_evals = local_f_evals;
-            self.num_g_evals = local_g_evals;
+            self.num_f_evals = *local_f_evals.borrow();
+            self.num_g_evals = *local_g_evals.borrow();
 
             return Ok(LineSearchResult {
                 step_size: eps_step,

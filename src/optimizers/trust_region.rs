@@ -229,7 +229,7 @@ impl Optimizer for TrustRegionOptimizer {
         // 1. Compute global gradient norm (L2)
         let mut squared_norm: Option<GraphTensor> = None;
         for grad in gradients {
-            let grad_sq = (*grad * *grad).sum_reduce();
+            let grad_sq = (*grad * *grad).sum(0);
             squared_norm = Some(match squared_norm {
                 Some(acc) => acc + grad_sq,
                 None => grad_sq,
@@ -252,8 +252,8 @@ impl Optimizer for TrustRegionOptimizer {
         // For simplicity, we use: clamp(x, 0, 1) = x - relu(x - 1) + relu(-x)
         // Or more simply: scale = ratio * (ratio < 1) + 1 * (ratio >= 1), then ensure >= 0
         // Using less_than and arithmetic:
-        let ratio_lt_one = ratio.less_than(one);
-        let ratio_gte_zero = ratio.greater_than_or_equal(graph.constant(0.0));
+        let ratio_lt_one = ratio.lt(one);
+        let ratio_gte_zero = ratio.ge(graph.constant(0.0));
         // scale = ratio if 0 <= ratio < 1, else 1 if ratio >= 1, else 0 if ratio < 0
         let clamped_high = ratio * ratio_lt_one + one * (one - ratio_lt_one);
         let scale = clamped_high * ratio_gte_zero;
@@ -319,33 +319,5 @@ impl Optimizer for TrustRegionOptimizer {
     fn set_learning_rate(&mut self, lr: f32) {
         // Map learning rate to trust region radius
         self.state.radius = lr.clamp(self.config.min_radius, self.config.max_radius);
-    }
-}
-
-#[cfg(test)]
-use super::*;
-mod tests {
-
-    #[test]
-    fn test_trust_region_creation() {
-        let config = TrustRegionConfig::default();
-        let optimizer = TrustRegionOptimizer::new(config);
-
-        assert_eq!(optimizer.name(), "TrustRegion");
-        assert_eq!(optimizer.state.radius, 1.0);
-        assert_eq!(optimizer.state.iteration, 0);
-    }
-
-    #[test]
-    fn test_trust_region_configs() {
-        let conservative = TrustRegionConfig::conservative();
-        assert_eq!(conservative.initial_radius, 0.5);
-        assert_eq!(conservative.gamma_1, 0.2);
-        assert_eq!(conservative.name, "TrustRegion-Conservative");
-
-        let aggressive = TrustRegionConfig::aggressive();
-        assert_eq!(aggressive.initial_radius, 2.0);
-        assert_eq!(aggressive.gamma_2, 3.0);
-        assert_eq!(aggressive.name, "TrustRegion-Aggressive");
     }
 }

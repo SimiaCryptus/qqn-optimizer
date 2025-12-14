@@ -169,7 +169,7 @@ impl QQNOptimizer {
         // based on actual tensor shapes in the model.
         let mut sum = None;
         for (t1, t2) in a.iter().zip(b.iter()) {
-            let dot = (*t1 * *t2).sum_reduce();
+            let dot = (*t1 * *t2).sum(0);
             sum = match sum {
                 Some(s) => Some(s + dot),
                 None => Some(dot),

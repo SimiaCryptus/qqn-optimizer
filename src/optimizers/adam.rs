@@ -497,8 +497,7 @@ impl Optimizer for AdamOptimizer {
 
             // v_t = beta2 * v_{t-1} + (1 - beta2) * g_t^2
             let g_squared = *g * *g;
-            let v_new =
-                v * beta2.expand(g.shape) + g_squared * one_minus_beta2.expand(g.shape);
+            let v_new = v * beta2.expand(g.shape) + g_squared * one_minus_beta2.expand(g.shape);
 
             // Bias-corrected estimates
             // m_hat = m_t / (1 - beta1^t)

@@ -751,7 +751,7 @@ impl Optimizer for LBFGSOptimizer {
 fn dot_product(a: &[GraphTensor], b: &[GraphTensor]) -> GraphTensor {
     a.iter()
         .zip(b.iter())
-        .map(|(x, y)| (*x * *y).sum_reduce())
+        .map(|(x, y)| (*x * *y).sum(0))
         .reduce(|acc, x| acc + x)
         .expect("Empty vector")
 }

@@ -159,7 +159,8 @@ impl<'a> ProblemEvaluator for LuminalEvaluator<'a> {
             .set_tensor(self.params.id, 0, Tensor::new(new_params));
         self.cx.execute();
         self.num_f_evals += 1;
-        let loss_val = self.loss
+        let loss_val = self
+            .loss
             .data()
             .as_any()
             .downcast_ref::<Vec<f32>>()
