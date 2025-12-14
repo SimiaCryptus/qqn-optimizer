@@ -414,15 +414,13 @@ impl LineSearch for StrongWolfeLineSearch {
                 .collect();
             cx.set_tensor(params.id, 0, Tensor::new(new_params));
             cx.execute();
-            let loss_tensor = cx.get_tensor(loss.id, 0).unwrap();
-            let grad_tensor = cx.get_tensor(gradient.id, 0).unwrap();
-            let loss_val = loss_tensor
-                .data
+            let loss_val = loss
+                .data()
                 .as_any()
                 .downcast_ref::<Vec<f32>>()
                 .unwrap()[0];
-            let grad_val = grad_tensor
-                .data
+            let grad_binding = gradient.data();
+            let grad_val = grad_binding
                 .as_any()
                 .downcast_ref::<Vec<f32>>()
                 .unwrap();
@@ -473,7 +471,7 @@ impl LineSearch for StrongWolfeLineSearch {
                     directional_derivative,
                     &mut evaluate,
                     &mut local_f_evals,
-                    &mut local_g_evals,
+                    &mut local_g_evals
                 )?;
                 self.log_verbose(&format!("Zoom completed with alpha={final_alpha:.3e}"));
                 self.num_f_evals = local_f_evals;

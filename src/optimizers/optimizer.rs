@@ -228,7 +228,12 @@ pub trait Optimizer: Debug + Send + Sync + 'static {
     ) -> Vec<GraphTensor> {
         // Use Luminal's Autograd to compute gradients
         let weight_refs: Vec<_> = weights.iter().collect();
-        graph.compile(Autograd::new(&weight_refs, loss), ())
+        let grad_info = graph.compile(Autograd::new(&weight_refs, loss), ());
+        // Convert (NodeIndex, ShapeTracker) pairs back to GraphTensors
+        grad_info
+            .into_iter()
+            .map(|(node_id, _shape_tracker)| GraphTensor::from_id(node_id, _shape_tracker, graph))
+            .collect()
     }
     /// Evaluate the objective function at given parameters.
     ///
@@ -248,11 +253,8 @@ pub trait Optimizer: Debug + Send + Sync + 'static {
         // Execute graph
         graph.execute();
         // Get loss value
-        let loss_tensor = graph
-            .get_tensor(loss.id, 0)
-            .ok_or_else(|| anyhow::anyhow!("Failed to get loss tensor"))?;
-        let f_val = loss_tensor
-            .data
+        let f_val = loss
+            .data()
             .as_any()
             .downcast_ref::<Vec<f32>>()
             .ok_or_else(|| anyhow::anyhow!("Failed to downcast loss data"))?[0];
@@ -278,22 +280,16 @@ pub trait Optimizer: Debug + Send + Sync + 'static {
         // Execute graph
         graph.execute();
         // Get loss value
-        let loss_tensor = graph
-            .get_tensor(loss.id, 0)
-            .ok_or_else(|| anyhow::anyhow!("Failed to get loss tensor"))?;
-        let f_val = loss_tensor
-            .data
+        let f_val = loss
+            .data()
             .as_any()
             .downcast_ref::<Vec<f32>>()
             .ok_or_else(|| anyhow::anyhow!("Failed to downcast loss data"))?[0];
         // Get gradient values
         let mut grad_vals = Vec::with_capacity(gradients.len());
         for g in gradients {
-            let grad_tensor = graph
-                .get_tensor(g.id, 0)
-                .ok_or_else(|| anyhow::anyhow!("Failed to get gradient tensor"))?;
-            let g_data = grad_tensor
-                .data
+            let g_data = g
+                .data()
                 .as_any()
                 .downcast_ref::<Vec<f32>>()
                 .ok_or_else(|| anyhow::anyhow!("Failed to downcast gradient data"))?

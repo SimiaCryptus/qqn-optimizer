@@ -229,10 +229,10 @@ impl Optimizer for TrustRegionOptimizer {
         // 1. Compute global gradient norm (L2)
         let mut squared_norm: Option<GraphTensor> = None;
         for grad in gradients {
-            let grad_sq_sum = grad.sum_reduce().pow(graph.constant(2.0));
+            let grad_sq = (*grad * *grad).sum_reduce();
             squared_norm = Some(match squared_norm {
-                Some(acc) => acc + grad_sq_sum,
-                None => grad_sq_sum,
+                Some(acc) => acc + grad_sq,
+                None => grad_sq,
             });
         }
         let grad_norm = squared_norm
@@ -246,7 +246,17 @@ impl Optimizer for TrustRegionOptimizer {
         let radius = graph.constant(self.state.radius);
         let one = graph.constant(1.0);
         let epsilon = graph.constant(1e-6);
-        let scale = (radius / (grad_norm + epsilon)).min(one);
+        let ratio = radius / (grad_norm + epsilon);
+        // Clamp ratio to [0, 1] using element-wise operations
+        // min(a, b) can be implemented as: a * (a < b) + b * (1 - (a < b))
+        // For simplicity, we use: clamp(x, 0, 1) = x - relu(x - 1) + relu(-x)
+        // Or more simply: scale = ratio * (ratio < 1) + 1 * (ratio >= 1), then ensure >= 0
+        // Using less_than and arithmetic:
+        let ratio_lt_one = ratio.less_than(one);
+        let ratio_gte_zero = ratio.greater_than_or_equal(graph.constant(0.0));
+        // scale = ratio if 0 <= ratio < 1, else 1 if ratio >= 1, else 0 if ratio < 0
+        let clamped_high = ratio * ratio_lt_one + one * (one - ratio_lt_one);
+        let scale = clamped_high * ratio_gte_zero;
 
         // 3. Apply updates: new_weight = weight - scale * gradient
         let mut new_weights = Vec::with_capacity(weights.len());

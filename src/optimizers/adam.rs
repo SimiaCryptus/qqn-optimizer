@@ -383,7 +383,7 @@ pub struct AdamOptimizer {
     /// Stagnation multiplier for relaxed convergence criteria (future use)
     stagnation_multiplier: f32,
     /// Learning rate tensor for graph-based updates
-    lr_tensor: Option<GraphTensor>,
+    lr_tensor: Option<SafeTensor>,
     /// Stagnation count threshold (future use)
     stagnation_count: usize,
     /// Name of the optimizer variant
@@ -462,7 +462,7 @@ impl Optimizer for AdamOptimizer {
     ) -> OptimizerSetup {
         // Create learning rate tensor
         let lr = graph.tensor(()).set(vec![self.config.learning_rate]);
-        self.lr_tensor = Some(lr);
+        self.lr_tensor = Some(SafeTensor(lr));
 
         // Create constants for beta values and epsilon
         let beta1 = graph.tensor(()).set(vec![self.config.beta1]);
@@ -489,35 +489,35 @@ impl Optimizer for AdamOptimizer {
         for (i, (w, g)) in weights.iter().zip(gradients.iter()).enumerate() {
             // Create moment estimate tensors initialized to zero
             // These will accumulate across iterations
-            let m = graph.tensor(()).set(vec![0.0f32]).expand_to(g.shape);
-            let v = graph.tensor(()).set(vec![0.0f32]).expand_to(g.shape);
+            let m = graph.tensor(()).set(vec![0.0f32]).expand(g.shape);
+            let v = graph.tensor(()).set(vec![0.0f32]).expand(g.shape);
 
             // m_t = beta1 * m_{t-1} + (1 - beta1) * g_t
-            let m_new = m * beta1.expand_to(g.shape) + *g * one_minus_beta1.expand_to(g.shape);
+            let m_new = m * beta1.expand(g.shape) + *g * one_minus_beta1.expand(g.shape);
 
             // v_t = beta2 * v_{t-1} + (1 - beta2) * g_t^2
             let g_squared = *g * *g;
             let v_new =
-                v * beta2.expand_to(g.shape) + g_squared * one_minus_beta2.expand_to(g.shape);
+                v * beta2.expand(g.shape) + g_squared * one_minus_beta2.expand(g.shape);
 
             // Bias-corrected estimates
             // m_hat = m_t / (1 - beta1^t)
-            let m_hat = m_new / bc1_tensor.expand_to(g.shape);
+            let m_hat = m_new / bc1_tensor.expand(g.shape);
 
             // v_hat = v_t / (1 - beta2^t)
-            let v_hat = v_new / bc2_tensor.expand_to(g.shape);
+            let v_hat = v_new / bc2_tensor.expand(g.shape);
 
             // Update: theta_{t+1} = theta_t - lr * m_hat / (sqrt(v_hat) + epsilon)
             let v_hat_sqrt = v_hat.sqrt();
-            let denom = v_hat_sqrt + epsilon.expand_to(g.shape);
+            let denom = v_hat_sqrt + epsilon.expand(g.shape);
             let update = m_hat / denom;
 
-            let mut w_new = *w - update * lr.expand_to(g.shape);
+            let mut w_new = *w - update * lr.expand(g.shape);
 
             // Apply weight decay if configured
             if self.config.weight_decay > 0.0 {
                 let wd = graph.tensor(()).set(vec![self.config.weight_decay]);
-                w_new = w_new - *w * wd.expand_to(g.shape) * lr.expand_to(g.shape);
+                w_new = w_new - *w * wd.expand(g.shape) * lr.expand(g.shape);
             }
 
             new_weights.push(w_new);
@@ -545,7 +545,6 @@ impl Optimizer for AdamOptimizer {
     fn reset(&mut self) {
         self.state.reset();
         self.current_lr = self.config.learning_rate;
-        self.lr_tensor = None;
         // Note: name is not reset as it's determined by configuration
     }
 

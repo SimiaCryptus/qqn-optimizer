@@ -157,13 +157,8 @@ impl LineSearch for GoldenSectionLineSearch {
                 .collect();
 
             cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
-            cx.set_tensor(params.id, 0, Tensor::new(candidate_params));
-
-            let loss_tensor = cx
-                .get_tensor(loss.id, 0)
-                .ok_or_else(|| anyhow::anyhow!("Failed to get loss tensor"))?;
-            let f_val = loss_tensor
-                .data
+            let f_val = loss
+                .data()
                 .as_any()
                 .downcast_ref::<Vec<f32>>()
                 .ok_or_else(|| anyhow::anyhow!("Failed to downcast loss data"))?[0];

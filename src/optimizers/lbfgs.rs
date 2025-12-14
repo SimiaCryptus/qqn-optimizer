@@ -579,7 +579,7 @@ impl LBFGSState {
             let s_dot_y = dot_product(&s_k, &y_k);
 
             // rho_k = 1 / (s_k^T y_k)
-            let rho_k = s_dot_y.recip();
+            let rho_k = s_dot_y.reciprocal();
 
             // Add to history (maintain limited size)
             if self.s_history.len() >= self.history_size {

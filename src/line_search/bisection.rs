@@ -159,12 +159,8 @@ impl<'a> ProblemEvaluator for LuminalEvaluator<'a> {
             .set_tensor(self.params.id, 0, Tensor::new(new_params));
         self.cx.execute();
         self.num_f_evals += 1;
-        let loss_tensor = self
-            .cx
-            .get_tensor(self.loss.id, 0)
-            .ok_or_else(|| anyhow!("Failed to get loss tensor"))?;
-        let loss_val = loss_tensor
-            .data
+        let loss_val = self.loss
+            .data()
             .as_any()
             .downcast_ref::<Vec<f32>>()
             .ok_or_else(|| anyhow!("Failed to downcast loss data"))?[0];
@@ -188,12 +184,8 @@ impl<'a> ProblemEvaluator for LuminalEvaluator<'a> {
         self.num_g_evals += 1;
 
         // Get gradient tensor
-        let grad_tensor = self
-            .cx
-            .get_tensor(self.gradient.id, 0)
-            .ok_or_else(|| anyhow!("Failed to get gradient tensor"))?;
-        let grad_data = grad_tensor
-            .data
+        let grad_binding = self.gradient.data();
+        let grad_data = grad_binding
             .as_any()
             .downcast_ref::<Vec<f32>>()
             .ok_or_else(|| anyhow!("Failed to downcast gradient data"))?;

@@ -169,7 +169,7 @@ impl QQNOptimizer {
         // based on actual tensor shapes in the model.
         let mut sum = None;
         for (t1, t2) in a.iter().zip(b.iter()) {
-            let dot = (t1.0 * t2.0).sum_reduce::<(), _>();
+            let dot = (*t1 * *t2).sum_reduce();
             sum = match sum {
                 Some(s) => Some(s + dot),
                 None => Some(dot),
@@ -221,7 +221,7 @@ impl Optimizer for QQNOptimizer {
         let new_weights: Vec<GraphTensor> = weights
             .iter()
             .zip(gradients.iter())
-            .map(|(w, g)| *w - (lr.expand() * scale.expand() * *g))
+            .map(|(w, g)| *w - (lr * scale * *g))
             .collect();
 
         // Store current params and grads for history update (done externally)

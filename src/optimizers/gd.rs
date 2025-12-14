@@ -409,9 +409,9 @@ pub struct GDOptimizer {
     /// Stagnation count threshold
     ///
     /// Learning rate tensor for graph-based updates
-    lr_tensor: Option<GraphTensor>,
+    lr_tensor: Option<SafeTensor>,
     /// New weight tensors after optimization step
-    new_weights: Vec<GraphTensor>,
+    new_weights: Vec<SafeTensor>,
 
     /// Number of consecutive steps with minimal progress before
     /// applying stagnation-based convergence relaxation.
@@ -419,17 +419,17 @@ pub struct GDOptimizer {
 }
 
 impl Clone for GDOptimizer {
-    fn clone(&self) -> Self {
-        Self {
-            config: self.config.clone(),
-            state: self.state.clone(),
-            stagnation_multiplier: self.stagnation_multiplier,
-            lr_tensor: self.lr_tensor,
-            new_weights: self.new_weights.clone(),
-            stagnation_count: self.stagnation_count,
-        }
-    }
-}
+     fn clone(&self) -> Self {
+         Self {
+             config: self.config.clone(),
+             state: self.state.clone(),
+             stagnation_multiplier: self.stagnation_multiplier,
+             lr_tensor: self.lr_tensor,
+             new_weights: self.new_weights.clone(),
+             stagnation_count: self.stagnation_count,
+         }
+     }
+ }
 
 impl GDOptimizer {
     /// Create a new GD optimizer with the given configuration.
@@ -489,7 +489,7 @@ impl Optimizer for GDOptimizer {
         // Create learning rate tensor that can be set externally
         let lr = graph.tensor(());
         lr.set(vec![self.config.learning_rate]);
-        self.lr_tensor = Some(lr);
+        self.lr_tensor = Some(SafeTensor(lr));
 
         let mut new_weights = Vec::with_capacity(weights.len());
         let mut state_tensors = Vec::new();
@@ -536,7 +536,6 @@ impl Optimizer for GDOptimizer {
             new_weights.push(new_weight);
         }
 
-        self.new_weights = new_weights.clone();
 
         OptimizerSetup::new(new_weights)
             .with_learning_rate(lr)
@@ -545,8 +544,6 @@ impl Optimizer for GDOptimizer {
 
     fn reset(&mut self) {
         self.state.reset();
-        self.lr_tensor = None;
-        self.new_weights.clear();
     }
 
     fn name(&self) -> &str {

@@ -273,11 +273,8 @@ impl LineSearch for BacktrackingLineSearch {
             cx.execute();
 
             // Get loss value
-            let loss_tensor = cx
-                .get_tensor(loss.id, 0)
-                .ok_or(anyhow!("Failed to get loss tensor"))?;
-            let f_alpha = loss_tensor
-                .data
+            let f_alpha = loss
+                .data()
                 .as_any()
                 .downcast_ref::<Vec<f32>>()
                 .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
@@ -313,11 +310,8 @@ impl LineSearch for BacktrackingLineSearch {
 
                 cx.set_tensor(params.id, 0, Tensor::new(min_step_params));
                 cx.execute();
-                let loss_tensor = cx
-                    .get_tensor(loss.id, 0)
-                    .ok_or(anyhow!("Failed to get loss tensor"))?;
-                let f_min = loss_tensor
-                    .data
+                let f_min = loss
+                    .data()
                     .as_any()
                     .downcast_ref::<Vec<f32>>()
                     .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
@@ -356,11 +350,8 @@ impl LineSearch for BacktrackingLineSearch {
 
         cx.set_tensor(params.id, 0, Tensor::new(eps_params));
         cx.execute();
-        let loss_tensor = cx
-            .get_tensor(loss.id, 0)
-            .ok_or(anyhow!("Failed to get loss tensor"))?;
-        let f_eps = loss_tensor
-            .data
+        let f_eps = loss
+            .data()
             .as_any()
             .downcast_ref::<Vec<f32>>()
             .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
