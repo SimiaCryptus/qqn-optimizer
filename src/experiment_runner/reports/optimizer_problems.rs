@@ -56,7 +56,7 @@ pub fn generate_problem_table_content(
         let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
         let execution_times: Vec<f32> = runs
             .iter()
-            .map(|r| r.execution_time.as_secs_f64())
+            .map(|r| r.execution_time.as_secs_f32())
             .collect();
         let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
         let std_final = {
@@ -278,7 +278,7 @@ pub fn generate_problem_section(
         };
         let execution_times: Vec<f32> = runs
             .iter()
-            .map(|r| r.execution_time.as_secs_f64())
+            .map(|r| r.execution_time.as_secs_f32())
             .collect();
 
         let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
@@ -711,7 +711,7 @@ fn generate_problem_performance_table(results: &BenchmarkResults) -> anyhow::Res
             / runs.len() as f32;
         let mean_time = runs
             .iter()
-            .map(|r| r.execution_time.as_secs_f64())
+            .map(|r| r.execution_time.as_secs_f32())
             .sum::<f32>()
             / runs.len() as f32;
 
@@ -837,7 +837,7 @@ pub fn generate_problem_latex_table(
         let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
         let execution_times: Vec<f32> = runs
             .iter()
-            .map(|r| r.execution_time.as_secs_f64())
+            .map(|r| r.execution_time.as_secs_f32())
             .collect();
         let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
         let std_final = {

@@ -397,7 +397,7 @@ pub fn generate_convergence_analysis(runs: &[&SingleResult]) -> anyhow::Result<S
             .collect();
         let times: Vec<f32> = successful_runs
             .iter()
-            .map(|r| r.execution_time.as_secs_f64())
+            .map(|r| r.execution_time.as_secs_f32())
             .collect();
         let mean_iterations = iterations.iter().sum::<usize>() as f32 / iterations.len() as f32;
         let mean_func_evals =

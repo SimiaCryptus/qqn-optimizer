@@ -17,6 +17,7 @@ use std::iter::Take;
 use std::slice::Iter;
 use std::sync::Arc;
 use std::time::Duration;
+use luminal::prelude::Shape;
 use tokio::sync::Semaphore;
 
 /// Detailed tracking of evolutionary events
@@ -157,11 +158,11 @@ impl AdaptiveExperimentRunner {
     }
 
     /// Run adaptive parameter evolution to find best optimizer configurations for each problem
-    pub async fn run_adaptive_evolution(
+    pub async fn run_adaptive_evolution<S: Shape>(
         &mut self,
         problems: Vec<ProblemSpec>,
         optimizer_types: Vec<super::parameter_evolution::OptimizerType>,
-    ) -> anyhow::Result<HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>> {
+    ) -> anyhow::Result<HashMap<String, Vec<(String, Arc<dyn Optimizer<S>>)>>> {
         info!("Starting adaptive parameter evolution");
         info!(
             "Population size: {}, Generations: {}, Evaluation runs: {}",
@@ -258,7 +259,7 @@ impl AdaptiveExperimentRunner {
                   family_name, all_best_genomes.len());
 
             // Convert best genomes to optimizers
-            let mut optimizers: Vec<(String, Arc<dyn Optimizer>)> = Vec::new();
+            let mut optimizers: Vec<(String, Arc<dyn Optimizer<S>>)> = Vec::new();
             let best: Vec<OptimizerGenome> = all_best_genomes
                 .iter()
                 .into_group_map_by(|x| x.optimizer_type.to_string())
@@ -1296,8 +1297,8 @@ impl AdaptiveExperimentRunner {
         new_population
     }
 
-    async fn evaluate_genome_with_metrics(
-        optimizer: Arc<dyn Optimizer>,
+    async fn evaluate_genome_with_metrics<S: Shape>(
+        optimizer: Arc<dyn Optimizer<S>>,
         problem: ProblemSpec,
         config: BenchmarkConfig,
         num_runs: usize,
@@ -1375,8 +1376,8 @@ impl AdaptiveExperimentRunner {
         ))
     }
 
-    async fn evaluate_genome(
-        optimizer: Arc<dyn Optimizer>,
+    async fn evaluate_genome<S: Shape>(
+        optimizer: Arc<dyn Optimizer<S>>,
         problem: ProblemSpec,
         config: BenchmarkConfig,
         num_runs: usize,
@@ -1542,10 +1543,10 @@ impl AdaptiveExperimentRunner {
     }
 
     /// Run final championship with evolved optimizers
-    pub async fn run_evolved_championship(
+    pub async fn run_evolved_championship<S: Shape>(
         &self,
         problems: Vec<ProblemSpec>,
-        evolved_optimizers: HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>,
+        evolved_optimizers: HashMap<String, Vec<(String, Arc<dyn Optimizer<S>>)>>,
     ) -> anyhow::Result<()> {
         info!("Running championship with evolved optimizers");
         info!("Championship includes {} problems", problems.len());

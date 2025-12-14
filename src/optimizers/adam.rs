@@ -285,7 +285,7 @@ impl AdamConfig {
 ///
 /// **Memory Requirements:** O(number of parameters) for each moment estimate
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AdamState {
+pub struct AdamState<S: Shape> {
     /// Current iteration number (used for bias correction)
     ///
     /// **Purpose:** Bias correction terms depend on iteration count: (1 - β^t)
@@ -297,7 +297,7 @@ pub struct AdamState {
     /// **Purpose:** Provides momentum and direction information
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
-    pub m: Option<Vec<GraphTensor>>,
+    pub m: Option<Vec<GraphTensor<S>>>,
 
     /// Second moment estimates (exponentially decaying average of squared gradients)
     ///
@@ -305,7 +305,7 @@ pub struct AdamState {
     /// **Purpose:** Adapts learning rates based on gradient variance
     /// **Note:** Skipped in serialization due to Tensor complexity
     #[serde(skip_serializing, skip_deserializing)]
-    pub v: Option<Vec<GraphTensor>>,
+    pub v: Option<Vec<GraphTensor<S>>>,
 
     /// Maximum second moment estimates (AMSGrad variant only)
     ///
@@ -313,16 +313,16 @@ pub struct AdamState {
     /// **Purpose:** Ensures non-increasing effective learning rates
     /// **Memory:** Only allocated when AMSGrad is enabled
     #[serde(skip_serializing, skip_deserializing)]
-    pub v_max: Option<Vec<GraphTensor>>,
+    pub v_max: Option<Vec<GraphTensor<S>>>,
 }
 
-impl Default for AdamState {
+impl<S: Shape> Default for AdamState<S> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl AdamState {
+impl<S: Shape> AdamState<S> {
     /// Create a new Adam state with default initialization.
     ///
     /// **Initial state:** All moment estimates are None and will be initialized
@@ -372,9 +372,9 @@ impl AdamState {
 /// **Thread Safety:** The optimizer itself is not thread-safe, but can be used
 /// with thread-safe functions through the Arc<dyn DifferentiableFunction> interface.
 #[derive(Debug)]
-pub struct AdamOptimizer {
+pub struct AdamOptimizer<S: Shape> {
     config: AdamConfig,
-    state: AdamState,
+    state: AdamState<S>,
     /// Current effective learning rate (may differ from config due to scheduling)
     current_lr: f32,
     /// Stagnation multiplier for relaxed convergence criteria (future use)
@@ -387,7 +387,7 @@ pub struct AdamOptimizer {
     name: String,
 }
 
-impl Clone for AdamOptimizer {
+impl<S: Shape> Clone for AdamOptimizer<S> {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
@@ -400,7 +400,7 @@ impl Clone for AdamOptimizer {
     }
 }
 
-impl AdamOptimizer {
+impl<S: Shape> AdamOptimizer<S> {
     /// Create a new Adam optimizer with the given configuration.
     pub fn autoname(config: AdamConfig) -> Self {
         Self::new(
@@ -441,8 +441,8 @@ impl AdamOptimizer {
     }
 }
 
-impl Optimizer for AdamOptimizer {
-    fn clone_box(&self) -> Box<dyn Optimizer> {
+impl<S: Shape> Optimizer<S> for AdamOptimizer<S> {
+    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
         Box::new(self.clone())
     }
 
@@ -450,9 +450,9 @@ impl Optimizer for AdamOptimizer {
         &mut self,
 
         graph: &mut Graph,
-        loss: GraphTensor,
-        params: &[GraphTensor],
-    ) -> Vec<GraphTensor> {
+        loss: GraphTensor<S>,
+        params: &[GraphTensor<S>],
+    ) -> Vec<GraphTensor<S>> {
         // Initialize moment estimates if needed
         if self.state.m.is_none() {
             self.state.m = Some(
@@ -554,13 +554,4 @@ mod tests {
         assert!(state.v_max.is_none());
     }
 
-    #[test]
-    fn test_adam_empty_params_error() {
-        let config = AdamConfig::default();
-        let mut optimizer = AdamOptimizer::autoname(config);
-        let mut params: Vec<Tensor> = vec![];
-        let function = Arc::new(QuadraticFunction);
-        let result = optimizer.step(&mut params, function);
-        assert!(result.is_err());
-    }
 }

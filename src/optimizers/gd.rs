@@ -312,7 +312,7 @@ impl GDConfig {
 /// Tensor objects cannot be easily serialized. When deserializing, the momentum
 /// buffer will be reinitialized on the first optimization step.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GDState {
+pub struct GDState<S: Shape> {
     /// Current iteration number
     ///
     /// Tracks the number of optimization steps taken. Used for logging,
@@ -325,16 +325,16 @@ pub struct GDState {
     /// Only allocated when momentum > 0. The buffer has the same
     /// structure as the parameter tensors.
     #[serde(skip_serializing, skip_deserializing)]
-    pub momentum_buffer: Vec<GraphTensor>,
+    pub momentum_buffer: Vec<GraphTensor<S>>,
 }
 
-impl Default for GDState {
+impl<S: Shape> Default for GDState<S> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GDState {
+impl<S: Shape> GDState<S> {
     /// Create a new GD state.
     ///
     /// Initializes the state with zero iterations and no momentum buffer.
@@ -394,9 +394,9 @@ impl GDState {
 /// optimizer instances for concurrent optimization or implement external
 /// synchronization.
 #[derive(Debug)]
-pub struct GDOptimizer {
+pub struct GDOptimizer<S: Shape> {
     config: GDConfig,
-    state: GDState,
+    state: GDState<S>,
     /// Stagnation multiplier for relaxed convergence criteria
     ///
     /// Used to relax convergence criteria when the optimizer appears
@@ -411,7 +411,7 @@ pub struct GDOptimizer {
     stagnation_count: usize,
 }
 
-impl Clone for GDOptimizer {
+impl<S: Shape> Clone for GDOptimizer<S> {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
@@ -422,7 +422,7 @@ impl Clone for GDOptimizer {
     }
 }
 
-impl GDOptimizer {
+impl<S: Shape> GDOptimizer<S> {
     /// Create a new GD optimizer with the given configuration.
     pub fn new(config: GDConfig) -> Self {
         info!(
@@ -450,8 +450,8 @@ impl GDOptimizer {
     }
 }
 
-impl Optimizer for GDOptimizer {
-    fn clone_box(&self) -> Box<dyn Optimizer> {
+impl<S: Shape> Optimizer<S> for GDOptimizer<S> {
+    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
         Box::new(self.clone())
     }
 
@@ -459,9 +459,9 @@ impl Optimizer for GDOptimizer {
         &mut self,
 
         graph: &mut Graph,
-        loss: GraphTensor,
-        params: &[GraphTensor],
-    ) -> Vec<GraphTensor> {
+        loss: GraphTensor<S>,
+        params: &[GraphTensor<S>],
+    ) -> Vec<GraphTensor<S>> {
         // 1. Get gradients
         let mut gradients = graph.add_gradients(loss, params);
 

@@ -202,17 +202,17 @@ impl TrustRegionOptimizer {
     }
 }
 
-impl Optimizer for TrustRegionOptimizer {
-    fn clone_box(&self) -> Box<dyn Optimizer> {
+impl<S: Shape> Optimizer<S> for TrustRegionOptimizer {
+    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
         Box::new(self.clone())
     }
 
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor,
-        params: &[GraphTensor],
-    ) -> Vec<GraphTensor> {
+        loss: GraphTensor<S>,
+        params: &[GraphTensor<S>],
+    ) -> Vec<GraphTensor<S>> {
         // 1. Get gradients
         let grads = graph.add_gradients(&[loss], params);
 

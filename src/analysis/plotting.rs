@@ -406,7 +406,7 @@ impl PlottingEngine {
                 } else {
                     // Make subsequent runs more transparent based on run index
                     (*color)
-                        .mix(0.8 - (run_idx as f32 * 0.05).min(0.3))
+                        .mix(0.8 - (run_idx as f64 * 0.05).min(0.3))
                         .to_rgba()
                 };
 
@@ -648,7 +648,7 @@ impl PlottingEngine {
                     } else {
                         // Make subsequent runs more transparent based on run index
                         (*color)
-                            .mix(0.8 - (run_idx as f32 * 0.05).min(0.3))
+                            .mix(0.8 - (run_idx as f64 * 0.05).min(0.3))
                             .to_rgba()
                     };
 

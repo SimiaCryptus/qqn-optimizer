@@ -1437,7 +1437,7 @@ fn generate_csv_exports(
                 runs.iter().map(|r| r.gradient_evaluations as f32).collect();
             let execution_times: Vec<f32> = runs
                 .iter()
-                .map(|r| r.execution_time.as_secs_f64())
+                .map(|r| r.execution_time.as_secs_f32())
                 .collect();
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
 

@@ -19,7 +19,7 @@ impl PerformanceAnalysisReport {
         let mut content = String::from("## Performance Analysis\n\n");
         let total_func_evals: usize = runs.iter().map(|r| r.function_evaluations).sum();
         let total_grad_evals: usize = runs.iter().map(|r| r.gradient_evaluations).sum();
-        let total_time: f32 = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
+        let total_time: f32 = runs.iter().map(|r| r.execution_time.as_secs_f32()).sum();
         let total_iterations: usize = runs.iter().map(|r| r.iterations).sum();
         let avg_func_evals = total_func_evals as f32 / runs.len() as f32;
         let avg_grad_evals = total_grad_evals as f32 / runs.len() as f32;
@@ -223,7 +223,7 @@ impl PerformanceAnalysisReport {
             for (optimizer_name, runs) in optimizer_results {
                 let total_func_evals: usize = runs.iter().map(|r| r.function_evaluations).sum();
                 let total_grad_evals: usize = runs.iter().map(|r| r.gradient_evaluations).sum();
-                let total_time: f32 = runs.iter().map(|r| r.execution_time.as_secs_f64()).sum();
+                let total_time: f32 = runs.iter().map(|r| r.execution_time.as_secs_f32()).sum();
                 let total_iterations: usize = runs.iter().map(|r| r.iterations).sum();
                 let avg_func_evals = total_func_evals as f32 / runs.len() as f32;
                 let avg_grad_evals = total_grad_evals as f32 / runs.len() as f32;
@@ -390,7 +390,7 @@ impl PerformanceTableReport {
                 let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
                 let execution_times: Vec<f32> = runs
                     .iter()
-                    .map(|r| r.execution_time.as_secs_f64())
+                    .map(|r| r.execution_time.as_secs_f32())
                     .collect();
                 let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
                 let std_final = {
@@ -868,7 +868,7 @@ pub fn generate_main_performance_latex_table(
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
             let execution_times: Vec<f32> = runs
                 .iter()
-                .map(|r| r.execution_time.as_secs_f64())
+                .map(|r| r.execution_time.as_secs_f32())
                 .collect();
             let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
             let std_final = {
@@ -1037,7 +1037,7 @@ pub fn generate_main_performance_table_content(
             let success_count = runs.iter().filter(|r| r.convergence_achieved).count();
             let execution_times: Vec<f32> = runs
                 .iter()
-                .map(|r| r.execution_time.as_secs_f64())
+                .map(|r| r.execution_time.as_secs_f32())
                 .collect();
             let mean_final = final_values.iter().sum::<f32>() / final_values.len() as f32;
             let std_final = {

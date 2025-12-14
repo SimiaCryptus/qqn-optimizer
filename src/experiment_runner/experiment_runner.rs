@@ -15,6 +15,7 @@ use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use luminal::prelude::Shape;
 use tokio::sync::Semaphore;
 
 /// Core experiment runner focused on benchmark execution
@@ -56,9 +57,9 @@ impl ExperimentRunner {
     }
 
     /// Run benchmarks with problem-specific optimizer sets
-    pub async fn run_championship_benchmarks(
+    pub async fn run_championship_benchmarks<S: Shape>(
         &self,
-        problem_optimizer_map: std::collections::HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>,
+        problem_optimizer_map: std::collections::HashMap<String, Vec<(String, Arc<dyn Optimizer<S>>)>>,
     ) -> anyhow::Result<()> {
         info!("Starting championship benchmarks with problem-specific optimizers");
         // Ensure output directory exists
@@ -73,10 +74,10 @@ impl ExperimentRunner {
     }
 
     /// Run comprehensive comparative benchmarks
-    pub async fn run_comparative_benchmarks(
+    pub async fn run_comparative_benchmarks<S: Shape>(
         &self,
         problems: Vec<ProblemSpec>,
-        optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+        optimizers: Vec<(String, Arc<dyn Optimizer<S>>)>,
     ) -> anyhow::Result<()> {
         info!("Starting comprehensive comparative benchmarks");
 
@@ -116,10 +117,10 @@ impl ExperimentRunner {
         Ok(())
     }
     /// Run multiple problems in parallel with controlled concurrency
-    async fn run_problems_parallel(
+    async fn run_problems_parallel<S: Shape>(
         &self,
         problems: Vec<ProblemSpec>,
-        optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+        optimizers: Vec<(String, Arc<dyn Optimizer<S>>)>,
     ) -> anyhow::Result<Vec<(ProblemSpec, BenchmarkResults)>> {
         let semaphore = Arc::new(Semaphore::new(self.max_concurrent_tasks));
         let mut tasks = Vec::new();
@@ -241,9 +242,9 @@ impl ExperimentRunner {
     }
 
     /// Static version of run_problem_benchmarks for use in parallel tasks
-    async fn run_problem_benchmarks_static(
+    async fn run_problem_benchmarks_static<S: Shape>(
         problem: &ProblemSpec,
-        optimizers: &[(String, Arc<dyn Optimizer>)],
+        optimizers: &[(String, Arc<dyn Optimizer<S>>)],
         runner: &BenchmarkRunner,
         rng: &mut StdRng,
         max_concurrent: usize,
@@ -315,9 +316,9 @@ impl ExperimentRunner {
     }
 
     /// Static version of single benchmark run for parallel execution
-    async fn run_single_benchmark_static(
+    async fn run_single_benchmark_static<S: Shape>(
         problem: &ProblemSpec,
-        optimizer: Arc<dyn Optimizer>,
+        optimizer: Arc<dyn Optimizer<S>>,
         run_id: usize,
         opt_name: &str,
         config: BenchmarkConfig,
@@ -378,14 +379,14 @@ impl ExperimentRunner {
     }
 }
 
-pub async fn run_benchmark(
+pub async fn run_benchmark<S: Shape>(
     report_path_prefix: &str,
     max_evals: usize,
     num_runs: usize,
     time_limit: Duration,
     max_concurrent_tasks: Option<usize>,
     problems: Vec<ProblemSpec>,
-    optimizers: Vec<(String, Arc<dyn Optimizer>)>,
+    optimizers: Vec<(String, Arc<dyn Optimizer<S>>)>,
     initial_point_noise: f32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");

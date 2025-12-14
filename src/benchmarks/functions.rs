@@ -22,19 +22,3 @@ pub struct BenchmarkFunctionWrapper<T: OptimizationProblem> {
     problem: T,
 }
 impl<T: OptimizationProblem> BenchmarkFunctionWrapper<T> {}
-impl<T: OptimizationProblem> DifferentiableFunction for BenchmarkFunctionWrapper<T> {
-    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f32> {
-        let x_vec = tensors_to_vec(params);
-        self.problem
-            .evaluate_f64(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))
-    }
-    fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
-        let x_vec = tensors_to_vec(params);
-        let grad_vec = self
-            .problem
-            .gradient_f64(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        Ok(vec![tensor_from_vec(grad_vec)])
-    }
-}

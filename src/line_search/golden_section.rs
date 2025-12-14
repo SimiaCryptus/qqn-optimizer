@@ -173,14 +173,14 @@ impl GoldenSectionConfig {
 pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
 }
-impl LineSearch for GoldenSectionLineSearch {
+impl<S: Shape> LineSearch<S> for GoldenSectionLineSearch {
 
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor,
-        loss: GraphTensor,
-        gradient: GraphTensor,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -212,7 +212,7 @@ impl LineSearch for GoldenSectionLineSearch {
     fn reset(&mut self) {
         // Golden section search is stateless
     }
-    fn clone_box(&self) -> Box<dyn LineSearch> {
+    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
         Box::new(self.clone())
     }
 

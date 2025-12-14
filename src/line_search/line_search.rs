@@ -62,20 +62,20 @@ impl Default for LineSearchConfig {
     }
 }
 /// Create a line search algorithm from configuration
-pub fn create_line_search(_config: LineSearchConfig) -> Box<dyn LineSearch> {
+pub fn create_line_search<S: Shape>(_config: LineSearchConfig) -> Box<dyn LineSearch<S>> {
     // Implementations will be restored in subsequent tasks
     unimplemented!("Line search implementations are being migrated to Luminal");
 }
 
 /// Trait for line search algorithms
-pub trait LineSearch: Send + Sync + Debug {
+pub trait LineSearch<S: Shape>: Send + Sync + Debug {
     /// Perform 1D line search optimization
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor,
-        loss: GraphTensor,
-        gradient: GraphTensor,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -85,7 +85,7 @@ pub trait LineSearch: Send + Sync + Debug {
     /// Reset internal state
     fn reset(&mut self);
     /// Clone the line search algorithm
-    fn clone_box(&self) -> Box<dyn LineSearch>;
+    fn clone_box(&self) -> Box<dyn LineSearch<S>>;
     /// Get as Any for downcasting
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }

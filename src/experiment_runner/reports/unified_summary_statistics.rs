@@ -196,7 +196,7 @@ impl SummaryStatisticsReport {
                         / runs.len() as f32;
                     let avg_time = runs
                         .iter()
-                        .map(|r| r.execution_time.as_secs_f64())
+                        .map(|r| r.execution_time.as_secs_f32())
                         .sum::<f32>()
                         / runs.len() as f32;
 

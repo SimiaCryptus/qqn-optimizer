@@ -85,22 +85,22 @@ impl QQNConfig {
 
 /// State information for the QQN optimizer
 #[derive(Debug, Clone)]
-pub struct QQNState {
+pub struct QQNState<S: Shape> {
     /// Current iteration number
     pub iteration: usize,
     /// L-BFGS history: (s, y) pairs
     /// s = x_{k+1} - x_k
     /// y = g_{k+1} - g_k
-    pub history: VecDeque<(Vec<GraphTensor>, Vec<GraphTensor>)>,
+    pub history: VecDeque<(Vec<GraphTensor<S>>, Vec<GraphTensor<S>>)>,
     /// Previous parameters (x_k)
-    pub prev_params: Option<Vec<GraphTensor>>,
+    pub prev_params: Option<Vec<GraphTensor<S>>>,
     /// Previous gradients (g_k)
-    pub prev_grads: Option<Vec<GraphTensor>>,
+    pub prev_grads: Option<Vec<GraphTensor<S>>>,
     /// Previous ideal step size for line search initialization
     pub previous_step_size: Option<f32>,
 }
 
-impl QQNState {
+impl<S: Shape> QQNState<S> {
     pub fn new() -> Self {
         Self {
             iteration: 0,
@@ -113,11 +113,11 @@ impl QQNState {
 }
 
 #[derive(Debug)]
-pub struct QQNOptimizer {
+pub struct QQNOptimizer<S: Shape> {
     config: QQNConfig,
-    pub state: QQNState,
+    pub state: QQNState<S>,
 }
-impl Clone for QQNOptimizer {
+impl<S: Shape> Clone for QQNOptimizer<S> {
     fn clone(&self) -> Self {
         Self {
             config: self.config.clone(),
@@ -126,7 +126,7 @@ impl Clone for QQNOptimizer {
     }
 }
 
-impl QQNOptimizer {
+impl<S: Shape> QQNOptimizer<S> {
     /// Create a new QQN optimizer with the given configuration
     pub fn new(config: QQNConfig) -> Self {
         Self {
@@ -136,7 +136,7 @@ impl QQNOptimizer {
     }
 
     /// Helper to compute dot product of two lists of tensors
-    fn dot(&self, a: &[GraphTensor], b: &[GraphTensor]) -> GraphTensor {
+    fn dot(&self, a: &[GraphTensor<S>], b: &[GraphTensor<S>]) -> GraphTensor<S> {
         let mut sum = None;
         for (t1, t2) in a.iter().zip(b.iter()) {
             let dot = (*t1 * *t2).sum_reduce();
@@ -149,17 +149,17 @@ impl QQNOptimizer {
     }
 }
 
-impl Optimizer for QQNOptimizer {
-    fn clone_box(&self) -> Box<dyn Optimizer> {
+impl<S: Shape> Optimizer<S> for QQNOptimizer<S> {
+    fn clone_box(&self) -> Box<dyn Optimizer<S>> {
         Box::new(self.clone())
     }
 
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor,
-        params: &[GraphTensor],
-    ) -> Vec<GraphTensor> {
+        loss: GraphTensor<S>,
+        params: &[GraphTensor<S>],
+    ) -> Vec<GraphTensor<S>> {
         // 1. Compute Gradients
         // Assuming we can get gradients relative to loss.
         let mut gradients = Vec::new();
@@ -172,12 +172,12 @@ impl Optimizer for QQNOptimizer {
         // s = x_{k+1} - x_k
         // y = g_{k+1} - g_k
         if let (Some(prev_p), Some(prev_g)) = (&self.state.prev_params, &self.state.prev_grads) {
-            let s: Vec<GraphTensor> = params
+            let s: Vec<GraphTensor<S>> = params
                 .iter()
                 .zip(prev_p.iter())
                 .map(|(c, p)| *c - *p)
                 .collect();
-            let y: Vec<GraphTensor> = gradients
+            let y: Vec<GraphTensor<S>> = gradients
                 .iter()
                 .zip(prev_g.iter())
                 .map(|(c, p)| *c - *p)
@@ -231,14 +231,14 @@ impl Optimizer for QQNOptimizer {
 
         // q is now the direction d = -H * g (approx).
         // Actually L-BFGS computes H * g. So direction is -q.
-        let direction: Vec<GraphTensor> = q.iter().map(|t| -*t).collect();
+        let direction: Vec<GraphTensor<S>> = q.iter().map(|t| -*t).collect();
 
         // 4. Update Parameters
         // x_new = x + step_size * direction
         // We use a fixed step size or the one from config since we can't do line search easily.
         let step_size = self.config.min_step_persist.max(1e-3); // Heuristic
 
-        let new_params: Vec<GraphTensor> = params
+        let new_params: Vec<GraphTensor<S>> = params
             .iter()
             .zip(direction.iter())
             .map(|(p, d)| *p + (*d * step_size))

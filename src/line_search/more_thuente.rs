@@ -152,11 +152,11 @@ impl MoreThuenteConfig {
 /// let result = line_search.optimize_1d(&problem)?;
 /// ```
 #[derive(Debug, Clone)]
-pub struct MoreThuenteLineSearch {
+pub struct MoreThuenteLineSearch<S: Shape> {
     config: MoreThuenteConfig,
 }
 
-impl MoreThuenteLineSearch {
+impl<S: Shape> MoreThuenteLineSearch<S> {
     /// Set the initial step size for the next line search
     ///
     /// The step size will be clamped to [min_step, max_step] bounds.
@@ -441,13 +441,13 @@ impl MoreThuenteLineSearch {
     }
 }
 
-impl LineSearch for MoreThuenteLineSearch {
+impl<S: Shape> LineSearch<S> for MoreThuenteLineSearch<S> {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor,
-        loss: GraphTensor,
-        gradient: GraphTensor,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -633,7 +633,7 @@ impl LineSearch for MoreThuenteLineSearch {
         // More-Thuente is stateless
     }
 
-    fn clone_box(&self) -> Box<dyn LineSearch> {
+    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
         Box::new(self.clone())
     }
 

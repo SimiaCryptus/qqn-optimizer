@@ -595,7 +595,7 @@ impl UnifiedProblemTester {
             }
         }
         if successful_tests > 0 {
-            Some(total_accuracy.as_f64() / successful_tests.as_f64())
+            Some((total_accuracy.as_f64() / successful_tests.as_f64()) as f32)
         } else {
             None
         }

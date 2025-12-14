@@ -150,11 +150,11 @@ impl BacktrackingConfig {
 /// - When simplicity and robustness are preferred over efficiency
 /// - Problems where second-order information is unavailable or unreliable
 #[derive(Debug, Clone)]
-pub struct BacktrackingLineSearch {
+pub struct BacktrackingLineSearch<S: Shape> {
     config: BacktrackingConfig,
 }
 
-impl BacktrackingLineSearch {
+impl<S: Shape> BacktrackingLineSearch<S> {
     /// Set the initial step size for the next line search.
     ///
     /// The step size will be clamped to the range [min_step, max_step].
@@ -230,13 +230,13 @@ impl BacktrackingLineSearch {
     }
 }
 
-impl LineSearch for BacktrackingLineSearch {
+impl<S: Shape> LineSearch<S> for BacktrackingLineSearch<S> {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor,
-        loss: GraphTensor,
-        gradient: GraphTensor,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -419,7 +419,7 @@ impl LineSearch for BacktrackingLineSearch {
     ///
     /// This is used by the optimization framework to create independent copies
     /// of the line search for different optimization runs.
-    fn clone_box(&self) -> Box<dyn LineSearch> {
+    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
         Box::new(self.clone())
     }
     /// Get a mutable reference to this instance as `Any` for downcasting.

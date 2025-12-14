@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
+use luminal::prelude::Shape;
 
 /// Represents a genome for an optimizer configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -83,7 +84,7 @@ impl OptimizerGenome {
         }
     }
 
-    fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f32> {
+    fn random_qqn_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
         params.insert("c1".to_string(), rng.gen_range(1e-6..1e-2));
         params.insert("c2".to_string(), rng.gen_range(0.1..0.99));
@@ -101,7 +102,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f32> {
+    fn random_lbfgs_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
         params.insert("history_size".to_string(), rng.gen_range(3.0..30.0));
         params.insert("c1".to_string(), rng.gen_range(1e-6..1e-2));
@@ -115,7 +116,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_adam_params(rng: &mut StdRng) -> HashMap<String, f32> {
+    fn random_adam_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
@@ -131,7 +132,7 @@ impl OptimizerGenome {
         params
     }
 
-    fn random_gd_params(rng: &mut StdRng) -> HashMap<String, f32> {
+    fn random_gd_params(rng: &mut StdRng) -> HashMap<String, f64> {
         let mut params = HashMap::new();
         params.insert(
             "learning_rate".to_string(),
@@ -157,7 +158,7 @@ impl OptimizerGenome {
         params
     }
 
-    pub fn to_optimizer(&self) -> Arc<dyn Optimizer> {
+    pub fn to_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
         debug!(
             "Converting genome (ID: {:?}) to optimizer: {}",
             self.id, self.optimizer_type
@@ -171,7 +172,7 @@ impl OptimizerGenome {
         }
     }
 
-    fn build_qqn_optimizer(&self) -> Arc<dyn Optimizer> {
+    fn build_qqn_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
         let method_idx = self
             .parameters
             .get("line_search_method")
@@ -211,7 +212,7 @@ impl OptimizerGenome {
         }))
     }
 
-    fn build_lbfgs_optimizer(&self) -> Arc<dyn Optimizer> {
+    fn build_lbfgs_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
         Arc::new(LBFGSOptimizer::new(LBFGSConfig {
             name: format!("LBFGS_{}", self.id.unwrap_or(0)),
             history_size: self.parameters.get("history_size").copied().unwrap_or(10.0) as usize,
@@ -227,7 +228,7 @@ impl OptimizerGenome {
         }))
     }
 
-    fn build_adam_optimizer(&self) -> Arc<dyn Optimizer> {
+    fn build_adam_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
         Arc::new(AdamOptimizer::new(
             format!("Adam_{}", self.id.unwrap_or(0)),
             AdamConfig {
@@ -245,7 +246,7 @@ impl OptimizerGenome {
         ))
     }
 
-    fn build_gd_optimizer(&self) -> Arc<dyn Optimizer> {
+    fn build_gd_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
         Arc::new(GDOptimizer::new(GDConfig {
             name: format!("GD_{}", self.id.unwrap_or(0)),
             learning_rate: self
@@ -260,7 +261,7 @@ impl OptimizerGenome {
         }))
     }
 
-    fn build_trust_region_optimizer(&self) -> Arc<dyn Optimizer> {
+    fn build_trust_region_optimizer<S: Shape>(&self) -> Arc<dyn Optimizer<S>> {
         Arc::new(TrustRegionOptimizer::new(TrustRegionConfig {
             name: format!("TrustRegion_{}", self.id.unwrap_or(0)),
             initial_radius: self
@@ -683,7 +684,7 @@ impl ParameterEvolution {
                             let new_log_val = log_val + delta * 2.0; // Larger changes in log space
                             new_log_val.exp().max(1e-12).min(1.0)
                         } else {
-                            10f64.powf(self.rng.gen_range(-12.0..-4.0))
+                            10f32.powf(self.rng.gen_range(-12.0..-4.0))
                         }
                     }
                     // Probability parameters [0, 1]
@@ -699,7 +700,7 @@ impl ParameterEvolution {
                     "line_search_method" => {
                         if self.rng.gen_bool(0.3) {
                             // 30% chance to change method
-                            self.rng.gen_range(0.0..6.0).as_f64().floor()
+                            self.rng.gen_range(0.0..6.0).floor()
                         } else {
                             *value
                         }

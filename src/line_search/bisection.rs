@@ -129,16 +129,16 @@ trait ProblemEvaluator {
     fn objective(&mut self, step: f32) -> Result<f32>;
     fn gradient(&mut self, step: f32) -> Result<f32>;
 }
-struct LuminalEvaluator<'a> {
+struct LuminalEvaluator<'a, S: Shape> {
     cx: &'a mut Graph,
-    params: GraphTensor,
-    loss: GraphTensor,
+    params: GraphTensor<S>,
+    loss: GraphTensor<S>,
     current_params: &'a [f32],
     direction: &'a [f32],
     initial_loss: f32,
     initial_dd: f32,
 }
-impl<'a> ProblemEvaluator for LuminalEvaluator<'a> {
+impl<'a, S: Shape> ProblemEvaluator for LuminalEvaluator<'a, S> {
     fn objective(&mut self, step: f32) -> Result<f32> {
         if step.abs() < 1e-10 {
             return Ok(self.initial_loss);
@@ -167,18 +167,18 @@ impl<'a> ProblemEvaluator for LuminalEvaluator<'a> {
 }
 
 
-impl LineSearch for BisectionLineSearch {
+impl<S: Shape> LineSearch<S> for BisectionLineSearch {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor,
-        loss: GraphTensor,
-        gradient: GraphTensor,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
         initial_gradient: &[f32],
-    ) -> Result<LineSearchResult> {
+    ) -> Result<LineSearchResult<S>> {
         let directional_derivative: f32 = initial_gradient.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
         self.log_verbose("Starting bisection line search");
         self.log_verbose(&format!(
@@ -310,7 +310,7 @@ impl LineSearch for BisectionLineSearch {
         // Bisection line search is stateless, nothing to reset
     }
 
-    fn clone_box(&self) -> Box<dyn LineSearch> {
+    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
         Box::new(self.clone())
     }
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

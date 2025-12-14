@@ -14,6 +14,8 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use luminal::prelude::Shape;
+use rand_distr::num_traits::ToPrimitive;
 use tokio::time::timeout;
 /// Global flag to disable optimal value thresholds for all problems
 static NO_THRESHOLD_MODE: AtomicBool = AtomicBool::new(false);
@@ -125,7 +127,7 @@ impl OptimizationTrace {
         } else {
             Some(Statistics::min(
                 self.iterations.iter().map(|data| data.function_value),
-            ))
+            ).to_f32()?)
         }
     }
 
@@ -298,10 +300,10 @@ impl BenchmarkRunner {
     }
 
     /// Run benchmarks for all combinations of problems and optimizers
-    pub async fn run_benchmarks(
+    pub async fn run_benchmarks<S: Shape>(
         &self,
         problems: Vec<Box<ProblemSpec>>,
-        mut optimizers: Vec<Box<dyn Optimizer>>,
+        mut optimizers: Vec<Box<dyn Optimizer<S>>>,
     ) -> Result<BenchmarkResults, BenchmarkError> {
         let mut results = BenchmarkResults::new(self.config.clone());
         info!(
@@ -341,10 +343,10 @@ impl BenchmarkRunner {
     }
 
     /// Run a single benchmark with one problem and one optimizer
-    pub async fn run_single_benchmark(
+    pub async fn run_single_benchmark<S: Shape>(
         &self,
         problem: &ProblemSpec,
-        optimizer: &mut Box<dyn Optimizer>,
+        optimizer: &mut Box<dyn Optimizer<S>>,
         run_id: usize,
         opt_name: &str,
         initial_point: Result<Vec<f32>, Result<SingleResult, BenchmarkError>>,
@@ -441,17 +443,17 @@ impl BenchmarkRunner {
         // Calculate performance metrics
         let performance_metrics = PerformanceMetrics {
             iterations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                iteration as f32 / execution_time.as_secs_f64()
+                iteration as f32 / execution_time.as_secs_f32()
             } else {
                 0.0
             },
             function_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                trace.total_function_evaluations as f32 / execution_time.as_secs_f64()
+                trace.total_function_evaluations as f32 / execution_time.as_secs_f32()
             } else {
                 0.0
             },
             gradient_evaluations_per_second: if execution_time.as_secs_f64() > 0.0 {
-                trace.total_gradient_evaluations as f32 / execution_time.as_secs_f64()
+                trace.total_gradient_evaluations as f32 / execution_time.as_secs_f32()
             } else {
                 0.0
             },
@@ -492,10 +494,10 @@ impl BenchmarkRunner {
         }
     }
 
-    async fn optimization_loop(
+    async fn optimization_loop<S: Shape>(
         &self,
         problem: &ProblemSpec,
-        optimizer: &mut dyn Optimizer,
+        optimizer: &mut dyn Optimizer<S>,
         input_floats: &mut [f32],
         iteration: &mut usize,
         function_evaluations: &mut usize,
@@ -778,11 +780,6 @@ impl BenchmarkRunner {
         Ok(ConvergenceReason::MaxIterations)
     }
 }
-
-fn create_1d_tensor(values: &[f32], device: &Device) -> CandleResult<Tensor> {
-    Tensor::new(values, device)
-}
-
 /// Wrapper to convert OptimizationProblem to DifferentiableFunction
 pub struct ProblemWrapper {
     problem: Arc<dyn OptimizationProblem>,
@@ -807,27 +804,6 @@ impl ProblemWrapper {
     pub fn reset_counters(&self) {
         self.function_evaluations.store(0, Ordering::Relaxed);
         self.gradient_evaluations.store(0, Ordering::Relaxed);
-    }
-}
-
-impl DifferentiableFunction for ProblemWrapper {
-    fn evaluate(&self, params: &[Tensor]) -> candle_core::Result<f32> {
-        self.function_evaluations.fetch_add(1, Ordering::Relaxed);
-        let x_vec = crate::utils::math::tensors_to_f64(params)?;
-        self.problem
-            .evaluate_f64(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))
-    }
-
-    fn gradient(&self, params: &[Tensor]) -> candle_core::Result<Vec<Tensor>> {
-        self.gradient_evaluations.fetch_add(1, Ordering::Relaxed);
-        let x_vec = crate::utils::math::tensors_to_f64(params)?;
-        let grad_vec = self
-            .problem
-            .gradient_f64(&x_vec)
-            .map_err(|e| candle_core::Error::Msg(e.to_string()))?;
-        let device = &Device::Cpu;
-        Ok([Tensor::new(grad_vec, device)?].to_vec())
     }
 }
 

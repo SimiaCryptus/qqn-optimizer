@@ -38,9 +38,9 @@ pub struct OptimizationResult {
 ///
 /// This trait provides a unified interface for different optimization methods,
 /// enabling easy benchmarking and comparison between algorithms.
-pub trait Optimizer: Send + Sync + Debug + 'static {
+pub trait Optimizer<S: Shape>: Send + Sync + Debug + 'static {
     /// Clone the optimizer (required for trait object safety)
-    fn clone_box(&self) -> Box<dyn Optimizer>;
+    fn clone_box(&self) -> Box<dyn Optimizer<S>>;
     /// Get optimizer configuration as a string for serialization
     fn config_string(&self) -> String {
         format!("{self:?}")
@@ -58,9 +58,9 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
     fn step(
         &mut self,
         graph: &mut Graph,
-        loss: GraphTensor,
-        params: &[GraphTensor],
-    ) -> Vec<GraphTensor>;
+        loss: GraphTensor<S>,
+        params: &[GraphTensor<S>],
+    ) -> Vec<GraphTensor<S>>;
 
     /// Reset the optimizer state (useful for multiple runs)
     fn reset(&mut self);

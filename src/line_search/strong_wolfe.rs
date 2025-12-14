@@ -164,11 +164,11 @@ impl StrongWolfeConfig {
 ///
 /// Strong Wolfe line search implementation
 #[derive(Debug, Clone)]
-pub struct StrongWolfeLineSearch {
+pub struct StrongWolfeLineSearch<S: Shape> {
     config: StrongWolfeConfig,
 }
 
-impl StrongWolfeLineSearch {
+impl<S: Shape> StrongWolfeLineSearch<S> {
     /// Set the initial step size for the next line search
     ///
     /// The step size will be clamped to [min_step, max_step] range.
@@ -290,7 +290,7 @@ impl StrongWolfeLineSearch {
         f0: f32,
         directional_derivative: f32,
         mut evaluate: F,
-    ) -> anyhow::Result<f32> 
+    ) -> anyhow::Result<f32>
     where
         F: FnMut(f32) -> anyhow::Result<(f32, f32)>,
     {
@@ -349,13 +349,13 @@ impl StrongWolfeLineSearch {
     }
 }
 
-impl LineSearch for StrongWolfeLineSearch {
+impl<S: Shape> LineSearch<S> for StrongWolfeLineSearch<S> {
     fn search(
         &mut self,
         cx: &mut Graph,
-        params: GraphTensor,
-        loss: GraphTensor,
-        gradient: GraphTensor,
+        params: GraphTensor<S>,
+        loss: GraphTensor<S>,
+        gradient: GraphTensor<S>,
         current_params: &[f32],
         direction: &[f32],
         initial_loss: f32,
@@ -498,7 +498,7 @@ impl LineSearch for StrongWolfeLineSearch {
     fn reset(&mut self) {
         // Strong Wolfe line search is stateless, nothing to reset
     }
-    fn clone_box(&self) -> Box<dyn LineSearch> {
+    fn clone_box(&self) -> Box<dyn LineSearch<S>> {
         Box::new(self.clone())
     }
 
