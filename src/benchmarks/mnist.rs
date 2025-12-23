@@ -1,10 +1,12 @@
 #![allow(clippy::upper_case_acronyms)]
+use crate::OptimizationProblem;
+use luminal::prelude::*;
+use luminal_training::Autograd;
 use rand::prelude::StdRng;
 use std::fs;
 use std::path::Path;
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MnistData {
     images: Vec<Vec<u8>>,
     labels: Vec<u8>,
@@ -222,5 +224,141 @@ impl MnistData {
         reader.read_exact(&mut labels)?;
 
         Ok(labels)
+    }
+}
+macro_rules! impl_eval_grad {
+    () => {
+        fn evaluate_f64(&self, x: &[f64]) -> anyhow::Result<f64> {
+            if x.len() != self.dimension() {
+                return Err(anyhow::anyhow!(
+                    "Dimension mismatch: expected {}, got {}",
+                    self.dimension(),
+                    x.len()
+                ));
+            }
+            let mut graph = Graph::new();
+            let input = graph
+                .tensor((x.len(),))
+                .set(x.iter().map(|&v| v as f32).collect::<Vec<f32>>());
+            let output = self.build_graph(&mut graph, input);
+            output.retrieve();
+            graph.execute();
+            let data = output.data();
+            if data.is_empty() {
+                return Err(anyhow::anyhow!("Graph execution produced no output"));
+            }
+            Ok(data[0] as f64)
+        }
+        fn gradient_f64(&self, x: &[f64]) -> anyhow::Result<Vec<f64>> {
+            if x.len() != self.dimension() {
+                return Err(anyhow::anyhow!(
+                    "Dimension mismatch: expected {}, got {}",
+                    self.dimension(),
+                    x.len()
+                ));
+            }
+            let mut graph = Graph::new();
+            let input = graph
+                .tensor((x.len(),))
+                .set(x.iter().map(|&v| v as f32).collect::<Vec<f32>>());
+            let output = self.build_graph(&mut graph, input);
+            let grads = graph.compile(Autograd::new(input, output), ());
+            graph.keep_tensors(&grads);
+            output.retrieve();
+            graph.execute();
+            if grads.is_empty() {
+                return Ok(vec![0.0; x.len()]);
+            }
+            let (grad_id, grad_shape) = grads[0];
+            let grad_tensor = GraphTensor::from_id(grad_id, grad_shape, &mut graph, DType::F32);
+            Ok(grad_tensor.data().iter().map(|&v| v as f64).collect())
+        }
+    };
+}
+#[derive(Debug, Clone)]
+pub struct MnistProblem {
+    name: String,
+    train_x: Vec<Vec<f64>>,
+    train_y: Vec<Vec<f64>>,
+    hidden_size: usize,
+}
+
+impl MnistProblem {
+    pub fn new(n_samples: usize, hidden_size: usize, rng: &mut StdRng) -> Self {
+        let (x, y) = MnistData::load_mnist(Some(n_samples), rng);
+        Self {
+            name: format!("Mnist_MLP_{}samples_{}hidden", n_samples, hidden_size),
+            train_x: x,
+            train_y: y,
+            hidden_size,
+        }
+    }
+}
+
+impl OptimizationProblem for MnistProblem {
+    impl_eval_grad!();
+    fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        Box::new(self.clone())
+    }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dimension(&self) -> usize {
+        let n_input = 784;
+        let n_output = 10;
+        // W1 + B1 + W2 + B2
+        (n_input * self.hidden_size) + self.hidden_size + (self.hidden_size * n_output) + n_output
+    }
+    fn initial_point(&self) -> Vec<f64> {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        (0..self.dimension())
+            .map(|_| rng.gen_range(-0.1..0.1))
+            .collect()
+    }
+    fn build_graph(&self, graph: &mut Graph, params: GraphTensor) -> GraphTensor {
+        let n_input = 784;
+        let n_hidden = self.hidden_size;
+        let n_output = 10;
+        let batch_size = self.train_x.len();
+        // Load Data
+        let mut x_flat: Vec<f32> = Vec::with_capacity(batch_size * n_input);
+        for sample in &self.train_x {
+            x_flat.extend(sample.iter().map(|&v| v as f32));
+        }
+        let x = graph.tensor((batch_size, n_input)).set(x_flat);
+        let mut y_flat: Vec<f32> = Vec::with_capacity(batch_size * n_output);
+        for sample in &self.train_y {
+            y_flat.extend(sample.iter().map(|&v| v as f32));
+        }
+        let y = graph.tensor((batch_size, n_output)).set(y_flat);
+        // Indices for slicing params
+        let w1_size = n_input * n_hidden;
+        let b1_size = n_hidden;
+        let w2_size = n_hidden * n_output;
+        let b2_size = n_output;
+        let w1_end = w1_size;
+        let b1_end = w1_end + b1_size;
+        let w2_end = b1_end + w2_size;
+        // Helper to extract parameter block
+        let mut get_param = |start: usize, size: usize, shape: (usize, usize)| {
+            let indices: Vec<f32> = (start..start + size).map(|i| i as f32).collect();
+            let idx = graph.tensor((size,)).set(indices);
+            params.gather(idx).split_dims(0, shape.1)
+        };
+        let w1 = get_param(0, w1_size, (n_input, n_hidden));
+        let b1 = get_param(w1_end, b1_size, (1, n_hidden));
+        let w2 = get_param(b1_end, w2_size, (n_hidden, n_output));
+        let b2 = get_param(w2_end, b2_size, (1, n_output));
+        // Forward pass
+        let h = (x.matmul(w1) + b1).relu();
+        let logits = h.matmul(w2) + b2;
+        // MSE Loss on Sigmoid probabilities
+        let preds = logits.sigmoid();
+        let diff = preds - y;
+        (diff * diff).mean(vec![0, 1])
+    }
+    fn optimal_value(&self) -> Option<f64> {
+        Some(0.0)
     }
 }
