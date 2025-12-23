@@ -10,6 +10,7 @@ pub mod analytic_functions;
 pub mod evaluation;
 pub mod functions;
 pub mod unified_tests;
+mod mnist;
 
 pub use analytic_functions::AckleyFunction;
 pub use analytic_functions::BealeFunction;
