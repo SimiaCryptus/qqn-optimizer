@@ -283,8 +283,8 @@ impl LineSearch for BacktrackingLineSearch {
                 .loss
                 .data()
                 .as_any()
-                .downcast_ref::<Vec<f64>>()
-                .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+                .downcast_ref::<Vec<f32>>()
+                .ok_or(anyhow!("Failed to downcast tensor data"))?[0] as f64;
 
             // Track best point
             if f_alpha < best_f {
@@ -326,8 +326,8 @@ impl LineSearch for BacktrackingLineSearch {
                     .loss
                     .data()
                     .as_any()
-                    .downcast_ref::<Vec<f64>>()
-                    .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+                    .downcast_ref::<Vec<f32>>()
+                    .ok_or(anyhow!("Failed to downcast tensor data"))?[0] as f64;
 
                 if f_min < initial_loss {
                     return Ok(LineSearchResult {
@@ -372,8 +372,8 @@ impl LineSearch for BacktrackingLineSearch {
             .loss
             .data()
             .as_any()
-            .downcast_ref::<Vec<f64>>()
-            .ok_or(anyhow!("Failed to downcast tensor data"))?[0];
+            .downcast_ref::<Vec<f32>>()
+            .ok_or(anyhow!("Failed to downcast tensor data"))?[0] as f64;
 
         if f_eps < initial_loss {
             return Ok(LineSearchResult {

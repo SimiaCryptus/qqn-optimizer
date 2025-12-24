@@ -16,7 +16,7 @@ use qqn_optimizer::{
 use tokio::task::LocalSet;
 use qqn_optimizer::benchmarks::mnist::MnistProblem;
 
-// #[tokio::test]
+#[tokio::test]
 async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
     init_logging(false)?;
     disable_no_threshold_mode();
@@ -29,8 +29,8 @@ async fn full_test() -> Result<(), Box<dyn Error + Send + Sync>> {
             optimizers.extend(trust_region_variants());
             run_benchmark(
                 &"results/full_all_optimizers_",
-                5000,
-                5,
+                500,
+                1,
                 Duration::from_secs(600),
                 Some(8),
                 all_problems().clone(),
