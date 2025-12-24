@@ -2,6 +2,8 @@ use crate::benchmarks::evaluation::{
     BenchmarkResults, ConvergenceReason, PerformanceMetrics, ProblemSpec, SingleResult,
 };
 use crate::OptimizationProblem;
+use luminal::graph::Graph;
+use luminal::graph_tensor::GraphTensor;
 use std::sync::Arc;
 
 pub fn create_test_data() -> Vec<(ProblemSpec, BenchmarkResults)> {
@@ -177,6 +179,10 @@ impl OptimizationProblem for MockProblem {
     }
 
     fn clone_problem(&self) -> Box<dyn OptimizationProblem> {
+        todo!()
+    }
+
+    fn build_graph(&self, graph: &mut Graph, input: GraphTensor) -> GraphTensor {
         todo!()
     }
 }
