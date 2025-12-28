@@ -362,3 +362,134 @@ impl OptimizationProblem for MnistProblem {
         Some(0.0)
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn create_dummy_problem() -> MnistProblem {
+        let n_samples = 5;
+        let hidden_size = 16;
+        // Create dummy data instead of loading from files
+        let train_x = vec![vec![0.1; 784]; n_samples];
+        let mut train_y = vec![vec![0.0; 10]; n_samples];
+        for i in 0..n_samples {
+            train_y[i][i % 10] = 1.0;
+        }
+        MnistProblem {
+            name: "Dummy_Mnist".to_string(),
+            train_x,
+            train_y,
+            hidden_size,
+        }
+    }
+    #[test]
+    fn test_dimension() {
+        let problem = create_dummy_problem();
+        let n_input = 784;
+        let n_output = 10;
+        let n_hidden = 16;
+        // W1 (784*16) + B1 (16) + W2 (16*10) + B2 (10)
+        let expected = (n_input * n_hidden) + n_hidden + (n_hidden * n_output) + n_output;
+        assert_eq!(problem.dimension(), expected);
+    }
+    #[test]
+    fn test_initial_point() {
+        let problem = create_dummy_problem();
+        let init = problem.initial_point();
+        assert_eq!(init.len(), problem.dimension());
+        // Check range [-0.1, 0.1]
+        for &x in &init {
+            assert!(x >= -0.1 && x <= 0.1);
+        }
+    }
+    #[test]
+    fn test_evaluation() {
+        let problem = create_dummy_problem();
+        let x = problem.initial_point();
+        let result = problem.evaluate_f64(&x);
+        assert!(result.is_ok());
+        let loss = result.unwrap();
+        assert!(loss >= 0.0);
+        assert!(loss.is_finite());
+    }
+    #[test]
+    fn test_gradient() {
+        let problem = create_dummy_problem();
+        let x = problem.initial_point();
+        let result = problem.gradient_f64(&x);
+        assert!(result.is_ok());
+        let grad = result.unwrap();
+        assert_eq!(grad.len(), x.len());
+        // Ensure not all zero (random init should produce gradients)
+        assert!(grad.iter().any(|&g| g.abs() > 1e-10));
+        // Ensure finite
+        assert!(grad.iter().all(|&g| g.is_finite()));
+    }
+    #[test]
+    fn test_clone() {
+        let problem = create_dummy_problem();
+        let cloned = problem.clone_problem();
+        assert_eq!(cloned.name(), problem.name());
+        assert_eq!(cloned.dimension(), problem.dimension());
+    }
+    #[test]
+    fn test_luminal_basic_ops() {
+        let mut graph = Graph::new();
+        let a = graph.tensor((1,)).set(vec![1.0]);
+        let b = graph.tensor((1,)).set(vec![2.0]);
+        let c = a + b;
+        c.retrieve();
+        graph.execute();
+        assert_eq!(c.data()[0], 3.0);
+    }
+    #[test]
+    fn test_luminal_gather() {
+        let mut graph = Graph::new();
+        let x = graph.tensor((4,)).set(vec![10.0, 20.0, 30.0, 40.0]);
+        let idx = graph.tensor((2,)).set(vec![1.0, 3.0]);
+        let y = x.gather(idx);
+        y.retrieve();
+        graph.execute();
+        let data = y.data();
+        assert_eq!(data.len(), 2);
+        assert_eq!(data[0], 20.0);
+        assert_eq!(data[1], 40.0);
+    }
+    #[test]
+    fn test_luminal_reshape() {
+        let mut graph = Graph::new();
+        let x = graph.tensor((4,)).set(vec![1.0, 2.0, 3.0, 4.0]);
+        let y = x.split_dims(0, 2);
+        y.retrieve();
+        graph.execute();
+        let data = y.data();
+        assert_eq!(data.len(), 4);
+        assert_eq!(data, vec![1.0, 2.0, 3.0, 4.0]);
+    }
+    #[test]
+    fn test_luminal_activations() {
+        let mut graph = Graph::new();
+        let x = graph.tensor((2,)).set(vec![-1.0, 1.0]);
+        let r = x.relu();
+        let s = x.sigmoid();
+        r.retrieve();
+        s.retrieve();
+        graph.execute();
+        let r_data = r.data();
+        assert_eq!(r_data[0], 0.0);
+        assert_eq!(r_data[1], 1.0);
+        let s_data = s.data();
+        assert!((s_data[0] - 0.26894).abs() < 1e-4);
+        assert!((s_data[1] - 0.73105).abs() < 1e-4);
+    }
+    #[test]
+    fn test_luminal_mean() {
+        let mut graph = Graph::new();
+        let x = graph.tensor((2, 2)).set(vec![1.0, 2.0, 3.0, 4.0]);
+        let m = x.mean(vec![0, 1]);
+        m.retrieve();
+        graph.execute();
+        let data = m.data();
+        assert_eq!(data[0], 2.5);
+    }
+
+}
