@@ -5,200 +5,27 @@ use crate::line_search::{
     CubicQuadraticConfig, CubicQuadraticLineSearch, GoldenSectionConfig, GoldenSectionLineSearch,
     MoreThuenteConfig, MoreThuenteLineSearch, StrongWolfeConfig, StrongWolfeLineSearch,
 };
-use crate::utils::math::dot_product_f64;
-use anyhow::{anyhow, Error, Result};
-use log::{debug, warn};
+use crate::optimizers::optimizer::OptimizationContext;
+use anyhow::Result;
+use dfdx::prelude::{ConstShape, Shape};
+use itertools::Itertools;
+use luminal::graph::Graph;
+use luminal::prelude::{Data, Tensor, ToShape};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::sync::Arc;
+use crate::optimizers::{GDConfig, GDOptimizer};
+use crate::region::trust_region::{TrustRegion, TrustRegionConfig, TrustRegionOptimizer};
 
-/// Trait for 1-D differentiable parametric curves
-pub trait ParametricCurve: Send + Sync {
-    /// Evaluate the curve at parameter t
-    fn position(&self, t: f64) -> Result<Vec<f64>>;
-    /// Evaluate the direction of the curve at parameter t
-    fn direction(&self, t: f64) -> Result<Vec<f64>>;
-}
-
-/// A 1D optimization problem along a parametric curve
-pub struct OneDimensionalProblem {
-    /// The 1D objective function f(t)
-    pub objective: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
-    /// The 1D gradient function f'(t)
-    pub gradient: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
-    /// Initial directional derivative at t=0
-    pub initial_directional_derivative: f64,
-}
-impl Debug for OneDimensionalProblem {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("OneDimensionalProblem")
-            .field(
-                "initial_directional_derivative",
-                &self.initial_directional_derivative,
-            )
-            .field("objective", &"<closure>")
-            .field("gradient", &"<closure>")
-            .finish()
-    }
-}
-
-impl OneDimensionalProblem {
-    pub fn new(
-        objective: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
-        gradient: Arc<dyn Fn(f64) -> Result<f64> + Send + Sync>,
-        initial_directional_derivative: f64,
-    ) -> Self {
-        assert!(
-            initial_directional_derivative < 0.0,
-            "Initial directional derivative must be negative for descent direction"
-        );
-        Self {
-            objective,
-            gradient,
-            initial_directional_derivative,
-        }
-    }
-}
-
-pub fn create_1d_problem(
-    curve: Box<dyn ParametricCurve>,
-    objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
-    gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
-) -> Result<OneDimensionalProblem> {
-    let initial_position = curve.position(0.0)?;
-    let initial_direction = curve.direction(0.0)?;
-    let initial_value = objective_fn(&initial_position)
-        .map_err(|e| anyhow!("Objective evaluation failed: {}", e))?;
-    let initial_gradient = gradient_fn(&initial_position)?; // This is ∇f
-    let initial_directional_derivative = dot_product_f64(&initial_gradient, &initial_direction)?;
-    //debug!("create_1d_problem: initial_derivative={initial_gradient:?}, initial_direction={initial_direction:?}, initial_directional_derivative={initial_directional_derivative:.3e}");
-    // Check for zero direction
-    let direction_norm = initial_direction.iter().map(|x| x * x).sum::<f64>().sqrt();
-    if direction_norm < 1e-16 {
-        return Err(anyhow!(
-            "Direction vector is essentially zero (norm = {:.3e})",
-            direction_norm
-        ));
-    }
-
-    // For descent: ∇f · d < 0
-    if initial_directional_derivative > 0.0 {
-        // Warn and flip the direction of the gradient fn
-        debug!( // TODO: Fix me
-            "Initial directional derivative is positive ({initial_directional_derivative:.3e}), flipping direction"
-        );
-        let negative_gradient_fn = {
-            let gradient_fn = gradient_fn.clone();
-            Arc::new(move |x: &[f64]| -> Result<Vec<f64>, Error> {
-                gradient_fn(x).map(|g| g.iter().map(|v| -v).collect())
-            })
-        };
-        return create_1d_problem(
-            curve,
-            objective_fn,         // Keep the objective function
-            negative_gradient_fn, // Negate the gradient
-        );
-    } else if initial_directional_derivative == 0.0 {
-        return Err(anyhow!(
-            "Initial directional derivative must be negative for descent direction: {:.3e}",
-            initial_directional_derivative
-        ));
-    }
-
-    // Use Arc to share the curve between closures
-    let curve = Arc::new(curve);
-    let curve_for_objective = curve.clone();
-    let curve_for_gradient = curve.clone();
-    let objective_fn_for_closure = objective_fn.clone();
-    let gradient_fn_for_closure = gradient_fn.clone();
-
-    // Create 1D objective function
-    let objective_1d = Arc::new(move |t: f64| -> Result<f64> {
-        let result_vec = curve_for_objective.position(t)?;
-        let result = objective_fn_for_closure(&result_vec)?;
-        debug!(
-            "1D objective at t={:.3e}: f={:.3e}, improvement: {:.3e}",
-            t,
-            result,
-            (initial_value - result)
-        );
-        Ok(result)
-    });
-
-    // Create 1D gradient function
-    let gradient_1d = Arc::new(move |t: f64| -> Result<f64> {
-        let result_vec = curve_for_gradient.position(t)?;
-        let curve_derivative = curve_for_gradient.direction(t)?;
-        let result = gradient_fn_for_closure(&result_vec).and_then(|g| {
-            if g.len() != curve_derivative.len() {
-                return Err(anyhow!(
-                    "Gradient length mismatch: expected {}, got {}",
-                    curve_derivative.len(),
-                    g.len()
-                ));
-            }
-            // Compute directional derivative: ∇f(x(t)) · dx/dt
-            dot_product_f64(&g, &curve_derivative)
-        })?;
-        //debug!("1-D gradient result at t={t:.3e}; p={result_vec:?} = {result:.3e}");
-        Ok(result)
-    });
-    Ok(OneDimensionalProblem::new(
-        objective_1d,
-        gradient_1d,
-        initial_directional_derivative,
-    ))
-}
-/// Convert a linear search direction into a 1D problem
-pub fn create_1d_problem_linear(
-    current_point: &[f64],
-    direction: &[f64],
-    objective_fn: Arc<dyn Fn(&[f64]) -> Result<f64> + Send + Sync>,
-    gradient_fn: Arc<dyn Fn(&[f64]) -> Result<Vec<f64>> + Send + Sync>,
-) -> Result<OneDimensionalProblem> {
-    create_1d_problem(
-        Box::new(LinearCurve::new(current_point.to_vec(), direction.to_vec())),
-        objective_fn,
-        gradient_fn,
-    )
-}
-
-/// Linear parametric curve: x(t) = x0 + t * direction
-#[derive(Debug, Clone)]
-pub struct LinearCurve {
-    start_point: Vec<f64>,
-    direction: Vec<f64>,
-}
-impl LinearCurve {
-    pub fn new(start_point: Vec<f64>, direction: Vec<f64>) -> Self {
-        Self {
-            start_point,
-            direction,
-        }
-    }
-    /// Get the point along the curve at parameter t
-    pub fn point_at(&self, t: f64) -> Vec<f64> {
-        self.start_point
-            .iter()
-            .zip(self.direction.iter())
-            .map(|(x, d)| x + t * d)
-            .collect()
-    }
-}
-impl ParametricCurve for LinearCurve {
-    fn position(&self, t: f64) -> Result<Vec<f64>> {
-        Ok(self.point_at(t))
-    }
-    fn direction(&self, _t: f64) -> Result<Vec<f64>> {
-        Ok(self.direction.clone())
-    }
-}
 /// Line search result containing step size and evaluation counts
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineSearchResult {
     pub step_size: f64,
     pub success: bool,
     pub termination_reason: TerminationReason,
+    /// Number of function evaluations performed
+    pub num_f_evals: usize,
+    /// Number of gradient evaluations performed
+    pub num_g_evals: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -209,7 +36,12 @@ pub enum TerminationReason {
     StepSizeTooSmall,
     FunctionEvaluationError,
     InvalidDirection,
+    /// Curvature condition satisfied (for strong Wolfe)
+    CurvatureConditionSatisfied,
+    /// Exact minimum found (for exact line search)
+    ExactMinimumFound,
 }
+
 /// General line search configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineSearchConfig {
@@ -222,6 +54,8 @@ pub struct LineSearchConfig {
     pub max_step: f64,
     pub verbose: bool,           // Enable verbose logging
     pub line_bracket_method: u8, // 1: gradient-based bracketing, 2: function-value-based bracketing
+    /// Tolerance for exact line search methods
+    pub exact_tolerance: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,18 +73,24 @@ impl Default for LineSearchConfig {
         Self {
             method: LineSearchMethod::StrongWolfe,
             c2: 0.1,
-            c1: 1e-8,
+            c1: 1e-5,
             max_iterations: 5,
             initial_step: 1.0,
-            min_step: 1e-8,
+            min_step: 1e-5,
             max_step: 100.0,
             verbose: false,
             line_bracket_method: 1, // Default to gradient-based bracketing
+            exact_tolerance: 1e-6,
         }
     }
 }
+
 /// Create a line search algorithm from configuration
 pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
+    if config.verbose {
+        println!("Initializing Line Search: {:?}", config.method);
+        println!("Configuration: {:#?}", config);
+    }
     match config.method {
         LineSearchMethod::StrongWolfe => Box::new(StrongWolfeLineSearch::new(StrongWolfeConfig {
             c1: config.c1,
@@ -314,10 +154,159 @@ pub fn create_line_search(config: LineSearchConfig) -> Box<dyn LineSearch> {
     }
 }
 
+fn unflatten_tensors(
+    flat: &[f64],
+    shapes: &[Vec<usize>],
+) -> Result<Vec<Vec<f32>>> {
+    let mut result = Vec::new();
+    let mut offset = 0;
+    for shape in shapes {
+        let size: usize = shape.iter().product();
+        if offset + size > flat.len() {
+            return Err(anyhow::anyhow!("Size mismatch in unflattening"));
+        }
+        let chunk = &flat[offset..offset + size];
+        result.push(chunk.iter().map(|&x| x as f32).collect());
+        offset += size;
+    }
+    Ok(result)
+}
+
 /// Trait for line search algorithms
 pub trait LineSearch: Send + Sync + Debug {
     /// Perform 1D line search optimization
-    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> Result<LineSearchResult>;
+    ///
+    /// The line search can re-execute the graph to evaluate the objective
+    /// and gradient at different step sizes. This is critical for exact
+    /// line search methods. The graph's resulting state after execution should
+    /// correspond to the parameters at the optimal step size found.
+    ///
+    /// # Arguments
+    /// * `cx` - The compute graph (will be executed multiple times)
+    /// * `context` - Gradient context containing weights, gradients, and loss
+    /// * `current_params` - Current parameter values
+    /// * `direction` - Search direction
+    /// * `initial_loss` - Loss at current_params (step=0)
+    /// * `initial_gradient` - Gradient at current_params (step=0)
+    ///
+    /// # Returns
+    /// LineSearchResult with optimal step size found
+    fn search(
+        &mut self,
+        context: OptimizationContext,
+        current_params: &[f64],
+        direction: &[f64],
+        initial_loss: f64,
+        initial_gradient: &[f64],
+        trust_region: Option<&dyn TrustRegion>,
+    ) -> Result<LineSearchResult>;
+    /// Check if verbose logging is enabled
+    fn is_verbose(&self) -> bool {
+        false
+    }
+
+
+    /// Evaluate the objective function at a given step size
+    ///
+    /// This helper method sets parameters to `current + step * direction`,
+    /// executes the graph, and returns the loss value.
+    fn evaluate_at_step(
+        &self,
+        context: &mut OptimizationContext,
+        current_params: &[f64],
+        direction: &[f64],
+        step: f64,
+        trust_region: Option<&dyn TrustRegion>,
+    ) -> Result<f64> {
+        if self.is_verbose() {
+            println!("LineSearch: Evaluating f(x + alpha * d) at alpha = {:.6e}", step);
+        }
+        let mut candidate_params: Vec<f64> = current_params
+            .iter()
+            .zip(direction.iter())
+            .map(|(x, d)| x + step * d)
+            .collect();
+        if let Some(region) = trust_region {
+            region.project(&mut candidate_params);
+        }
+
+
+        let shapes = context.weights.iter().map(|w| w.shape.to_shape().iter().map(
+            |&d| d.to_usize().unwrap()
+        ).collect_vec()).collect::<Vec<_>>();
+        
+        let mut weights_data = unflatten_tensors(&candidate_params, &shapes)?;
+        context.write_weights(&mut weights_data);
+
+        context.graph().execute();
+        let f_val = context
+            .loss
+            .data()
+            .as_any()
+            .downcast_ref::<Vec<f32>>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to downcast loss data"))?[0] as f64;
+        if self.is_verbose() {
+            println!("LineSearch: f(x + alpha * d) = {:.6e}", f_val);
+        }
+        Ok(f_val)
+    }
+    /// Evaluate both objective and gradient at a given step size
+    ///
+    /// This is more efficient than separate calls when both are needed.
+    fn evaluate_with_gradient(
+        &self,
+        context: &mut OptimizationContext,
+        current_params: &[f64],
+        direction: &[f64],
+        step: f64,
+        trust_region: Option<&dyn TrustRegion>,
+    ) -> Result<(f64, Vec<f64>)> {
+        if self.is_verbose() {
+            println!("LineSearch: Evaluating f and g at alpha = {:.6e}", step);
+        }
+        let mut candidate_params: Vec<f64> = current_params
+            .iter()
+            .zip(direction.iter())
+            .map(|(x, d)| x + step * d)
+            .collect();
+        if let Some(region) = trust_region {
+            region.project(&mut candidate_params);
+        }
+
+
+        let shapes = context.weights.iter().map(|w| w.shape.to_shape().iter().map(
+            |&d| d.to_usize().unwrap()
+        ).collect_vec()).collect::<Vec<_>>();
+        
+        let mut weights_data = unflatten_tensors(&candidate_params, &shapes)?;
+        context.write_weights(&mut weights_data);
+
+        context.graph().execute();
+        // Get loss
+        let f_val = context
+            .loss
+            .data()
+            .as_any()
+            .downcast_ref::<Vec<f32>>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to downcast loss data"))?[0] as f64;
+        // Get gradient
+        let mut grad_data = Vec::with_capacity(current_params.len());
+        for tensor_data in &context.gradients.iter().map(|g| g.data()).collect_vec() {
+            let g_data = tensor_data
+                .as_any()
+                .downcast_ref::<Vec<f32>>()
+                .ok_or_else(|| anyhow::anyhow!("Failed to downcast gradient data"))?.iter()
+                .map(|&v| v as f64).collect::<Vec<f64>>();
+            grad_data.extend_from_slice(g_data.as_slice());
+        }
+        if self.is_verbose() {
+            let grad_norm: f64 = grad_data.iter().map(|x| x * x).sum::<f64>().sqrt();
+            println!("LineSearch: f = {:.6e}, |g| = {:.6e}", f_val, grad_norm);
+        }
+
+        Ok((f_val, grad_data))
+    }
+
     /// Reset internal state
     fn reset(&mut self);
     /// Clone the line search algorithm
@@ -325,86 +314,16 @@ pub trait LineSearch: Send + Sync + Debug {
     /// Get as Any for downcasting
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
+impl Clone for Box<dyn LineSearch> {
+    fn clone(&self) -> Box<dyn LineSearch> {
+        self.clone_box()
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_relative_eq;
 
-    fn quadratic_function(x: &[f64]) -> Result<f64> {
-        // f(x) = 0.5 * x^T * x (simple quadratic)
-        Ok(0.5 * x.iter().map(|xi| xi * xi).sum::<f64>())
-    }
-
-    fn quadratic_gradient1(x: &[f64]) -> Result<Vec<f64>> {
-        // ∇f(x) = x
-        Ok(x.to_vec())
-    }
-
-    #[test]
-    fn test_1d_problem_creation() {
-        let current_point = vec![2.0, 3.0];
-        let direction = vec![-2.0, -3.0];
-        let objective_fn = Arc::new(quadratic_function);
-        let gradient_fn = Arc::new(quadratic_gradient1);
-        // Calculate expected value before moving objective_fn
-        let expected_f0 = objective_fn(&current_point).unwrap();
-
-        let problem =
-            create_1d_problem_linear(&current_point, &direction, objective_fn, gradient_fn)
-                .unwrap();
-        // Test that f(0) gives the current function value
-        let f0 = (problem.objective)(0.0).unwrap();
-        assert_relative_eq!(f0, expected_f0, epsilon = 1e-10);
-        // Test that f'(0) gives the directional derivative
-        let expected_directional_derivative = -2.0 * 2.0 + -3.0 * 3.0; // direction · gradient
-        assert_relative_eq!(
-            problem.initial_directional_derivative,
-            expected_directional_derivative,
-            epsilon = 1e-10
-        );
-    }
-    #[test]
-    fn test_linear_curve() {
-        let start = vec![1.0, 2.0];
-        let direction = vec![3.0, 4.0];
-        let curve = LinearCurve::new(start.clone(), direction.clone());
-        // Test evaluation at different t values
-        let p0 = curve.position(0.0).unwrap();
-        assert_eq!(p0, vec![1.0, 2.0]);
-        let p1 = curve.position(1.0).unwrap();
-        assert_eq!(p1, vec![4.0, 6.0]);
-        let p_half = curve.position(0.5).unwrap();
-        assert_eq!(p_half, vec![2.5, 4.0]);
-        // Test derivative (should be constant)
-        let d0 = curve.direction(0.0).unwrap();
-        assert_eq!(d0, direction);
-        let d1 = curve.direction(1.0).unwrap();
-        assert_eq!(d1, direction);
-    }
-    #[test]
-    fn test_create_line_search() {
-        // Test creating different line search methods
-        let config = LineSearchConfig {
-            method: LineSearchMethod::StrongWolfe,
-            ..Default::default()
-        };
-        let ls = create_line_search(config);
-        // Just verify we can create and clone the line search
-        let _cloned = ls.clone_box();
-        let config = LineSearchConfig {
-            method: LineSearchMethod::Backtracking,
-            ..Default::default()
-        };
-        let ls = create_line_search(config);
-        let _cloned = ls.clone_box();
-        let config = LineSearchConfig {
-            method: LineSearchMethod::Bisection,
-            ..Default::default()
-        };
-        let ls = create_line_search(config);
-        let _cloned = ls.clone_box();
-    }
     #[test]
     fn test_line_search_result_serialization() {
         use serde_json;
@@ -412,6 +331,8 @@ mod tests {
             step_size: 0.5,
             success: true,
             termination_reason: TerminationReason::WolfeConditionsSatisfied,
+            num_f_evals: 3,
+            num_g_evals: 2,
         };
         // Test serialization
         let json = serde_json::to_string(&result).unwrap();
@@ -419,5 +340,41 @@ mod tests {
         // Test deserialization
         let deserialized: LineSearchResult = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.step_size, result.step_size);
+        assert_eq!(deserialized.num_f_evals, 3);
+    }
+    #[test]
+    fn test_create_line_search_configurations() {
+        // Test StrongWolfe
+        let config = LineSearchConfig {
+            method: LineSearchMethod::StrongWolfe,
+            c1: 1e-4,
+            c2: 0.9,
+            ..Default::default()
+        };
+        let mut ls = create_line_search(config);
+        assert!(ls
+            .as_any_mut()
+            .downcast_mut::<StrongWolfeLineSearch>()
+            .is_some());
+        // Test Backtracking
+        let config = LineSearchConfig {
+            method: LineSearchMethod::Backtracking,
+            ..Default::default()
+        };
+        let mut ls = create_line_search(config);
+        assert!(ls
+            .as_any_mut()
+            .downcast_mut::<BacktrackingLineSearch>()
+            .is_some());
+        // Test Bisection
+        let config = LineSearchConfig {
+            method: LineSearchMethod::Bisection,
+            ..Default::default()
+        };
+        let mut ls = create_line_search(config);
+        assert!(ls
+            .as_any_mut()
+            .downcast_mut::<BisectionLineSearch>()
+            .is_some());
     }
 }

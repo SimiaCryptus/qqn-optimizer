@@ -141,7 +141,7 @@ pub fn generate_problem_table_content(
 }
 
 /// Generate a detailed report for a specific optimizer on a specific problem
-pub async fn generate_optimizer_problem_report(
+pub fn generate_optimizer_problem_report(
     output_dir: &str,
     problem: &dyn OptimizationProblem,
     optimizer_name: &str,

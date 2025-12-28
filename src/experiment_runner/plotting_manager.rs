@@ -28,7 +28,7 @@ impl PlottingManager {
         }
     }
 
-    pub async fn generate_all_plots(
+    pub fn generate_all_plots(
         &self,
         all_results: &[(&ProblemSpec, BenchmarkResults)],
     ) -> anyhow::Result<()> {
@@ -84,8 +84,7 @@ impl PlottingManager {
                 self.generate_plot_with_fallback(
                     || self.plotting_engine.convergence_plot(&traces, &filename),
                     &format!("convergence plot for {problem_name}"),
-                )
-                .await;
+                );
 
                 if self.enable_enhanced_plots {
                     self.generate_plot_with_fallback(
@@ -94,13 +93,12 @@ impl PlottingManager {
                                 .log_convergence_plot(&traces, &format!("{filename}"))
                         },
                         &format!("log convergence plot for {problem_name}"),
-                    )
-                    .await;
+                    );
                 } else {
                     info!("Enhanced plots are disabled, skipping log convergence plot for {problem_name}");
                 }
             }
-            tokio::task::yield_now().await;
+            tokio::task::yield_now();
         }
 
         // Generate performance comparison plots
@@ -114,8 +112,7 @@ impl PlottingManager {
                             .performance_comparison(first_results, "performance_comparison")
                     },
                     "performance comparison plot",
-                )
-                .await;
+                );
 
                 self.generate_plot_with_fallback(
                     || {
@@ -123,19 +120,18 @@ impl PlottingManager {
                             .performance_boxplot(first_results, "performance_distribution")
                     },
                     "performance boxplot",
-                )
-                .await;
+                );
             } else {
                 info!("Enhanced plots are disabled, skipping performance comparison plots");
             }
         }
 
-        tokio::task::yield_now().await;
+        tokio::task::yield_now();
         info!("Plot generation completed");
         Ok(())
     }
 
-    async fn generate_plot_with_fallback<F>(&self, plot_fn: F, plot_description: &str)
+    fn generate_plot_with_fallback<F>(&self, plot_fn: F, plot_description: &str)
     where
         F: FnOnce() -> anyhow::Result<()>,
     {

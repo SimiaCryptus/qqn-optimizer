@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module type="RUST_MODULE" version="4">
+<module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/benches" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/reproducibility/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/reproducibility/tests" isTestSource="true" />
-      <excludeFolder url="file://$MODULE_DIR$/reproducibility" />
-      <excludeFolder url="file://$MODULE_DIR$/reproducibility/target" />
-      <excludeFolder url="file://$MODULE_DIR$/results" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/crates/luminal_cuda/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/crates/luminal_nn/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/crates/luminal_training/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/docs/company/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/examples/llama/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/luminal/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/luminal/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

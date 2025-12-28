@@ -9,11 +9,8 @@
 pub mod analytic_functions;
 pub mod evaluation;
 pub mod functions;
-pub mod ml_problems;
-pub mod mnist;
-#[cfg(feature = "onednn")]
-pub mod mnist_onednn;
 pub mod unified_tests;
+pub mod mnist;
 
 pub use analytic_functions::AckleyFunction;
 pub use analytic_functions::BealeFunction;
@@ -27,6 +24,3 @@ pub use analytic_functions::RosenbrockFunction;
 pub use analytic_functions::SchwefelFunction;
 pub use analytic_functions::SphereFunction;
 pub use analytic_functions::ZakharovFunction;
-pub use ml_problems::{
-    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
-};

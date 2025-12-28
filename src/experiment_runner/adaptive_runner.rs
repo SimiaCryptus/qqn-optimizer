@@ -4,6 +4,7 @@ use crate::benchmarks::evaluation::{
     DurationWrapper, ProblemSpec,
 };
 use crate::Optimizer;
+use dfdx::prelude::Shape;
 use itertools::Itertools;
 use log::{debug, info, trace, warn};
 use rand::prelude::*;
@@ -157,7 +158,7 @@ impl AdaptiveExperimentRunner {
     }
 
     /// Run adaptive parameter evolution to find best optimizer configurations for each problem
-    pub async fn run_adaptive_evolution(
+    pub fn run_adaptive_evolution(
         &mut self,
         problems: Vec<ProblemSpec>,
         optimizer_types: Vec<super::parameter_evolution::OptimizerType>,
@@ -181,7 +182,7 @@ impl AdaptiveExperimentRunner {
 
         // Validate problems first
         info!("Validating {} problems", problems.len());
-        self.base_runner.validate_problems(&problems).await?;
+        self.base_runner.validate_problems(&problems)?;
         info!("Problem validation completed successfully");
 
         // Group problems by family
@@ -225,8 +226,7 @@ impl AdaptiveExperimentRunner {
                         optimizer_type.clone(),
                         &evolution_dir,
                         family_name,
-                    )
-                    .await?;
+                    )?;
 
                 info!(
                     "Found {} best {:?} configurations for problem family '{}'",
@@ -335,7 +335,7 @@ impl AdaptiveExperimentRunner {
         }
     }
 
-    async fn evolve_optimizer_for_problem_family(
+    fn evolve_optimizer_for_problem_family(
         &self,
         family_problems: Vec<ProblemSpec>,
         optimizer_type: super::parameter_evolution::OptimizerType,
@@ -398,8 +398,7 @@ impl AdaptiveExperimentRunner {
                 &family_problems,
                 &mut tracker,
                 generation,
-            )
-            .await?;
+            )?;
             debug!("Fitness evaluation completed in {:?}", start_time.elapsed());
 
             // Log best fitness
@@ -496,7 +495,6 @@ impl AdaptiveExperimentRunner {
                         self.config.clone(),
                         1, // Just one run for emergency evaluation
                     )
-                    .await
                     {
                         Ok((fitness, success_rate, mean_value, eval_count)) => {
                             info!(
@@ -577,7 +575,6 @@ impl AdaptiveExperimentRunner {
                     self.config.clone(),
                     1,
                 )
-                .await
                 {
                     Ok(fitness) => {
                         info!(
@@ -658,7 +655,7 @@ impl AdaptiveExperimentRunner {
         Ok(best_genomes)
     }
 
-    async fn evaluate_population_on_family(
+    fn evaluate_population_on_family(
         &self,
         population: &mut [OptimizerGenome],
         family_problems: &[ProblemSpec],
@@ -674,7 +671,6 @@ impl AdaptiveExperimentRunner {
             family_problems.len()
         );
 
-        let semaphore = Arc::new(Semaphore::new(8)); // Limit concurrent evaluations
         let mut tasks = Vec::new();
         let mut evaluated_count = 0;
 
@@ -703,14 +699,12 @@ impl AdaptiveExperimentRunner {
                 ),
             });
 
-            let semaphore = semaphore.clone();
             let optimizer = genome.to_optimizer();
             let problems = family_problems.to_vec();
             let config = self.config.clone();
             let evaluation_runs = self.evaluation_runs;
 
-            let task = tokio::spawn(async move {
-                let _permit = semaphore.acquire().await.unwrap();
+            let task = {
                 trace!(
                     "Starting evaluation for individual {} on problem family",
                     idx
@@ -730,7 +724,6 @@ impl AdaptiveExperimentRunner {
                         config.clone(),
                         evaluation_runs,
                     )
-                    .await
                     {
                         Ok((fitness, success_rate, mean_value, eval_count)) => {
                             total_fitness += fitness;
@@ -767,7 +760,7 @@ impl AdaptiveExperimentRunner {
                         idx
                     ))
                 }
-            });
+            };
 
             tasks.push(task);
         }
@@ -778,8 +771,8 @@ impl AdaptiveExperimentRunner {
 
         // Collect results
         for task in tasks {
-            match task.await {
-                Ok(Ok((idx, fitness, success_rate, mean_value, eval_count))) => {
+            match task {
+                Ok((idx, fitness, success_rate, mean_value, eval_count)) => {
                     completed_count += 1;
                     successful_evaluations += 1;
                     let genome = &population[idx];
@@ -814,21 +807,11 @@ impl AdaptiveExperimentRunner {
                     population[idx].mean_final_value = Some(mean_value);
                     population[idx].total_evaluations = Some(eval_count);
                 }
-                Ok(Err(e)) => {
+                Err(e) => {
                     completed_count += 1;
                     warn!(
                         "Failed to evaluate individual ({}/{}): {}",
                         completed_count, total_to_evaluate, e
-                    );
-                }
-                Err(e) => {
-                    completed_count += 1;
-                    warn!(
-                        "Evaluation task {} panicked ({}/{}): {}",
-                        completed_count - 1,
-                        completed_count,
-                        total_to_evaluate,
-                        e
                     );
                 }
             }
@@ -853,7 +836,7 @@ impl AdaptiveExperimentRunner {
         Ok(())
     }
 
-    async fn evaluate_population(
+    fn evaluate_population(
         &self,
         population: &mut [OptimizerGenome],
         problem: &ProblemSpec,
@@ -899,13 +882,12 @@ impl AdaptiveExperimentRunner {
             let config = self.config.clone();
             let evaluation_runs = self.evaluation_runs;
 
-            let task = tokio::spawn(async move {
-                let _permit = semaphore.acquire().await.unwrap();
+            let task = {
+                let _permit = semaphore.acquire();
                 trace!("Starting evaluation for individual {}", idx);
                 Self::evaluate_genome(optimizer, problem, config, evaluation_runs)
-                    .await
                     .map(|fitness| (idx, fitness))
-            });
+            };
 
             tasks.push(task);
         }
@@ -915,8 +897,8 @@ impl AdaptiveExperimentRunner {
 
         // Collect results
         for task in tasks {
-            match task.await {
-                Ok(Ok((idx, fitness))) => {
+            match task {
+                Ok((idx, fitness)) => {
                     completed_count += 1;
                     successful_evaluations += 1;
                     let genome = &population[idx];
@@ -948,7 +930,7 @@ impl AdaptiveExperimentRunner {
                     );
                     population[idx].fitness = Some(fitness);
                 }
-                Ok(Err(e)) => {
+                Err(e) => {
                     completed_count += 1;
                     // Note : we can't get the idx here
                     warn!(
@@ -957,18 +939,6 @@ impl AdaptiveExperimentRunner {
                     );
                     // Assign worst fitness to failed evaluations
                     // population[idx].fitness = Some(f64::INFINITY);
-                }
-                Err(e) => {
-                    completed_count += 1;
-                    warn!(
-                        "Evaluation task {} panicked ({}/{}): {}",
-                        completed_count - 1,
-                        completed_count,
-                        total_to_evaluate,
-                        e
-                    );
-                    // Assign worst fitness to panicked evaluations
-                    // Note: we can't get the idx here, but this is rare
                 }
             }
         }
@@ -1296,7 +1266,7 @@ impl AdaptiveExperimentRunner {
         new_population
     }
 
-    async fn evaluate_genome_with_metrics(
+    fn evaluate_genome_with_metrics(
         optimizer: Arc<dyn Optimizer>,
         problem: ProblemSpec,
         config: BenchmarkConfig,
@@ -1318,12 +1288,11 @@ impl AdaptiveExperimentRunner {
             let result = runner
                 .run_single_benchmark(
                     &problem,
-                    &mut optimizer.clone_box(),
+                    optimizer.clone(),
                     run_id,
                     "eval",
                     new_initial_point(&problem, config.initial_point_noise, &mut rng),
-                )
-                .await?;
+                )?;
 
             total_iterations += result.iterations;
 
@@ -1375,7 +1344,7 @@ impl AdaptiveExperimentRunner {
         ))
     }
 
-    async fn evaluate_genome(
+    fn evaluate_genome(
         optimizer: Arc<dyn Optimizer>,
         problem: ProblemSpec,
         config: BenchmarkConfig,
@@ -1394,12 +1363,11 @@ impl AdaptiveExperimentRunner {
             let result = runner
                 .run_single_benchmark(
                     &problem,
-                    &mut optimizer.clone_box(),
+                    optimizer.clone(),
                     run_id,
                     "eval",
                     new_initial_point(&problem, config.initial_point_noise, &mut rng),
-                )
-                .await?;
+                )?;
             total_iterations += result.iterations;
 
             // Fitness is combination of final value and convergence speed
@@ -1542,7 +1510,7 @@ impl AdaptiveExperimentRunner {
     }
 
     /// Run final championship with evolved optimizers
-    pub async fn run_evolved_championship(
+    pub fn run_evolved_championship(
         &self,
         problems: Vec<ProblemSpec>,
         evolved_optimizers: HashMap<String, Vec<(String, Arc<dyn Optimizer>)>>,
@@ -1598,8 +1566,7 @@ impl AdaptiveExperimentRunner {
                     .flatten()
                     .map(|x| (x.0.to_string(), x.1.clone()))
                     .collect_vec(),
-            )
-            .await?;
+            );
 
         info!("All championship benchmarks completed successfully");
 
@@ -1926,7 +1893,7 @@ impl FamilyRepresentation {
 }
 
 /// Convenience function to run adaptive evolution experiments
-pub async fn run_adaptive_benchmark(
+pub fn run_adaptive_benchmark(
     report_path_prefix: &str,
     max_evals: usize,
     num_runs: usize,
@@ -1983,15 +1950,13 @@ pub async fn run_adaptive_benchmark(
     // First, evolve optimizer parameters for each problem
     info!("Starting parameter evolution phase");
     let evolved_optimizers = runner
-        .run_adaptive_evolution(problems.clone(), optimizer_types)
-        .await?;
+        .run_adaptive_evolution(problems.clone(), optimizer_types)?;
     info!("Parameter evolution phase completed");
 
     // Then run final championship with evolved optimizers
     info!("Starting championship phase");
     runner
-        .run_evolved_championship(problems, evolved_optimizers)
-        .await?;
+        .run_evolved_championship(problems, evolved_optimizers);
     info!("Championship phase completed");
 
     info!("Adaptive benchmark completed successfully");

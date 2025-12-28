@@ -5,14 +5,14 @@ pub mod analysis;
 pub mod benchmarks;
 pub mod experiment_runner;
 pub mod line_search;
+pub mod region;
 pub mod optimizers;
-pub mod utils;
 // Re-export commonly used items for easier testing
 pub use benchmarks::functions::OptimizationProblem;
-pub use benchmarks::unified_tests::{
-    generate_test_report, test_multiple_problems, ProblemTestConfig, ProblemTestResults,
-    UnifiedProblemTester,
-};
+// pub use benchmarks::unified_tests::{
+//     generate_test_report, test_multiple_problems, ProblemTestConfig, ProblemTestResults,
+//     UnifiedProblemTester,
+// };
 
 // Re-export commonly used types
 pub use optimizers::{
@@ -30,11 +30,6 @@ pub use experiment_runner::{optimizer_sets, problem_sets};
 #[cfg(feature = "plotting")]
 pub use analysis::plotting::{ExtendedOptimizationTrace, PlotConfig, PlottingEngine};
 
-// Re-export ML problems for easier access
-pub use crate::benchmarks::ml_problems::{
-    LinearRegression, LogisticRegression, NeuralNetworkTraining, SupportVectorMachine,
-};
-
 // Re-export commonly used types
 pub use crate::optimizers::adam::{AdamConfig, AdamOptimizer, AdamState};
 // Error types
@@ -44,10 +39,6 @@ pub use benchmarks::analytic_functions::BealeFunction;
 pub use benchmarks::analytic_functions::RastriginFunction;
 pub use benchmarks::analytic_functions::RosenbrockFunction;
 pub use benchmarks::analytic_functions::SphereFunction;
-// Re-export ML problems for easier access
-pub use benchmarks::mnist::MnistNeuralNetwork;
-#[cfg(feature = "onednn")]
-pub use benchmarks::mnist_onednn::MnistOneDnnNeuralNetwork;
 
 /// Current version of the QQN optimizer framework
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

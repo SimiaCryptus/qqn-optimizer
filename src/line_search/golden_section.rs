@@ -1,7 +1,11 @@
-use crate::line_search::line_search::OneDimensionalProblem;
 use crate::line_search::{LineSearch, LineSearchResult, TerminationReason};
-use anyhow::anyhow;
+use crate::optimizers::{GDConfig, GDOptimizer};
+use crate::region::trust_region::{TrustRegion, TrustRegionConfig, TrustRegionOptimizer};
+use crate::optimizers::optimizer::OptimizationContext;
+use anyhow::{anyhow, Result};
+use dfdx::prelude::ConstShape;
 use log::debug;
+use luminal::prelude::*;
 
 /// Configuration for Golden Section line search algorithm.
 ///
@@ -124,41 +128,35 @@ pub struct GoldenSectionLineSearch {
     config: GoldenSectionConfig,
 }
 impl LineSearch for GoldenSectionLineSearch {
-    fn optimize_1d(&mut self, problem: &OneDimensionalProblem) -> anyhow::Result<LineSearchResult> {
-        let directional_derivative = problem.initial_directional_derivative;
-        if directional_derivative >= 0.0 {
-            return Err(anyhow!("Direction is not a descent direction"));
-        }
-        // First verify we can make progress
-        let f0 = (problem.objective)(0.0)?;
-        let test_step = self.config.min_step;
-        let f_test = (problem.objective)(test_step)?;
-        if f_test >= f0 {
-            // Try machine epsilon
-            let eps_step = f64::EPSILON.sqrt();
-            let f_eps = (problem.objective)(eps_step)?;
-            if f_eps < f0 {
-                return Ok(LineSearchResult {
-                    step_size: eps_step,
-                    success: true,
-                    termination_reason: TerminationReason::StepSizeTooSmall,
-                });
-            }
-            return Err(anyhow!("Function appears to be ill-conditioned: no improvement possible within machine precision"));
-        }
+    fn search(
+        &mut self,
+        mut context: OptimizationContext,
+        current_params: &[f64],
+        direction: &[f64],
+        initial_loss: f64,
+        initial_gradient: &[f64],
+        trust_region: Option<&dyn TrustRegion>,
+    ) -> Result<LineSearchResult> {
+        // Create objective function that evaluates loss at a given step
+        let mut num_f_evals = 0usize;
 
-        let step_size = self.find_minimum(problem)?;
-        let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
-        Ok(LineSearchResult {
-            step_size,
-            success,
-            termination_reason: if success {
-                TerminationReason::WolfeConditionsSatisfied
-            } else {
-                TerminationReason::StepSizeTooSmall
-            },
-        })
+        let mut objective = |step: f64| -> Result<f64> {
+            if step == 0.0 {
+                return Ok(initial_loss);
+            }
+            num_f_evals += 1;
+
+            self.evaluate_at_step(&mut context, current_params, direction, step, trust_region)
+        };
+
+        let mut result =
+            self.solve_1d(&mut objective, initial_loss, initial_gradient, direction)?;
+        result.num_f_evals = num_f_evals;
+        result.num_g_evals = 0; // Golden section doesn't use gradients during search
+
+        Ok(result)
     }
+
     fn reset(&mut self) {
         // Golden section search is stateless
     }
@@ -202,23 +200,59 @@ impl GoldenSectionLineSearch {
     }
     /// Golden ratio constant
     const RESPHI: f64 = 0.618033988749895; // 1/phi = phi - 1
+    /// Generic solver for 1D problems, useful for testing or other backends
+    pub fn solve_1d<F>(
+        &self,
+        objective: &mut F,
+        initial_loss: f64,
+        initial_gradient: &[f64],
+        direction: &[f64],
+    ) -> Result<LineSearchResult>
+    where
+        F: FnMut(f64) -> Result<f64>,
+    {
+        let directional_derivative: f64 = initial_gradient
+            .iter()
+            .zip(direction.iter())
+            .map(|(g, d)| g * d)
+            .sum();
+        if directional_derivative >= 0.0 {
+            return Err(anyhow!("Direction is not a descent direction"));
+        }
+        let step_size = self.find_minimum(objective)?;
+        let success = step_size >= self.config.min_step && step_size <= self.config.max_step;
+        Ok(LineSearchResult {
+            step_size,
+            success,
+            termination_reason: if success {
+                TerminationReason::WolfeConditionsSatisfied
+            } else {
+                TerminationReason::StepSizeTooSmall
+            },
+            num_f_evals: 0, // Will be set by caller
+            num_g_evals: 0, // Golden section doesn't use gradients
+        })
+    }
 
     /// Find minimum using golden section search.
     ///
     /// This is the core algorithm that performs the golden section search within
     /// an established bracket. It maintains the golden ratio property to ensure
     /// optimal interval reduction at each iteration.
-    fn find_minimum(&self, problem: &OneDimensionalProblem) -> anyhow::Result<f64> {
+    fn find_minimum<F>(&self, objective: &mut F) -> Result<f64>
+    where
+        F: FnMut(f64) -> Result<f64>,
+    {
         // First, establish a proper bracket [a, b, c] where f(b) < f(a) and f(b) < f(c)
-        let (a, b, c) = self.find_bracket(problem)?;
+        let (a, b, c) = self.find_bracket(objective)?;
         self.log_verbose(&format!("Initial bracket: [{a:.6e}, {b:.6e}, {c:.6e}]"));
         // Golden section search
         let mut left = a;
         let mut right = c;
         let mut x1 = right - Self::RESPHI * (right - left);
         let mut x2 = left + Self::RESPHI * (right - left);
-        let mut f1 = (problem.objective)(x1)?;
-        let mut f2 = (problem.objective)(x2)?;
+        let mut f1 = objective(x1)?;
+        let mut f2 = objective(x2)?;
         for i in 0..self.config.max_iterations {
             self.log_verbose(&format!(
                 "Line Search Iteration {i}: interval=[{left:.3e}, {right:.3e}], x1={x1:.3e}, x2={x2:.3e}, f1={f1:.3e}, f2={f2:.3e}"
@@ -232,14 +266,14 @@ impl GoldenSectionLineSearch {
                 x2 = x1;
                 f2 = f1;
                 x1 = right - Self::RESPHI * (right - left);
-                f1 = (problem.objective)(x1)?;
+                f1 = objective(x1)?;
             } else {
                 // Minimum is in [x1, right]
                 left = x1;
                 x1 = x2;
                 f1 = f2;
                 x2 = left + Self::RESPHI * (right - left);
-                f2 = (problem.objective)(x2)?;
+                f2 = objective(x2)?;
             }
         }
         let final_x = if f1 < f2 { x1 } else { x2 };
@@ -260,29 +294,32 @@ impl GoldenSectionLineSearch {
     /// # Failure Cases
     /// - Function doesn't decrease in the given direction (not a descent direction)
     /// - Cannot find a point where function increases (unbounded below)
-    fn find_bracket(&self, problem: &OneDimensionalProblem) -> anyhow::Result<(f64, f64, f64)> {
+    fn find_bracket<F>(&self, objective: &mut F) -> Result<(f64, f64, f64)>
+    where
+        F: FnMut(f64) -> Result<f64>,
+    {
         let mut a = 0.0;
         let mut step = self.config.initial_step;
-        let mut f_a = (problem.objective)(a)?;
+        let mut f_a = objective(a)?;
 
         // Find a point where function decreases
         let mut b = step;
-        let mut f_b = (problem.objective)(b)?;
+        let mut f_b = objective(b)?;
 
         // If initial step doesn't decrease function, try smaller steps
         while f_b >= f_a && step > self.config.min_step {
             step *= 0.5;
             b = step;
-            f_b = (problem.objective)(b)?;
+            f_b = objective(b)?;
         }
 
         if f_b >= f_a {
-            return Err(anyhow!("Cannot find decreasing direction"));
+            return Err(anyhow!("Cannot find decreasing direction (likely ill-conditioned)"));
         }
 
         // Now find a point where function increases again
         let mut c = b * 2.0;
-        let mut f_c = (problem.objective)(c)?;
+        let mut f_c = objective(c)?;
 
         // Expand until we find an increasing point
         while f_c <= f_b && c < self.config.max_step {
@@ -294,7 +331,7 @@ impl GoldenSectionLineSearch {
             if c > self.config.max_step {
                 c = self.config.max_step;
             }
-            f_c = (problem.objective)(c)?;
+            f_c = objective(c)?;
         }
 
         // At this point, we should have f_c > f_b
@@ -303,7 +340,7 @@ impl GoldenSectionLineSearch {
             // The minimum might be between a and b
             // Try to find a better bracket
             let mid = (a + b) / 2.0;
-            let f_mid = (problem.objective)(mid)?;
+            let f_mid = objective(mid)?;
 
             if f_mid < f_a && f_mid < f_b {
                 // Use [a, mid, b] as bracket
@@ -323,7 +360,6 @@ impl GoldenSectionLineSearch {
 mod tests {
     use super::*;
 
-    use crate::line_search::line_search::create_1d_problem_linear;
     use crate::line_search::TerminationReason;
     use approx::assert_abs_diff_eq;
     use std::sync::Arc;
@@ -380,14 +416,19 @@ mod tests {
         });
         let current_point = vec![2.0, 3.0];
         let direction = vec![-2.0, -3.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
+        let initial_loss = quadratic_function(&current_point).unwrap();
+        let initial_gradient = quadratic_gradient1(&current_point).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            quadratic_function(&new_point)
+        };
+        let result = line_search
+            .solve_1d(&mut objective, initial_loss, &initial_gradient, &direction)
+            .unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
         // For quadratic function with steepest descent, optimal step should be around 1.0
@@ -402,15 +443,19 @@ mod tests {
         });
         let current_point = vec![-1.0, 1.0];
         let current_gradient = rosenbrock_gradient(&current_point).unwrap();
+        let initial_loss = rosenbrock_function(&current_point).unwrap();
         let direction = current_gradient.iter().map(|&g| -g).collect::<Vec<_>>();
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(rosenbrock_function),
-            Arc::new(rosenbrock_gradient),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            rosenbrock_function(&new_point)
+        };
+        let result = line_search
+            .solve_1d(&mut objective, initial_loss, &current_gradient, &direction)
+            .unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
         // Verify that the step actually reduces the function value
@@ -434,14 +479,18 @@ mod tests {
         let current_point = vec![0.5];
         let current_gradient = quartic_gradient(&current_point).unwrap();
         let direction = vec![-current_gradient[0]];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quartic_function),
-            Arc::new(quartic_gradient),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
+        let initial_loss = quartic_function(&current_point).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            quartic_function(&new_point)
+        };
+        let result = line_search
+            .solve_1d(&mut objective, initial_loss, &current_gradient, &direction)
+            .unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
     }
@@ -455,15 +504,19 @@ mod tests {
         });
         let current_point = vec![2.0];
         let current_gradient = exponential_gradient(&current_point).unwrap();
+        let initial_loss = exponential_function(&current_point).unwrap();
         let direction = vec![-current_gradient[0]];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(exponential_function),
-            Arc::new(exponential_gradient),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            exponential_function(&new_point)
+        };
+        let result = line_search
+            .solve_1d(&mut objective, initial_loss, &current_gradient, &direction)
+            .unwrap();
         assert!(result.success);
         assert!(result.step_size > 0.0);
     }
@@ -477,14 +530,19 @@ mod tests {
         });
         let current_point = vec![1e-8];
         let direction = vec![-1.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
+        let initial_loss = quadratic_function(&current_point).unwrap();
+        let initial_gradient = quadratic_gradient1(&current_point).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            quadratic_function(&new_point)
+        };
+        let result = line_search
+            .solve_1d(&mut objective, initial_loss, &initial_gradient, &direction)
+            .unwrap();
         assert!(
             result.success || (result.termination_reason == TerminationReason::StepSizeTooSmall)
         );
@@ -499,14 +557,19 @@ mod tests {
         });
         let current_point = vec![10.0, 10.0];
         let direction = vec![-10.0, -10.0];
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quadratic_function),
-            Arc::new(quadratic_gradient1),
-        )
-        .unwrap();
-        let result = line_search.optimize_1d(&problem).unwrap();
+        let initial_loss = quadratic_function(&current_point).unwrap();
+        let initial_gradient = quadratic_gradient1(&current_point).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            quadratic_function(&new_point)
+        };
+        let result = line_search
+            .solve_1d(&mut objective, initial_loss, &initial_gradient, &direction)
+            .unwrap();
         // Should still succeed even with limited iterations
         assert!(result.step_size > 0.0);
     }
@@ -570,15 +633,16 @@ mod tests {
         let current_point = vec![0.5];
         let current_gradient = quartic_gradient(&current_point).unwrap();
         let direction = vec![-current_gradient[0]]; // Negative gradient for descent
-        let problem = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(quartic_function),
-            Arc::new(quartic_gradient),
-        )
-        .unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            quartic_function(&new_point)
+        };
         // This should test the bracket finding logic
-        let (a, b, c) = line_search.find_bracket(&problem).unwrap();
+        let (a, b, c) = line_search.find_bracket(&mut objective).unwrap();
         assert!(a < b);
         assert!(b < c);
         // Verify bracket property: f(b) should be less than f(a) and f(c)
@@ -602,41 +666,42 @@ mod tests {
         };
         let nearly_flat_gradient =
             |x: &[f64]| -> anyhow::Result<Vec<f64>> { Ok(vec![2e-15 * x[0]]) };
-        let current_point = vec![0.0];
+        let current_point = vec![0.1];
         let direction = vec![-1.0];
 
-        // This should fail because the directional derivative is too small
-        let result = create_1d_problem_linear(
-            &current_point,
-            &direction,
-            Arc::new(nearly_flat_function),
-            Arc::new(nearly_flat_gradient),
-        );
+        let initial_loss = nearly_flat_function(&current_point).unwrap();
+        let initial_gradient = nearly_flat_gradient(&current_point).unwrap();
+        let mut objective = |step: f64| {
+            let new_point: Vec<f64> = current_point
+                .iter()
+                .zip(direction.iter())
+                .map(|(p, d)| p + step * d)
+                .collect();
+            nearly_flat_function(&new_point)
+        };
 
-        // The create_1d_problem_linear should succeed since we have a tiny negative directional derivative
-        if let Ok(problem) = result {
-            let line_search_result = line_search.optimize_1d(&problem);
-            // Should either succeed with tiny step or fail gracefully
-            if let Ok(res) = line_search_result {
-                assert!(res.step_size > 0.0);
-            } else {
-                // Should fail gracefully due to ill-conditioning
-                assert!(line_search_result
-                    .unwrap_err()
-                    .to_string()
-                    .contains("ill-conditioned"));
-            }
+        let line_search_result =
+            line_search.solve_1d(&mut objective, initial_loss, &initial_gradient, &direction);
+        // Should either succeed with tiny step or fail gracefully
+        if let Ok(res) = line_search_result {
+            assert!(res.step_size > 0.0);
+        } else {
+            // Should fail gracefully due to ill-conditioning
+            assert!(line_search_result
+                .unwrap_err()
+                .to_string()
+                .contains("ill-conditioned"));
         }
 
         // Also test the case where we truly have a zero gradient (should fail at problem creation)
-        let truly_flat_function = |_x: &[f64]| -> anyhow::Result<f64> { Ok(1.0) };
         let zero_gradient = |_x: &[f64]| -> anyhow::Result<Vec<f64>> { Ok(vec![0.0]) };
 
-        let zero_grad_result = create_1d_problem_linear(
-            &current_point,
+        let mut flat_objective = |_step: f64| Ok(1.0);
+        let zero_grad_result = line_search.solve_1d(
+            &mut flat_objective,
+            1.0,
+            &zero_gradient(&current_point).unwrap(),
             &direction,
-            Arc::new(truly_flat_function),
-            Arc::new(zero_gradient),
         );
 
         // This should fail because directional derivative is exactly zero

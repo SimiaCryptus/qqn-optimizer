@@ -32,8 +32,7 @@ async fn test_report_generator_complete_pipeline() -> anyhow::Result<()> {
     // Run the complete report generation pipeline
     println!("Generating complete report with generated data...");
     report_generator
-        .generate_main_report(&data_refs, false)
-        .await?;
+        .generate_main_report(&data_refs, false)?;
 
     // Verify that the main output directory structure was created
     let output_dir = Path::new(&output_dir_name);
@@ -196,8 +195,7 @@ async fn test_report_generator_with_family_mode() -> anyhow::Result<()> {
 
     // Run with family optimization enabled
     report_generator
-        .generate_main_report(&data_refs, true)
-        .await?;
+        .generate_main_report(&data_refs, true)?;
 
     let output_dir = Path::new(&output_dir_name);
     assert!(output_dir.exists(), "Output directory should exist");

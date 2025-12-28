@@ -4,13 +4,84 @@
 //! must implement, along with supporting types for tracking optimization progress
 //! and convergence behavior.
 
-pub(crate) use crate::utils::math::DifferentiableFunction;
-use candle_core::Result as CandleResult;
-use candle_core::Tensor;
+use log::error;
+use luminal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
-use std::sync::Arc;
 use std::time::Duration;
+
+/// Context for gradient computation and re-evaluation
+/// This struct holds all the tensors needed to compute and retrieve
+/// gradients, allowing for repeated evaluation during line search
+#[derive(Debug, Clone)]
+pub struct OptimizationContext {
+    /// The weight/parameter tensors
+    pub weights: Vec<GraphTensor>,
+    /// The gradient tensors (one per weight tensor)
+    pub gradients: Vec<GraphTensor>,
+    /// The loss tensor
+    pub loss: GraphTensor,
+}
+
+impl OptimizationContext {
+    /// Create a new gradient context
+    pub fn new(weights: Vec<GraphTensor>, gradients: Vec<GraphTensor>, loss: GraphTensor) -> Self {
+        loss.retrieve();
+        for grad in gradients.iter() {
+            grad.retrieve();
+        }
+        weights.retrieve();
+        loss.graph().compile(
+            <()>::default(),
+            (
+                weights.clone(),
+                loss,
+                gradients.clone()
+            ),
+        );
+        Self {
+            weights,
+            gradients,
+            loss,
+        }
+    }
+
+    pub fn graph(&self) -> &mut Graph {
+        self.loss.graph()
+    }
+    pub(crate) fn write_weights(&mut self, all_weights_data: &mut Vec<Vec<f32>>) {
+        // Clear all current tensor entries to prepare for updates
+        self.graph().tensors.clear();
+        for i in 0..self.weights.len() {
+            let w_vec = &mut all_weights_data[i];
+            // Write back to graph tensor
+            self.graph()
+                .tensors
+                .insert((self.weights[i].id, 0), Tensor::new(w_vec.clone()));
+        }
+    }
+}
+
+/// A wrapper around GraphTensor that implements Send and Sync.
+/// This is necessary because GraphTensor contains a raw pointer to the Graph,
+/// which is !Send and !Sync. We assert safety because the Optimizer is typically
+/// moved to a thread before the Graph is populated or used, and once running,
+/// it stays on that thread.
+#[derive(Debug, Clone, Copy)]
+pub struct SafeTensor(pub GraphTensor);
+unsafe impl Send for SafeTensor {}
+unsafe impl Sync for SafeTensor {}
+impl std::ops::Deref for SafeTensor {
+    type Target = GraphTensor;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl From<GraphTensor> for SafeTensor {
+    fn from(t: GraphTensor) -> Self {
+        SafeTensor(t)
+    }
+}
 
 /// Additional metadata that optimizers can provide
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -22,6 +93,7 @@ pub struct OptimizationMetadata {
     /// Memory usage information
     pub memory_info: MemoryInfo,
 }
+
 /// Result of a complete optimization run
 #[derive(Debug, Clone)]
 pub struct OptimizationResult {
@@ -35,135 +107,44 @@ pub struct OptimizationResult {
     pub converged: bool,
     /// Final parameters
     pub x: Vec<f64>,
+    /// History of loss values (if tracked)
+    pub loss_history: Option<Vec<f64>>,
+    /// History of gradient norms (if tracked)
+    pub gradient_norm_history: Option<Vec<f64>>,
 }
 
 /// Core trait that all optimization algorithms must implement.
 ///
 /// This trait provides a unified interface for different optimization methods,
 /// enabling easy benchmarking and comparison between algorithms.
-pub trait Optimizer: Send + Sync + Debug + 'static {
+///
+/// The optimizer works with Luminal's graph-based computation model:
+/// 1. `setup_on_graph` adds optimization operations to the graph
+/// 2. Gradients are computed externally using `Autograd`
+/// 3. The optimizer uses gradients to compute new weight values
+///
+/// # Gradient Network Tracking
+/// The gradient network is constructed separately using Luminal's Autograd.
+/// The optimizer receives gradient tensors and can re-execute the graph
+/// to recompute loss and gradients at different parameter values.
+/// This is critical for exact line search methods.
+pub trait Optimizer: Debug + Send + Sync + 'static {
     /// Clone the optimizer (required for trait object safety)
     fn clone_box(&self) -> Box<dyn Optimizer>;
+
     /// Get optimizer configuration as a string for serialization
     fn config_string(&self) -> String {
         format!("{self:?}")
     }
-
-    /// Perform a single optimization step using a differentiable function
-    ///
-    /// # Arguments
-    /// * `params` - Mutable reference to parameter tensors to be updated
-    /// * `function` - Differentiable function to optimize
-    ///
-    /// # Returns
-    /// A `StepResult` containing information about the optimization step
-    fn step(
-        &mut self,
-        params: &mut [Tensor],
-        function: Arc<dyn DifferentiableFunction + Send + Sync>,
-    ) -> CandleResult<StepResult>;
-    /// Optimize a function using closures (for compatibility with examples)
-    ///
-    /// # Arguments
-    /// * `f` - Function to minimize
-    /// * `g` - Gradient function
-    /// * `x0` - Initial parameters
-    /// * `max_evals` - Maximum function evaluations
-    /// * `tol` - Gradient tolerance
-    ///
-    /// # Returns
-    /// An `OptimizationResult` with the final state
-    fn optimize(
-        &mut self,
-        f: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
-        g: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>,
-        x0: Vec<f64>,
-        max_evals: usize,
-        tol: f64,
-    ) -> OptimizationResult {
-        use crate::utils::math::DifferentiableFunction;
-        use candle_core::{Device, Tensor};
-        // Create a wrapper function that implements DifferentiableFunction
-        struct ClosureFunction {
-            f: Box<dyn Fn(&[f64]) -> f64 + Send + Sync>,
-            g: Box<dyn Fn(&[f64]) -> Vec<f64> + Send + Sync>,
-            f_evals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
-            g_evals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
-        }
-        impl DifferentiableFunction for ClosureFunction {
-            fn evaluate(&self, params: &[Tensor]) -> CandleResult<f64> {
-                self.f_evals
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let x: Vec<f64> = params
-                    .iter()
-                    .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-                    .collect();
-                Ok((self.f)(&x))
-            }
-            fn gradient(&self, params: &[Tensor]) -> CandleResult<Vec<Tensor>> {
-                self.g_evals
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let x: Vec<f64> = params
-                    .iter()
-                    .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-                    .collect();
-                let grad = (self.g)(&x);
-                let device = &Device::Cpu;
-                Ok(vec![Tensor::from_slice(&grad, &[grad.len()], device)?])
-            }
-        }
-        let f_evals = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let g_evals = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let function = Arc::new(ClosureFunction {
-            f,
-            g,
-            f_evals: f_evals.clone(),
-            g_evals: g_evals.clone(),
-        });
-        // Convert initial point to tensor
-        let device = &Device::Cpu;
-        let mut params = vec![Tensor::from_slice(&x0, &[x0.len()], device).unwrap()];
-        let mut converged = false;
-        let mut iterations = 0;
-        while iterations < max_evals {
-            // Check gradient norm for convergence
-            let grad = function.gradient(&params).unwrap();
-            let grad_norm: f64 = grad[0]
-                .flatten_all()
-                .unwrap()
-                .to_vec1::<f64>()
-                .unwrap()
-                .iter()
-                .map(|x| x * x)
-                .sum::<f64>()
-                .sqrt();
-            if grad_norm < tol {
-                converged = true;
-                break;
-            }
-            // Take optimization step
-            match self.step(&mut params, function.clone()) {
-                Ok(result) => {
-                    if result.convergence_info.converged {
-                        converged = true;
-                        break;
-                    }
-                }
-                Err(_) => break,
-            }
-            iterations += 1;
-        }
-        let final_x: Vec<f64> = params
-            .iter()
-            .flat_map(|t| t.flatten_all().unwrap().to_vec1::<f64>().unwrap())
-            .collect();
-        let final_fx = function.evaluate(&params).unwrap();
-        OptimizationResult {
-            fx: final_fx,
-            num_f_evals: f_evals.load(std::sync::atomic::Ordering::Relaxed),
-            num_g_evals: g_evals.load(std::sync::atomic::Ordering::Relaxed),
-            converged,
-            x: final_x,
+    /// Perform a single optimization step
+    fn step(&mut self, params: &mut OptimizationContext) -> StepResult {
+        error!(
+            "step_on_graph not implemented for optimizer: {}",
+            self.name()
+        );
+        StepResult {
+            step_size: self.learning_rate().unwrap_or(1.0),
+            convergence_info: ConvergenceInfo::default(),
         }
     }
 
@@ -177,22 +158,32 @@ pub trait Optimizer: Send + Sync + Debug + 'static {
     fn has_converged(&self) -> bool {
         false // Default implementation - most optimizers don't track convergence internally
     }
-    /// Get the current iteration number
-    fn iteration(&self) -> usize;
+
     /// Get the stagnation multiplier for relaxed convergence criteria
     /// This multiplier is applied to tolerance values to make convergence less strict
     fn stagnation_multiplier(&self) -> f64 {
         1.0 // Default multiplier - no relaxation
     }
+
     /// Get the stagnation count threshold for applying relaxed convergence
     /// When stagnation is detected for this many iterations, relaxed criteria are used
     fn stagnation_count(&self) -> usize {
         1 // Default count - apply relaxation after 1 iteration of stagnation
     }
+
     /// Set the stagnation multiplier (mutable)
     fn set_stagnation_multiplier(&mut self, multiplier: f64);
+
     /// Set the stagnation count threshold (mutable)
     fn set_stagnation_count(&mut self, count: usize);
+    /// Get the learning rate (if applicable)
+    fn learning_rate(&self) -> Option<f64> {
+        None
+    }
+    /// Set the learning rate (if applicable)
+    fn set_learning_rate(&mut self, _lr: f64) {
+        // Default: no-op for optimizers without configurable learning rate
+    }
 }
 
 /// Result of a single optimization step
@@ -203,9 +194,6 @@ pub struct StepResult {
 
     /// Information about convergence status
     pub convergence_info: ConvergenceInfo,
-
-    /// Additional optimizer-specific metadata
-    pub metadata: OptimizationMetadata,
 }
 
 /// Information about convergence status and criteria
@@ -251,7 +239,7 @@ pub enum ConvergenceCriterion {
     Custom,
 }
 
-/// Additional metadata that optimizers can provide
+/// Timing information for optimization steps
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct TimingInfo {
@@ -301,5 +289,26 @@ mod tests {
         let info = ConvergenceInfo::default().with_function_change(1e-10);
 
         assert_eq!(info.function_change, Some(1e-10));
+    }
+    #[test]
+    fn test_convergence_info_static() {
+        let info = ConvergenceInfo::converged();
+        assert!(info.converged);
+        assert!(info.function_change.is_none());
+    }
+    #[test]
+    fn test_timing_info_default() {
+        let info = TimingInfo::default();
+        assert_eq!(info.step_duration, Duration::from_secs(0));
+        assert!(info.direction_computation.is_none());
+        assert!(info.line_search.is_none());
+        assert!(info.parameter_update.is_none());
+    }
+    #[test]
+    fn test_memory_info_default() {
+        let info = MemoryInfo::default();
+        assert!(info.peak_memory.is_none());
+        assert!(info.state_memory.is_none());
+        assert!(info.temp_memory.is_none());
     }
 }
